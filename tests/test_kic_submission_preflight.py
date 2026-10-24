@@ -67,6 +67,43 @@ class SubmissionGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Symlinked"):
             self.verify(link)
 
+
+    def test_correct_bytes_with_wrong_extension_are_not_upload_ready(self):
+        wrong = self.root / "renamed_final.txt"
+        wrong.write_bytes(self.good)
+        verdict = self.verify(wrong)
+        self.assertEqual(verdict["decision"], "DO_NOT_UPLOAD")
+        self.assertEqual(verdict["reason"], "PDF_EXTENSION_REQUIRED")
+        self.assertFalse(verdict["matched_pinned_byte_identity"])
+        self.assertNotIn(str(wrong), json.dumps(verdict))
+
+    def test_double_extension_is_not_an_uploadable_pdf(self):
+        wrong = self.root / "frozen.pdf.txt"
+        wrong.write_bytes(self.good)
+        self.assertEqual(self.verify(wrong)["reason"], "PDF_EXTENSION_REQUIRED")
+
+    def test_uppercase_pdf_extension_with_matching_bytes_is_allowed(self):
+        permitted = self.root / "FROZEN.PDF"
+        permitted.write_bytes(self.good)
+        verdict = self.verify(permitted)
+        self.assertTrue(verdict["matched_pinned_byte_identity"])
+        self.assertEqual(verdict["decision"], "READY_FOR_USER_REVIEW_NOT_SUBMITTED")
+        self.assertFalse(verdict["officially_submitted"])
+
+    def test_oversized_sparse_pdf_is_rejected_before_hashing(self):
+        oversized = self.root / "oversized.pdf"
+        with oversized.open("wb") as f:
+            f.write(b"%PDF-")
+            f.truncate(guard.DAKER_MAX_UPLOAD_BYTES + 1)
+        verdict = self.verify(oversized, size=guard.DAKER_MAX_UPLOAD_BYTES + 1)
+        self.assertEqual(verdict["reason"], "DAKER_PDF_SIZE_LIMIT_EXCEEDED")
+        self.assertEqual(verdict["decision"], "DO_NOT_UPLOAD")
+        self.assertNotIn(str(oversized), json.dumps(verdict))
+
+    def test_size_limit_boundary_is_not_prematurely_rejected(self):
+        self.assertLess(len(self.good), guard.DAKER_MAX_UPLOAD_BYTES)
+        self.assertEqual(self.verify()["reason"], "PINNED_FROZEN_PDF_MATCH")
+
     def test_cli_rejects_fake_pdf_without_private_path_in_output(self):
         proc = subprocess.run(
             [sys.executable, str(Path(guard.__file__)), str(self.path)],

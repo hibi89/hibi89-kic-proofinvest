@@ -16,6 +16,9 @@ import stat
 FROZEN_SHA256 = "0bdbbf04f374a7ccb39cd15e1aa700a006514278b094d32bb05ac7db610e034e"
 FROZEN_BYTES = 513_113
 FROZEN_PAGE_COUNT_FROM_PRIOR_AUDIT = 10
+# DAKER form says PDF uploads only, max 20 MB. Decimal MB is the
+# conservative bound when the site's exact MB interpretation is unknown.
+DAKER_MAX_UPLOAD_BYTES = 20_000_000
 
 
 def verify_candidate(
@@ -46,6 +49,10 @@ def verify_candidate(
         raise ValueError("PDF must be an ordinary file")
     with os.fdopen(fd, "rb") as stream:
         meta = os.fstat(stream.fileno())
+        if path.suffix.lower() != ".pdf":
+            return _result(False, "PDF_EXTENSION_REQUIRED")
+        if meta.st_size > DAKER_MAX_UPLOAD_BYTES:
+            return _result(False, "DAKER_PDF_SIZE_LIMIT_EXCEEDED")
         if meta.st_size != expected_bytes:
             return _result(False, "BYTE_SIZE_MISMATCH")
         first = stream.read(5)
