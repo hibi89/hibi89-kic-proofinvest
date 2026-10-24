@@ -13,3 +13,15 @@
 
 ## 절대 생략 금지
 **총괄은 지시 전 항상 `feature/research`, `feature/verification`, `feature/risk`의 최신 `TO_KIC_LEAD.md`를 열람하여 대응한다.** `docs/roles/lead/OPERATIONS.md` 참조.
+
+## 2026-10-24 10:40:26 KST — 다음 총괄에게 넘길 최신 검증 덧붙임
+1. 목표/요구/기술: 위 확정 ProofInvest 3단계 유지, 2026-11-12 10:00 KST 예선 제출이 최우선.
+2. 완료/결정: 세 메시지함 최신 원문과 5개 브랜치 HEAD를 재확인. 신규 담당 지시는 아직 없음.
+3. 테스트: `main` SHA `9d0d454154a7393627a840113ab811a5b91f121a` GitHub Actions run `40050488506` 성공(오프라인 unit tests + synthetic demo). 실제 API 및 배포 테스트 미실시.
+4. 진행/대기/중단: 공통 계약 확정 대기, 세 feature 독립 구현 및 통합 미완료. 제출팀 전환·예선 PDF 제출 미확인.
+5. 오류/제약: 현재 실서비스 장애 확인 불가(미구현). 현재 엔진의 중복 계정 행 첫 항목 채택·기간/단위 계약 미정은 통합 전 검증 필요. 무근거 재시도 금지.
+6. 저장소/브랜치/SHA: `hibi89/hibi89-kic-proofinvest`, `lead/kic`; 이 문서 직전 실 확인 `37ee2635e2c1655e8b9032f1d01cbb7aae776f2d`; 최종 SHA는 원격 확인. 상세 3개 담당 SHA는 `MESSAGE_REVIEW.md`.
+7. Production URL: 없음. 로컬 기준 `python -m unittest discover -s tests -v`, `python -m proofinvest --claim-revenue-growth-pct 20`.
+8. 원본/백업/인증: 공식 PPTX/PDF 기존 채팅 파일, Public GitHub 미업로드. 브랜치 역사 보존, API Key·비밀정보 비공개.
+9. 후속 절차: 데이터 계약 2안 비교→승인→메시지함 매회 재조회 및 기록→기능 담당자 작업지시→CI/PR/실 API 검증→본선 대비 MVP 계획.
+10. 문서 갱신 시점/검증 범위: 2026-10-24 10:40:26 KST; GitHub refs, 원격 소스, Actions 실행 결과, 공식 DAKER 규정. 로컬 독립 실행/브라우저 검증 미실시. 최종 문서 기준 SHA는 마지막 업데이트 후 원격 HEAD 조회.
