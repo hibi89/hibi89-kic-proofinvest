@@ -1,3 +1,15 @@
+## LIVE HANDOFF 10항 — 2026-10-24 / 11-30 합성 결과 저장·재조회
+
+1. **목적·원래 일정:** KIC ProofInvest 개발 중인 합성 오프라인 MVP. 11/30 '저장·재조회 분리 최소 1경로' 100/100 DONE 10/24 선행. 실 DAKER 제출/사용자 계정 권한은 별도 P0.
+2. **설계·선택:** UI 재실행마다 계산 반복(A) 대신, 명시적 1회 저장 후 검증·무재계산 재조회(B) 채택. Python3.10+ 표준 라이브러리만 사용, 로그인/네트워크/실기업 데이터 없음. UI는 다음 12/01에 연결.
+3. **구현:** 신규 proofinvest/snapshot_store.py와 tests/test_snapshot_store.py, README 실행·CI. 홈 .proofinvest-synthetic-cache에 `--save` (최초 CREATED, 반복 REUSED_NO_RECALCULATION), `--read` (READ_NO_RECALCULATION). 체크섬은 손상 감지이지 실제 출처 진위/법적 허가 인증 아님.
+4. **테스트/실측:** 코드 69bd4efdf648a399d10bf29788a0fcb9a6f0bf26 [GitHub Actions #40086307653](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40086307653) **144/144 PASS**, 신규 9개 + 독립 3 CLI smoke, master progress check 2, Streamlit AppTest, 합성/수동근거 offline CLI 전부 성공. 별도 브라우저/Production/Windows 실환경/Live OpenDART 미실행.
+5. **실패/중단/대안:** cache 손상·무단 플래그 변조·원본 fixture 변경·파일 없음을 fail-closed ValueError로 처리. 자동 덮어쓰기/재계산·공개 repo 저장·symlink 금지. 미완전 파일 시 사용자 판단 없이 원복 안 함. 별도 이 시도 CI 실패 없음.
+6. **코드/복원 SHA:** hibi89/hibi89-kic-proofinvest lead/kic 코드 69bd4efdf648a399d10bf29788a0fcb9a6f0bf26, [QA](docs/roles/lead/OFFLINE_SNAPSHOT_SAVE_RELOAD_QA_20261024.md), canonical docs/roles/lead/MASTER_PROGRESS.json, 최종 문서 SHA는 lead/kic HEAD. 이전 원격 HEAD 19817e59d6edc306e3098872352c35072b76db6d revert 가능, main/feature·force push 미사용.
+7. **제품/Production:** 합성 fixture 조회/로컬 저장 한 경로만 구현. 실 DART 접수번호·기업 진위·인증 API·실 Agent E2E·Streamlit Production URL 없음. UI는 아직 독립적으로 합성 재계산, 다음 작업에서 저장→UI 연결.
+8. **보안/비공개:** public GitHub 저장소에 실제 저장 JSON/키/PDF/PPTX 게시 금지. 기존 frozen 비공개 10쪽 PDF, 편집 PPTX/Private Library 백업6개 기록 유지, 이번에 조회·수정·제출·공개 안 함.
+9. **외부 차단 P0/다음:** DAKER 실제 개인·팀장 참가/한 PDF 업로드 버튼 권한 10/25·11/09 각60% BLOCKED_EXTERNAL, 사용자 본인 DAKER 로그인 후 참가유형·팀장 여부·최종 업로드 화면/버튼 확인 필요, 승인 전 누르지 않음. DART 공식 원문 10/30 90% 차단, 11/10 제출 영수증 없음. NEXT **2026-12-01** 합성 결과→화면→출처 한 경로 0/100 기본1h+예비2h=3h. 11/29 예비일 미사용 NOT_STARTED.
+10. **기준/검증:** 2026-10-24 KST, CI 40086307653 성공, 총 작업 27 DONE/3 BLOCKED/30 NOT_STARTED(60일 슬롯, 제품 완성률 아님), 이번 남은 기본0h+예비0h/실시간 미계측. 새 대화 ㄱ 명령은 원격 최신 상태를 읽어 진행.
 ## LIVE HANDOFF 2026-10-24 KST / 11/28 Streamlit UI
 
 1. 목표: KIC ProofInvest 오프라인 UI; 11/12 10:00 KST DAKER 공식 제출은 인증·명시 승인 필요.
