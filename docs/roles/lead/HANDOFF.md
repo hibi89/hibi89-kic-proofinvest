@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / Peer screening 11-21
+
+1. **목적·확정 요구**: KIC ProofInvest Python 3.10+ Research→Verification→Risk 오프라인 데모, 예선 DAKER PDF 제출 11/12 10:00 KST 사용자/팀장 인증·사전승인 의존.
+2. **구현·대안**: Peer 비교기업을 근거 없이 나열하지 않고 CFA 산업/기초특성 프레임으로 산업코드·제품군·사업모델·지역·규모·회계연도·CFS/OFS·통화 일치·출처 ID 연결을 요구하는 `screen_peer_candidates` 도입. A 유명기업 예시 임의선정 vs B 결정적 검토후보/제외사유 출력 → **B 채택**. 실제 동종기업 인증/투자 적합성 아님.
+3. **테스트·성공/실패**: `python -m unittest discover -s tests -v` 106/106 PASS, `python scripts/master_progress.py --check`, `python render_master_progress.py --check`, 합성/삼성 수동기록 offline CLI [GitHub CI #40080754184](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40080754184) 모두 GitHub CI PASS. 신규 peer 회귀 8개. 독립 로컬/브라우저/실 API 안 함.
+4. **완료·차단·정지점**: 원래 11/21 계획 100/100 DONE, 남은 기본0h+예비0h, 실제 시간 미계측. 60일 20 DONE/3 BLOCKED/37 NOT_STARTED. DAKER 10/25·11/09 제출권한60% BLOCKED, DART 10/30 공식 접수번호90% BLOCKED, 11/10 실제 제출 미착수; 11/18~19 평가 실증/11/22 예비일 NOT_STARTED 유지.
+5. **오류·실패·대안**: 업종만 같아도 동종이라고 오인되는 위험 → 제품/모델/지역/규모/연도/통화/재무범위와 출처 링크 모두 비교; 데이터 부족하면 excluded 또는 unavailable. 동종후보 중복 `issuer_id` 보수적 제외. 비합성 근거 출처 링크만으로 실제 산업정보가 참이라고 검증하지 않음.
+6. **GitHub/복원 SHA**: `hibi89/hibi89-kic-proofinvest` `lead/kic`, 코드 SHA `1b1b4c05f2e1331afeda2daa48cdebe7db1ae20d`; `proofinvest/peers.py`, `tests/test_peers.py`, [QA](docs/roles/lead/RESEARCH_PEER_SELECTION_20261024.md), `docs/roles/lead/MASTER_PROGRESS.json`; 문서 SHA는 최신 원격 HEAD 재조회. 이전 SHA `242cb78b0b105d6eece99d2eccade4652320282a` Git 역커밋 가능.
+7. **운영/Production**: Actions ubuntu-latest/Python3.11. 실 OpenDART API·실기업 자동 수집·Agent 전체·웹/Production URL 미구현/미검증. CI green은 서비스 출시나 외부 사실 인증 아님.
+8. **저장/보안/권한**: frozen 10쪽 비공개 제출 후보 PDF·편집 PPTX 및 Library 6개 기존 기록 보존, 본 작업 접근/수정/공개 업로드 안 함. API 토큰/개인 인증/PII 미수집·무유출, force-push 및 다른 브랜치 변경 없음.
+9. **다음 READY/기준**: 2026-11-23 Research 중복 근거·출처 추적 회귀 0/100, 기본1h+예비2h=3h. 기존 11/22 예비일은 이 작업과 중복 소진하지 않고 유지. DAKER 실계정 제출 권한 열린 경우 P0 먼저, 11/18~19 실제 상호평가 영수증은 공식 시점 이후만.
+10. **검수/시각**: 2026-10-24 KST, 코드 SHA `1b1b4c05f2e1331afeda2daa48cdebe7db1ae20d`, CI 40080754184, 완료 100/100·실투입시간 미계측. 확인 후 차기 ㄱ은 현 HEAD 재조회. 중간 생성된 문서 영수증은 원격 갱신으로 확정.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-20 Research Rights
 
 1. **목표·작업**: 2026 KIC ProofInvest 예선 설계/오프라인 Research·Verification·Risk, Python3.10+; 공식 PDF 제출일 11/12 10:00 KST는 사용자 권한/승인 의존.
