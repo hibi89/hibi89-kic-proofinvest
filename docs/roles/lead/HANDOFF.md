@@ -1,3 +1,15 @@
+## KIC 최신 HANDOFF 10항 — 2026-10-24 KST / 영구 규약 본문 손상 복구
+1. 목표: 새 채팅 한 줄 재개의 필수 원격 지침이 `undefined`로 유실된 오류 해결 및 재발 탐지.
+2. 설계: Git `069d1af` 정책 원본의 불변 운영 절차를 복원하고 과거 DONE·NEXT 수치 스냅샷 제거; 신규 본문 필수 항목 검사·6개 반례. 짧은 새 규약 재작성보다 기존 정책 보존 선택.
+3. 테스트: 실제 GitHub 3개 기능 커밋 반영, 6개 새 unittest 작성; `python -m unittest discover -s tests -v`, `python scripts/master_progress.py --check`는 Actions/로컬 실실행 결과 **미검증**.
+4. 상태: 독립 보수 작업 **80/100 PARTIAL**, 남은 기본0.2h+예비0.8h=1h 추정, 실제 소요 미계측. 정규 60일 29 DONE/3 BLOCKED/28 NOT_STARTED, NEXT 2026-12-03 미래.
+5. 오류: 표제+정본 링크만 검사해 본문 전체 절단을 놓쳤음. 이전 227 PASS는 이 결함 통과를 뜻하지 않음; 현재 CI status/runs 빈 결과, 확정 PASS 금지.
+6. GitHub: `hibi89/hibi89-kic-proofinvest@lead/kic`; 손상복구 `8ec15b8`, 검사강화 `6a66b26`, 회귀테스트 `773b40a`; [QA](ROOT_CONTRACT_BODY_RESTORATION_QA_20261024.md). 최종 문서 HEAD 별도 실조회.
+7. 배포: Vercel/Production 없음. 새 CI 실행 성공·실브라우저/API/DART 원문/실 LLM Agent E2E 미검증.
+8. 백업: 이전 Git 이력 `069d1af` 및 정상 revert, 강제푸시 없음. 비공개 PDF/PPTX·Library6 동결, 원본 내용/권한 불변.
+9. 다음: 최신 Actions 워크플로와 Python 검증 확인→상태 100 여부 판단. 외부 DAKER 실계정 팀장/최종 업로드 권한 확인 후 별도 사용자 승인 없이는 제출·투표 금지.
+10. 기준: 2026-10-24 KST, 실제 원격 테스트 파일 SHA `773b40a` 확인; 신규 코드/인수인계 상태만 증거, 10/25·11/09 DAKER 각60%와 10/30 DART 90% 차단 유지. 최종 CI 미검증.
+
 ## KIC 최신 HANDOFF 10항 — 2026-10-24 규칙기반 오프라인 실행 제어
 1. Objective: 기존 연구·수동검산·Risk 함수를 1회 제한된 오프라인 tool 단계에서 연결하고 불확실성별 검토 결정을 실제 출력.
 2. Design: PLAN→EVALUATE→DECIDE→REPORT state trace, 잘못된 기업/연도 선차단, Risk 없으면 자료 추가 요구, 계산 완료해도 출처 인증 필요. LLM/실자율 Agent 아님.
