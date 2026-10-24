@@ -1,3 +1,5 @@
+> **[USER REQUEST / 대회 규정·순위·포트폴리오 공시 2026-10-24]** [KIC 공식 대회 정보·순위·인증서·포트폴리오 근거](docs/COMPETITION_RANKING_CERTIFICATES_PORTFOLIO_20261024.md) 필독. **공식 KIC 공고:** 본선 상위12팀·최종 6수상팀·12/03/2027-01-11 예정 발표. **사용자 제공 일반 DACON 동의사항:** 최종 순위표/인증서 조항은 있으나 KIC에서 참가자 전원 등수 공개·인증서 적용 여부는 **UNVERIFIED**, 실제 발표 후 원문/영수증만 포트폴리오 실적화. DAKER 개인/팀장 최종 제출권한 BLOCKED, 제출·진출·수상 없음. 이 공시는 비정기 정보기록이며 60일 진도를 추가 완료 처리하지 않음.
+
 > **현행 진도·다음 작업 정본:** [60일 JSON](docs/roles/lead/MASTER_PROGRESS.json) → [자동 생성 전체 표](docs/roles/lead/MASTER_PROGRESS.md) → [현재 KIC 단일 작업](docs/roles/lead/LEAD_ACTIVE_WORK.md). README에는 완료 숫자·다음 날짜를 중복 기록하지 않습니다. 제출권한/실 API/Production 상태는 반드시 최신 인계와 실제 실행 증거로 확인합니다.
 
 > **상시 강제 규칙 (2026-10-24 14:44:22 KST)**: [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) — **모든 작업 종료·부분중단마다 GitHub 최신화+복원 상태+일일 100점 진도+남은 시간+다음 작업 갱신·원격 확인이 끝나야만 종료 가능**. 사용자 시작 명령은 오직 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`; 추가 인수인계 프롬프트 요청 금지. 이 문구보다 오래된 종료 규칙은 본 강제 규약으로 대체.
