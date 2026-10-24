@@ -43,13 +43,23 @@ ROOT_CONTRACT_NOTICE = (
 
 
 def validate_root_contract_header(content: str) -> None:
-    """Reject a stale, duplicated or missing operational status in the root preface."""
+    """Reject a stale header or a truncated successor-chat policy body."""
     if content.count(ROOT_CONTRACT_TITLE) != 1:
         raise ValueError("Root handoff contract heading must occur once")
-    opening = content.split(ROOT_CONTRACT_TITLE, 1)[0].strip()
-    if opening != ROOT_CONTRACT_NOTICE:
+    opening, body = content.split(ROOT_CONTRACT_TITLE, 1)
+    if opening.strip() != ROOT_CONTRACT_NOTICE:
         raise ValueError("Root handoff opening must be canonical link-only")
-
+    mandatory_sections = (
+        "## 유일한 새 채팅 명령",
+        "## 작업 완료 선언의 절대 조건",
+        "## 절대로 누락하지 않는 상태 구분",
+        "## 새 채팅에서 절대 하지 말 것",
+        "## 현재 상태의 단일 정본",
+    )
+    if (len(body.strip()) < 2000 or "undefined" in body
+            or any(section not in body for section in mandatory_sections)
+            or "[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]" not in body):
+        raise ValueError("Root handoff contract body missing or corrupted")
 
 
 def validate_handoff_pointer(text: str, expected_day: str, name: str = "<handoff>") -> None:
