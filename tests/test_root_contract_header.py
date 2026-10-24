@@ -33,8 +33,15 @@ class RootContractHeaderIntegrityTests(unittest.TestCase):
                     validate_root_contract_header(txt)
 
     def test_future_append_to_contract_body_preserves_header(self):
-        future = ROOT_CONTRACT_NOTICE + "\n\n" + ROOT_CONTRACT_TITLE + "\n" + ("old notes\n" * 3000)
+        # Future additions must extend a valid policy, not replace its required body.
+        original = (ROOT / "KIC_HANDOFF_CONTRACT.md").read_text(encoding="utf-8")
+        future = original + "\n\n## Future operational notes\n" + ("Preserve required policy sections.\n" * 3)
         validate_root_contract_header(future)
+
+    def test_arbitrary_long_notes_cannot_replace_policy_body(self):
+        forged = ROOT_CONTRACT_NOTICE + "\n\n" + ROOT_CONTRACT_TITLE + "\n" + ("old notes\n" * 3000)
+        with self.assertRaisesRegex(ValueError, "body missing or corrupted"):
+            validate_root_contract_header(forged)
 
 
 if __name__ == "__main__":
