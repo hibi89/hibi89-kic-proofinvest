@@ -1,14 +1,18 @@
-# STATUS — 산업·기업 리서치 담당
+# STATUS — KIC ProofInvest Research
 
-- 갱신 기준: 2026-10-24 KST / 초기 담당 배정
-- 저장소: `hibi89/hibi89-kic-proofinvest`
-- **담당 브랜치**: `feature/research`
-- GitHub 출발점 `main` 초기 소스 SHA: `9e66301145313e7ac2a4e69eab32d9d037bdb64f`. 현재 브랜치 HEAD는 **실제 GitHub 조회가 최우선**.
-- 현재 상태: **업무 지침 및 인수인계 초기화**. 담당자 신규 구현: 미착수.
-- 초기 공통 스타터: Python 오프라인 검산·위험 계산, 합성 fixture, OpenDART 어댑터(실 호출 미검증).
-- 검증: 초기 오프라인 테스트 9개 보고(기존 코드 기준). **현재 브랜치 CI·실 API·배포 성공은 별도 확인 전까지 미검증**.
-- 담당 범위: 기업·산업 대상 식별, 출처 검색·시점 관리, 산업 및 Peer Group 정보의 근거 목록, 요약 후보 생성. 투자 추천, 금융 검산, 위험 신호 판단은 담당 밖.
-- 다음 작업: 1. main 기준 테스트 확인 2. 이용 가능한 공개 데이터 후보와 라이선스·쿼터 조사(조회는 읽기 전용) 3. 위 계약에 맞는 최소 구조 제안 4. 합성 데이터로 단위 테스트 작성 5. KIC 총괄에 메시지 남기고 승인 후 구현·PR 준비.
-- 리스크: 뉴스 저작권, 산업 통계 접근 권한, 자료 기준일 혼용, 출처 오류, 라이브 API 요금·쿼터.
-- 메시지 보낼 곳: `docs/roles/research/TO_KIC_LEAD.md`.
-- 다른 브랜치 편집·강제 push·무단 API/비용 발생 금지. 작업 끝날 때 이 문서와 HANDOFF 갱신.
+- **갱신 시점**: 2026-10-24 13:02 KST
+- **저장소 / 브랜치**: `hibi89/hibi89-kic-proofinvest` / `feature/research`
+- **과제**: `KIC-R-001` / 완료 보고 준비, **총괄 검수 대기 (AWAITING_REVIEW)**.
+- **시작 원격 HEAD**: `1f05adcedff85526f9121a0a470d8f21f40d57f8`.
+- **작업 시작 영수증**: `1ebc0593b0662fb1a1a8661fcade8e339ee249d1` (`[IN_PROGRESS]`).
+- **신규 기능 코드 커밋**: `6339ec05cc89786c7f3e0673af52b3738268bd94`.
+- **신규 테스트 반영 커밋**: `1baeb881ca9d7a6b4afe78ed251b86792314d0f6`.
+- **구현**: `proofinvest/research.py` — 입력으로 제공된 기록만 결정론적으로 정규화. HTTPS 원문 URL, 필수 출처 필드, 발행일/수집일, 중복 ID 충돌, 찾을 수 없는 참조 ID, 기준일 이후 자료, 근거보다 이전 시점 주장, 공백 claim을 안전하게 차단. 상태 `success|partial|unavailable`; 상세 경고 코드 제공.
+- **신규 테스트**: `tests/test_research.py` — `SYNTHETIC_FIXTURE` 전용 17개.
+- **로컬 재현 테스트**: `python -m unittest discover -s tests -v` → **26 PASS / 0 FAIL / 0 ERROR** (기존 9 + 신규 17). `python -m proofinvest --claim-revenue-growth-pct 20` → **성공, SYNTHETIC_FIXTURE, verified, 20.00**.
+- **재현성 검증**: 테스트에 필요한 원격 GitHub 원본 8개 파일을 로컬에 구성했고, 모든 파일의 Git Blob SHA가 GitHub와 일치함을 확인. 이 결과는 **동일 내용 로컬 Python 실행 검증**이며 GitHub Actions 검증과 구분.
+- **CI**: commit status API의 상태 항목 0개; 연결된 워크플로 실행 URL을 직접 확인하지 못함. **원격 CI 미검증**(성공 판정 금지).
+- **외부 운영**: OpenDART/LLM/HTTP 호출 없음; 외부 기업의 사실 여부, 라이선스 적법성 및 Production 실서비스 검증 미실시.
+- **공통 코드·데이터 보존**: `engine.py`, `dart_adapter.py`, `__main__.py`, `main`, `lead/kic`, 다른 기능 브랜치는 수정하지 않음.
+- **결정 대기**: Research 내부 구조를 전역 계약으로 동결할지 총괄 검수 및 승인 필요. Verification 연동/라이브 API는 후속 지시 전 착수 금지.
+- **보고/다음 지시**: `docs/roles/research/TO_KIC_LEAD.md`. 현재 DONE 메시지 기록 후 총괄이 검수하여 `lead/kic/NEXT_TASK.md`를 갱신하기 전까지 대기.
