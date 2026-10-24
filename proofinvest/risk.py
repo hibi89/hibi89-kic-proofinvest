@@ -3,11 +3,11 @@
 This is a local, offline structural gate, NOT an authenticity checker.
 The evidence's 'verified' label is an asserted result of an upstream
 Verification step, and is not accepted as proof of a real DART request.
-No numeric risk is calculated here; 11/01 risk edge cases are separate.
+Only the explicit verified-only calculation entrypoint performs numeric risk.
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 import re
@@ -125,5 +125,70 @@ def gate_verified_risk_inputs(
     result["reason"] = (
         "Both input facts have verified labels and matching metadata; "
         "origin authenticity and numeric risk still require separate verification"
+    )
+    return result
+
+
+
+def calculate_verified_debt_to_equity(
+    facts: Any, *,
+    expected_year: int,
+    expected_statement: str = "CFS",
+    demo: bool = False,
+) -> dict[str, Any]:
+    """Fail-closed numeric Risk calculation via the verified-only input gate.
+
+    A structurally 'verified' label is an upstream assertion, NOT proof of
+    source authenticity. The 200% limit is an exploratory signal, never an
+    investment recommendation. The legacy engine.calculate demo is separate.
+    """
+    gated = gate_verified_risk_inputs(
+        facts, expected_year=expected_year,
+        expected_statement=expected_statement, demo=demo,
+    )
+    result = {
+        **gated,
+        "ratio_pct": None,
+        "triggered": None,
+        "threshold_pct": 200,
+        "note": "200%는 시연용 탐색 임계값이며 투자 판단 기준이 아님",
+    }
+    if gated["status"] != "eligible":
+        return result
+
+    # The gate validated numeric syntax and comparable provenance.
+    # A non-positive denominator has no meaningful debt/equity interpretation.
+    try:
+        liabilities = Decimal(gated["facts"]["liabilities"])
+        equity = Decimal(gated["facts"]["equity"])
+        if equity == 0:
+            result["status"] = "unavailable"
+            result["reason"] = "Zero equity denominator: ratio calculation withheld"
+            return result
+        if equity < 0:
+            result["status"] = "unavailable"
+            result["reason"] = "Negative equity: ordinary debt-to-equity ratio withheld"
+            return result
+        if liabilities < 0:
+            result["status"] = "unavailable"
+            result["reason"] = "Negative liabilities: anomalous balance-sheet input"
+            return result
+
+        ratio = liabilities / equity * Decimal("100")
+        # Threshold comparison uses the unrounded ratio to avoid false alerts.
+        triggered = ratio >= Decimal("200")
+        displayed_ratio = ratio.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, OverflowError, ZeroDivisionError, ArithmeticError):
+        result["status"] = "unavailable"
+        result["reason"] = "Numeric calculation could not be safely represented"
+        return result
+
+    result["status"] = "calculated"
+    result["risk_calculated"] = True
+    result["ratio_pct"] = str(displayed_ratio)
+    result["triggered"] = triggered
+    result["reason"] = (
+        "Deterministic Decimal calculation from matching upstream verified facts; "
+        "external source authenticity remains unverified"
     )
     return result

@@ -2,7 +2,7 @@
 import copy
 import unittest
 
-from proofinvest.risk import gate_verified_risk_inputs
+from proofinvest.risk import gate_verified_risk_inputs, calculate_verified_debt_to_equity
 from proofinvest.evidence_scenarios import verify_growth_claim
 
 
@@ -129,6 +129,130 @@ class VerifiedOnlyRiskGateTests(unittest.TestCase):
         self.assertEqual(first, gate(list(reversed(values))))
         self.assertEqual(values, saved)
         self.assertIsNone(first.get("ratio_pct"))
+
+
+
+
+class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
+    def compute(self, data=None, **kwargs):
+        return calculate_verified_debt_to_equity(
+            facts() if data is None else data,
+            expected_year=2024, demo=True, **kwargs,
+        )
+
+    def test_verified_data_calculates_and_triggers_exploratory_threshold(self):
+        out = self.compute()
+        self.assertEqual(out["status"], "calculated")
+        self.assertEqual(out["ratio_pct"], "266.67")
+        self.assertTrue(out["triggered"])
+        self.assertTrue(out["risk_calculated"])
+        self.assertFalse(out["authenticated_external_source"])
+        self.assertEqual(out["source_kind"], "SYNTHETIC_FIXTURE")
+
+    def test_valid_ratio_below_threshold(self):
+        data = facts()
+        data[0]["current_amount"] = "20"
+        out = self.compute(data)
+        self.assertEqual(out["ratio_pct"], "66.67")
+        self.assertFalse(out["triggered"])
+
+    def test_exact_threshold_triggers(self):
+        data = facts()
+        data[0]["current_amount"] = "60"
+        self.assertTrue(self.compute(data)["triggered"])
+
+    def test_unrounded_ratio_controls_trigger(self):
+        data = facts()
+        data[0]["current_amount"] = "59.999"
+        out = self.compute(data)
+        self.assertEqual(out["ratio_pct"], "200.00")
+        self.assertFalse(out["triggered"])
+
+    def test_zero_equity_safely_withheld(self):
+        data = facts()
+        data[1]["current_amount"] = "0"
+        out = self.compute(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertIsNone(out["ratio_pct"])
+        self.assertIsNone(out["triggered"])
+        self.assertFalse(out["risk_calculated"])
+        self.assertIn("Zero equity", out["reason"])
+
+    def test_negative_equity_safely_withheld(self):
+        data = facts()
+        data[1]["current_amount"] = "-30"
+        out = self.compute(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertFalse(out["risk_calculated"])
+        self.assertIsNone(out["triggered"])
+        self.assertIn("Negative equity", out["reason"])
+
+    def test_missing_equity_never_bypasses_gate(self):
+        for value in (None, "", "N/A"):
+            with self.subTest(value=value):
+                data = facts()
+                data[1]["current_amount"] = value
+                out = self.compute(data)
+                self.assertEqual(out["status"], "unavailable")
+                self.assertEqual(out["facts"], {})
+                self.assertIsNone(out["ratio_pct"])
+
+    def test_0_liabilities_calculates_with_no_trigger(self):
+        data = facts()
+        data[0]["current_amount"] = "0"
+        out = self.compute(data)
+        self.assertEqual(out["status"], "calculated")
+        self.assertEqual(out["ratio_pct"], "0.00")
+        self.assertFalse(out["triggered"])
+
+    def test_negative_liabilities_withheld_as_anomaly(self):
+        data = facts()
+        data[0]["current_amount"] = "-1"
+        self.assertEqual(self.compute(data)["status"], "unavailable")
+
+    def test_unverified_or_conflicting_input_never_calculated(self):
+        for state in ("conflict", "unavailable", None):
+            with self.subTest(state=state):
+                data = facts()
+                data[0]["state"] = state
+                out = self.compute(data)
+                self.assertEqual(out["status"], "unavailable")
+                self.assertFalse(out["risk_calculated"])
+                self.assertIsNone(out["ratio_pct"])
+
+    def test_cross_year_or_statement_is_not_calculated(self):
+        for field, value in (("year", 2023), ("fs_div", "OFS")):
+            with self.subTest(field=field):
+                data = facts()
+                data[0][field] = value
+                self.assertEqual(self.compute(data)["status"], "unavailable")
+
+    def test_real_manual_evidence_remains_unauthenticated(self):
+        data = facts()
+        for fact in data:
+            fact["source_kind"] = "MANUAL_PRIMARY_SOURCE_VERIFICATION"
+        out = calculate_verified_debt_to_equity(data, expected_year=2024)
+        self.assertEqual(out["status"], "calculated")
+        self.assertFalse(out["authenticated_external_source"])
+        self.assertFalse(out["is_demo"])
+
+    def test_synthetic_without_demo_is_rejected(self):
+        out = calculate_verified_debt_to_equity(facts(), expected_year=2024)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertIsNone(out["ratio_pct"])
+
+    def test_extreme_amount_fails_closed_without_crash(self):
+        data = facts()
+        data[0]["current_amount"] = "9" * 100
+        out = self.compute(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertFalse(out["risk_calculated"])
+
+    def test_pure_and_order_invariant(self):
+        data = facts()
+        original = copy.deepcopy(data)
+        self.assertEqual(self.compute(data), self.compute(list(reversed(data))))
+        self.assertEqual(data, original)
 
 
 if __name__ == "__main__":
