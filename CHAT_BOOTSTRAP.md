@@ -1,3 +1,5 @@
+> **NEW LIVE NEXT (2026-10-24 KST)**: 원래 11/03 예정 기획서 1~4쪽 v0.2 선행 작성/QA **100/100 DONE**, 다음 11/04 기획서 **5~7쪽** Agent Workflow/Tool·API/데이터 활용 (READY **0/100**, 기본1.5h+예비3.5h=5h). DAKER 공식 명칭 PPTX 원문 직접 열람 **60/100**(실 참가계정/제출권한 40 BLOCKED, 접근 후2h), DART 접수번호 공식뷰어 **90/100**(접근 후1.5h) 유지. 산출물 PPTX/PDF는 비공개 채팅 다운로드에만 존재·영구 Library 미저장·GitHub 미게시. 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md)와 [QA](docs/roles/lead/PDF_PAGES_1_4_QA_20261024.md) 참조. 아래 11/01·11/03 미착수 문장은 과거 기록.
+
 
 > **LIVE NEXT TASK (2026-10-24 KST):** 11/01 Risk 결측·0분모·음수자본 verified-only Decimal 계산은 **100/100 DONE (원래 날짜 11/01, 선행 실행 10/24)**. 코드 `5710a534`, [GitHub CI 40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504) 82/82 테스트와 CLI 2개 PASS. 다음 **11/03 PDF 1~4쪽 근거기반 비공개 초안 준비 (READY 0%, 기본1.5h+예비3.5h=5h)**. DAKER **35% BLOCKED**, DART **90% BLOCKED**, 전체 프로젝트·Production·최종 제출은 미완료. 항상 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md)부터 재조회할 것. 아래 오래된 '11/01 미착수' 스냅샷은 역사기록.
 

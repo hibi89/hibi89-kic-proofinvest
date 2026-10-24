@@ -1,3 +1,12 @@
+## LIVE 2026-10-24 KST — KIC-PDF-P1-P4-20261103 (선행 개정/검수 종료)
+- **예정 2026-11-03 / 실제 2026-10-24, 100/100=100% DONE**: Library에서 기존 10쪽 v0.1와 주최 양식 명칭의 PPTX를 직접 확보·열람해 1~4쪽 개정 v0.2 사본, 4쪽 검토 PDF 및 전체 10쪽 작성중 PDF를 생성. 기존 5~10쪽 텍스트 불변, 두 PDF 페이지 수/한글 렌더·페이지 밖 텍스트 경계 검사 PASS. 원본은 수정하지 않음. [QA](docs/roles/lead/PDF_PAGES_1_4_QA_20261024.md).
+- **중요 저장 제약**: 개인정보 포함 기획서 PPTX/PDF 바이너리는 공개 GitHub에 업로드하지 않음. 이 실행에서 다운로드 산출물만 생성했고 영구 Library 저장은 미실행. 다음 채팅에서 v0.2 바이너리가 반드시 존재한다고 가정하지 말 것; Library v0.1와 GitHub QA 기준으로 재개. PDF 최종 제출/승인·실서비스 정상 아님.
+- **완료 게이트 100점**: 공식 조건/양식 직접 열람 20; 기존 v0.1 비교·원본 보존 15; 1~4쪽 근거·실증/예정 구분 40; 출력 10/4쪽 및 레이아웃·일치 QA 15; [인수인계 및 원격 확인](docs/roles/lead/DAILY_PROGRESS.md) 10. **남은 순작업 0h+예비0h=0h**, 실제 작업시간 미계측. 원래 10/24 일정 100%에 합산 금지.
+- **DAKER 10/25 60/100=60% PARTIAL**: 양식 PPTX 사용자 Library 원본 직접 10장 열람으로 추가 25점 확보; 공개 규칙 20+v0.1 검수 15는 유지. 로그인 계정의 개인/팀 상태·제출권한 **40점 BLOCKED**. 접근 후 예상 기본 **0.5h+예비1.5h=2h**, 외부 대기시간 미정. 공식 서버 다운로드 바이너리 해시 일치는 미검증. [DAKER 점검](docs/roles/lead/DAKER_PREFLIGHT_20261024.md).
+- **DART 공시 접수번호 대조 90/100=90% BLOCKED**, 공식 뷰어 확인 여전히 없음; 접근 후 기본 0.5h+예비 1h=1.5h.
+- **다음 단일 READY: 11/04 계획 기획서 5~7쪽 Agent Workflow / Tool·API / 데이터 활용 계획, 0/100=0%, 예상 기본1.5h+예비3.5h=5h**. 비공개 PPTX 원본/기존 v0.2 산출물 접근 범위를 우선 점검하고 기존 디자인 보존. 11/10 조기 제출 및 11/12 10:00 KST 마감 불변.
+- **코드 최종 확인 근거**: `lead/kic@5710a534` 82/82 offline test [40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504); 이전 문서 HEAD `d44151be` [40068991917](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068991917) 성공. 문서 변경 후 새 HEAD/CI는 별도 조회할 것. 실 OpenDART 인증/Agent 전체/Production/Vercel/공식 제출: 미검증·미적용.
+
 
 ## 현행 최상단 복원 — 2026-10-24 KST (KIC-RISK-CALC-20261101)
 - 상태: **DONE — 원래 예정일 2026-11-01, 실제 선행 수행일 2026-10-24**. KIC 총괄=직접 개발자. 브랜치 `lead/kic`; 기준 코드 SHA `5710a53462c5f0eda84100d539283745f8247bbb`; GitHub Actions [40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504): **82/82 PASS**, 합성/공시시나리오 오프라인 CLI 2개 PASS. 문서 갱신 이후 최신 원격 HEAD는 매번 별도 조회.
