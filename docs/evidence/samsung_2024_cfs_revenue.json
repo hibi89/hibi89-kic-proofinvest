@@ -1,0 +1,55 @@
+{
+  "evidence_type": "MANUAL_PRIMARY_SOURCE_VERIFICATION",
+  "evidence_date_kst": "2026-10-24",
+  "subject": "Samsung Electronics Co., Ltd. and its subsidiaries",
+  "corp_code": "00126380",
+  "financial_statement": "CFS",
+  "metric": "revenue",
+  "report_year": 2024,
+  "report_type": "ANNUAL",
+  "unit": "KRW_MILLIONS",
+  "current": {
+    "fiscal_year": 2024,
+    "period_start": "2024-01-01",
+    "period_end": "2024-12-31",
+    "amount": "300870903"
+  },
+  "previous": {
+    "fiscal_year": 2023,
+    "period_start": "2023-01-01",
+    "period_end": "2023-12-31",
+    "amount": "258935494"
+  },
+  "result": {
+    "absolute_change": "41935409",
+    "growth_pct_rounded_2dp": "16.20",
+    "formula": "(current - previous) / previous * 100"
+  },
+  "primary_source": {
+    "publisher": "Samsung Electronics",
+    "document": "FY2024 Consolidated Financial Statements with Independent Auditors' Report",
+    "url": "https://images.samsung.com/is/content/samsung/assets/global/ir/docs/2025_SEC_Consolidated_Financial_statements.pdf",
+    "pdf_page_one_based": 9,
+    "printed_page": 7,
+    "visual_verified": true
+  },
+  "business_report": {
+    "publisher": "Samsung Electronics",
+    "listing_url": "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.84359/",
+    "business_report_pdf_url": "https://images.samsung.com/is/content/samsung/assets/global/ir/docs/2024_4Q_Interim_Report.pdf",
+    "business_report_full_pdf_read": false
+  },
+  "dart_filing": {
+    "reference_only": "20250311001085",
+    "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250311001085",
+    "direct_viewer_verified": false,
+    "viewer_failure": "HTTP 502 via web fetch; DART number cross-referenced from third-party index, not independently verified",
+    "secondary_index": "https://www.flashmemory.co.kr/companies/samsung/"
+  },
+  "limitations": [
+    "Manual transcription of two publicly reported amounts; offline checks do not authenticate the PDF automatically.",
+    "No OpenDART authenticated API request or live real-company ingestion occurred.",
+    "2024-vs-2023 worked example, not the latest fiscal-year performance.",
+    "No legal conclusion about re-use terms is asserted."
+  ]
+}
