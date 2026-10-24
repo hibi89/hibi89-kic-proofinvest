@@ -170,7 +170,7 @@ def render(template, data, counts):
     if blocked:
         blocks = []
         for r in blocked:
-            blocks.append(r["date"][5:] + " " + r["task"].split(" ")[0] + " **" + str(r["percent"]) + "%**"
+            blocks.append(r["date"][5:].replace("-", "/") + " " + ("DAKER 제출권한" if "DAKER" in r["task"] else "DART 공식원문" if "사업보고서" in r["task"] else r["task"][:20]) + " **" + str(r["percent"]) + "%**"
                 + "(접근 후 기본" + fmt(r["remaining_base_h"]) + "+예비" + fmt(r["remaining_reserve_h"]) + ")")
         block_text = "**차단:** " + ", ".join(blocks) + ". 완료 처리 금지."
     else:
