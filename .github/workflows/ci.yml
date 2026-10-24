@@ -17,6 +17,8 @@ jobs:
           python-version: '3.11'
       - name: Verify 60-day progress and handoff synchronization
         run: python scripts/master_progress.py --check
+      - name: Full 60-day master progress JSON sync check
+        run: python render_master_progress.py --check
       - name: Unit tests (no external API)
         run: python -m unittest discover -s tests -v
       - name: Synthetic demo (no credentials)
