@@ -1,3 +1,5 @@
+> **운영 인수인계 완료 기록 (2026-10-24 14:46:25 KST):** 사용자 고정 명령 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`. 모든 작업 종료마다 [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md) 강제 적용. 규약 코드 아닌 문서 커밋 `d048d856e59efcf810dd1239d9bc213c6bf3d914`에 대한 [GitHub CI 40067452590](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40067452590) **PASS**. 기존 실제 코드 최종 67개 테스트 통과, 다음 **11/01 Risk 결측·0분모·음수자본 개발 0% / 보수적 최대 5h**. DAKER 35%, DART 90% 차단 상태 변경 없음. 본 운영 문서 개선을 전체 ProofInvest 개발 진척 증가로 오인 금지.
+
 > **2026-10-24 14:44:22 KST 새 채팅 한 줄 전용 영구 인수 기준:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). 모든 작업 종료·부분중단 시 반드시 최신 HEAD의 [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md)에 최종 상태/남은 일/다음 작업을 기록하고, 일별 진행률·잔여시간·STATUS·상위보고를 동기화. 이번 변경은 인수 규칙 명문화이며 Risk 11/01 실제 개발 미착수. 
 
 > **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
@@ -230,3 +232,8 @@
 - **10/31 과제 100/100=100%**: 기존 코드·신뢰 경계 검토 20/20, verified-only 입력 차단 구현 40/40, 67 테스트·CLI 성공 30/30, 원격 증거·인계 공시 10/10. **잔여 기본 0h + 검수 예비 0h = 0h** (이 과제만). 실제 수행시간 미계측.
 - `eligible`=두 위험 입력의 verified 표시·동일 재무제표/연도/기업/자료 메타데이터 조건 충족이지 **실제 원본 진위 인증 아님**. `authenticated_external_source=false`, `risk_calculated=false` 반환. **구형 `engine.calculate` 탐색성 부채비율은 이 게이트 미경유**. 실서비스 E2E나 리스크 계산 전체 완성으로 주장 금지.
 - 최신 사용자 승인 [선행 순서 유연화](../../WORK_ORDER_FLEX_POLICY_20261024.md) 존중. 다음 독립 개발은 **11/01 Risk 0분모·결측·음수자본 안전 계산/반례**. DAKER 10/25 계획 35%/접근 후 3h, DART 10/30 계획 90%/접근 후 1.5h 별도 BLOCKED 유지, [복구 일정](BLOCKED_WORK_RECOVERY_20261024.md)은 변경 없음.
+
+## 2026-10-24 14:46:25 KST — KIC 상시 한 줄 복원·작업 종료 영구 인수 규칙 최종 등록
+- 사용자 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` **한 줄만**으로 최신 `lead/kic` 복원 및 다음 개발 착수. 규약 [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md): 매 실제 작업 종료·부분중단 시 KIC_RESUME_STATE + LEAD_ACTIVE_WORK + DAILY_PROGRESS + STATUS/HANDOFF/TO_HACKATHON_LEAD 업데이트하고 원격 SHA/CI 확인 **전에는 DONE 금지**.
+- 규약 커밋 `d048d85`, [Actions 40067452590](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40067452590) **완료/성공**. 이 변경은 **문서/운영 정비이며 신규 Risk 기능 개발 아님**. 기존 마지막 개발 CI 67 PASS 유지, 다음 11/01 Risk 미착수 0%, 초기 계획 기본 1.5h+예비 3.5h=5h. DAKER 35%·DART 90% 차단 유지.
+- 본 추가 운영 작업 **100/100=100% / 잔여 기본 0h+예비 0h=0h / 실제 수행시간 미계측**. 원래 10/24 일별 계획과 합산하지 않음.
