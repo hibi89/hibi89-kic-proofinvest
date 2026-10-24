@@ -1,3 +1,5 @@
+> **상위 총괄 일일 작업 진척 조회 (2026-10-24 13:52:13 KST)**: [KIC 100% 기준·잔여 예상시간 실적판](DAILY_PROGRESS.md). 10/24 계획 **100% / 남은 0h** (선행 Research 코드 별도); 10/25 미착수 **0% / 기본 잔여 1h + 예비 3h = 최대 4h**, 실측 미계측. 업데이트마다 같은 수치로 전체 총괄 보고; 실제 API·DAKER 접수 완료 아님.
+
 # KIC ProofInvest → 3개 해커톤 전체 총괄 보고서 (상시 고정 경로)
 
 > **2026-10-24 최신 실행 프로토콜:** KIC 사용자 채팅방은 **KIC 총괄 1개 + KIC 범용 작업자 1개**만 사용한다. 이전 문서에서 Research/Verification/Risk 각각 독립된 채팅방을 열라는 설명은 **현재 무효**이며, 역할별 기능·branch·인수인계 파일만 유지. **KIC 총괄이 `lead/kic`에 단일 [NEXT_TASK](NEXT_TASK.md)를 발행 → 같은 작업자 채팅이 해당 feature 브랜치에서 개발/보고 → KIC 총괄 검수 후 다음 지시** 순서다. [WORKER_ROUTER.md](WORKER_ROUTER.md) 우선.
@@ -253,3 +255,9 @@
 - Decision: **KIC-R-001 ACCEPTED_ON_LEAD** as independent offline Research normalizer. **NOT merged to main**; global Research→Verification schema remains proposed, unapproved. Future Verification must not treat Research `success` as verified financial fact.
 - 1일차 완료 범위: original code reviewed, deduplicated import, target CI validated, evidence/status/handoff/upper-lead report updated. 기존 일정표(10/24: 운영 시간표) 또한 이미 완료. 10/26~27 Research 검수·이관 작업을 **선행 완료**했으나 10/25 DAKER '팀 전환' 및 PDF 양식/파일 접근 검증은 여전히 미완료. 자의적으로 공식 일정/제출 시한 변경 없음.
 - Next day gate: **10/25 DAKER 팀 전환·제출권한 및 주최 공식 PDF 양식 접근/기존 초안 확인**(가능한 공개 페이지와 현재 권한 범위). 사용자의 실제 계정 동작/최종 제출은 승인·접근 확인 필요. 이후 Verification 단계 착수(중복 재무계정/기간/연결·별도 fail-closed)하되 전역 계약은 승인 없이 동결하지 말 것.
+
+## 2026-10-24 13:52:13 KST — 사용자 지시: 모든 작업 종료 시 일일 100% 진척률·잔여예상시간 공시
+- **반드시 실행:** [일일 진척률 프로토콜](DAILY_PROGRESS_PROTOCOL.md)의 증거기반 100점 완료 게이트를 작업 시작 시 고정 → 매 작업 종료·부분중단 후 [일일 실적판](DAILY_PROGRESS.md)의 **진척률 %**, **남은 순작업 h**, **오류/검수 예비 h**, **보수적 총 잔여시간 h**, 실제 투입 시간(미계측 가능), 장애·이월, 근거 SHA/CI 갱신.
+- 2026-10-24 계획 산출물(60일 표 + 감독 링크) 100/100 = **100% 완료**, **잔여 0h**, 실제 작업시간 **미계측**. 이날 별도로 앞당겨 완료한 Research 코드/26 PASS는 원래 일일 분모 밖 선행 완료로 분리. **전체 ProofInvest 100%가 아님**.
+- 2026-10-25 DAKER 권한·양식·초안 확인: **작업 전 0/100 = 0%**, 남은 기본 **1h** + 예비 **3h** = **최대 4h**(초기 예측, 접근 차단이면 BLOCKED·재추정). 다음날까지 자동 진행 안 됨.
+- 사용자·상위 통합 총괄 답변에도 날짜별 진척률/예상 잔여시간을 동일 수치로 표시. 무단 승인, 외부 API, 실제 제출, 전체 프로젝트 완료로 오인하지 말 것.

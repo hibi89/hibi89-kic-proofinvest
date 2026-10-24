@@ -19,3 +19,6 @@
 
 ## 2026-10-24 13:21:02 KST — 일별 안전 작업량 자동 복원
 - 새 KIC 총괄 채팅은 LEAD_ACTIVE_WORK와 함께 docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md의 **해당 날짜·예상시간·복구예비·이월 기준**을 확인해야 한다. 하루 작업 1건만 수행하며 실제 시간은 원장에 업데이트한다.
+
+## 2026-10-24 13:52:13 KST — 매 작업 종료 100% 진척·잔여시간 필수 복원
+- 새 채팅은 `docs/roles/lead/DAILY_PROGRESS.md` 및 `DAILY_PROGRESS_PROTOCOL.md`에서 **오늘 확보점수/100, 작업 완료율 %, 남은 예상 순작업 h·복구 예비 h·합계, 실제 계측/미계측**을 확인한다. 작업 종료 때 GitHub 실적판 + STATUS/HANDOFF/상위 보고 + 사용자 답변을 함께 갱신한다.

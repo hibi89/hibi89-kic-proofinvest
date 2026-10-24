@@ -17,3 +17,8 @@ Effective 2026-10-24 KST. Supersedes worker-chat dispatch and earlier role separ
 ## One-line new-chat continuity
 - `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` is the participant's **KIC-specific primary** one-line startup phrase. Generic `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` is a secondary alias. Enter through `lead/kic/CHAT_BOOTSTRAP.md`, then current `LEAD_ACTIVE_WORK.md`, and verify remote HEAD before continuing. Do not restart old worker dispatch.
 - Every meaningful task completion and chat transition updates active-work, lead STATUS/HANDOFF, upper lead report and relevant test evidence with a verified remote commit; stable bootstrap changes only for changed routes/policy. Not background automation.
+
+## Mandatory end-of-work daily completion meter (2026-10-24 13:52:13 KST)
+- Before each task: current KST day, immutable daily 100-point evidence gates, budget, and current [DAILY_PROGRESS.md](DAILY_PROGRESS.md) snapshot. Never repeat early-completed deliverables.
+- **At EVERY actual work-end, partial handoff, block, or user `ㄱ` cycle completion**: update `DAILY_PROGRESS.md` with **earned points/100, percent, independently estimated remaining base hours + contingency hours = conservative remaining hours**, actual time observed or `미계측`, blockers/rollover, SHA/CI. Synchronize `LEAD_ACTIVE_WORK.md`, `STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md` in same work unit. State same numbers in reply; do not assert total project completed.
+- Empty progress is not success. Unknown dependency time != zero hours. Only evidence-backed gate completion earns points; prior daily plan 100% is distinct from whole KIC milestone completion. See [DAILY_PROGRESS_PROTOCOL.md](DAILY_PROGRESS_PROTOCOL.md).
