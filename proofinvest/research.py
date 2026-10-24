@@ -120,6 +120,11 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         if published > as_of:
             warn("future_published", f"source id {sid!r} was published after requested as_of")
             continue
+        # A past as_of snapshot cannot rely on evidence collected later.
+        # Publication alone does not prove the analyst had acquired it.
+        if collected > as_of:
+            warn("future_collected", f"source id {sid!r} was collected after requested as_of")
+            continue
         # A caller's license label is merely metadata: it is not evidence
         # that the publisher granted republication or commercial re-use.
         # Keep citation usability separate from legal redistribution clearance.
@@ -164,6 +169,9 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
             continue
         if any(_day(accepted[sid]["published_at"]) > finding_day for sid in deduped):
             warn("finding_precedes_source", f"finding[{index}] predates its cited source")
+            continue
+        if any(_day(accepted[sid]["collected_at"]) > finding_day for sid in deduped):
+            warn("finding_precedes_collection", f"finding[{index}] predates collection of cited evidence")
             continue
         result["findings"].append({
             "claim": finding["claim"].strip(),
