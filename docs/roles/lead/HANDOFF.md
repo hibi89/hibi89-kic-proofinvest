@@ -1,3 +1,16 @@
+## 2026-10-24 KST LIVE HANDOFF — 11/16 선행 과제
+
+1. **목적·요구·기술**: KIC ProofInvest 3단계 금융 근거 검증 스타터, Python 3.10+; 예선 PDF 제출 11/12 10:00 KST. 자동 투자 권고·매매 제외.
+2. **완료·근거·설계**: `engine.calculate`의 비합성 모드 출처 누락 false-verified 오류 차단. 최소 사전 source guard A 채택, 인증 API 실조회 B 보류(승인·쿼터 필요), 기존 합성 데모 계약 보존.
+3. **테스트·검증**: `python -m unittest discover -s tests -v` (신규 4개, 94/94 PASS); `python scripts/master_progress.py --check`; 오프라인 합성/수동 기록 CLI CI PASS [GitHub CI #40079239630](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40079239630). 로컬·실 공시 호출·브라우저 미검증.
+4. **상태**: 11/16 계획 100/100 DONE(남은 기본0h+예비0h), Master 17 DONE/3 BLOCKED/40 NOT_STARTED. 다음 11/17 READY; 실제 공식 접수 NOT_STARTED.
+5. **오류·복구·금지**: 출처 없이 재무 산술 verified를 반환하던 오류 수정. 변경 전 SHA `052b7b4152c3108f2851823f57c4db202a8f5b3f`로 Git 복구 가능. 강제 푸시, 출처 사실 추정, 자동 API 무단 호출 금지. GitHub CI 실패0·재시도0.
+6. **GitHub 기준**: `hibi89/hibi89-kic-proofinvest`/`lead/kic`; 코드 SHA `cf5552c840588f28f26b0649fb00ac2098efe71e`, `proofinvest/engine.py`, `tests/test_engine.py`; QA `docs/roles/lead/VERIFICATION_MISSING_SOURCE_REGRESSION_20261024.md`; 문서 SHA는 원격 최신 HEAD로 확인.
+7. **Production/환경**: CI Python3.11, 프로젝트 Python3.10+; Production Vercel URL 없음. 원격 웹서비스·API·콘솔/네트워크 검증 **미적용/미검증**.
+8. **원본·백업·보안**: 동결 10쪽 PDF/PPTX 사용자 비공개 Library 6파일 기록, 이번 실행에는 접근/수정/공개 GitHub 저장 없음. 키·토큰·PII 공개 금지.
+9. **다음 우선순위·완료 기준**: 계획 11/17 오프라인 테스트 CI/잔여 장애 목록 0/100, 기본1h+예비2h=3h. 외부 P0 DAKER 실제 참가 형태·팀장 제출권한·단일 PDF 업로드 대응 점검(인증 필요, 사용자 승인 없는 제출 금지).
+10. **확인 시점**: 2026-10-24 KST, 코드 SHA `cf5552c84058`, CI #40079239630, 문서 최종 SHA GitHub 조회. 실제 투입시간 미계측; 정식 OpenDART 원문·Agent·최종 제출 불인증.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-15 선행 구현
 
 1. **목표·확정요구·기술**: KIC ProofInvest 본선 진출 목표; Python 표준 라이브러리 오프라인 리서치·재무 검증·위험 신호. 대회 예선 PDF 11/12 10:00 KST까지 공식 제출 필요.
