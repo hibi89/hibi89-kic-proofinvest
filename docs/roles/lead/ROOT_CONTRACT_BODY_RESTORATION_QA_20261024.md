@@ -21,3 +21,9 @@
 - First confirm latest GitHub Actions workflow for final `lead/kic` commit. If it fails, isolate the failing test and correct it once; do not declare success in advance.
 - User must inspect authenticated DAKER participant/team lead role, mobile verification and final PDF submission button. No account change, upload, vote or official submission without separate explicit permission.
 - Frozen private 10-page PDF/PPTX and Library 6 backups are unchanged. Git rollback is a normal `git revert` of published repair commits if needed.
+
+## 2026-10-25 KST — resolved actual CI incompatibility
+- [Run 40105430707](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40105430707) completed/failure: 233 tests, 1 ERROR in `test_future_append_to_contract_body_preserves_header`; prior test supplied fake arbitrary notes rather than required contract sections. Downstream CI stages skipped.
+- Choice: retain mandatory-section body guard and correct contradictory test, rather than weaken policy protection. `tests/test_root_contract_header.py` appends to real intact policy, plus additional test rejects a long fake body.
+- Code [`0a488ed626d0`](https://github.com/hibi89/hibi89-kic-proofinvest/commit/0a488ed626d0c123cd637262e0af5afbfdb26c34), [CI 40106144873](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40106144873) completed/success; log `Ran 234 tests in 2.319s`, `OK`. Both canonical-progress sync checks and all subsequent offline demo/receipt/controller steps passed.
+- Independent P1 100/100, base0h+reserve0h, measured time unavailable. No live DART/API/AI Agent/DAKER/Production evidence; private PDF/PPTX/Library6 unchanged.

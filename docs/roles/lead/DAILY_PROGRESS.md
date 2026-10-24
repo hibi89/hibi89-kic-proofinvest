@@ -1,3 +1,16 @@
+## 2026-10-25 KST — independent handoff P1 CI closure (outside 60-day schedule)
+| P1 gate | Weight | Earned |
+|---|---:|---:|
+| Corrupted remote body and Git recovery evidence | 20 | 20 |
+| Restore intact stable handoff contract | 30 | 30 |
+| CI body integrity guard and six original regressions | 30 | 30 |
+| Diagnose real failed Actions run, correct obsolete test, verify full CI and handoff | 20 | 20 |
+| **TOTAL** | **100** | **100 DONE** |
+
+- Previous 2026-10-24 checkpoint 80/100 PARTIAL; error evidence [CI 40105430707](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40105430707): 233 tests, 1 ERROR. Corrected code `0a488ed626d0c123cd637262e0af5afbfdb26c34`, [CI 40106144873](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40106144873): **234 tests PASS, 0 FAIL/ERROR; full offline workflow success**.
+- P1 remaining **base0h + reserve0h = 0h**, actual elapsed time **미계측**. This is not whole-project completion.
+- Official 60-day ledger unchanged: 29 DONE/3 BLOCKED/28 NOT_STARTED, 12/03 future. DAKER 10/25·11/09 each60% BLOCKED, DART 10/30 90% BLOCKED. User account action and explicit PDF upload approval needed.
+
 ## 2026-10-24 KST — 추가 P1 영구 인수인계 본문 손상 복원 (정규 60일 일정 외)
 | 독립 증거 게이트 | 배점 | 획득 |
 |---|---:|---:|

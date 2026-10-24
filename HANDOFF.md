@@ -1,3 +1,15 @@
+## KIC 10-field HANDOFF — 2026-10-25 KST / root contract P1 CI closure
+1. **Goal:** recover and verify permanent one-line GitHub handoff policy without stale snapshots.
+2. **Design:** keep strict body-section validator; repair one outdated positive test to append to a real valid contract; separately reject meaningless long text. Loosening validator rejected.
+3. **Tests:** [CI 40105430707](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40105430707) 233 tests / 1 ERROR, then [CI 40106144873](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40106144873) **234/234 PASS**, progress checks and all offline CI steps green.
+4. **State/time:** P1 **100/100 DONE**, base0h+reserve0h, actual time 미계측; 60-day 29 DONE/3 BLOCKED/28 NOT_STARTED, NEXT 2026-12-03 future.
+5. **Failure/root cause:** `test_future_append_to_contract_body_preserves_header` erroneously allowed arbitrary notes with no mandatory policy; strict guard correctly refused it. Minimal test-only change.
+6. **Git/source:** `hibi89/hibi89-kic-proofinvest` `lead/kic`, code `0a488ed626d0c123cd637262e0af5afbfdb26c34`, path `tests/test_root_contract_header.py`; preceding HEAD d53bbd99, QA `docs/roles/lead/ROOT_CONTRACT_BODY_RESTORATION_QA_20261024.md`. Latest handoff commit verify separately.
+7. **Deployment:** Vercel/Production not deployed or tested; GitHub Actions offline CI only, no live DART/API/LLM Agent/browser E2E.
+8. **Backups/security:** official private PDF/PPTX, 6 Library archives unchanged; no secrets or account writes, rollback via normal Git revert, no force push.
+9. **Next task:** DAKER authenticated account's participant/team role/final single-PDF upload button read-only inspection; user explicit authorization before upload/final submission, DART original inspection separate.
+10. **Verification boundary:** KST 2026-10-25, code SHA `0a488ed626d0c123cd637262e0af5afbfdb26c34`, CI `40106144873`; DAKER 10/25 and 11/09 each60% BLOCKED, DART 10/30 90% BLOCKED, 11/10 final submit and peer-vote not started.
+
 ## KIC 10항 HANDOFF — 2026-10-24 KST / 루트 복원 규약 손상 보수
 1. 목표: `KIC_HANDOFF_CONTRACT.md`의 문자 그대로의 `undefined` 본문 손상 복구.
 2. 설계: Git `069d1af`의 정상 영구 정책을 되살리고 오래된 진도 수치는 정본 링크로 교체; 본문 무결성 검사 추가.
