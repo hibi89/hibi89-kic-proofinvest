@@ -15,3 +15,10 @@
 1. Verification source/logic and tests integrated & reviewed.
 2. Risk module with source traceability & deterministic risk labels.
 3. Prepare/finalize <=10 page PDF and record actual submission receipt.
+
+## 2026-10-24 13:21:02 KST — 일별 작업시간과 안전예비 공시
+- 사용자 경험 4h 예상 → 8~20h 소요를 반영해 docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md에 **10/24~12/22 날짜별** 한 건의 작은 핵심작업/기본 1~2h/오류·검수 예비 2~3.5h/당일 상한 3~5h/완료 게이트를 분리했다.
+- 상한 초과 시 기능 삭제 또는 허위 완료 없이 이월·재산정. 11/08 PDF 동결, 11/10 조기 제출, 11/12 10:00 공식 마감 우선. 11/11 접수 장애 완충일 지정.
+- 새 계획은 구현/실 API/DAKER 접수 완료가 아니다. 이전 Research feature/연결된 CI 26 PASS를 확인했으나 lead 수용·main 통합은 미완료. 실측 기반 수정과 상위 보고 동기화 필수.
+
+- 현재 첫 개발 인수 작업은 Research 구 feature 결과의 직접 코드 리뷰/lead/kic 이관이다. 10/25 DAKER 권한/양식 확보는 예선 최상위 선행 게이트. 과거 코드를 처음부터 다시 짜지 않는다.

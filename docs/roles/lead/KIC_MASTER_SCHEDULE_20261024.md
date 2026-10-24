@@ -1,3 +1,5 @@
+> **현재 일별 시간/업무량 기준 (2026-10-24 13:21:02 KST)**: docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md의 날짜별 기본 예상·복구여유·당일 상한이 아래 과거 개략 표보다 우선한다. KIC 총괄이 개발까지 혼자 수행하며, 구형 작업자 체계 문구는 이력이다. 공식 마감과 0원 지침은 유지한다.
+
 # KIC ProofInvest — 최종 확정 마스터 일정 및 본선 진출 실행 기준
 
 > **2026-10-24 최신 실행 프로토콜:** KIC 사용자 채팅방은 **KIC 총괄 1개 + KIC 범용 작업자 1개**만 사용한다. 이전 문서에서 Research/Verification/Risk 각각 독립된 채팅방을 열라는 설명은 **현재 무효**이며, 역할별 기능·branch·인수인계 파일만 유지. **KIC 총괄이 `lead/kic`에 단일 [NEXT_TASK](NEXT_TASK.md)를 발행 → 같은 작업자 채팅이 해당 feature 브랜치에서 개발/보고 → KIC 총괄 검수 후 다음 지시** 순서다. [WORKER_ROUTER.md](WORKER_ROUTER.md) 우선.
