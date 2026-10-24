@@ -23,6 +23,14 @@ jobs:
         run: python -m pip install -r requirements-ui.txt
       - name: Unit tests including Streamlit AppTest (no external API)
         run: python -m unittest discover -s tests -v
+      - name: Synthetic snapshot create/reuse/reload (temporary HOME; no credentials)
+        run: |
+          export HOME="$(mktemp -d)"
+          python -m proofinvest.snapshot_store --save > /tmp/proofinvest-snapshot-created.json
+          python -m proofinvest.snapshot_store --save > /tmp/proofinvest-snapshot-reused.json
+          python -m proofinvest.snapshot_store --read > /tmp/proofinvest-snapshot-read.json
+          python -c 'import json; a,b,c=[json.load(open(p)) for p in ("/tmp/proofinvest-snapshot-created.json","/tmp/proofinvest-snapshot-reused.json","/tmp/proofinvest-snapshot-read.json")]; assert (a["status"],b["status"],c["status"])==("CREATED","REUSED_NO_RECALCULATION","READ_NO_RECALCULATION"); assert a["risk_display_pct"]==b["risk_display_pct"]==c["risk_display_pct"]=="266.67"; assert all(x["authenticated_external_source"] is False for x in (a,b,c))'
+
       - name: Synthetic demo (no credentials)
         run: python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/proofinvest-demo.json
       - name: Recorded real filing scenario demo (offline, no network)
