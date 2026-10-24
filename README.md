@@ -1,4 +1,6 @@
 # ProofInvest | KIC AI Agent Competition
+> **3개 대회 전체 일정·충돌·제출 마감:** [docs/COMPETITION_SCHEDULE.md](docs/COMPETITION_SCHEDULE.md) (**2026-10-24 KST 공시**). 이 브랜치에서 작업을 시작할 때 마감과 내부 조기 제출 목표를 확인하며 공식 변경 시 대회 총괄에게 보고한다.
+
 
 
 > **이 브랜치의 새 채팅 재개 경로:** docs/ROLE_COORDINATION.md → 통합 HANDOFF.md → STATUS.md → AGENTS.md → 소스. 최신 상태는 기능별 역할 폴더가 기준이며, 공통 루트 HANDOFF.md를 담당자 인수인계로 오해하지 말 것.
