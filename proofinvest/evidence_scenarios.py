@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlsplit
@@ -77,7 +77,12 @@ def _evidence_amounts(evidence: Any) -> tuple[Decimal, Decimal, str, int]:
     result = evidence.get("result")
     if not isinstance(result, Mapping):
         raise ValueError("stored calculation missing")
-    growth = ((a - b) / b * 100).quantize(Decimal("0.01"))
+    # Untrusted manually transcribed amounts can exceed Decimal's active
+    # precision. A report must be withheld, not crash during quantization.
+    try:
+        growth = ((a - b) / b * 100).quantize(Decimal("0.01"))
+    except (InvalidOperation, ArithmeticError, OverflowError, ZeroDivisionError) as exc:
+        raise ValueError("unrepresentable revenue growth in supplied evidence") from exc
     expected_delta, expected_growth = amount(result.get("absolute_change")), amount(result.get("growth_pct_rounded_2dp"))
     if expected_delta != a - b or expected_growth != growth:
         raise ValueError("stored calculation disagrees with transcribed amounts")
@@ -115,8 +120,13 @@ def verify_growth_claim(evidence: Any, claim_pct: Any) -> dict[str, Any]:
     # and MUST NOT upgrade independent source authentication.
     # A future live verifier must produce a separately authenticated receipt.
     base["dart_viewer_verified"] = False
-    computed = (current - previous) / previous * 100
-    base["computed_pct"] = str(computed.quantize(Decimal("0.01")))
+    try:
+        computed = (current - previous) / previous * 100
+        base["computed_pct"] = str(computed.quantize(Decimal("0.01")))
+    except (InvalidOperation, ArithmeticError, OverflowError, ZeroDivisionError):
+        base["reason"] = "Revenue growth calculation cannot be represented safely"
+        base["source_url"] = None
+        return base
     claim = amount(claim_pct)
     if claim is None:
         base["reason"] = "Missing or malformed percentage claim"
