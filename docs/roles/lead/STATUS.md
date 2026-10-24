@@ -81,3 +81,12 @@
 - **실행과 구별**: GitHub에 READY와 설계가 저장됐을 뿐, 아직 작업자 채팅에서 실제 `[IN_PROGRESS]` 커밋·기능 코드 구현·완료 보고 없음. 라이브 외부 API/유료 지출/공통 스키마 동결 승인 아님.
 - 사전 점검 원격 SHA: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`; 세 `TO_KIC_LEAD.md` 원문 초기 안내만, 추가 차단 0. 현재 `lead/kic` 커밋 전 HEAD `9248e24f8c3e2a9c3da0e9bde5b465253bbc5c84`.
 - 총괄은 다음 과제 발행 전 실제 코드/CI/3개 메시지함 최신 확인 후 `MESSAGE_REVIEW.md`에 판단 기록하고 사용자에게 작업자 채팅 재개만 요청. 채팅 간 자동 동기화/자동 실행 없음. PDF 11/10 조기 제출·0원 기본 비용 유지.
+
+## 2026-10-24 KST — 신규 총괄 인수 검수 (2026-10-24 12:58:48 KST)
+- 확인한 원격 HEAD: `main 1300b9b31a5b86792d15ed7a2dce7c24849dbd87`, `lead/kic b845170c2b81d438afcf8b2e7179e19af90cd41c` (이번 커밋 전), `feature/research 1f05adcedff85526f9121a0a470d8f21f40d57f8`, `feature/verification d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, `feature/risk 3573455fd20807a5fbb1c0e5f6db75b37daae690`.
+- 세 `TO_KIC_LEAD.md` 원문 최신 열람: 초기 안내 외 신규 `IN_PROGRESS`/`DONE`/`BLOCKED`/질문·차단 없음. `NEXT_TASK`는 `READY KIC-R-001 / feature/research`; 신규 과제 발행/범위 변경 없음.
+- 5개 SHA의 GitHub Actions `offline-tests` 전부 completed/success. `main` run 40055798853, `lead/kic` run 40058956164; 단위 테스트 및 합성 시연 단계 PASS. 원본 `tests/test_engine.py` 9개 테스트 확인, PR 0건. 실 OpenDART·외부 LLM·Production·공식 제출 미검증.
+- 실제 소스: `research.py`/`test_research.py`/`risk.py` 신규 파일 없음. 기존 `engine.py`는 중복 계정 첫 행을 택하며 Risk 산출에 검증 상태 계약이 연결되지 않아 추가 보완 필요.
+- 일정 해석: 10/26 공통 데이터 계약 승인 게이트는 **최종 통합 계약 동결** 대상이다. 발행된 오프라인 Research 독립 내부 정규화·합성 테스트 `KIC-R-001`만 그 이전에도 수행 가능하되, 승인 없는 공통 스키마 변경·실 API 호출/유료 비용 금지. 10/27~28은 Research 내부 일정 목표이지 별도의 지시서 대체물이 아님.
+- 최종 판정: `KIC-R-001`은 아직 작업자 착수 전 `READY` 유지, Verification/Risk는 `WAITING`. 사용자에게 기존 KIC 범용 작업자 채팅의 해당 과제 실행만 요청. 작업자 보고 후 실제 코드·CI·인수인계 검수하고 다음 과제 발행.
+- P0: 공식 PDF 원본·주최 양식과 DAKER 팀장 전환/최종 제출 권한은 이번 세션에서 직접 확인하지 못함. 11/05 PDF 초안·11/08 동결·11/10 조기 제출·11/12 10:00 공식 마감 유지.

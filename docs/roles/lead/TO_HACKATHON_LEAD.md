@@ -206,3 +206,10 @@
 - **실행과 구별**: GitHub에 READY와 설계가 저장됐을 뿐, 아직 작업자 채팅에서 실제 `[IN_PROGRESS]` 커밋·기능 코드 구현·완료 보고 없음. 라이브 외부 API/유료 지출/공통 스키마 동결 승인 아님.
 - 사전 점검 원격 SHA: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`; 세 `TO_KIC_LEAD.md` 원문 초기 안내만, 추가 차단 0. 현재 `lead/kic` 커밋 전 HEAD `9248e24f8c3e2a9c3da0e9bde5b465253bbc5c84`.
 - 총괄은 다음 과제 발행 전 실제 코드/CI/3개 메시지함 최신 확인 후 `MESSAGE_REVIEW.md`에 판단 기록하고 사용자에게 작업자 채팅 재개만 요청. 채팅 간 자동 동기화/자동 실행 없음. PDF 11/10 조기 제출·0원 기본 비용 유지.
+
+## 2026-10-24 KST — 새 KIC 총괄 원격 인수 결과 (2026-10-24 12:58:48 KST)
+- KIC 내 단일 작업자 채팅 운영 정상: `KIC-R-001` 유일한 READY / Research 브랜치 기능 구현·IN_PROGRESS 보고 없음; Verification/Risk WAITING. 중복 지시 없음.
+- 원격 SHA: main `1300b9b31a5b86792d15ed7a2dce7c24849dbd87`, lead `b845170c2b81d438afcf8b2e7179e19af90cd41c` (본 커밋 전), research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`.
+- 세 담당 메시지함 신규 보고·차단 0; 5개 HEAD CI offline-tests 성공, 기존 unit tests 9개 확인, PR 0. 실 OpenDART/Agent/UI/Production·PDF 제출은 미완료/미검증.
+- 계약 확정과 실 API/유료 사용은 추가 승인 필요. 기존 발행된 Research **격리 오프라인 과제만** 사용자 작업자 채팅 요청 시 수행 가능. 승인 전 통합 스키마 동결 안 함.
+- KIC 독립 마감 유지: 11/05 PDF 초안, 11/08 동결, 11/10 내부 접수, **11/12 10:00 공식 제출**. DAKER 팀 전환·실제 접수, 제출 양식과 원본 파일 직접 검증은 남은 P0. GitHub 보고는 자동 알림 아님.

@@ -81,3 +81,15 @@
 - **실행과 구별**: GitHub에 READY와 설계가 저장됐을 뿐, 아직 작업자 채팅에서 실제 `[IN_PROGRESS]` 커밋·기능 코드 구현·완료 보고 없음. 라이브 외부 API/유료 지출/공통 스키마 동결 승인 아님.
 - 사전 점검 원격 SHA: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`; 세 `TO_KIC_LEAD.md` 원문 초기 안내만, 추가 차단 0. 현재 `lead/kic` 커밋 전 HEAD `9248e24f8c3e2a9c3da0e9bde5b465253bbc5c84`.
 - 총괄은 다음 과제 발행 전 실제 코드/CI/3개 메시지함 최신 확인 후 `MESSAGE_REVIEW.md`에 판단 기록하고 사용자에게 작업자 채팅 재개만 요청. 채팅 간 자동 동기화/자동 실행 없음. PDF 11/10 조기 제출·0원 기본 비용 유지.
+
+## 2026-10-24 KST — 신규 총괄 인수인계 검수 (2026-10-24 12:58:48 KST; 필수 10항)
+1. 목표·기술: KIC 본선 상위 12팀, Research→Verification→Risk→근거 보고서. Python 표준 라이브러리 오프라인 스타터. 0원 원칙 유지.
+2. 완료·결정: 원격 5브랜치, 세 메시지함, 실제 코드, CI, PR 검수. 기존 `KIC-R-001` READY 유지, 새 기능·새 작업 지시/외부 호출 없음.
+3. 테스트: main run 40055798853 / lead run 40058956164, 다섯 HEAD의 Actions completed/success; Python unit tests + synthetic demo. 기존 테스트 9개 정의, 실 API/Production 미검증.
+4. 진행·대기·중단: Research 독립 과제 미착수, Verification/Risk WAITING, 통합·배포·제출 미완료.
+5. 오류·대안: 현재 중복 재무계정 첫 행 채택·검증 상태와 Risk 산출의 미연결이 차기 품질 게이트. 중복 작업자 지시 대신 Research 완료 보고 대기 및 검수.
+6. 저장소/브랜치/SHA: `hibi89/hibi89-kic-proofinvest`, `lead/kic` 이번 커밋 전 `b845170c2b81d438afcf8b2e7179e19af90cd41c`; main `1300b9b31a5b86792d15ed7a2dce7c24849dbd87`, Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`.
+7. Production/환경: 없음. Python 3.11 CI `python -m unittest discover -s tests -v`, `python -m proofinvest --claim-revenue-growth-pct 20`.
+8. 원본/백업/보안: 기존 원본 소스 무변경; 제출 PPTX/PDF는 이전 채팅 파일에 있다는 문서 기록만 확인, 현 세션 직접 미검증. 비밀·토큰·비공개 자료 공개 금지, GitHub 이력 복구 가능.
+9. 다음 작업·승인: 기존 단일 범용 작업자 채팅에서 KIC-R-001 오프라인 구현/자체 보고 후 총괄 검수. 공통 계약 최종 승인·실 API/LLM·비용·권한 변경·최종 제출은 별도 승인/실사. 11/05·11/08·11/10·11/12 10:00 일정 유지.
+10. 기록 시각·검증 범위: 2026-10-24 12:58:48 KST. 원격 SHA, 3메시지함, 파일 트리·코드, CI 및 PR 확인. 본 변경 커밋/CI는 별도 사후 확인, 세부 `MESSAGE_REVIEW.md` 참고.
