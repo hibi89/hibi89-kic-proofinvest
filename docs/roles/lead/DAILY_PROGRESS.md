@@ -1,3 +1,17 @@
+## 2026-10-24 KST — 12/01 저장 합성 결과→화면→출처 체인 선행 검수
+
+| 날짜별 100점 과제 | 배점 | 획득 |
+|---|---:|---:|
+| 저장 출처 연결 정책과 2모드 계약/보안 경계 | 25 | 25 |
+| 저장 재조회 Streamlit 모드·합성 출처/해시/실인증 제한 표시 | 35 | 35 |
+| 신규 회귀5건·AppTest/UI 149/149 CI SUCCESS | 30 | 30 |
+| CI/QA·60일 정본·상위 총괄 답신·복원 인계 | 10 | 10 |
+| **합계** | **100** | **100/100** |
+
+- 원래 2026-12-01 예정, 실제 2026-10-24 선행. 잔여 기본0h+예비0h, 실제 소요 미계측. 코드 c7f724c1cd7e, [GitHub CI #40087863189](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40087863189), [QA](STORED_SNAPSHOT_UI_SOURCE_CHAIN_QA_20261024.md), 60일 28 DONE/3 BLOCKED/29 NOT_STARTED.
+- 실제 변경 proofinvest/snapshot_store.py, streamlit_app.py, tests/test_streamlit_ui.py, tests/test_snapshot_store.py, README.md. 모드 선택 후 저장 스냅샷 무재계산 조회, fixture 출처 SHA-256, 미인증 표시. 저장이 없으면 자동 재계산 금지. 저장 키/실원문/외부 호출 없음.
+- P0 DAKER 실제 참가자·팀장/단일 PDF 업로드 권한 10/25·11/09 각각60% BLOCKED_EXTERNAL. 사용자 브라우저 확인 필요, 계정·제출/비공개파일 변경은 명시 승인 전 금지. DART 정식 원문뷰어 10/30 90% BLOCKED, 최종제출 11/10 NOT_STARTED.
+- **NEXT 2026-12-02** 선발 대비 코드/데모 점검 및 백업 0/100 기본1h+예비2h=3h. 12/03 공식 선발결과 발표를 앞당겨 DONE 하지 않음; frozen PDF/PPTX 및 Private Library6백업 미변경.
 ## 2026-10-24 KST — 11/30 저장/재조회 분리 선행 완료
 
 | 11/30 업무 / 100점 | 배점 | 획득 |

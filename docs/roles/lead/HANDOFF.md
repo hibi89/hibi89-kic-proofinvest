@@ -1,3 +1,15 @@
+## LIVE HANDOFF 10항 — 2026-10-24 / 12-01 saved Streamlit provenance integration
+
+1. **목표**: KIC ProofInvest 오프라인 합성-only 화면에 11/30 분리 저장·재조회 경로를 12/01 단위로 통합. DAKER 예선 P0 제출권한은 사용자 실제 인증/승인 의존.
+2. **설계와 선택**: A Streamlit 재실행 시 무조건 fixture 계산 vs B 저장된 합성 스냅샷만 load + fixture SHA-256/미인증 출처 표시(채택). 모드 선택, 저장모드는 missing/corrupt/stale이면 error만 노출, 계산 fallback 하지 않음.
+3. **구현**: proofinvest/snapshot_store.py read_synthetic_snapshot_with_provenance, streamlit_app.py 라디오 직계산/저장조회. 입력 고정 fixtures/synthetic_annual.json, SHA-256 로컬 무결성만 뜻하며 법적 진위·전자서명 아님.
+4. **실측**: 코드 c7f724c1cd7ea84dfe049cf8112cd323d91a9b23 [GitHub CI #40087863189](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40087863189) **149/149 PASS** (신규5), AppTest 직접 재조회·원문 경고·미인증 상태 확인, corrupt/missing 결과 시 위험 지표 숨김, master check 2·snapshot CLI·기존 합성/수동 기록 offline CLI PASS. 별도 브라우저 시각/Windows 실기기/운영서비스/API 미검증.
+5. **진도**: 12/01 예정 작업을 10/24 선행 100/100 DONE, 잔여 기본0h+예비0h, 실제시간 미계측. Master 28 DONE/3 BLOCKED/29 NOT_STARTED. 12/03 공식 진출 여부 확인 아직 미실행.
+6. **GitHub/복원**: hibi89/hibi89-kic-proofinvest lead/kic, code c7f724c1cd7ea84dfe049cf8112cd323d91a9b23, [QA](docs/roles/lead/STORED_SNAPSHOT_UI_SOURCE_CHAIN_QA_20261024.md), docs/roles/lead/MASTER_PROGRESS.json canonical. 복원 이전 HEAD 6f8dba9c370802400b4f406638b0e55d1ca0502e. 최종 문서 SHA는 새 remote HEAD로 확인, force-push/main/feature 무작업.
+7. **P0 외부장애**: 사용자 DAKER 로그인→KIC 개인/팀 참가 유형·팀장 여부→최종 단일 PDF 파일 업로드 버튼/제출권한 조회 필요. 10/25·11/09 각60% BLOCKED_EXTERNAL, 공식 11/10 영수증 없음. 비밀번호·쿠키·PDF 비공개 내용 요구 금지. 사용자의 별도 승인 없이는 최종 제출/계정 변경/공개 금지.
+8. **기타 검증 한계·보안**: DART 공식 원문 뷰어 접수번호 10/30 90% BLOCKED. Frozen 10p private PDF/편집 PPTX/Library6개 백업 과거 확인만 보존, 이번에 접근·수정·공개 없음. 실 DART OpenAPI·Agent E2E·Production 사용 안 함.
+9. **다음 단일 READY**: 2026-12-02 선발 결과 대비 코드·데모 점검 및 백업 0/100 기본1h+예비2h=3h. 12/03 공식 선발 발표는 미래 의존 0/100 NOT_STARTED 유지. 11/22·29 예비일 미사용, 평가영수증 미확인.
+10. **검증기준**: 2026-10-24 KST, code SHA c7f724c1cd7ea84dfe049cf8112cd323d91a9b23 CI #40087863189 성공, 149/149 PASS. 새 채팅 ㄱ은 최신 원격 지시/HEAD/CI 먼저 확인. CLI --save는 사용자 명령으로만 별도 수행하며 UI는 자동 저장 안 함.
 ## LIVE HANDOFF 10항 — 2026-10-24 / 11-30 합성 결과 저장·재조회
 
 1. **목적·원래 일정:** KIC ProofInvest 개발 중인 합성 오프라인 MVP. 11/30 '저장·재조회 분리 최소 1경로' 100/100 DONE 10/24 선행. 실 DAKER 제출/사용자 계정 권한은 별도 P0.
