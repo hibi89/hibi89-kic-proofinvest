@@ -74,3 +74,10 @@
 - **필수 핸드오프**: 이전 담당의 코드·테스트·CI·STATUS/HANDOFF/TO_KIC_LEAD 수용 또는 명시적 보류 기록 뒤에만 다음 담당 활성화. 매 지시 전 3개 브랜치 HEAD·메시지함 전수 확인 및 `MESSAGE_REVIEW.md` 커밋.
 - KIC 현재 최신 실사 브랜치: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`. 세 메시지함은 초기 안내 외 신규 요청 0. **아직 실제 기능 개발·세 담당 활성 명령은 실행 전**.
 - 모든 과거 '병렬' 제안은 역사 기록으로만 유지하며, [확정 마스터 일정](KIC_MASTER_SCHEDULE_20261024.md)과 최신 `OPERATIONS.md`가 우선. 본 작업은 문서/일정 수정만, 기능 코드/유료 비용/외부 API/공식 접수 변경 아님.
+
+## 2026-10-24 12:35:40 KST — KIC 단일 범용 작업자 채팅/총괄 큐 운영체계 구축
+- 사용자 확정 작업 방식: KIC 총괄이 `lead/kic`에 **단일 NEXT_TASK** 발행 → 사용자 **범용 작업자 채팅 1개**에서 GitHub 지시 읽고 **명시된 feature 브랜치만** 개발 → 담당 `TO_KIC_LEAD.md`에 task ID/코드 SHA/CI/완료 보고 → 총괄 검수→다음 작업 전환. 역할 브랜치 3개 보존, KIC 내 동시 기능 개발 1개만.
+- 실행 입구: `docs/roles/lead/WORKER_ROUTER.md`, `NEXT_TASK.md`, `TASK_BOARD.md`, `WORKER_CHAT_START_PROMPT.md`, `tasks/KIC-R-001.md`. 현 READY **KIC-R-001 / feature/research / 외부 API 없는 오프라인 근거 정규화+테스트**. Verification/Risk는 **WAITING/미발행**.
+- **실행과 구별**: GitHub에 READY와 설계가 저장됐을 뿐, 아직 작업자 채팅에서 실제 `[IN_PROGRESS]` 커밋·기능 코드 구현·완료 보고 없음. 라이브 외부 API/유료 지출/공통 스키마 동결 승인 아님.
+- 사전 점검 원격 SHA: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`; 세 `TO_KIC_LEAD.md` 원문 초기 안내만, 추가 차단 0. 현재 `lead/kic` 커밋 전 HEAD `9248e24f8c3e2a9c3da0e9bde5b465253bbc5c84`.
+- 총괄은 다음 과제 발행 전 실제 코드/CI/3개 메시지함 최신 확인 후 `MESSAGE_REVIEW.md`에 판단 기록하고 사용자에게 작업자 채팅 재개만 요청. 채팅 간 자동 동기화/자동 실행 없음. PDF 11/10 조기 제출·0원 기본 비용 유지.

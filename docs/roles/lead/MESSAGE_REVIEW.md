@@ -56,3 +56,11 @@
 - Risk: HEAD `3573455fd20807a5fbb1c0e5f6db75b37daae690`, 초기 안내 메시지 외 신규 질문·장애 없음.
 - **사용자 결정**: 세 대회 동시, 각 대회 활성 기능 작업자 1명. KIC 내부 Research → Verification → Risk 순차. 구 병렬 일정 폐기. 다음 담당은 앞 담당의 테스트·CI·인수인계 승인/명시적 보류 후에만 활성화.
 - **이번 작업 지시 여부**: 0명(정책·일정 확정 문서 갱신만). KIC 개발자 실제 코드/호출/PR 미실행. 이후 단일 개발자 지시 전에 본 절차를 다시 수행.
+
+### 2026-10-24 12:35:40 KST — 범용 작업자 체계 최초 KIC-R-001 발행 직전 필수 메시지함 검토
+- Research HEAD `1f05adcedff85526f9121a0a470d8f21f40d57f8` / TO_KIC_LEAD.md 실조회: 안내만, 신규 요청·차단 0.
+- Verification HEAD `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c` / TO_KIC_LEAD.md 실조회: 안내만, 신규 요청·차단 0.
+- Risk HEAD `3573455fd20807a5fbb1c0e5f6db75b37daae690` / TO_KIC_LEAD.md 실조회: 안내만, 신규 요청·차단 0.
+- 결정: 기능 담당자별 별도 3개 채팅을 요구하지 않고 **총괄 + 범용 작업자 1개 채팅**. 단일 지시 `KIC-R-001`을 `lead/kic`에 `READY`로 발행하고 다음 Verification/Risk는 `WAITING`.
+- 현재 작업의 명령/범위: Research feature 브랜치에만 오프라인 `research.py`·tests·합성 fixture·ROLE 문서 수정 가능. 외부 API/유료 서비스/최종 공통 스키마 변경 승인 안 됨.
+- **실제 담당자 착수/개발 수행 아님**: 사용자 작업자 채팅 호출 뒤 `TO_KIC_LEAD.md`에 `[IN_PROGRESS]` 영수증이 커밋되면 그때부터 실제 작업으로 확인. 총괄/작업자 자동 실행·메시지 전송 없음.

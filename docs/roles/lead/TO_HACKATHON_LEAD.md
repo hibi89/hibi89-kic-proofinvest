@@ -1,5 +1,8 @@
 # KIC ProofInvest → 3개 해커톤 전체 총괄 보고서 (상시 고정 경로)
 
+> **2026-10-24 최신 실행 프로토콜:** KIC 사용자 채팅방은 **KIC 총괄 1개 + KIC 범용 작업자 1개**만 사용한다. 이전 문서에서 Research/Verification/Risk 각각 독립된 채팅방을 열라는 설명은 **현재 무효**이며, 역할별 기능·branch·인수인계 파일만 유지. **KIC 총괄이 `lead/kic`에 단일 [NEXT_TASK](NEXT_TASK.md)를 발행 → 같은 작업자 채팅이 해당 feature 브랜치에서 개발/보고 → KIC 총괄 검수 후 다음 지시** 순서다. [WORKER_ROUTER.md](WORKER_ROUTER.md) 우선.
+
+
 > **운영 우선 정책 (2026-10-24 12:32:01 KST): 사용자 명시 지시 — 3개 해커톤은 동시에 진행하지만 KIC 안에서는 **한 번에 한 명의 기능 담당자만 활성**. KIC **Research(10/27~28) → Verification(10/29~11/01) → Risk(11/02~03) → 총괄 통합(11/04)** 순차. 기존 보고서에 있는 '세 담당 병렬' 표현은 과거 폐기한 제안으로 현재 무효. KIC 총괄은 감독·기획서·검수 지속, 다른 두 기능 담당자는 대기. 비용 신규 현금지출 0원 우선·11/10 조기 PDF 제출 유지. [확정 KIC 일정](KIC_MASTER_SCHEDULE_20261024.md)·[운영 규칙](OPERATIONS.md) 참조. 전체 통합 총괄 저장소는 본 KIC 총괄이 수정하지 않음.
 
 
@@ -196,3 +199,10 @@
 - **필수 핸드오프**: 이전 담당의 코드·테스트·CI·STATUS/HANDOFF/TO_KIC_LEAD 수용 또는 명시적 보류 기록 뒤에만 다음 담당 활성화. 매 지시 전 3개 브랜치 HEAD·메시지함 전수 확인 및 `MESSAGE_REVIEW.md` 커밋.
 - KIC 현재 최신 실사 브랜치: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`. 세 메시지함은 초기 안내 외 신규 요청 0. **아직 실제 기능 개발·세 담당 활성 명령은 실행 전**.
 - 모든 과거 '병렬' 제안은 역사 기록으로만 유지하며, [확정 마스터 일정](KIC_MASTER_SCHEDULE_20261024.md)과 최신 `OPERATIONS.md`가 우선. 본 작업은 문서/일정 수정만, 기능 코드/유료 비용/외부 API/공식 접수 변경 아님.
+
+## 2026-10-24 12:35:40 KST — KIC 단일 범용 작업자 채팅/총괄 큐 운영체계 구축
+- 사용자 확정 작업 방식: KIC 총괄이 `lead/kic`에 **단일 NEXT_TASK** 발행 → 사용자 **범용 작업자 채팅 1개**에서 GitHub 지시 읽고 **명시된 feature 브랜치만** 개발 → 담당 `TO_KIC_LEAD.md`에 task ID/코드 SHA/CI/완료 보고 → 총괄 검수→다음 작업 전환. 역할 브랜치 3개 보존, KIC 내 동시 기능 개발 1개만.
+- 실행 입구: `docs/roles/lead/WORKER_ROUTER.md`, `NEXT_TASK.md`, `TASK_BOARD.md`, `WORKER_CHAT_START_PROMPT.md`, `tasks/KIC-R-001.md`. 현 READY **KIC-R-001 / feature/research / 외부 API 없는 오프라인 근거 정규화+테스트**. Verification/Risk는 **WAITING/미발행**.
+- **실행과 구별**: GitHub에 READY와 설계가 저장됐을 뿐, 아직 작업자 채팅에서 실제 `[IN_PROGRESS]` 커밋·기능 코드 구현·완료 보고 없음. 라이브 외부 API/유료 지출/공통 스키마 동결 승인 아님.
+- 사전 점검 원격 SHA: Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`; 세 `TO_KIC_LEAD.md` 원문 초기 안내만, 추가 차단 0. 현재 `lead/kic` 커밋 전 HEAD `9248e24f8c3e2a9c3da0e9bde5b465253bbc5c84`.
+- 총괄은 다음 과제 발행 전 실제 코드/CI/3개 메시지함 최신 확인 후 `MESSAGE_REVIEW.md`에 판단 기록하고 사용자에게 작업자 채팅 재개만 요청. 채팅 간 자동 동기화/자동 실행 없음. PDF 11/10 조기 제출·0원 기본 비용 유지.

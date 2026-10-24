@@ -1,5 +1,8 @@
 # KIC 총괄 전용 운영규칙 — `lead/kic`
 
+> **2026-10-24 최신 실행 프로토콜:** KIC 사용자 채팅방은 **KIC 총괄 1개 + KIC 범용 작업자 1개**만 사용한다. 이전 문서에서 Research/Verification/Risk 각각 독립된 채팅방을 열라는 설명은 **현재 무효**이며, 역할별 기능·branch·인수인계 파일만 유지. **KIC 총괄이 `lead/kic`에 단일 [NEXT_TASK](NEXT_TASK.md)를 발행 → 같은 작업자 채팅이 해당 feature 브랜치에서 개발/보고 → KIC 총괄 검수 후 다음 지시** 순서다. [WORKER_ROUTER.md](WORKER_ROUTER.md) 우선.
+
+
 ## **확정 운영 정책 — KIC 기능 담당 단일 활성 (2026-10-24)**
 
 - 사용자 결정: 세 해커톤은 **각자 단일 기능 작업자 1명**씩 활성화하여 전체로는 최대 3개 대회 작업 흐름을 동시에 운영한다. **KIC 내부 Research·Verification·Risk를 병렬 기동하는 방식은 금지**한다. KIC의 현재 순서는 **Research → Verification → Risk → Lead 통합**.

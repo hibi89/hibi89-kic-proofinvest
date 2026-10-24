@@ -2,6 +2,8 @@
 
 # ProofInvest | KIC AI Agent Competition
 
+> **한 개의 범용 KIC 개발자 채팅으로 순차 작업:** [WORKER_ROUTER.md](docs/roles/lead/WORKER_ROUTER.md) → [유일한 NEXT_TASK.md](docs/roles/lead/NEXT_TASK.md) → [작업자 채팅 시작 프롬프트](docs/roles/lead/WORKER_CHAT_START_PROMPT.md). **현재 READY KIC-R-001**, `feature/research` 한 곳만. KIC 총괄 검수 전 다음 작업 자동 실행 금지.
+
 > **확정 협업정책:** Research·Verification·Risk는 브랜치/역할만 3개이며 **동시 개발하지 않는다**. 기능 작업자는 1명만 활성, Research → Verification → Risk → KIC 총괄 통합. [KIC 확정 일정표](docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md) 및 [총괄 운영 규칙](docs/roles/lead/OPERATIONS.md) 준수.
 > **3개 대회 전체 일정·충돌·제출 마감:** [docs/COMPETITION_SCHEDULE.md](docs/COMPETITION_SCHEDULE.md) (**2026-10-24 KST 공시**). 이 브랜치에서 작업을 시작할 때 마감과 내부 조기 제출 목표를 확인하며 공식 변경 시 대회 총괄에게 보고한다.
 
