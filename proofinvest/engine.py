@@ -147,13 +147,41 @@ def calculate(rows:list[dict], year:int, claim_revenue_growth_pct:str|None=None,
             elif abs(claim-growth)>Decimal("0.1"):state="conflict";explanation=f"주장 {claim}% 와 계산 결과 차이 0.1%p 초과"
         checks.append(Check("revenue_yoy_pct",state,str(growth.quantize(Decimal("0.01"))),rev["source"],explanation))
     debt=data.get("liabilities");equity=data.get("equity")
-    if debt and equity and debt["current"] is not None and equity["current"] not in (None,Decimal(0)):
-        ratio=debt["current"]/equity["current"]*100
-        signals.append({"rule":"debt_to_equity_pct", "value":str(ratio.quantize(Decimal("0.01"))),
-                        "triggered":ratio>=Decimal(200),"threshold_pct":200,"source":debt["source"],
-                        "note":"200%는 시연용 탐색 임계값이며 투자 판단 기준이 아님"})
+    # Legacy CLI risk is an exploratory, UNVERIFIED signal, never the
+    # verified-only Risk entrypoint. Apply matching fail-closed arithmetic
+    # guards even for demos; a negative equity ratio must not imply "safe".
+    risk_reason=None
+    if not debt or not equity or debt["current"] is None or equity["current"] is None:
+        risk_reason="MISSING_FINANCIAL_AMOUNT"
+    elif equity["current"] == 0:
+        risk_reason="ZERO_EQUITY_DENOMINATOR"
+    elif equity["current"] < 0:
+        risk_reason="NEGATIVE_EQUITY"
+    elif debt["current"] < 0:
+        risk_reason="NEGATIVE_LIABILITIES"
+    elif debt["currency"] != "KRW" or equity["currency"] != "KRW":
+        risk_reason="UNSUPPORTED_CURRENCY"
+    elif not is_demo and (
+        not debt["source"] or not equity["source"] or debt["source"] != equity["source"]
+    ):
+        risk_reason="UNVERIFIED_OR_CONFLICTING_FILING_REFERENCE"
+    if risk_reason is not None:
+        signals.append({"rule":"debt_to_equity_pct","value":None,"triggered":None,
+                        "source":None,"withheld_reason_code":risk_reason,
+                        "note":"근거·분모·자본값 또는 출처가 비교 불가능하여 계산 보류. 투자 판단 기준이 아님"})
     else:
-        signals.append({"rule":"debt_to_equity_pct","value":None,"triggered":None,"source":None,"note":"근거 부족 또는 분모 0 — 계산 중단"})
+        try:
+            ratio=debt["current"]/equity["current"]*100
+            displayed=ratio.quantize(Decimal("0.01"))
+        except (InvalidOperation, ArithmeticError, OverflowError, ZeroDivisionError):
+            signals.append({"rule":"debt_to_equity_pct","value":None,"triggered":None,
+                            "source":None,"withheld_reason_code":"ARITHMETIC_UNREPRESENTABLE",
+                            "note":"수치 표현 불가로 탐색 비율 계산 보류. 투자 판단 기준이 아님"})
+        else:
+            signals.append({"rule":"debt_to_equity_pct", "value":str(displayed),
+                            "triggered":ratio>=Decimal(200),"threshold_pct":200,
+                            "source":debt["source"],"withheld_reason_code":None,
+                            "note":"반올림 전 >=200% 탐색 신호이며 투자 판단 기준이 아님. 실 공시 인증 아님"})
     return {"status":"demo_not_real" if is_demo else "financial_checks_only", "year":year,
             "source_kind":sourcekind,"accounts_found":sorted(data.keys()),
             "checks":[asdict(c) for c in checks],"risk_signals":signals,
