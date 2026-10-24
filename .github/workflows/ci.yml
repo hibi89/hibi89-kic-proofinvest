@@ -1,0 +1,21 @@
+name: offline-tests
+on:
+  push:
+    branches: [main, 'lead/**', 'feature/**']
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests (no external API)
+        run: python -m unittest discover -s tests -v
+      - name: Synthetic demo (no credentials)
+        run: python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/proofinvest-demo.json

@@ -1,0 +1,6 @@
+[
+ {"account_nm":"매출액","fs_div":"CFS","thstrm_amount":"120000000000","frmtrm_amount":"100000000000","rcept_no":"","currency":"KRW"},
+ {"account_nm":"부채총계","fs_div":"CFS","thstrm_amount":"80000000000","frmtrm_amount":"70000000000","rcept_no":"","currency":"KRW"},
+ {"account_nm":"자본총계","fs_div":"CFS","thstrm_amount":"30000000000","frmtrm_amount":"30000000000","rcept_no":"","currency":"KRW"},
+ {"account_nm":"매출액","fs_div":"OFS","thstrm_amount":"150000000000","frmtrm_amount":"100000000000","rcept_no":"","currency":"KRW"}
+]
