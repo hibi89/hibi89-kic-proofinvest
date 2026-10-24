@@ -1,3 +1,15 @@
+## LIVE HANDOFF 10항 — 2026-10-24 21:23 KST / P0 제출 바이트 검증
+1. 목표/기술: 공식 제출 예정 비공개 10쪽 PDF의 잘못된 파일 선택 차단, Python 표준 라이브러리.
+2. 설계: 육안 파일명 검사(A)보다 해시/크기/헤더 fail-closed(B) 채택. 사용자 파일 데이터 전송 없음.
+3. 검사: 초기 디렉터리 예외 1 ERROR → 수정 후 8/8 로컬, GitHub CI 163/163 PASS #40093484806; 원본 PDF 신규 CLI 미실행.
+4. 상태: 추가 작업 100/100·잔여 0h+0h·실제시간 미계측. 정본 29 DONE/3 BLOCKED/28 NOT_STARTED 변함 없음.
+5. 차단/복구: DAKER 권한 10/25·11/09 60%, DART 공식원문10/30 90% BLOCKED. 모바일에서 무단 접근/제출 불가. 기존 커밋 aa5dc9c로 회복 가능.
+6. 브랜치/코드: lead/kic 1be86030bccc5e6a5a71597788adae058e8c9c8a; scripts/kic_submission_preflight.py, tests/test_kic_submission_preflight.py. 문서 새 HEAD는 GitHub 조회.
+7. 실행/배포: python scripts/kic_submission_preflight.py PRIVATE_PDF_PATH; Production/Vercel 미적용; 실 Agent/API 미검증.
+8. 원본/보안: private Library 6파일 불변, 공개 GitHub에 PDF/PPTX/인증정보 없음. 10쪽 이전 검증 증거만 유지.
+9. 다음/승인: 로그인된 DAKER 본인 인증·팀장 업로드권한 확인 후 승인된 11/10 최종 제출, 11/12 10:00 KST 마감; 12/03 결과 미래 대기.
+10. 확인: 2026-10-24 21:23 KST, 코드 CI #40093484806 PASS 163, 문서 커밋 후 CI 재확인. [가이드](../../KIC_FROZEN_PDF_SUBMISSION_PREFLIGHT_20261024.md).
+
 ## LIVE HANDOFF 10항 — 2026-10-24 약 20:39 KST / DAKER 인증 화면 사전 확인 (외부 차단 보존)
 1. **목표/기술:** 사용자 연결 브라우저에서 DAKER 본인 참가·실 제출 경로의 확인 가능한 부분만 읽기 전용 검증. 저장소는 `lead/kic`.
 2. **결과/판단:** 로그인·참가 신청·1인 팀 구성 완료 화면은 확인, '결과물 제출' 내비게이션 버튼·휴대폰 인증 요청 표시 확인. 버튼 노출은 업로드·제출 권한 증명 아님.

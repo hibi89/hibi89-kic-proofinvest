@@ -1,3 +1,5 @@
+> **LIVE 2026-10-24 21:23 KST — P0 추가 안전 도구: 제출 전 동결 PDF 바이트 지문 검사 (SHA256+크기+헤더), 실제 파일·경로 업로드 없음. 코드 1be86030bccc5e6a5a71597788adae058e8c9c8a; 신규8 포함 GitHub Actions #40093484806 163/163 PASS. 비공개 후보 PDF 신규 CLI 직접 검사/DAKER 실제 업로드권한·접수·DART 공식 원문은 미검증. 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED 유지, NEXT 12/03 공식 결과 미래 대기. 외부 차단: DAKER 10/25·11/09 각60%, DART10/30 90%; 11/10 제출 미착수. 이 부가 작업 100/100·잔여 기본0h+예비0h, 실제 시간 미계측.** [실행·복구 가이드](docs/KIC_FROZEN_PDF_SUBMISSION_PREFLIGHT_20261024.md). 원본 PDF/PPTX와 기존 정본 숫자 수정 없음.
+
 # HANDOFF — KIC ProofInvest main (통합 기준)
 
 1. **목표·기술**: KIC 예선 상위 12팀 본선 목표. 자이언츠파크 1인. Python 3.10+, 합성 검산 스타터.
