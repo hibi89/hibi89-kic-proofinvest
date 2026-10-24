@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-27 Risk interop
+
+1. **목표·대회**: KIC ProofInvest Research/Verification/Risk Python3.10+ 오프라인 기능. DAKER 2026-11-12 10:00 KST 공식 예선은 인증된 참가자/팀장 계정 제출권한 및 사용자 승인 필요.
+2. **실제 구현·대안**: verified-only Risk는 음수자본 보류하지만 이전 CLI `engine.calculate`는 부채80/자본-10을 -800%/triggered=false로 반환하던 불일치 발견. A 옛 CLI 계속 사용·주석만 표시(오해 위험) 기각, B 레거시 신호도 음수/0분모/음수부채/비합성 자료 불일치 시 null 보류 선택. 두 경로는 아직 별도, 통합 프로젝트 승인 없이 병합하지 않음.
+3. **테스트·영수증**: 새 `tests/test_risk_engine_integration.py` 9개, 최종 [GitHub Actions #40084712270](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40084712270) **129/129 PASS**. master progress 검사 2개와 합성 CLI, 수동기록 offline CLI 모두 PASS. 별도 로컬/실 OpenDART·브라우저·Agent E2E 없음.
+4. **진도·차단**: 11/27 업무 100/100 DONE, 잔여 기본0h+예비0h, 실제 시간 미계측. 60일 25 DONE/3 BLOCKED/32 NOT_STARTED. P0 DAKER 10/25·11/09 제출권한60% BLOCKED, 실제 11/10 제출 미착수, P1 DART 공시 접수번호뷰어90% BLOCKED. 평가11/18·19/예비일11/22·11/29 미착수.
+5. **오류·복원**: 레거시 `engine.calculate`는 인증된 source를 만들지 않는다. 비합성 모드 14자리 source/ref 형식 통과도 실제 DART 뷰어 원문이 아니므로 운영/투자 판단 금지. 결측/동종자료 불일치 null·reason_code로 거절. 사용자 데이터·인증키 읽지 않음.
+6. **저장소·커밋**: `hibi89/hibi89-kic-proofinvest` `lead/kic`, 코드 `52504948599c61193bdc0bf45f5a56db7845d5a1`, `proofinvest/engine.py`, `tests/test_risk_engine_integration.py`, [QA](docs/roles/lead/RISK_CROSS_ENTRYPOINT_INTEGRATION_CI_20261024.md); 60일 정본 `docs/roles/lead/MASTER_PROGRESS.json`. 이전 SHA `d3e199c981ede9d9cf5fb41daee9b38719444a2c`에서 Git revert 가능. 문서 최종 커밋은 remote HEAD 재조회.
+7. **Production/환경**: GitHub Actions ubuntu-latest Python3.11. 실제 Vercel/웹/API/Agent·Live DART E2E 및 실 데이터 출처 진위 미검증; 오프라인 단위/CLI의 성공만 보고.
+8. **비공개 데이터·보안**: frozen 10쪽 PDF·편집 PPTX 및 Private Library 6백업 기존 기록 불변, 본 차례 열람·재디자인·공개 GitHub 업로드 없음. 타 브랜치/main·force-push·비밀키/PII 무작업.
+9. **다음 단일 READY**: 2026-11-28 Streamlit 오프라인 조회 화면 최소 골격, 0/100 기본1h+예비2h=3h. 합성 데이터/오프라인 표시만, 새로운 실서비스·외부 로그인 무허가. 실제 DAKER 인증 가능하면 제출권한 P0 우선 회수.
+10. **검증 시각/영수증**: 2026-10-24 KST 코드 `52504948599c61193bdc0bf45f5a56db7845d5a1`/CI #40084712270 129 PASS, 해당 과제 100점·실투입 미계측. 모든 작업 종료 시 STATUS/HANDOFF/TO_HACKATHON_LEAD와 원격 SHA/CI 복원포인터 재확인.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / Risk 음수자본
 
 1. 목적·대회: KIC ProofInvest 오프라인 Python Research/Verification/Risk, 2026-11-12 10:00 KST DAKER 제출은 인증된 참가자 권한/명시적 승인 필요.
