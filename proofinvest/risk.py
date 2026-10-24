@@ -102,7 +102,7 @@ def gate_verified_risk_inputs(
         if not _source_url_valid(url):
             return stop("No valid HTTPS source link")
         kind = fact.get("source_kind")
-        if kind not in _ALLOWED_PROVENANCE or (kind == "SYNTHETIC_FIXTURE" and not demo):
+        if not isinstance(kind, str) or kind not in _ALLOWED_PROVENANCE or (kind == "SYNTHETIC_FIXTURE" and not demo):
             return stop("Unapproved source provenance for this mode")
         if demo and kind != "SYNTHETIC_FIXTURE":
             return stop("Live and synthetic provenance cannot be mixed")

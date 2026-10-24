@@ -109,6 +109,13 @@ class VerifiedOnlyRiskGateTests(unittest.TestCase):
         self.assertFalse(out["authenticated_external_source"])
         self.assertFalse(out["risk_calculated"])
 
+    def test_unhashable_source_kind_fails_closed_instead_of_crashing(self):
+        data = facts()
+        for malformed in ([], {}, ["SYNTHETIC_FIXTURE"]):
+            with self.subTest(kind=malformed):
+                data[0]["source_kind"] = malformed
+                self.assertEqual(gate(data)["status"], "unavailable")
+
     def test_invalid_request_shape_fails_closed(self):
         self.assertEqual(gate_verified_risk_inputs(None, expected_year=2024)["status"], "unavailable")
         self.assertEqual(gate_verified_risk_inputs("verified", expected_year=2024)["status"], "unavailable")
