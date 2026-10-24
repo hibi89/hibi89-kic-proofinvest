@@ -3,17 +3,19 @@
   "source_plan": "docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md",
   "snapshot_date": "2026-10-24",
   "branch": "lead/kic",
-  "next_task_date": "2026-11-08",
-  "next_task": "기획서 최종 동결",
+  "next_task_date": "2026-11-09",
+  "next_task": "팀 제출권한·PDF 단일 최종본 대조",
   "backup": {
     "type": "USER_PRIVATE_LIBRARY",
     "folder": "KIC ProofInvest / Private Drafts",
-    "verified_count": 4,
+    "verified_count": 6,
     "files": [
       "KIC_ProofInvest_v04_10pages_20261024.pptx",
       "KIC_ProofInvest_v1_review_10pages_20261024.pdf",
       "KIC_ProofInvest_v1_factchecked_20261024.pptx",
-      "KIC_ProofInvest_v1_factchecked_20261024.pdf"
+      "KIC_ProofInvest_v1_factchecked_20261024.pdf",
+      "KIC_ProofInvest_FROZEN_CANDIDATE_20261024.pdf",
+      "KIC_ProofInvest_FROZEN_EDITABLE_20261024.pptx"
     ],
     "officially_submitted": false
   },
@@ -310,17 +312,17 @@
       "gate": "10쪽·필수항목·용량 검수",
       "planned_base_h": 1,
       "planned_reserve_h": 3,
-      "status": "NOT_STARTED",
-      "percent": 0,
-      "actual_completed_date": null,
-      "remaining_base_h": 1,
-      "remaining_reserve_h": 3,
+      "status": "DONE",
+      "percent": 100,
+      "actual_completed_date": "2026-10-24",
+      "remaining_base_h": 0,
+      "remaining_reserve_h": 0,
       "actual_hours": "미계측",
-      "evidence_path": null,
-      "evidence_sha": null,
-      "ci_run": null,
+      "evidence_path": "docs/roles/lead/PDF_FREEZE_20261024.md",
+      "evidence_sha": "ebf2c0cfefa26e1ee3086f82d96c42579b6277ed",
+      "ci_run": 40076057576,
       "blocker": null,
-      "artifact_state": "NOT_APPLICABLE"
+      "artifact_state": "PRIVATE_LIBRARY_BACKED"
     },
     {
       "date": "2026-11-09",
