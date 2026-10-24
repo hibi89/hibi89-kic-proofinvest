@@ -13,3 +13,7 @@ Effective 2026-10-24 KST. Supersedes worker-chat dispatch and earlier role separ
 
 ## Rationale
 **Chosen A** (lead branch, single conversation) vs **legacy B** (same conversation switches three feature branches plus dispatch reports). A removes ref switching, worker queues and round trips while retaining prior branch snapshots, tests and `main` gate. B adds merge/handoff overhead without independent reviewers; it is retired.
+
+## One-line new-chat continuity
+- `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` is the accepted quick-start phrase. Enter through `lead/kic/CHAT_BOOTSTRAP.md`, then current `LEAD_ACTIVE_WORK.md`, and verify remote HEAD before continuing. Do not restart old worker dispatch.
+- Every meaningful task completion and chat transition updates active-work, lead STATUS/HANDOFF, upper lead report and relevant test evidence with a verified remote commit; stable bootstrap changes only for changed routes/policy. Not background automation.

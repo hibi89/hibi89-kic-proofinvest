@@ -222,3 +222,8 @@
 - 종전 `NEXT_TASK.md` / `WORKER_ROUTER.md` / worker 프롬프트는 **은퇴한 이력**, `READY` 문구는 실행 권한 없음. 최신 실행 명세: `docs/roles/lead/LEAD_ACTIVE_WORK.md`; 최상위 기준: `docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md`.
 - 공식 예선 마감 **2026-11-12 10:00 KST**. 팀 전환·PDF 업로드/접수 증거 여전히 확인 필요. 실제 OpenDART/외부 API/Production 미검증. 신규 현금 지출/고객 비밀 데이터 없음.
 - 전환 전 원격 기준 `lead/kic@92e2a787c5e10f84305a1142b2cc2e194bed3a52`, `main@1300b9b31a5b86792d15ed7a2dce7c24849dbd87`. 전환 커밋 SHA는 원격 ref 검증으로 판정.
+
+## 2026-10-24 KST — 새 채팅 한 문장 자동 복원 공시
+- 사용자 고정 입력 `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` → **`lead/kic/CHAT_BOOTSTRAP.md`** → KIC `LEAD_ACTIVE_WORK.md`/HANDOFF/STATUS와 원격 HEAD·실제 테스트 확인 → 총괄이 다음 승인 작업 직접 실행.
+- 중요 개발/검수/제출/차단 변화 또는 채팅 종료 전 `LEAD_ACTIVE_WORK.md`, `STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md` 및 실제 코드/테스트를 일치시켜 GitHub 커밋·원격 SHA 확인. 고정 부트스트랩은 경로/정책 바뀔 때만 편집. 구형 역할 브랜치는 원본 보존.
+- 본 변경은 진입·운영 문서 공시만, KIC-R-001 독립 검수·CI 재실행, 실제 API/배포/공식 제출 완료가 아님. 자동 백그라운드 동기화는 없음.
