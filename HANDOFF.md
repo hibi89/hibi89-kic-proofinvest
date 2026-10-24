@@ -1,3 +1,10 @@
+## KIC DAKER participant screenshot checkpoint — 2026-10-25
+- Participant submitted a screenshot of an authenticated DAKER KIC proposal screen. The UI shows team/participant **자이언츠파크** and a **팀장** role label, project title blank, PDF upload blank (max 20MB), and Edit/Submit controls. Screenshot color or visibility is **not** proof of enabled backend final submit authority; no final history/receipt or conversion state shown. **No upload/account change/submit carried out**.
+- Read-only text audit: [DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md](docs/roles/lead/DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md); screenshot remains in conversation, never public GitHub. Private frozen 10-page PDF/PPTX and six Library backups untouched.
+- 10/25 DAKER gate improved 60→**90/100 BLOCKED**, remaining base0.25h+reserve0.5h. 11/09 DAKER improved 60→**80/100 BLOCKED**, remaining base0.25h+reserve0.75h. Both provisional scores follow existing gate rubrics, not submission proof.
+- Canonical 60-day JSON 29 DONE/3 BLOCKED/28 NOT_STARTED; next 12/03 scheduled result future. DART 10/30 remains 90% BLOCKED; Nov10 official submission NOT_STARTED; peer vote not yet eligible. Real API/agent/production unverified.
+- **NEXT**: No immediate participant action; user must separately approve exact project title, frozen 10-page PDF selection, official final submit before any account-affecting step. After official submission, verify receipt and 제출 내역→최종. Actual working time unmeasured.
+
 ## KIC HANDOFF 10 fields — 2026-10-25 KST extreme Decimal verification guard
 1. **Goal:** prevent malformed, extreme-magnitude offline revenue inputs from crashing `calculate` before returning a safe report; DAKER P0 remains unchanged.
 2. **Design:** option A narrow Decimal arithmetic/quantization exception guard returning `unavailable` chosen; option B arbitrary input digit cap rejected as quality regression. Existing successful outputs unchanged.

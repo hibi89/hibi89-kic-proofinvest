@@ -1,3 +1,9 @@
+## 2026-10-25 KST — DAKER verified participant screenshot, external gate partial unblock
+- KIC DAKER authenticated screenshot visibly shows team/participant 자이언츠파크 and team leader label, plus actual proposal submission form, empty title and PDF box max20MB. No authority to prove final submission, conversion status or receipt.
+- **10/25 gate 60% → 90% BLOCKED**; estimated remaining base0.25h+reserve0.5h. **11/09 gate 60% → 80% BLOCKED**; remaining base0.25h+reserve0.75h. Actual time unmeasured.
+- 60-day totals unchanged 29 DONE/3 BLOCKED/28 NOT_STARTED; DART 10/30 90% BLOCKED; Nov10 actual final submission 0% NOT_STARTED. No screenshot/private PDF public upload, no account changes.
+- [DAKER screen read-only analysis](DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md). Next user approval before attaching frozen PDF/pressing official submit.
+
 ## 2026-10-25 KST — independent verification extreme-Decimal safety fix (outside 60-day plan)
 | Evidence gate | Weight | Earned |
 |---|---:|---:|

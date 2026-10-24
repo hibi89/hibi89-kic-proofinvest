@@ -1,3 +1,5 @@
+> **UPDATE 2026-10-25 KST — user-provided DAKER authenticated UI:** logged-in team/participant **자이언츠파크**, **팀장** label and visible proposal form verified in screenshot. Empty project title and PDF dropzone (PDF max20MB); final backend submit authority and submission history not verified. 10/25 external gate **90/100 BLOCKED**, 11/09 external gate **80/100 BLOCKED**, DART 10/30 90% BLOCKED. 60-day canonical 29 DONE/3 BLOCKED/28 NOT_STARTED; Nov10 actual submit not started. Original screenshot and private files NOT published; no upload/change/submit performed. [New evidence](DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md); older 60% snapshots below are historical, not latest. Remaining 10/25 base0.25h+reserve0.5h, 11/09 base0.25h+reserve0.75h; actual time unmeasured.
+
 > **2026-10-24 ~20:39 KST 보충 증거:** 로그인된 DAKER 페이지에서 참가 신청·팀 구성 완료(1인 팀) 표시 및 제출 탐색 버튼, 휴대폰 본인확인 안내 확인. 실제 최종 PDF 업로드 권한/접수는 읽기 전용으로 미확인 → **60/100 BLOCKED 유지**. [상세](DAKER_AUTHENTICATED_READONLY_PREFLIGHT_20261024.md). 원래 11/09 사전점검 본문은 역사적 스냅샷으로 보존.
 
 # KIC ProofInvest — DAKER 제출권한 및 동결 PDF 사전점검

@@ -1,3 +1,5 @@
+> **UPDATE 2026-10-25 KST — user-provided DAKER authenticated UI:** logged-in team/participant **자이언츠파크**, **팀장** label and visible proposal form verified in screenshot. Empty project title and PDF dropzone (PDF max20MB); final backend submit authority and submission history not verified. 10/25 external gate **90/100 BLOCKED**, 11/09 external gate **80/100 BLOCKED**, DART 10/30 90% BLOCKED. 60-day canonical 29 DONE/3 BLOCKED/28 NOT_STARTED; Nov10 actual submit not started. Original screenshot and private files NOT published; no upload/change/submit performed. [New evidence](DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md); older 60% snapshots below are historical, not latest. Remaining 10/25 base0.25h+reserve0.5h, 11/09 base0.25h+reserve0.75h; actual time unmeasured.
+
 ## 2026-10-24 KST 재검증: 공식 양식 확보 후 10/25 DAKER 차단 완화 (기존 35% 기록보다 우선)
 - 사용자 비공개 Library의 `(양식)KIC_AI_에이전트_공모전_기획서.pptx`를 **원본 바이트로 확보·실제 열람**: 10장 16:9, 공모전 필수 7개 구성 및 안내 문구 포함. 공식 DAKER 페이지 다운로드 URL과 파일명이 일치. 다만 공식 서버 바이너리 해시 일치 검증은 미완료.
 - 새 점수: 공식 규정 20/20 + 실 참가계정·팀장 제출 권한 0/40 BLOCKED + 양식 원본 열람 25/25 + 기존 초안 검토 15/15 = **60/100=60%**. 즉 구형 35%는 이전 스냅샷이다.

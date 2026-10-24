@@ -2,11 +2,11 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **29** / BLOCKED **3** / NOT_STARTED **28** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-25 KST · DONE **29** / BLOCKED **3** / NOT_STARTED **28** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-12-03** 10:00 본선 결과 확인 및 일정 전면 재산정 0%, 기본 0.5h + 예비 2.5h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **5h** + 예비 **26.5h** = **31.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-12-03** 10:00 본선 결과 확인 및 일정 전면 재산정 0%, 기본 0.5h + 예비 2.5h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **4.5h** + 예비 **24.75h** = **29.25h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
-**차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **60%**(접근 후 기본0.5h+예비1.5h). 완료 처리 금지.
+**차단:** 10/25 DAKER 제출권한 **90%**(접근 후 기본0.25h+예비0.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **80%**(접근 후 기본0.25h+예비0.75h). 완료 처리 금지.
 
 **비공개 산출물:** USER_PRIVATE_LIBRARY / KIC ProofInvest / Private Drafts / 6개 저장 성공. 공개 GitHub 비게시. 공식 DAKER 제출 완료 아님.
 
@@ -15,7 +15,7 @@
 | 원래 날짜 | 작업 | 상태 | 완료율 | 실제 완료일 | 기본·예비 계획 | 남은 기본·예비 | 실제 소요 | 검증 링크 |
 |---|---|---|---:|---|---|---|---|---|
 | 2026-10-24 | 일별 시간표와 실제 측정 기준 등록 | **DONE** | 100% | 2026-10-24 | 0.5h+1.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md) · `4b285a2` |
-| 2026-10-25 | DAKER 팀 전환·공식 PDF 양식·기존 원본 확인 | **BLOCKED** | 60% | — | 1h+3h | 0.5h+1.5h | 미계측 | [근거](../../../docs/roles/lead/DAKER_PREFLIGHT_20261024.md) · `32a0c1ae03` · 차단 |
+| 2026-10-25 | DAKER 팀 전환·공식 PDF 양식·기존 원본 확인 | **BLOCKED** | 90% | — | 1h+3h | 0.25h+0.5h | 미계측 | [근거](../../../docs/roles/lead/DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md) · `2269664ce8` · 차단 |
 | 2026-10-26 | Research 기존 소스와 신규 17개 테스트 코드 검수 | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RESEARCH_REVIEW_20261024.md) · `4578b8034b` · [CI 40063701327](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40063701327) |
 | 2026-10-27 | Research 검수된 부분만 lead 브랜치로 이관 | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RESEARCH_REVIEW_20261024.md) · `4578b8034b` · [CI 40063701327](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40063701327) |
 | 2026-10-28 | Verification 중복 계정 한 종류 차단·테스트 | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/VERIFICATION_DUPLICATE_REVIEW_20261024.md) · `5c4aed4d46` · [CI 40064628185](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40064628185) |
@@ -30,7 +30,7 @@
 | 2026-11-06 | PDF 팩트·출처·실증/미실증 구분 1차 검수 | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_FACT_CHECK_20261024.md) · `e0df218f73` · [CI 40074125319](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40074125319) |
 | 2026-11-07 | PDF 글자·이미지·링크·페이지 최종 QA | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_VISUAL_FINAL_QA_20261024.md) · `9405668844` · [CI 40074861044](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40074861044) |
 | 2026-11-08 | 기획서 최종 동결 | **DONE** | 100% | 2026-10-24 | 1h+3h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_FREEZE_20261024.md) · `ebf2c0cfef` · [CI 40076057576](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40076057576) |
-| 2026-11-09 | 팀 제출권한·PDF 단일 최종본 대조 | **BLOCKED** | 60% | — | 1h+3h | 0.5h+1.5h | 미계측 | [근거](../../../docs/roles/lead/DAKER_SUBMISSION_PREFLIGHT_20261024.md) · `8e2af4f133` · 차단 |
+| 2026-11-09 | 팀 제출권한·PDF 단일 최종본 대조 | **BLOCKED** | 80% | — | 1h+3h | 0.25h+0.75h | 미계측 | [근거](../../../docs/roles/lead/DAKER_AUTH_SCREENSHOT_REVIEW_20261025.md) · `2269664ce8` · 차단 |
 | 2026-11-10 | DAKER 사용자 최종 제출·접수 영수증 확인 | **NOT_STARTED** | 0% | — | 1h+4h | 1h+4h | 미계측 | — |
 | 2026-11-11 | 예비일: 접수 오류 대응 전용(정상 제출 시 휴식) | **NOT_STARTED** | 0% | — | 0h+4h | 0h+4h | 미계측 | — |
 | 2026-11-12 | 10:00 공식 마감 상태 확인·12:00 상호평가 규칙 | **NOT_STARTED** | 0% | — | 0.5h+1.5h | 0.5h+1.5h | 미계측 | — |
