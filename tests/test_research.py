@@ -175,7 +175,8 @@ class ResearchTests(unittest.TestCase):
 
     def test_one_source_rights_status_does_not_certify_another(self):
         data = copy.deepcopy(self.data)
-        extra = dict(data["sources"][0], id="S2", license="unknown")
+        extra = dict(data["sources"][0], id="S2", license="unknown",
+                     url="https://example.org/research/independent-rights-source")
         data["sources"].append(extra)
         data["findings"][0]["source_ids"] = ["S1", "S2"]
         result = normalize_research(data)
