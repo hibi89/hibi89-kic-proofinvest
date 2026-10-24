@@ -1,3 +1,5 @@
+> **필수 3번째 게이트 추가:** 팀장 최종 PDF 접수 후에도 예선 상호평가에 직접 참여해야 합니다. 기간 **11/12 12:00~11/19 10:00 KST**, DAKER 커뮤니티 No Vote No Gain 규칙. **최소 몇 회인지는 미확인**, 상호평가 화면의 실제 '최소 횟수'·완료 표기만 기준으로 삼습니다. 지금은 마감 전이므로 투표 완료를 주장하지 않습니다. [전체 단계·배점 검토](KIC_PRELIMINARY_VOTE_RUBRIC_GATE_20261024.md).
+
 # DAKER KIC — participant-only P0 proof checklist (read-only)
 
 **Purpose:** Establish whether the participant's authenticated account can *eventually* make the KIC proposal's final submission. This checklist is not approval to upload, team-convert, save, change an account, or submit.
