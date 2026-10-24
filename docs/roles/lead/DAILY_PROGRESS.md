@@ -1,3 +1,19 @@
+
+## 2026-10-24 KST — 11/01 Risk 안전 계산 선행 과제 최종 확정 (KIC-RISK-CALC-20261101)
+| 완료 조건 | 배점 | 확보 점수 | 증거 |
+|---|---:|---:|---|
+| 기존 gate·레거시 경로·수치 오염 위험 검토 | 20 | 20 | `risk.py`/`engine.py` 코드 점검 |
+| verified-only→Decimal 계산 및 결측·0·음수자본 fail-closed 구현 | 40 | 40 | `proofinvest/risk.py`, SHA `5710a534` |
+| 신규 15개 포함 82개 테스트·CLI 2개 CI 통과 | 30 | 30 | [GitHub CI 40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504) 완료/success |
+| 원격 코드 확인 및 중앙·상위 인수인계 공시 | 10 | 10 | 이번 `lead/kic` 인수인계 변경, 최신 문서 커밋은 원격 브랜치 조회 |
+| **합계** | **100** | **100/100 = 100%** | **11/01 배정 업무만** |
+
+- 날짜 분리: 실제 수행 2026-10-24, 예정 배정 2026-11-01. 10/24 원래 계획 100%에 이 100점을 합산하지 않음.
+- **남은 순작업 0h + 오류·검수 예비 0h = 총 0h**, 실작업 시간 미계측. 최초 계획 1.5h+3.5h=5h는 추정 상한이며 실제 투입 시간 아님.
+- DAKER 10/25 **35% BLOCKED**(접근 후 기본 1h+예비 2h=3h), DART 10/30 **90% BLOCKED**(접근 후 기본 0.5h+예비 1h=1.5h). 보류 일정은 기존 `BLOCKED_WORK_RECOVERY_20261024.md` 준수.
+- 다음 11/03 PDF 1~4쪽 **0/100 = 0%**, 배정 기본 1.5h+오류예비 3.5h=최대 5h. 자료 실접근 후 근거 검수와 비공개 산출물 작성. 공식 템플릿/최종 제출 승인 미확보.
+- 기준 코드 SHA: `5710a53462c5f0eda84100d539283745f8247bbb`, CI: `40068833504`. 인수인계 문서 SHA는 이 커밋 이후 다시 원격 확인. 서비스·OpenDART 실호출·공식 DAKER 접수 NOT VERIFIED.
+
 # KIC ProofInvest — 일일 100% 진척률 및 남은 작업시간 (현행)
 
 > 작성/검증 시점 2026-10-24 13:52:13 KST · 브랜치 `lead/kic`. 기준 규칙 [DAILY_PROGRESS_PROTOCOL.md](DAILY_PROGRESS_PROTOCOL.md); 날짜별 기본·오류예비 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md). **하루 목표 100%는 프로젝트 전체 진척률이 아님**.

@@ -1,3 +1,5 @@
+> **CURRENT ACTIVE POINTER — 2026-10-24 KST, KIC-RISK-CALC-20261101**: 11/01 Risk 안전 계산 **DONE 100/100**, 새 15개 포함 총 82/82 GitHub CI [40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504) PASS. `lead/kic` 코드 `5710a534`. 다음 **11/03 PDF 1~4쪽 근거기반 비공개 초안 (READY 0/100, 기본 1.5h + 예비 3.5h = 5h)**. DAKER 35%, DART 90% BLOCKED 유지. 항상 [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 최신 조회. 아래 오래된 '11/01 미착수' 항목은 이력. 완료 코딩 반복 금지.
+
 > **2026-10-24 14:46:25 KST 항시 인수인계 규약 100% 완료:** 사용자 고정 한 줄로 최신 KIC GitHub 재개. [계약](../../../KIC_HANDOFF_CONTRACT.md) [PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40067452590); 매 작업 종료에 중앙 복원/진척/인계 6파일 원격 최신화 필수. 11/01 Risk 실제 개발 **미착수 0%/기본 1.5h+예비 3.5h=5h**, DAKER 35%·DART 90% 미확인 유지.
 
 > **영구 종료 정책 적용 2026-10-24 14:44:22 KST:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). **매 작업이 끝나면 다음 채팅의 한 줄 명령으로 즉시 재개할 수 있도록 중앙 KIC_RESUME_STATE 포함 6문서 갱신·원격 커밋·CI 검증이 필수**. 11/01 Risk 안전 계산이 다음 미착수 작업이며, 차단 DAKER 35%·DART 90% 변경 없음.

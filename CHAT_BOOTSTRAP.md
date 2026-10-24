@@ -1,3 +1,6 @@
+
+> **LIVE NEXT TASK (2026-10-24 KST):** 11/01 Risk 결측·0분모·음수자본 verified-only Decimal 계산은 **100/100 DONE (원래 날짜 11/01, 선행 실행 10/24)**. 코드 `5710a534`, [GitHub CI 40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504) 82/82 테스트와 CLI 2개 PASS. 다음 **11/03 PDF 1~4쪽 근거기반 비공개 초안 준비 (READY 0%, 기본1.5h+예비3.5h=5h)**. DAKER **35% BLOCKED**, DART **90% BLOCKED**, 전체 프로젝트·Production·최종 제출은 미완료. 항상 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md)부터 재조회할 것. 아래 오래된 '11/01 미착수' 스냅샷은 역사기록.
+
 # KIC ProofInvest — 새 채팅 **한 줄만**으로 복원
 
 > **최우선 불변 종료 규칙:** [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md). **매 작업 종료마다 복원 상태·진척률·남은 시간·인계·원격 SHA/CI가 GitHub에 있어야 종료 완료**. 새 채팅은 항상 이 최신 상태를 기반으로 일한다.

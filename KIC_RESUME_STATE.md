@@ -1,3 +1,12 @@
+
+## 현행 최상단 복원 — 2026-10-24 KST (KIC-RISK-CALC-20261101)
+- 상태: **DONE — 원래 예정일 2026-11-01, 실제 선행 수행일 2026-10-24**. KIC 총괄=직접 개발자. 브랜치 `lead/kic`; 기준 코드 SHA `5710a53462c5f0eda84100d539283745f8247bbb`; GitHub Actions [40068833504](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40068833504): **82/82 PASS**, 합성/공시시나리오 오프라인 CLI 2개 PASS. 문서 갱신 이후 최신 원격 HEAD는 매번 별도 조회.
+- 변경: `proofinvest/risk.py` 검증 입력 게이트 연동 `calculate_verified_debt_to_equity` Decimal 결정론적 계산, fail-closed 결측/0분모/음수자본/음수부채/정밀도 예외, 임계점 반올림 오판 방지; `tests/test_risk.py` 신규 15개 포함 총 82개. 순수 계산, 원본 보존. 기존 합성 `engine.calculate`은 **gate 우회 구형 데모**이며 실 Risk 검증 결과로 사용 금지.
+- 설계 대안: (A) 기존 게이트를 재사용하는 별도 verified-only 계산 함수 vs (B) 모든 레거시 엔진 계산 경로 교체. **A 채택**: 최소 회귀 위험/재사용/비용 0원; B는 기존 CLI 호환성 위험과 변경 범위가 큼. 공식 외부 진위/실 API 검증 아님.
+- 11/01 계획 작업 **100/100 = 100%**, 남은 순작업 **0h** + 오류예비 **0h** = **0h**. 실제 소요 **미계측**. 기존 10/24 원래 계획은 별도로 100%; 전체 프로젝트 완료율 아님.
+- 10/25 DAKER **35/100 BLOCKED**, 사용자 인증 팀 제출권한·공식 PPTX 본문 65점 미확인(접근 후 1h+2h=3h). 10/30 DART 원문 공식뷰어 **90/100 BLOCKED**, 접수번호 대조 10점 미확인(접근 후 0.5h+1h=1.5h), 예정 회수 10/27. 외부 접근/대기시간은 알 수 없음.
+- 다음 한 개의 실행 업무 **11/03 PDF 1~4쪽 근거 기반 초안 작성 (READY 0/100, 기본 1.5h+예비 3.5h=5h)**: 기존 사용자 원본 PPTX/PDF와 공식 공개 요구 확인 → 출처/실증·합성 구분 → 민감 원본은 공개 GitHub에 저장하지 않고 문서 산출 → 상태 문서와 원격 검증. 공식 양식·제출권한 불가 시 관련 단계를 BLOCKED로 기록하고 접근 가능한 내용에 한해 진척. 11/10 내부 조기제출/11/12 10:00 KST 공식 마감 유지.
+- 코드 검증 환경: GitHub Actions Python 3.11. 컨테이너 `git ls-remote` 시 DNS 오류로 별도 로컬/브라우저/실API 검증 불가. GitHub 자체 CI 성공은 Production 기능 성공이 아님. 실패 재시도 0회, 원본 커밋은 Git 이력으로 복구 가능; `main` 미변경.
 > **운영 인수인계 완료 기록 (2026-10-24 14:46:25 KST):** 사용자 고정 명령 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`. 모든 작업 종료마다 [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) 강제 적용. 규약 코드 아닌 문서 커밋 `d048d856e59efcf810dd1239d9bc213c6bf3d914`에 대한 [GitHub CI 40067452590](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40067452590) **PASS**. 기존 실제 코드 최종 67개 테스트 통과, 다음 **11/01 Risk 결측·0분모·음수자본 개발 0% / 보수적 최대 5h**. DAKER 35%, DART 90% 차단 상태 변경 없음. 본 운영 문서 개선을 전체 ProofInvest 개발 진척 증가로 오인 금지.
 
 # KIC ProofInvest — 단일 새 채팅 복원 기준 (LIVE SNAPSHOT)
