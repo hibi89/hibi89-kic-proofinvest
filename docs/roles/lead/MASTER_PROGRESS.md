@@ -2,9 +2,9 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **23** / BLOCKED **3** / NOT_STARTED **34** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-24 KST · DONE **24** / BLOCKED **3** / NOT_STARTED **33** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-11-26** Risk 음수자본 설명/오류 사례 하나 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **11h** + 예비 **38.5h** = **49.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-11-27** Risk 통합 테스트·CI 검수 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **10h** + 예비 **36.5h** = **46.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
 **차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **60%**(접근 후 기본0.5h+예비1.5h). 완료 처리 금지.
 
@@ -52,7 +52,7 @@
 | 2026-11-23 | Research 회귀·중복 근거 테스트 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RESEARCH_DUPLICATE_CITATIONS_REGRESSION_20261024.md) · `164d810855` · [CI 40081231968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40081231968) |
 | 2026-11-24 | Risk 임계값과 코드 설명 일치 점검 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RISK_THRESHOLD_EXPLANATION_REGRESSION_20261024.md) · `42fc6f46c9` · [CI 40081727073](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40081727073) |
 | 2026-11-25 | Risk 누락·0분모 반례 테스트 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RISK_MISSING_ZERO_DENOMINATOR_QA_20261024.md) · `0c82f6577e` · [CI 40082329914](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40082329914) |
-| 2026-11-26 | Risk 음수자본 설명/오류 사례 하나 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
+| 2026-11-26 | Risk 음수자본 설명/오류 사례 하나 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RISK_NEGATIVE_EQUITY_QA_20261024.md) · `18f3b81740` · [CI 40082667314](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40082667314) |
 | 2026-11-27 | Risk 통합 테스트·CI 검수 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
 | 2026-11-28 | Streamlit 오프라인 조회용 화면 최소 골격 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
 | 2026-11-29 | 전체 예비일: 지연·배포 장애 대안 | **NOT_STARTED** | 0% | — | 0h+3h | 0h+3h | 미계측 | — |

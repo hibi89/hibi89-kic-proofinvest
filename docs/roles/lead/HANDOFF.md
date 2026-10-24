@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / Risk 음수자본
+
+1. 목적·대회: KIC ProofInvest 오프라인 Python Research/Verification/Risk, 2026-11-12 10:00 KST DAKER 제출은 인증된 참가자 권한/명시적 승인 필요.
+2. 실제 기능·선택: 음수자본(-10), 부채(80) 단순 -800%가 위험없음으로 표시되는 문제 방지. 이미 있던 NEGATIVE_EQUITY/null 보류 유지+한국어 withheld_explanation_ko 추가. A 음수 비율 계산 노출/안전 오해 vs B 보류 코드·추가 공시 확인 명시, B 채택. 정확한 자본잠식 확정 아님.
+3. 테스트/CI: [GitHub Actions #40082667314](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40082667314) **120/120 PASS**(신규3·기존 1 강화), 60일 정본 sync 검사·합성 CLI·수동실기업 기록 오프라인 CLI 성공. 별도 로컬/실 DART API/브라우저/Production E2E 미실행.
+4. 진도/중단: 11/26 일별 100/100 DONE, 남은 기본0h+예비0h=0h, 실투입 미계측. 전체 24 DONE/3 BLOCKED/33 NOT_STARTED. 11/18·19 평가 영수증 및 11/22 예비일 NOT_STARTED.
+5. 장애/오해 방지: 음수 자본 비율을 200% 임의 탐색값과 비교하지 않음; is_demo·authenticated_external_source=false 보존. DAKER 실계정 제출권한 10/25·11/09 각60% BLOCKED, 11/10 업로드 및 최종 영수증 NOT_STARTED, DART 정식 뷰어 접수번호 10/30 90% BLOCKED.
+6. GitHub/코드 SHA: hibi89/hibi89-kic-proofinvest lead/kic 코드 18f3b81740b074ac3fcdb9ec1a0090a8ed12d2c8, proofinvest/risk.py, tests/test_risk.py, [QA](docs/roles/lead/RISK_NEGATIVE_EQUITY_QA_20261024.md), JSON 진도 docs/roles/lead/MASTER_PROGRESS.json. 이전 SHA a7663b57935f99e20e463528dde356dbf4e1d61e Git revert 가능, main/feature 미수정.
+7. 실행/URL: GitHub Actions ubuntu-latest/Python3.11; 실제 배포·Vercel/HTTP URL 없음, Agent/실 OpenDART/Production 미검증. false verified 주장 금지.
+8. 원본/보안: frozen 10쪽 PDF·편집 PPTX/Private Library 6개 기존 기록 그대로, 본 작업 미열람·미수정·미게시. API token/PII·권한변경·force-push 없음.
+9. 다음 실행: **2026-11-27 Risk 통합 테스트·CI 감사 READY 0/100**, 기본1h+예비2h=3h. DAKER 공식 권한 접근이 열리면 P0 먼저. 동결 PDF 미관 재작업 금지.
+10. 실행기준: 2026-10-24 KST 코드 18f3b81740b074ac3fcdb9ec1a0090a8ed12d2c8 CI #40082667314, 실제시간 미계측. 다음 채팅의 ㄱ은 최신 원격 HEAD/JSON/CI 재확인 후 진행.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / Risk 11-25 결측·0분모
 
 1. 목적: KIC ProofInvest Python3.10+ 합성·수동근거 구조 검사/부채자본 탐색. DAKER 공식 예선 11/12 10:00 KST 제출은 사용자의 인증 권한·최종 승인 필요.
