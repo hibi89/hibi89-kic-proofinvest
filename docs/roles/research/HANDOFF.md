@@ -1,14 +1,12 @@
-# HANDOFF — 산업·기업 리서치 담당
+# HANDOFF — KIC ProofInvest Research (KIC-R-001)
 
-1. **목표·용도·확정 요구·기술**: KIC 본선 12팀 진출 목표. ProofInvest 기능 세 개 중 담당: 기관 투자담당자가 입력한 상장기업과 해당 산업에 대해 합법적으로 이용 가능한 자료를 조회하고, 경쟁사·산업 변동·자료의 기준일을 정규화한다. Python 3.10+, 초기에는 합성 테스트.
-2. **완료 기능·변경·결정 근거**: 현재 해당 브랜치에 역할 지침/보고 장소 구성. 기능 신규 구현은 미착수. 초기 main 스타터 존재; 담당 내용은 `OPERATIONS.md`.
-3. **테스트 명령 및 검증**: `python -m unittest discover -s tests -v`; `python -m proofinvest --claim-revenue-growth-pct 20`. 기존 공통 스타터 9 PASS 보고, 이 브랜치의 신규 변경·원격 CI/실 API는 미검증.
-4. **상태·중단 지점**: 시작 대기. 다음: 1. main 기준 테스트 확인 2. 이용 가능한 공개 데이터 후보와 라이선스·쿼터 조사(조회는 읽기 전용) 3. 위 계약에 맞는 최소 구조 제안 4. 합성 데이터로 단위 테스트 작성 5. KIC 총괄에 메시지 남기고 승인 후 구현·PR 준비.
-5. **오류·원인·시도·재시도 금지·대안**: 이 담당 브랜치 고유의 실제 오류 기록 없음. 위험: 뉴스 저작권, 산업 통계 접근 권한, 자료 기준일 혼용, 출처 오류, 라이브 API 요금·쿼터. API 조건·데이터 계약 확인 전 라이브 호출 금지.
-6. **저장소·브랜치·SHA·경로**: `hibi89/hibi89-kic-proofinvest`, `feature/research`; 초기 main 기준 `9e66301145313e7ac2a4e69eab32d9d037bdb64f`에서 분기. **이 파일을 읽는 즉시 원격 HEAD를 재확인**. 소유 경로: proofinvest/research.py, tests/test_research.py 등 신규 파일로 시작; 기존 proofinvest/engine.py는 공통 데이터 계약에 동의 없이 수정하지 말 것.
-7. **Production·Vercel·실행·환경**: Production 없음, Vercel 미설정. Python 3.10+ / README 오프라인 명령. 브라우저 미검증.
-8. **원본·백업·인증·수정 금지**: 기획서 원본은 별도 사용자 파일. 공개 GitHub에 업로드하지 말 것. 키·.env 미커밋; 정상 코드·데이터 보존.
-9. **다음 작업 우선순위·완료 기준·승인 사항**: 1. main 기준 테스트 확인 2. 이용 가능한 공개 데이터 후보와 라이선스·쿼터 조사(조회는 읽기 전용) 3. 위 계약에 맞는 최소 구조 제안 4. 합성 데이터로 단위 테스트 작성 5. KIC 총괄에 메시지 남기고 승인 후 구현·PR 준비. 완료: 오프라인 fixture 기반 검색·출처 정규화·무근거 거절 테스트를 재현하고, 출처 없는 수치가 보고서로 전달되지 않아야 한다. 공통 계약 변경·외부 API·유료 사용·보안/공개 범위 변경은 사전 승인.
-10. **갱신(KST)·확인 시점·범위·기준 커밋**: 2026-10-24 KST 초기 역할 문서; 이전 `main` 코드 출발 SHA `9e66301145313e7ac2a4e69eab32d9d037bdb64f`. 브랜치 최신 SHA는 GitHub 검증으로 확인·기록. 작업 종료 시 이 10항 갱신.
-
-**총괄에게 전달할 말:** `docs/roles/research/TO_KIC_LEAD.md`에 기록·커밋한다. 총괄이 매 작업 지시 전에 세 브랜치를 조회하도록 규정됨.
+1. **목표·용도·확정 요구·기술**: KIC ProofInvest의 산업·기업 조사 결과를 다음 Verification으로 넘기기 전에 출처·기준일을 보존하고 근거 미확인을 안전하게 차단. Python 3.10+ 표준 라이브러리, 외부 호출 없는 오프라인 Research 내부 모듈. 사용자 승인된 범위는 `KIC-R-001`에 한정.
+2. **완료 기능·변경·결정 근거**: `proofinvest/research.py` 신규. `normalize_research(payload)` 순수 함수는 `target_name,target_id?,as_of,sources[],findings[]`를 받음. 출처 필드 `id,title,url,published_at,collected_at,license`, 발견사항 `claim,source_ids,as_of`. 필수 필드·HTTPS·날짜·ID 충돌·미등록 참조·미래 발행/시점 오류·공백 claim 차단. 상태 `success|partial|unavailable`은 **Research 내부 처리 상태**로 전역 검증 진위판정 아님. `tests/test_research.py` 17개 신규. 기존 소스 수정 없음.
+3. **테스트 명령·성공/실패·검증/미검증**: `python -m unittest discover -s tests -v` → 로컬 26/26 PASS (기존 9+신규 17), 실패/오류 0. `python -m proofinvest --claim-revenue-growth-pct 20` → 합성 데모 정상(`SYNTHETIC_FIXTURE`, `verified`, 20.00). 원격 GitHub 파일 8개 SHA와 로컬 복원본 일치 검증. GitHub Actions 실행 결과/운영 API/실제 기업 사실 검증은 **미검증**.
+4. **완료/진행/대기/차단·중단 지점**: `KIC-R-001` 구현 및 로컬 테스트 완료, `[DONE]` 보고 예정. 총괄 검수 대기. 차단 사항 없음; 후속 기능 지시 전 타 브랜치 작업 대기.
+5. **오류 근거·원인·시도·재시도 금지·대안**: GitHub 연결로 읽기/커밋은 가능. 컨테이너에서 github.com DNS 해결 실패로 clone 불가; GitHub connector로 원본 조회 후 바이트 동일성 SHA 검증하여 로컬에서 테스트 수행. 공개 웹 GitHub 페이지 직접 조회는 DisabledError. Actions 상태 조회는 0개/PR 전용 목록으로 실제 CI 여부 확인 불가, 성공으로 간주하지 않음. **실 API 호출/유료 테스트 반복 금지**, 필요시 총괄이 CI 링크 확인.
+6. **저장소·브랜치·SHA·주요 경로**: `hibi89/hibi89-kic-proofinvest`, `feature/research`. 시작 SHA `1f05adcedff85526f9121a0a470d8f21f40d57f8`, 착수 `1ebc0593b0662fb1a1a8661fcade8e339ee249d1`, 코드 `6339ec05cc89786c7f3e0673af52b3738268bd94`, 테스트 `1baeb881ca9d7a6b4afe78ed251b86792314d0f6`. 이 문서 커밋 이후의 **최신 원격 HEAD는 GitHub에서 다시 확인**. 주요 경로: `proofinvest/research.py`, `tests/test_research.py`, `docs/roles/research/STATUS.md`, `TO_KIC_LEAD.md`.
+7. **Production·Vercel·명령·환경**: Production URL/Vercel 프로젝트 없음(미적용). Python 3.10+ / `python -m unittest discover -s tests -v` 및 `python -m proofinvest --claim-revenue-growth-pct 20`. 브라우저 및 HTTP 서비스 검증 미적용. GitHub CI 구성 파일 `.github/workflows/ci.yml` 존재하나 실행 상태 미검증.
+8. **원본·백업·인증·수정 금지**: 원본 데이터 사용하지 않음. 신규 테스트는 `SYNTHETIC_FIXTURE`라고 명시. 원본 공통 코드·9개 테스트 및 원격 브랜치 기반 SHA 확인으로 복구 가능. API 키/.env/개인자료 커밋 없음. `engine.py`, `dart_adapter.py`, `__main__.py`, `main`, `lead/kic`, 다른 feature 브랜치 수정 금지.
+9. **다음 작업 우선순위·절차·완료 기준·승인 사항**: (a) 총괄이 출처 충돌/과거 시점 검사를 포함해 코드·테스트·CI 검수 (b) Research 내부 인터페이스를 최종 공통 계약으로 채택할지 결정 (c) 이후 총괄이 NEXT_TASK 갱신할 때까지 대기. OpenDART/LLM/실 네트워크/API, 라이선스 검증, 전역 인터페이스 결정은 **별도 승인 필요**. Verification/Risk로 독단 전환 금지.
+10. **갱신 시점(KST)·확인 범위·기준 커밋**: 2026-10-24 13:02 KST. `lead/kic` 지시 SHA `b845170c2b81d438afcf8b2e7179e19af90cd41c`; Research 원격 기준 `1f05adce`에서 시작하여 작업 코드 `1baeb881`까지 검사. 원격 8파일 바이트 일치+26개 로컬 테스트; GitHub Actions/Production/실 API는 미검증. 마지막 문서 커밋 SHA는 GitHub 최종 HEAD로 조회.
