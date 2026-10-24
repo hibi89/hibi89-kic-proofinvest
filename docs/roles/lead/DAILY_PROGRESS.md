@@ -1,3 +1,14 @@
+## 2026-10-24 — 11/14 Verification 연간기간 예외 선행 완료
+| 11/14 업무 | 배점 | 획득 |
+|---|---:|---:|
+| 보고연도와 표시기간 종료연도 불일치 위험 분석 | 20 | 20 |
+| 이전 기간 fail-closed 보완 및 정상 3월 결산 보존 | 35 | 35 |
+| 새로운 3개 포함 CI Python 85/85 + 60일 정본 PASS | 35 | 35 |
+| GitHub 원격 증거·진도표·전체 인수인계 | 10 | 10 |
+| **합계** | **100** | **100/100** |
+- 원래 2026-11-14, 실제 2026-10-24 선행. **남은 기본0h+예비0h, 실작업시간 미계측**. 기획서/비공개 PDF 변경 없음. [QA](VERIFICATION_YEAR_END_REGRESSION_20261024.md); [CI 40078163825](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40078163825). Master **15 DONE / 3 BLOCKED / 42 NOT_STARTED**. DAKER 10/25·11/09 각60% 및 DART 10/30 90% 차단, 11/10 제출 미착수.
+- **NEXT 2026-11-15** Verification CFS/OFS·단위 예외 0/100, 기본1h+예비2h=3h. 공식 제출권한 복구 시 인증 확인을 우선.
+
 ## 2026-10-24 KST — 11/09 DAKER pre-upload eligibility: 60/100 BLOCKED
 
 | Planned 11/09 gate | Weight | Earned |
