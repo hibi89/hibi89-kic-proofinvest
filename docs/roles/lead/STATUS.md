@@ -1,3 +1,5 @@
+> **2026-10-24 14:44:22 KST KIC 상시 인수인계 규약 등록:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). 현재 정책 업데이트만 수행; **신규 Risk 계산 코딩 없음**, 다음 11/01 Risk 0% 계획 유지. 중앙 재개 KIC_RESUME_STATE, 일별 진척/시간, HANDOFF/상위 보고까지 매 종료 원격 최신화. 완료 개발 테스트 최신 근거 67/67 PASS.
+
 > **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
 
 > **2026-10-24 14:33:21 KST KIC Risk 입력검사 선행 완료 100% / 남은 0h**, [CI 67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713), 실 API 미검증, 안전 비율 계산 11/01 남음. DAKER 35%, DART 90% BLOCKED 유지.

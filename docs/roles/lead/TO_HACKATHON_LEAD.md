@@ -1,3 +1,5 @@
+> **2026-10-24 14:44:22 KST 상위 총괄 공시:** KIC 영구 한 줄 인수의 필수 완료 계약 [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md) 등록. 매 작업 종료·BLOCKED에도 `lead/kic` 최신 중앙 KIC_RESUME_STATE, DAILY_PROGRESS, LEAD_ACTIVE_WORK, STATUS/HANDOFF/TO_HACKATHON_LEAD를 갱신·원격 확인 후 DONE 처리. 사용자 입력은 오직 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`. 이번 공시는 작업 프로세스 수정이며 개발 진척 상승 없음; 다음 11/01 Risk 0%, DAKER 35%, DART 90% 유지.
+
 > **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
 
 > **2026-10-24 14:33:21 KST 상위 총괄 공시:** 10/31 Risk verified-only 체크 **100/100=100%, 잔여 0h, [CI 67/67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713)**, `5f05a0b`. 단, Risk 원시 계산 경로는 아직 신규 게이트 미통합. 다음 11/01 안전 계산 작업, DAKER 35%/접근 후 3h·DART 90%/접근 후 1.5h 차단 별도 유지. `DAILY_PROGRESS.md` 조회.

@@ -26,3 +26,8 @@
 
 - 같은 `lead/kic`의 [오늘 실적판](DAILY_PROGRESS.md)과 [상위 보고](TO_HACKATHON_LEAD.md)를 열어 **날짜·진척률·잔여예상시간·차단·검증 커밋**을 확인한다.
 - 통합 상황실 `hibi89/hackathon-command-center-2026@main`은 링크만 소유하며, KIC 실적판의 출처를 별도 복제하지 않는다. 전역 새 채팅에서 GitHub 최신 브랜치를 직접 조회해야 한다.
+
+## 2026-10-24 14:44:22 KST — GitHub 인수인계 미완료 시 종료 금지
+- 이 진척률 공시만으로 끝이 아니다. **모든 작업 종료/부분중단은 루트 [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md) 이행**이 선행조건이다.
+- 중앙 `KIC_RESUME_STATE.md`, `LEAD_ACTIVE_WORK.md`, `DAILY_PROGRESS.md`, `STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md`의 **최신 내용이 원격 `lead/kic` 커밋에 모두 존재해야 인수인계 완료**.
+- 실행할 때마다 `완료한 일/하지 못한 일/다음 작업/진척%/남은 순작업+예비시간/실제 경과(미계측)/SHA와 CI`를 명시. 마지막 보고가 GitHub 기록과 일치하지 않으면 바로 보정.

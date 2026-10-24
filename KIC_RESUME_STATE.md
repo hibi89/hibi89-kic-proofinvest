@@ -1,5 +1,7 @@
 # KIC ProofInvest — 단일 새 채팅 복원 기준 (LIVE SNAPSHOT)
-> 스냅샷 2026-10-24 14:39:37 KST KST. 저장소 `hibi89/hibi89-kic-proofinvest`, 코드·업무의 단일 활성 브랜치 `lead/kic`. **채팅 대화·과거 HANDOFF보다 GitHub 최신 원격 HEAD와 이 문서의 최신본을 우선한다. 이 문서의 SHA는 스냅샷 증거이지 영구 고정 HEAD가 아니다.**
+> **영구 작업 종료 의무:** [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) — 매 작업 완료·일시중단·BLOCKED 직후 본 문서를 갱신하고 GitHub에 커밋·검증한다. 새 채팅에서 필요한 설명을 사용자에게 다시 요청하지 않는다.
+>
+> 스냅샷 2026-10-24 14:39:37 KST. 저장소 `hibi89/hibi89-kic-proofinvest`, 코드·업무의 단일 활성 브랜치 `lead/kic`. **채팅 대화·과거 HANDOFF보다 GitHub 최신 원격 HEAD와 이 문서의 최신본을 우선한다. 이 문서의 SHA는 스냅샷 증거이지 영구 고정 HEAD가 아니다.**
 
 ## 사용자가 입력하는 것은 단 한 줄
 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`

@@ -1,3 +1,5 @@
+> **2026-10-24 14:44:22 KST 새 채팅 한 줄 전용 영구 인수 기준:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). 모든 작업 종료·부분중단 시 반드시 최신 HEAD의 [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md)에 최종 상태/남은 일/다음 작업을 기록하고, 일별 진행률·잔여시간·STATUS·상위보고를 동기화. 이번 변경은 인수 규칙 명문화이며 Risk 11/01 실제 개발 미착수. 
+
 > **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
 
 > **새 채팅 복원 시 작업 진척량 읽기 (2026-10-24 13:52:13 KST)**: [DAILY_PROGRESS.md](DAILY_PROGRESS.md) 10/24 계획 100%=남은 0h; 10/25 예정 0%=기본 1h+예비 3h→최대 4h. 독립된 KIC 프로젝트 총 완성도/실제 경과시간과 혼동 금지. 매 종료 시 실측(없으면 미계측)·코드 근거와 함께 갱신.

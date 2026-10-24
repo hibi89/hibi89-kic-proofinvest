@@ -1,3 +1,5 @@
+> **영구 종료 정책 적용 2026-10-24 14:44:22 KST:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). **매 작업이 끝나면 다음 채팅의 한 줄 명령으로 즉시 재개할 수 있도록 중앙 KIC_RESUME_STATE 포함 6문서 갱신·원격 커밋·CI 검증이 필수**. 11/01 Risk 안전 계산이 다음 미착수 작업이며, 차단 DAKER 35%·DART 90% 변경 없음.
+
 > **최상단 포인터 갱신 2026-10-24 14:39:37 KST:** 새 채팅 사용자 입력 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` → [루트 KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 최신 확인. 마지막 Risk 입력 gate 100%/67 PASS, 다음 실행 가능한 업무 **11/01 Risk 결측·0분모·음수자본 처리, 아직 0% (기본 1.5h+예비 3.5h=5h 상한)**. 원래 10/25 DAKER 35%, 10/30 DART 90% 차단·복구 계획 유지. 완료한 10/31 등은 반복 금지. 이 포인터 갱신은 코드 개발 완료를 의미하지 않음.
 
 > **LATEST VERIFIED 2026-10-24 14:33:21 KST: 10/31 Risk verified-only 입력 게이트 100/100=100%/남은 0h, [CI 67/67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713) (`5f05a0b`). 다음 11/01 결측·0분모·음수자본 처리. DAKER 35%/3h, DART 90%/1.5h 차단 유지. 공식 원문 인증·Risk 계산은 별도 검증 대상.**

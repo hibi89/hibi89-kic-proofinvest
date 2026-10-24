@@ -1,3 +1,5 @@
+> **영구 종료 게이트:** [KIC_HANDOFF_CONTRACT.md](../../../KIC_HANDOFF_CONTRACT.md). 구현·CI가 끝나도 **모든 작업 종료/부분중단 때마다** 루트 KIC_RESUME_STATE, LEAD_ACTIVE_WORK, DAILY_PROGRESS, STATUS/HANDOFF/TO_HACKATHON_LEAD를 업데이트·커밋하고 원격 확인할 때까지 DONE 선언 금지.
+
 # KIC — Lead-as-Builder execution protocol (CURRENT)
 Effective 2026-10-24 KST. Supersedes worker-chat dispatch and earlier role separation language.
 
