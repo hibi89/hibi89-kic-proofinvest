@@ -1,3 +1,5 @@
+> **작업 우선순위 최상위(2026-10-24 사용자 승인):** [선행 개발·순서 유연화 규약](../../WORK_ORDER_FLEX_POLICY_20261024.md). `ㄱ` 때 완료된 날짜를 순서대로 소비하지 말고 실제 실행 가능한 **다음 최우선 독립 작업**을 선택해 코딩·테스트·커밋. 원래 계획일/실제 완료일 별도 표기, 달력일 100% 이중 계상 금지, DAKER 접근 35%·DART 뷰어 90% BLOCKED 임의 완료 금지. 기존 완료 Research·실기업 판정 반복 불가. 기존 작업표/시간·공식 마감 유지.
+
 > **LATEST 2026-10-24 14:29:41 KST: 10/31 Risk verified-only 입력 게이트 선행 구현 진행. 임시 60% / 남은 기본 0.5h+예비 1h=1.5h, 새 12개+기존 54개 CI 미확인. 차단된 DAKER 35%, DART 90% 유지. [기술 인계](RISK_VERIFIED_INPUT_GATE_20261024.md).**
 
 > **2026-10-24 14:26:10 KST BLOCKED TASK RECOVERY:** [BLOCKED_WORK_RECOVERY_20261024.md](BLOCKED_WORK_RECOVERY_20261024.md) — DAKER 35% 10/25~26 접근 후 3h, DART 90% 10/27 공식뷰어 접근 후 1.5h. Research 기존 10/26~27 전부 선행 완료, 코드 반복 금지. Next free development `10/31 Risk verified-only` when user sends `ㄱ`. Blocked % must stay unchanged until evidence. No autonomous scheduled run.
