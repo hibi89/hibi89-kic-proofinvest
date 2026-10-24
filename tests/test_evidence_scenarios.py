@@ -45,6 +45,25 @@ class ActualEvidenceScenariosTests(unittest.TestCase):
         self.assertEqual(verify_growth_claim(self.evidence(),"not-a-number")["state"],"unavailable")
         self.assertEqual(verify_growth_claim(self.evidence(),None)["state"],"unavailable")
 
+    def test_self_reported_dart_verification_cannot_be_forged(self):
+        evidence = self.evidence()
+        evidence["dart_filing"]["direct_viewer_verified"] = True
+        evidence["dart_filing"]["viewer_failure"] = None
+        evidence["dart_filing"]["reference_only"] = "20250311001085"
+        for claim in ("16.20", "30", None):
+            with self.subTest(claim=claim):
+                verdict = verify_growth_claim(evidence, claim)
+                self.assertIs(verdict["dart_viewer_verified"], False)
+                self.assertEqual(verdict["source_kind"], "MANUAL_PRIMARY_SOURCE_VERIFICATION")
+                self.assertIn("no live document authentication", verdict["verification_scope"])
+
+    def test_self_reported_dart_verification_not_trusted_without_filing_metadata(self):
+        evidence = self.evidence()
+        evidence["dart_filing"] = {"direct_viewer_verified": True}
+        self.assertFalse(verify_growth_claim(evidence, "16.20")["dart_viewer_verified"])
+        evidence.pop("dart_filing")
+        self.assertFalse(verify_growth_claim(evidence, "16.20")["dart_viewer_verified"])
+
     def test_missing_evidence_fails_closed(self):
         self.assertEqual(verify_growth_claim(None,"16.2")["state"],"unavailable")
         self.assertEqual(verify_growth_claim({},"16.2")["state"],"unavailable")

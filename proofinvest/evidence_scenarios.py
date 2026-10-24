@@ -110,10 +110,11 @@ def verify_growth_claim(evidence: Any, claim_pct: Any) -> dict[str, Any]:
         return base
     base["source_url"] = url
     base["fiscal_year"] = year
-    base["dart_viewer_verified"] = bool(
-        isinstance(evidence.get("dart_filing"), Mapping)
-        and evidence["dart_filing"].get("direct_viewer_verified") is True
-    )
+    # This path only reads caller-supplied JSON; it never opens the DART
+    # viewer. A self-reported "direct_viewer_verified": true can be forged
+    # and MUST NOT upgrade independent source authentication.
+    # A future live verifier must produce a separately authenticated receipt.
+    base["dart_viewer_verified"] = False
     computed = (current - previous) / previous * 100
     base["computed_pct"] = str(computed.quantize(Decimal("0.01")))
     claim = amount(claim_pct)
