@@ -19,7 +19,7 @@
 - 실제 데이터 인증 성공 거짓 주장 방지
 - 입력값 비변경·순서독립 검증
 
-신규 테스트 `tests/test_risk.py` **12개** 및 기존 **54개** → 총 **66개 예상**. GitHub CI 실행 후 실제 66/66 판정을 검증한다. 외부 API 키/네트워크/원본 회사 실자료 추가 호출 없음.
+신규 테스트 `tests/test_risk.py` **13개** 및 기존 **54개** → [CI **67/67 PASS**](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713). GitHub CI 실행 후 실제 66/66 판정을 검증한다. 외부 API 키/네트워크/원본 회사 실자료 추가 호출 없음.
 
 ## 10/31 계획 100점 게이트
 | 증거 | 점수 |
@@ -30,4 +30,11 @@
 | GitHub 원격 SHA/인수인계·상위 총괄 동기화 | 10 |
 | **합계** | **100** |
 
-초기 코드 커밋 시 **60/100=60% 잠정**, 남은 기본 추정 0.5h + 오류·검수 예비 1.0h = 보수적 약 **1.5h**. 완료/미완료는 실제 Actions 결과로만 확정. 실소요시간 미계측.
+최종 **100/100=100%**, 남은 순작업 0h + 예비 0h = 0h (10/31 단일 작업). 실제 소요시간 미계측. 60%는 중간 잠정 기록.
+
+## 2026-10-24 14:33:21 KST — 10/31 Risk verified-only 입력 게이트 ACCEPTED_ON_LEAD
+- 소스 `proofinvest/risk.py`, `tests/test_risk.py` 구현 커밋 `7a4c753`, 강화 커밋 **`5f05a0bb237ebfbe4837a21c2aaa37fb276a82b9`**. [GitHub CI 40066575713](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713) job `120790987943` **67/67 PASS**, 기존 합성 CLI + 공개기업 수동기록 CLI 2건 모두 PASS.
+- 최초 Risk 신규 12건으로 66 PASS. 검수 중 `source_kind`가 해시 불가능한 목록·객체인 경우 예외 발생 가능성을 확인해 차단 패치 + 반례 1개 보강. **신규 Risk 테스트 13개**, 기존 54개 포함 **67/67**.
+- **10/31 과제 100/100=100%**: 기존 코드·신뢰 경계 검토 20/20, verified-only 입력 차단 구현 40/40, 67 테스트·CLI 성공 30/30, 원격 증거·인계 공시 10/10. **잔여 기본 0h + 검수 예비 0h = 0h** (이 과제만). 실제 수행시간 미계측.
+- `eligible`=두 위험 입력의 verified 표시·동일 재무제표/연도/기업/자료 메타데이터 조건 충족이지 **실제 원본 진위 인증 아님**. `authenticated_external_source=false`, `risk_calculated=false` 반환. **구형 `engine.calculate` 탐색성 부채비율은 이 게이트 미경유**. 실서비스 E2E나 리스크 계산 전체 완성으로 주장 금지.
+- 최신 사용자 승인 [선행 순서 유연화](../../WORK_ORDER_FLEX_POLICY_20261024.md) 존중. 다음 독립 개발은 **11/01 Risk 0분모·결측·음수자본 안전 계산/반례**. DAKER 10/25 계획 35%/접근 후 3h, DART 10/30 계획 90%/접근 후 1.5h 별도 BLOCKED 유지, [복구 일정](BLOCKED_WORK_RECOVERY_20261024.md)은 변경 없음.

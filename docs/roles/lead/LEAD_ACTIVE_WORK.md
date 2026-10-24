@@ -1,3 +1,5 @@
+> **LATEST VERIFIED 2026-10-24 14:33:21 KST: 10/31 Risk verified-only 입력 게이트 100/100=100%/남은 0h, [CI 67/67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713) (`5f05a0b`). 다음 11/01 결측·0분모·음수자본 처리. DAKER 35%/3h, DART 90%/1.5h 차단 유지. 공식 원문 인증·Risk 계산은 별도 검증 대상.**
+
 > **작업 우선순위 최상위(2026-10-24 사용자 승인):** [선행 개발·순서 유연화 규약](../../WORK_ORDER_FLEX_POLICY_20261024.md). `ㄱ` 때 완료된 날짜를 순서대로 소비하지 말고 실제 실행 가능한 **다음 최우선 독립 작업**을 선택해 코딩·테스트·커밋. 원래 계획일/실제 완료일 별도 표기, 달력일 100% 이중 계상 금지, DAKER 접근 35%·DART 뷰어 90% BLOCKED 임의 완료 금지. 기존 완료 Research·실기업 판정 반복 불가. 기존 작업표/시간·공식 마감 유지.
 
 > **LATEST 2026-10-24 14:29:41 KST: 10/31 Risk verified-only 입력 게이트 선행 구현 진행. 임시 60% / 남은 기본 0.5h+예비 1h=1.5h, 새 12개+기존 54개 CI 미확인. 차단된 DAKER 35%, DART 90% 유지. [기술 인계](RISK_VERIFIED_INPUT_GATE_20261024.md).**
@@ -98,3 +100,10 @@
 - 입증 범위: 실제 삼성전자 FY2024/23 CFS 수동 근거 + Decimal 산술 검산을 이용하는 오프라인 판정도구. `verified`=제공된 수동 검산 기록과 주장의 일치. `conflict`=30% 주장이 16.20%에 불일치. `unavailable`=원본 기록 누락/기간·단위·출처·수치 문제. 출처 진위·라이선스·DART 접수번호 자동 확인은 미실증.
 - **잔여 차단 일정 유지**: 10/25 DAKER 제출권한·공식 PPTX **35%**, 접속 이후 예상 1h 기본+2h 예비=3h; 10/30 DART 뷰어 직접 대조 **90%**, 접근 후 예상 0.5h+1h=1.5h. 서버·계정 대기시간은 미정. 상위 총괄은 [DAILY_PROGRESS.md](DAILY_PROGRESS.md) 실적판에서 날짜별 별개 수치를 확인.
 - **다음 코딩 작업**: 10/31 계획 `Risk` 모듈에서 **financial verified-only 입력 게이트** 최소 단위 구현/반례 테스트. 다음 `ㄱ` 때 이 지점부터 재개, 이미 완료한 Research·10/28·10/29·11/02 산출물 반복 구현 금지. 11/01 결측·0분모·음수자본, 11/03~ PDF 초안은 일정 유지.
+
+## 2026-10-24 14:33:21 KST — 10/31 Risk verified-only 입력 게이트 ACCEPTED_ON_LEAD
+- 소스 `proofinvest/risk.py`, `tests/test_risk.py` 구현 커밋 `7a4c753`, 강화 커밋 **`5f05a0bb237ebfbe4837a21c2aaa37fb276a82b9`**. [GitHub CI 40066575713](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713) job `120790987943` **67/67 PASS**, 기존 합성 CLI + 공개기업 수동기록 CLI 2건 모두 PASS.
+- 최초 Risk 신규 12건으로 66 PASS. 검수 중 `source_kind`가 해시 불가능한 목록·객체인 경우 예외 발생 가능성을 확인해 차단 패치 + 반례 1개 보강. **신규 Risk 테스트 13개**, 기존 54개 포함 **67/67**.
+- **10/31 과제 100/100=100%**: 기존 코드·신뢰 경계 검토 20/20, verified-only 입력 차단 구현 40/40, 67 테스트·CLI 성공 30/30, 원격 증거·인계 공시 10/10. **잔여 기본 0h + 검수 예비 0h = 0h** (이 과제만). 실제 수행시간 미계측.
+- `eligible`=두 위험 입력의 verified 표시·동일 재무제표/연도/기업/자료 메타데이터 조건 충족이지 **실제 원본 진위 인증 아님**. `authenticated_external_source=false`, `risk_calculated=false` 반환. **구형 `engine.calculate` 탐색성 부채비율은 이 게이트 미경유**. 실서비스 E2E나 리스크 계산 전체 완성으로 주장 금지.
+- 최신 사용자 승인 [선행 순서 유연화](../../WORK_ORDER_FLEX_POLICY_20261024.md) 존중. 다음 독립 개발은 **11/01 Risk 0분모·결측·음수자본 안전 계산/반례**. DAKER 10/25 계획 35%/접근 후 3h, DART 10/30 계획 90%/접근 후 1.5h 별도 BLOCKED 유지, [복구 일정](BLOCKED_WORK_RECOVERY_20261024.md)은 변경 없음.

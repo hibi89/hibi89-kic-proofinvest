@@ -219,3 +219,10 @@
 - 신규 `proofinvest/risk.py`: verified 상태 및 부채/자본 두 지표·동일 기업/공시/기간/CFS/OFS/통화/연간보고서/HTTPS 근거가 **모두 일치해야만 eligible**, 불일치·미검증·중복은 unavailable. 리스크 비율 계산은 11/01 예정으로 **아직 미구현**, 구형 engine 합성 탐색출력은 새 Risk 게이트를 거치지 않는다.
 - 신규 `tests/test_risk.py` 테스트 12개, 기존 54개와 합계 **66개 CI 대기**. 내용/제약·개발 인계는 [RISK_VERIFIED_INPUT_GATE_20261024.md](RISK_VERIFIED_INPUT_GATE_20261024.md).
 - 10/31 슬롯 기준 설계 20점+구현 40점=**임시 60/100(60%)**, CI 30점·원격 인수 10점 아직 미검증. 잔여 예상 기본 0.5h+예비 1h=**1.5h**, 실제 수행시간 미계측. 10/25 DAKER 35% 접근 후 약 3h, 10/30 DART 90% 접근 후 1.5h BLOCKED 별도 유지.
+
+## 2026-10-24 14:33:21 KST — 10/31 Risk verified-only 입력 게이트 ACCEPTED_ON_LEAD
+- 소스 `proofinvest/risk.py`, `tests/test_risk.py` 구현 커밋 `7a4c753`, 강화 커밋 **`5f05a0bb237ebfbe4837a21c2aaa37fb276a82b9`**. [GitHub CI 40066575713](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713) job `120790987943` **67/67 PASS**, 기존 합성 CLI + 공개기업 수동기록 CLI 2건 모두 PASS.
+- 최초 Risk 신규 12건으로 66 PASS. 검수 중 `source_kind`가 해시 불가능한 목록·객체인 경우 예외 발생 가능성을 확인해 차단 패치 + 반례 1개 보강. **신규 Risk 테스트 13개**, 기존 54개 포함 **67/67**.
+- **10/31 과제 100/100=100%**: 기존 코드·신뢰 경계 검토 20/20, verified-only 입력 차단 구현 40/40, 67 테스트·CLI 성공 30/30, 원격 증거·인계 공시 10/10. **잔여 기본 0h + 검수 예비 0h = 0h** (이 과제만). 실제 수행시간 미계측.
+- `eligible`=두 위험 입력의 verified 표시·동일 재무제표/연도/기업/자료 메타데이터 조건 충족이지 **실제 원본 진위 인증 아님**. `authenticated_external_source=false`, `risk_calculated=false` 반환. **구형 `engine.calculate` 탐색성 부채비율은 이 게이트 미경유**. 실서비스 E2E나 리스크 계산 전체 완성으로 주장 금지.
+- 최신 사용자 승인 [선행 순서 유연화](../../WORK_ORDER_FLEX_POLICY_20261024.md) 존중. 다음 독립 개발은 **11/01 Risk 0분모·결측·음수자본 안전 계산/반례**. DAKER 10/25 계획 35%/접근 후 3h, DART 10/30 계획 90%/접근 후 1.5h 별도 BLOCKED 유지, [복구 일정](BLOCKED_WORK_RECOVERY_20261024.md)은 변경 없음.
