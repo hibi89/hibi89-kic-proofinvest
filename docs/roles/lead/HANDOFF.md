@@ -1,3 +1,16 @@
+## KIC 최신 10항 인수인계 — 2026-10-24 KST / 삼성전자 수동검산 UI·합성 전용 복원
+1. 목표: 기존 오프라인 Streamlit의 합성 데이터 모드 유지, 수동검산 자료를 투자 인증과 구분해 확인할 수 있는 별도 UI 추가.
+2. 설계: UI 자료 유형에 두 모드. full repo의 issuer 수동기록만 제공, ZIP 복원은 synthetic-only 옵션만 노출하고 모듈 lazy import.
+3. 테스트: 새 수동 UI 6건 + 복원 독립 subprocess AppTest 1건. 초기 KeyError(`report_year`) CI 실패 후 계약 `verification.fiscal_year` 수정. 최종 [CI40099102467](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40099102467) 196/196 PASS.
+4. 상태/시간: 별도 UI 작업 100/100, 잔여 기본0h+예비0h, 실제시간 미계측; 60일 원장 29 DONE / 3 BLOCKED / 28 NOT_STARTED, NEXT 2026-12-03 미래.
+5. 차단/대안: DAKER 10/25·11/09 각60% BLOCKED, DART 10/30 90% BLOCKED. 인증된 DAKER 제출화면 접근은 다른 Browser 원본 컨텍스트 필요; 실 제출/접수 무검증.
+6. Git: `lead/kic`, 코드 최종 `dbf180bb2034ebc04ccaba8c5275ea66b6d33947`; streamlit_app.py, tests/test_manual_issuer_streamlit.py, tests/test_synthetic_demo_bundle.py. [QA](MANUAL_ISSUER_STREAMLIT_UI_QA_20261024.md). 문서 커밋 SHA/CI는 원격 추가 확인.
+7. 배포: Python Streamlit headless AppTest + 복원 subprocess 실행 성공; 실제 브라우저 육안/E2E/Vercel/Production 없음.
+8. 데이터: 합성 ZIP에는 실제 발행사 PDF·기록 제외. 전체 repo의 삼성전자 공개 수치는 과거 수동 기록이며 실원문 자동 인증 아님. Private 10쪽 후보 PDF/PPTX·Library6 미수정.
+9. 다음: P0 DAKER 사용자 인증/팀장 업로드 권한 확인 후 별도 명시 승인으로 11/10 내부 조기 제출, 공식 11/12 10:00 마감, 접수 내역 최종 영수증 증빙. 나머지는 새 `ㄱ`에서 독립 생산성 검토.
+10. 복구: 이전 정상 HEAD `2c5d162`로 일반 revert 가능, 강제 푸시·원장 점수 조작 금지. 과거 실패 SHA `6b7e565`도 이력 보존.
+
+
 ## KIC 10항 최신 인수인계 — 2026-10-24 KST / 삼성전자 실 발행사 수동자료 CLI
 1. 목표: 별도 Research/Verification/Risk API를 한 명령으로 재현하고 실제 이미 검수된 공시 수치를 연결하되 가짜 실Risk 산출 금지.
 2. 설계: `python -m proofinvest.manual_case_demo` 기본 16.20% 산술 일치, `--claim 30` conflict; Risk는 실제 검증된 부채·자본 데이터 부재로 보류.

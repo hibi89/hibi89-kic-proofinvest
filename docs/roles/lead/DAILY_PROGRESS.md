@@ -1,3 +1,14 @@
+## 2026-10-24 KST — 부가 UI 실사용 시연 및 합성 ZIP 복원 정합성 (정본 60일 작업과 별도)
+| 실제 확인 게이트 | 배점 | 획득 |
+|---|---:|---:|
+| 기존 UI/근거·복원 의존성 검토 | 20 | 20 |
+| 합성 기본·수동 issuer 분리와 복원 fail-closed | 35 | 35 |
+| 신규6 UI + 복원1 회귀, 최종 196개 CI PASS | 30 | 30 |
+| 공식 시연 안내·QA·총괄 인계 | 15 | 15 |
+| **별도 UI 작업 합계** | **100** | **100** |
+- 추가 작업 완료 100%, 잔여 기본0h+예비0h, 실제 시간 미계측. 초기 `report_year` 결과 필드 오류로 CI FAIL 1회 → `fiscal_year` 교정·CI195 성공 → 합성-only ZIP 호환 보강·CI196 성공. 코드 HEAD `dbf180bb2034ebc04ccaba8c5275ea66b6d33947`, [최종 코드 CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40099102467). [QA](MANUAL_ISSUER_STREAMLIT_UI_QA_20261024.md).
+- 60일 정본 **29 DONE/3 BLOCKED/28 NOT_STARTED**, 다음 **2026-12-03** 결과 대기(미래), DAKER 권한 2건 60%·DART 90% 차단, 제출 미실시. 실 API·실 Agent E2E·UI 실제 브라우저 시연/배포 미검증.
+
 ## 2026-10-24 KST — 추가 실 발행사 수동근거 오프라인 실행 경로 (60일 원장 외)
 | 검증 항목 | 배점 | 획득 |
 |---|---:|---:|
