@@ -30,7 +30,7 @@ growth=(delta/previous*100).quantize(Decimal("0.01")) # 16.20%
 
 ## 재현 및 경계
 
-- 기계 판독 가능한 최소 숫자/메타데이터 영수증: [samsung_2024_cfs_revenue.json](../evidence/samsung_2024_cfs_revenue.json).
+- 기계 판독 가능한 최소 숫자/메타데이터 영수증: [samsung_2024_cfs_revenue.json](../../evidence/samsung_2024_cfs_revenue.json).
 - 합성 테스트/오프라인 자체 검산: `python -m unittest discover -s tests -v`. 숫자는 실제 공개된 금액을 사람이 옮긴 것이므로 출처 `MANUAL_PRIMARY_SOURCE_VERIFICATION`이며, 기존 `SYNTHETIC_FIXTURE`나 인증된 OpenDART 실 API 응답으로 분류하지 않는다.
 - 원본 삼성 PDF의 원문 전체/스크린샷은 저장소에 복제하지 않음. 공개된 두 수치와 출처 메타데이터만 보존. 정정공시/최신년도 실적/공시 이용 약관은 별도 확인.
 - 최종 DART 원문 대조 후에만 10/30 작업의 미완료 게이트 해제. 다음 11/02은 이 수동 영수증을 실제/틀린 주장/출처 미확인 Agent 시나리오에 **출처 진실성과 모델 출력을 구분해** 연결한다.
