@@ -2,9 +2,9 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **15** / BLOCKED **3** / NOT_STARTED **42** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-24 KST · DONE **16** / BLOCKED **3** / NOT_STARTED **41** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-11-15** CFS/OFS·단위 예외 1건 보완 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **19h** + 예비 **54.5h** = **73.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-11-16** Verification 누락·불확실성 표현 1건 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **18h** + 예비 **52.5h** = **70.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
 **차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **60%**(접근 후 기본0.5h+예비1.5h). 완료 처리 금지.
 
@@ -41,7 +41,7 @@
 |---|---|---|---:|---|---|---|---|---|
 | 2026-11-13 | 상호평가 가능 여부·잔여 투표 수 점검 | **NOT_STARTED** | 0% | — | 0.5h+1.5h | 0.5h+1.5h | 미계측 | — |
 | 2026-11-14 | Verification 예외 1건 회귀 개선 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/VERIFICATION_YEAR_END_REGRESSION_20261024.md) · `8aac6bfd0b` · [CI 40078163825](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40078163825) |
-| 2026-11-15 | CFS/OFS·단위 예외 1건 보완 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
+| 2026-11-15 | CFS/OFS·단위 예외 1건 보완 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/VERIFICATION_AMOUNT_UNITS_REGRESSION_20261024.md) · `95589dabd5` · [CI 40078759840](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40078759840) |
 | 2026-11-16 | Verification 누락·불확실성 표현 1건 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
 | 2026-11-17 | 검증 테스트/CI 및 잔여 장애 목록 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
 | 2026-11-18 | 상호평가 최소 의무 이행 마감 전 재확인 | **NOT_STARTED** | 0% | — | 0.5h+1.5h | 0.5h+1.5h | 미계측 | — |

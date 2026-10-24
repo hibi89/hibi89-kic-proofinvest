@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-15 선행 구현
+
+1. **목표·확정요구·기술**: KIC ProofInvest 본선 진출 목표; Python 표준 라이브러리 오프라인 리서치·재무 검증·위험 신호. 대회 예선 PDF 11/12 10:00 KST까지 공식 제출 필요.
+2. **완료·변경·설계**: 같은 선택 CFS/OFS 내 통화/단위가 섞이거나 일부 누락일 때 수치 계산을 차단. A 사전 일관성 검사 vs B 자동 환산 중 A 채택(비용0·오인 위험 감소). 누락 선택 메타데이터는 합성 fixture 호환; 실제 원본 진위 인증 아님. 루트 마스터 stale 수치 제거.
+3. **테스트**: `python -m unittest discover -s tests -v` / `python scripts/master_progress.py --check`; 새 5건 포함 [GitHub CI #40078759840](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40078759840) **90 PASS/0 FAIL/0 ERROR**, 합성 CLI·공개기업 수동기록 CLI SUCCESS. 로컬·라이브 API·실 서비스 미검증.
+4. **완료/대기/차단**: 11/15 하루 100/100 DONE, 60일 16 DONE/3 BLOCKED/41 NOT_STARTED; DAKER 인증 10/25·11/09 각각60% BLOCKED, DART 10/30 90% BLOCKED, 11/10 공식 제출 NOT_STARTED.
+5. **오류·복구**: CI 실패0, 추가 재시도0; 스냅샷 원본 `c965a59d` 코드의 단위 혼합 오탐을 제거. 위험한 자동 환산/원본 덮어쓰기/force push 금지. 원격 Git 이력으로 역커밋 가능.
+6. **저장소·브랜치·SHA·경로**: `hibi89/hibi89-kic-proofinvest`, `lead/kic`, 코드 SHA `95589dabd50bfbad99110b3b004c094705443384`; `proofinvest/engine.py`, `tests/test_engine.py`, `docs/roles/lead/VERIFICATION_AMOUNT_UNITS_REGRESSION_20261024.md`, `docs/roles/lead/MASTER_PROGRESS.json`. 문서 최종 커밋 SHA는 GitHub 브랜치 재조회.
+7. **배포·실행환경**: Python 3.10+; GitHub Actions Python 3.11. Vercel/Production URL 없음, 실제 HTTP·브라우저 인증/기능 검증 **미적용**.
+8. **원본·보안**: DAKER 제출 후보 PDF/PPTX 개인 비공개 Library 6개 보관 기록, 이번 세션 파일 수정/다운로드 없음; GitHub Public에 원본·PII·토큰 업로드 금지. 실 API 키 제공·사용하지 않음.
+9. **다음 작업·승인·기준**: 11/16 Verification 누락·불확실성 표현 READY 0/100, 기본1h+예비2h=3h; 출력 근거 없는 때 `unavailable` 회귀·CI 후 종료. DAKER 계정 타입·팀장 제출권한·단일 PDF 실제 대응 P0, 사용자 인증/접수 실행 승인 필요. 11/12 마감 불변.
+10. **갱신 기준**: 2026-10-24 KST, 코드 커밋 `95589dabd50b`, CI #40078759840, 원장과 문서 같은 원격 트리에 반영 예정; 실제 투입시간 미계측. 해당 범위 외 성과·Prod 검증 주장 금지.
+
 > **LIVE 2026-10-24:** Master status **15 DONE / 3 BLOCKED / 42 NOT_STARTED**. Actual work: 11/14 planned Verification regression **DONE 100/100** with stale annual-report period/year guard and 3 new tests; [QA](VERIFICATION_YEAR_END_REGRESSION_20261024.md); CI 40078163825 **85/85 PASS**. Remaining base0h+reserve0h, actual time 미계측. **NEXT READY 2026-11-15** CFS/OFS and unit exceptions 0/100, base1h+reserve2h=3h. DAKER submission authority unverified (10/25+11/09 60%), DART viewer unverified (10/30 90%). No actual entry submission. [Master](MASTER_PROGRESS.md). Older work below is history.
 
 > **LIVE 2026-10-24 — DAKER pre-upload result**: [Master](MASTER_PROGRESS.md) 14 DONE, 3 BLOCKED, 43 NOT_STARTED. 11/09 planned rights and frozen PDF gate **60/100 BLOCKED**, file hash and 10 pages OK, no authenticated submit account/tab. [Details](DAKER_SUBMISSION_PREFLIGHT_20261024.md). Remain base0.5h+reserve1.5h=2h after login; actual time unmeasured. **NEXT independent 2026-11-14 0/100, base1h+reserve2h=3h** Verification exception regression. 11/10 submission not started; no user authorization or final receipt. 10/25 DAKER60% & 10/30 DART90% still blocked. Private single frozen PDF unchanged.
