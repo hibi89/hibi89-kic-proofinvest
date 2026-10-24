@@ -25,7 +25,13 @@ class SyntheticRecoveryBundleTests(unittest.TestCase):
         self.archive.write_bytes(a)
         restored = bundle.read_verified(self.archive)
         self.assertEqual(set(restored), set(bundle.SOURCES))
-        self.assertIn(b"SYNTHETIC_FIXTURE", restored["fixtures/synthetic_annual.json"])
+        fixture = json.loads(restored["fixtures/synthetic_annual.json"].decode("utf-8"))
+        self.assertEqual(len(fixture), 4)
+        self.assertTrue(all(row["rcept_no"] == "" for row in fixture))
+        with zipfile.ZipFile(self.archive, "r") as z:
+            manifest = json.loads(z.read(bundle.MANIFEST).decode("utf-8"))
+        self.assertEqual(manifest["source_kind"], "SYNTHETIC_FIXTURE")
+        self.assertIs(manifest["officially_submitted"], False)
 
     def test_public_bundle_excludes_private_submissions_and_keys(self):
         self.archive.write_bytes(bundle.build_bytes())
