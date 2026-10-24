@@ -2,9 +2,9 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **18** / BLOCKED **3** / NOT_STARTED **39** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-24 KST · DONE **19** / BLOCKED **3** / NOT_STARTED **38** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-11-20** Research 출처·라이선스 근거 한 가지 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **16h** + 예비 **48.5h** = **64.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-11-21** Research 동종기업 선정 설명 한 가지 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **15h** + 예비 **46.5h** = **61.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
 **차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **60%**(접근 후 기본0.5h+예비1.5h). 완료 처리 금지.
 
@@ -46,7 +46,7 @@
 | 2026-11-17 | 검증 테스트/CI 및 잔여 장애 목록 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/VERIFICATION_CI_BLOCKER_AUDIT_20261024.md) · `53cdecdc57` · [CI 40079648079](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40079648079) |
 | 2026-11-18 | 상호평가 최소 의무 이행 마감 전 재확인 | **NOT_STARTED** | 0% | — | 0.5h+1.5h | 0.5h+1.5h | 미계측 | — |
 | 2026-11-19 | 10:00 상호평가 종료 검수 | **NOT_STARTED** | 0% | — | 0.5h+1.5h | 0.5h+1.5h | 미계측 | — |
-| 2026-11-20 | Research 출처·라이선스 근거 한 가지 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
+| 2026-11-20 | Research 출처·라이선스 근거 한 가지 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/RESEARCH_OPENDART_RIGHTS_REVIEW_20261024.md) · `417402f50c` · [CI 40080277200](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40080277200) |
 | 2026-11-21 | Research 동종기업 선정 설명 한 가지 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
 | 2026-11-22 | 전체 예비일: 지연된 테스트 보완만 | **NOT_STARTED** | 0% | — | 0h+3h | 0h+3h | 미계측 | — |
 | 2026-11-23 | Research 회귀·중복 근거 테스트 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |

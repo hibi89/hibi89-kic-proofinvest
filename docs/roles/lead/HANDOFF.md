@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-20 Research Rights
+
+1. **목표·작업**: 2026 KIC ProofInvest 예선 설계/오프라인 Research·Verification·Risk, Python3.10+; 공식 PDF 제출일 11/12 10:00 KST는 사용자 권한/승인 의존.
+2. **구현·설계 선택**: OpenDART 공식 사용 약관을 근거로 자료 구조적 출처검사와 2차 복제/재배포 권리를 분리. A 설명 문서만 vs B `research.py` 별도 명시 필드+2개 테스트 중 B. `rights_review_status=not_verified`, `redistribution_clearance=not_established`, `license` 라벨 원본 유지; 어떤 라벨에도 허가 자동 부여 안 함.
+3. **CI/검증**: `python -m unittest discover -s tests -v` 98/98 PASS, `python scripts/master_progress.py --check`, `python render_master_progress.py --check`, 합성/수동기록 CLI GitHub Actions 정상 [GitHub CI #40080277200](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40080277200); 별도 로컬 테스트·인증 OpenDART 미실행.
+4. **진도/현황**: 원래 11/20 계획을 10/24 선행 100/100 DONE; 잔여 기본0h+예비0h, 실제 시간 미계측. 60일 **19 DONE/3 BLOCKED/38 NOT_STARTED**. 미래 11/18~19 상호평가 미착수·11/10 최종 공식 접수 미착수.
+5. **오류·보안·재시도**: Research 이전 `license` 문자열은 단순 입력 메타데이터인데 배포허가로 오해 가능. 새 필드 추가로 미확인 공개 재사용 금지, 법률적 허용/금지 결론은 아님. DAKER 개인/팀장 인증 제출권한 P0 BLOCKED 각60%, DART 보고서 원문 접수번호 P1 BLOCKED 90%. 승인 없는 API/원문 재배포 금지.
+6. **코드/원격**: `hibi89/hibi89-kic-proofinvest` `lead/kic`, 코드 SHA `417402f50cd3f33d3c2468f5b0203ee7d74061e9`, `proofinvest/research.py`, `tests/test_research.py`; [QA](docs/roles/lead/RESEARCH_OPENDART_RIGHTS_REVIEW_20261024.md), `docs/roles/lead/MASTER_PROGRESS.json`. 문서 HEAD 최종 원격 조회.
+7. **환경·Production**: GitHub Actions ubuntu-latest Python3.11, 실제 OpenDART 인증 API·Agent/browser E2E·Vercel/Production URL 없음. 오프라인 CI 성공은 출처 진위·라이선스 법률판정·운영 성공이 아님.
+8. **원본·복원·권한**: 직전 원격 커밋 `d64048ffbe6a0ed450ceb7ed02b6108111d2ae51`에서 역커밋 가능. 사용자 Private Library frozen 10p PDF/PPTX 6백업 이전 기록 유지, 이번 작업에서 조회·수정·공개 GitHub 업로드 없음. 비밀 키/세션 토큰/PII 유출 금지. force push·main/feature 변경 없음.
+9. **다음 작업/완료 정의**: 11/21 Research Peer 선정 근거 한 가지, 0/100 기본1h+예비2h=3h. 객관적 비교 집단·선정 규칙·출처 명시, 허위 실제 기업 검증 피함. DAKER 인증 접근 가능해지면 P0 권한 회수 우선, 11/18~19 실제 상호평가 결과는 공식 시점 후 증거 확인.
+10. **시점·증거**: 2026-10-24 KST, 코드 `417402f50cd3f33d3c2468f5b0203ee7d74061e9`, [GitHub CI #40080277200](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40080277200); QA와 상위 인계 갱신. 실소요 미계측, 다른 저장소/외부 서비스 무작업.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-17 Verification QA
 
 1. **목표·확정요구·기술**: KIC ProofInvest 예선 상위12팀 목표, Python 3.10+ 오프라인 금융 Research/Verification/Risk. 실제 Agent/Production은 미완료. 공식 PDF 예선 마감 2026-11-12 10:00 KST.
