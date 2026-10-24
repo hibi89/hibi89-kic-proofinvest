@@ -5,7 +5,7 @@ No I/O, remote calls, LLM use, or external dependencies.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 import re
@@ -21,6 +21,21 @@ def _day(value: Any) -> date | None:
             return None
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
         return parsed.date() if parsed.tzinfo is not None else None
+    except ValueError:
+        return None
+
+
+def _instant(value: Any) -> datetime | None:
+    """Parse an offset-aware timestamp only; date-only records have day precision.
+
+    Compare in UTC to prevent same-day or cross-offset ordering errors.
+    An invalid timestamp is still rejected by the existing _day guard.
+    """
+    if not isinstance(value, str) or "T" not in value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else None
     except ValueError:
         return None
 
@@ -116,6 +131,14 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         collected = _day(source["collected_at"])
         if published is None or collected is None or collected < published:
             warn("invalid_source_date", f"source id {sid!r} has invalid chronology")
+            continue
+        # Two offset-aware timestamps also have a meaningful intra-day order.
+        # Comparing only local calendar dates could accept documents collected
+        # before publication (including across different UTC offsets).
+        published_at = _instant(source["published_at"])
+        collected_at = _instant(source["collected_at"])
+        if published_at is not None and collected_at is not None and collected_at < published_at:
+            warn("invalid_source_date", f"source id {sid!r} was collected before publication time")
             continue
         if published > as_of:
             warn("future_published", f"source id {sid!r} was published after requested as_of")
