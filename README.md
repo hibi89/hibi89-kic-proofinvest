@@ -1,4 +1,4 @@
-> **KIC 60일 통합 진도 정본 — 2026-10-24 KST:** [MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md) / [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json). 날짜별 11 DONE / 2 BLOCKED / 47 NOT_STARTED. **NEXT `2026-11-06` 전체10쪽 PDF 사실검수 0%, 기본1.5h+예비3.5h=5h**. DAKER 60%, DART 90% BLOCKED. 최신 PPTX/PDF 비공개 Library에 **2개 영구 저장 성공**, 공개 GitHub에는 원본 미업로드. 아래 옛 포인터는 시점별 이력.
+> **현행 진도·다음 작업 정본:** [60일 JSON](docs/roles/lead/MASTER_PROGRESS.json) → [자동 생성 전체 표](docs/roles/lead/MASTER_PROGRESS.md) → [현재 KIC 단일 작업](docs/roles/lead/LEAD_ACTIVE_WORK.md). README에는 완료 숫자·다음 날짜를 중복 기록하지 않습니다. 제출권한/실 API/Production 상태는 반드시 최신 인계와 실제 실행 증거로 확인합니다.
 
 > **상시 강제 규칙 (2026-10-24 14:44:22 KST)**: [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) — **모든 작업 종료·부분중단마다 GitHub 최신화+복원 상태+일일 100점 진도+남은 시간+다음 작업 갱신·원격 확인이 끝나야만 종료 가능**. 사용자 시작 명령은 오직 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`; 추가 인수인계 프롬프트 요청 금지. 이 문구보다 오래된 종료 규칙은 본 강제 규약으로 대체.
 
@@ -10,14 +10,14 @@
 
 # ProofInvest | KIC AI Agent Competition
 
-> **한 개의 범용 KIC 개발자 채팅으로 순차 작업:** [WORKER_ROUTER.md](docs/roles/lead/WORKER_ROUTER.md) → [유일한 NEXT_TASK.md](docs/roles/lead/NEXT_TASK.md) → [작업자 채팅 시작 프롬프트](docs/roles/lead/WORKER_CHAT_START_PROMPT.md). **현재 READY KIC-R-001**, `feature/research` 한 곳만. KIC 총괄 검수 전 다음 작업 자동 실행 금지.
+> **현재 운영:** KIC 총괄 한 채팅에서 설계·개발·검수하고 `lead/kic` 한 브랜치에서 다음 실제 과제를 수행합니다. 구 [WORKER_ROUTER.md](docs/roles/lead/WORKER_ROUTER.md)와 [NEXT_TASK.md](docs/roles/lead/NEXT_TASK.md)의 `KIC-R-001` 지시는 **폐기된 이력**으로, 새로운 작업을 발행하지 않습니다. [현행 직접 개발 규약](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md)과 [단일 활성 작업](docs/roles/lead/LEAD_ACTIVE_WORK.md)을 우선합니다.
 
-> **확정 협업정책:** Research·Verification·Risk는 브랜치/역할만 3개이며 **동시 개발하지 않는다**. 기능 작업자는 1명만 활성, Research → Verification → Risk → KIC 총괄 통합. [KIC 확정 일정표](docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md) 및 [총괄 운영 규칙](docs/roles/lead/OPERATIONS.md) 준수.
+> **제품 구조:** Research → Verification → Risk는 별도 채팅 작업자가 아니라 하나의 ProofInvest 제품에 속한 모듈입니다. `main` 및 기존 `feature/*`는 변경 이력을 보존하며 `lead/kic` 작업과 자동 동기화되지 않습니다.
 > **3개 대회 전체 일정·충돌·제출 마감:** [docs/COMPETITION_SCHEDULE.md](docs/COMPETITION_SCHEDULE.md) (**2026-10-24 KST 공시**). 이 브랜치에서 작업을 시작할 때 마감과 내부 조기 제출 목표를 확인하며 공식 변경 시 대회 총괄에게 보고한다.
 
 
 
-> **이 브랜치의 새 채팅 재개 경로:** docs/roles/lead/HANDOFF.md → STATUS.md → OPERATIONS.md → AGENTS.md → REQUIREMENTS.md → 소스. 최신 상태는 기능별 역할 폴더가 기준이며, 공통 루트 HANDOFF.md를 담당자 인수인계로 오해하지 말 것.
+> **이 브랜치의 새 채팅 재개 경로:** 최신 `lead/kic` HEAD → [CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) → [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) → [LEAD_ACTIVE_WORK.md](docs/roles/lead/LEAD_ACTIVE_WORK.md) → [단일 JSON](docs/roles/lead/MASTER_PROGRESS.json) → 실제 소스·CI. 오래된 역할별 문서는 참고 기록일 뿐 현재 지시권이 없습니다.
 
 기관 투자 검토에 필요한 산업·기업 리서치, 공시 수치 검증, 재무 위험 신호 탐지를 하나의 근거 중심 워크플로로 연결하는 **개발 중인 MVP**.
 
@@ -33,7 +33,7 @@
 | 담당 2 | `feature/verification` | 공시·재무 수치 교차검증 |
 | 담당 3 | `feature/risk` | 설명 가능한 위험 신호 탐지 |
 
-각 담당자가 새 채팅에서 시작할 때: **해당 브랜치의 `HANDOFF.md → STATUS.md → AGENTS.md → REQUIREMENTS.md → 소스 코드` 순으로 확인**. 다른 브랜치를 자의로 수정하지 않습니다.
+위 feature 브랜치는 이력·원본 비교용으로 보존합니다. **새 작업은 `lead/kic`에서 총괄이 직접 수행하며**, 사용자 승인 없이 `main` 통합·브랜치 삭제·강제 push를 진행하지 않습니다.
 
 ## 오프라인 검증
 
