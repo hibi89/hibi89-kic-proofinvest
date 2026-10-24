@@ -2,13 +2,13 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **13** / BLOCKED **2** / NOT_STARTED **45** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-24 KST · DONE **14** / BLOCKED **2** / NOT_STARTED **44** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-11-08** 기획서 최종 동결 0%, 기본 1h + 예비 3h = 4h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **21.5h** + 예비 **61h** = **82.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-11-09** 팀 제출권한·PDF 단일 최종본 대조 0%, 기본 1h + 예비 3h = 4h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **20.5h** + 예비 **58h** = **78.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
 **차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h). 완료 처리 금지.
 
-**비공개 산출물:** USER_PRIVATE_LIBRARY / KIC ProofInvest / Private Drafts / 4개 저장 성공. 공개 GitHub 비게시. 공식 DAKER 제출 완료 아님.
+**비공개 산출물:** USER_PRIVATE_LIBRARY / KIC ProofInvest / Private Drafts / 6개 저장 성공. 공개 GitHub 비게시. 공식 DAKER 제출 완료 아님.
 
 ## 예선 전 · 20일
 
@@ -29,7 +29,7 @@
 | 2026-11-05 | 기획서 8~10쪽 + PDF v1 출력 | **DONE** | 100% | 2026-10-24 | 2h+3h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_PAGES_8_10_QA_20261024.md) · `0378b81aa9` · [CI 40072620601](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40072620601) |
 | 2026-11-06 | PDF 팩트·출처·실증/미실증 구분 1차 검수 | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_FACT_CHECK_20261024.md) · `e0df218f73` · [CI 40074125319](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40074125319) |
 | 2026-11-07 | PDF 글자·이미지·링크·페이지 최종 QA | **DONE** | 100% | 2026-10-24 | 1.5h+3.5h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_VISUAL_FINAL_QA_20261024.md) · `9405668844` · [CI 40074861044](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40074861044) |
-| 2026-11-08 | 기획서 최종 동결 | **NOT_STARTED** | 0% | — | 1h+3h | 1h+3h | 미계측 | — |
+| 2026-11-08 | 기획서 최종 동결 | **DONE** | 100% | 2026-10-24 | 1h+3h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/PDF_FREEZE_20261024.md) · `ebf2c0cfef` · [CI 40076057576](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40076057576) |
 | 2026-11-09 | 팀 제출권한·PDF 단일 최종본 대조 | **NOT_STARTED** | 0% | — | 1h+3h | 1h+3h | 미계측 | — |
 | 2026-11-10 | DAKER 사용자 최종 제출·접수 영수증 확인 | **NOT_STARTED** | 0% | — | 1h+4h | 1h+4h | 미계측 | — |
 | 2026-11-11 | 예비일: 접수 오류 대응 전용(정상 제출 시 휴식) | **NOT_STARTED** | 0% | — | 0h+4h | 0h+4h | 미계측 | — |
