@@ -43,7 +43,7 @@ def _render_manual_case(st) -> None:
     )
     st.markdown(f"[발행기관 IR 게시 페이지]({result['issuer_ir_listing']})")
     a, b, c = st.columns(3)
-    a.metric("보고 연도", str(result["report_year"]))
+    a.metric("보고 연도", str(verification["fiscal_year"]))
     b.metric("매출 성장률(수동기록 계산)", (verification["computed_pct"] or "계산 불가") + ("%"
              if verification["computed_pct"] is not None else ""))
     c.metric("외부 원문 독립 인증", "미인증")
