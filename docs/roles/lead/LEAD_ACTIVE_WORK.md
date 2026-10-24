@@ -1,3 +1,5 @@
+> **10/25 계획 선착수 업데이트 (2026-10-24 13:58:12 KST):** [DAILY_PROGRESS.md](DAILY_PROGRESS.md) 및 [DAKER_PREFLIGHT_20261024.md](DAKER_PREFLIGHT_20261024.md) 확인. DAKER 100점 중 **35점/35% 검증 완료**(공식 규정 20 + 개인 Library 기획서 10페이지 15). 남은 65점은 실제 사용자 팀장 제출권한 40 + 공식 PPTX 파일 직접 열람 25의 BLOCKED. 남은 기본 **1h** + 복구 예비 **2h** = **접근 후 3h 추정**, 실제 시간 미계측·계정 대기시간 미정. 다음에는 기존 진척에서 재개, 반복 검수 금지.
+
 > **Current daily completion meter (2026-10-24 13:52:13 KST)**: [DAILY_PROGRESS.md](DAILY_PROGRESS.md) — 10/24 plan 100/100, remain 0h; separate advanced Research accepted; 10/25 DAKER planned 0/100, base remaining 1h + reserve 3h = conservative 4h (access uncertainty). Every work completion must refresh meter and upper lead report; project still incomplete.
 
 # KIC — LEAD_ACTIVE_WORK (sole execution queue)
