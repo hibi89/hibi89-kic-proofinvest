@@ -1,3 +1,5 @@
+> **상위 총괄 2026-10-24 14:14:47 KST KIC 실증:** 10/30 실기업 연결감사 매출 수동 검산 **90/100=90%**. 삼성전자 FY2024 300,870,903백만원 vs FY2023 258,935,494백만원→+16.20%([원본](https://images.samsung.com/is/content/samsung/assets/global/ir/docs/2025_SEC_Consolidated_Financial_statements.pdf)), [44/44 CI PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065436892). DART 원문 뷰어 불가, 10점 BLOCKED(접근 후 예상 최대 1.5h). DAKER 10/25 35% BLOCKED. 실 OpenDART API·실서비스·공식 제출 완료 아님.
+
 > **상위 총괄 선행 실적 2026-10-24 14:10:01 KST**: Verification 10/29 기간·연간 보고서 오염차단 **100% / 남은 0h**, CI [40065103938](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065103938) **40/40 PASS**(최초 CI 39/40 실패는 잘못된 합성 테스트 기대값, 수정 후 재검증). DAKER 10/25 **35% / 접근 후 예상 잔여 3h BLOCKED**. 다음은 10/30 실제 공시 원본 1개기업 수치 2개년 검산이며 아직 0%. `DAILY_PROGRESS.md`를 최우선 조회.
 
 > **상위 해커톤 총괄 실작업 최신 (2026-10-24 14:02:36 KST):** KIC Verification 중복 계정 fail-closed 10/28 계획을 앞당겨 완료 **100/100=100%, 남은 예상 0h**, [CI 40064628185](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40064628185) 31/31 PASS. DAKER 10/25 계획은 **35/100=35%, 계정+공식양식 미확인 65점 BLOCKED, 접근 후 잔여 기본 1h+예비 2h=약 3h**. 실제 시간 미계측. 리드 실적판 [DAILY_PROGRESS.md](DAILY_PROGRESS.md). 다음 10/29 기간/CFS/OFS 검증, 실제 공시 10/30.
@@ -311,3 +313,10 @@
 - 신규 `tests/test_public_filing_evidence.py` 4개 추가; 기존 40개+4개 = 44개 **CI 실행 전 PENDING**. DART `20250311001085` 접수번호는 별도 출처로 확인한 조회 경로일 뿐, DART 직접 화면이 502라 미검증. 삼성자사 2024 Business Report PDF도 본문 접근 제한, 연결감사 PDF는 직접 실사 완료.
 - **10/30 일일 100점 가중 계획:** 공식 연결감사 PDF 근거 20/20, 2개년 원문 30/30, 계산·파일 영수증 25/25, CI 0/15(PENDING), DART 공식 뷰어 0/10(BLOCKED) → **임시 75%**.
 - 남은 기본 0.5h + 오류예비 1h = 접근 후 최대 1.5h 추정(미확인 DART 원문, CI 실패 시 재산정). 10/25 DAKER 계정/공식 PPTX는 계속 35% BLOCKED, 별개 게이트. 실제 시간 미계측.
+
+## 2026-10-24 14:14:47 KST — 10/30 실제 공시 검산 CI 검증 완료 (90/100=90%)
+- 삼성전자 발행 PDF 원본을 시각 대조한 **2024·2023 연결매출 300,870,903 / 258,935,494백만원**, `Decimal` 직접 검산 증감 **+41,935,409백만원, +16.20%**.
+- GitHub Actions [40065436892](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065436892), job `120787584893`, **44개 테스트 PASS**, 오프라인 합성 데모 PASS. 직접 컴파일/검증된 코드는 `916ac66eec7eb36669a477c22af4f54d5295bd13`. CI 영수증은 공시 원문 진위의 자동 재검증을 뜻하지 않으며 공개 원문은 작업자가 육안 확인.
+- 10/30 가중 게이트: 발행자 연결재무 PDF 20/20, 연도·금액·단위 30/30, Decimal 재현 JSON 25/25, CI 15/15, DART 접수번호 공식 뷰어 직접 대조 **0/10 (502 접근 차단)** → **90/100=90%**.
+- 남은 실제 업무: DART `20250311001085` 해당 기업 2024 사업보고서 원문 직접 열람 및 메타데이터 대조. 접근 가능한 이후 예상 순작업 **0.5h+접근·오류 예비 1h=상한 1.5h**, 서버 오류 대기시간 미지수. 실제 소요시간 **미계측**.
+- 다른 날짜 작업은 별도: 10/24 계획 100%, 10/28 중복계정 100%, 10/29 기간·CFS/OFS 100%, 10/25 DAKER 제출권한/공식 PPTX **35%**(접근 시 추가 약 3h). 다음 11/02은 이미 확보된 실증 출처를 이용한 `verified/conflict/unavailable` 시나리오 구축. 신규 실 API/유료 호출 없음.
