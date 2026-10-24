@@ -39,3 +39,9 @@
 - 이번 변경은 **일정 공시/운영 문서에 한정**, 기능 소스·API·팀 상태·본선 결과는 변경되지 않음. 공시만으로 제출 완료로 판단하지 않는다.
 
 - 일정 공시 완료는 제품 기능/오프라인 테스트 결과/CI 상태 변경이 아님; 이전 성공한 SHA에 한해서만 CI 성공을 인정하고 이번 문서 HEAD의 CI는 별도 재확인.
+
+## 2026-10-24 12:12:12 KST — 원격 전수 점검·KIC 세부 일정안
+- 새 고정 문서 `docs/roles/lead/AUDIT_EXECUTION_PLAN_20261024.md`: 저장소 5브랜치/작업자 메시지/코드 P0/9개 테스트 CI/PR·Issue 상태/공식 제출 조건/10/24~11/10 예선 일정/본선 조건부 일정/담당 역할·승인 대기. **계획안으로만** 기록; 실행/제출·설계 변경 없음.
+- `main 1300b9b31a5b`, `lead/kic 25fe5f60642a`, Research `1f05adcedff8`, Verification `d6b4827c1d4f`, Risk `3573455fd208` (이번 커밋 전 실 확인); 최신 5개 Actions PASS. main job 로그에서 **Ran 9 tests ... OK** 확인. 별도 실 API/브라우저/Production/최종 제출 미검증.
+- 통합 총괄 `hackathon-command-center-2026`의 일정과 충돌 방지: KIC 11/10 조기 제출 → 공식 11/12 10:00 → PayPal 11/13 05:00 → UGREEN 11/16 16:45. 사용자 제출 화면 최종 버튼·상호평가 필수 투표 확인 필요.
+- 별도 승인: 공통 데이터 스키마, OpenDART live 호출, 비용/보안. **신규 담당 지시 없음**. 자세한 기록은 `AUDIT_EXECUTION_PLAN_20261024.md` 및 `MESSAGE_REVIEW.md` 참조.
