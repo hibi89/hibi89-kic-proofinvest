@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 Risk 11/24
+
+1. 목표: KIC ProofInvest 근거 중심 오프라인 Research/Verification/Risk Python3.10+; 예선 11/12 10:00 KST DAKER 인증/최종 승인 의존.
+2. 실제 변경: Risk >=200% 데모 탐색 임계값은 반올림 전 Decimal 기준. ratio_pct 표시 ROUND_HALF_UP 2자리 탓에 200.00%인데 triggered=false가 될 수 있어 comparison_ratio_pct와 비교 연산자·설명 필드를 추가. A 표시값으로 비교=오탐으로 기각, B 원본 비교 유지+설명 명시 채택. 투자 의사결정 기준 아님.
+3. 검증: [GitHub CI #40081727073](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40081727073) 전체 113/113 PASS, 두 60일 원장 동기화 PASS, 합성/수동 기록 CLI PASS. 신규 Risk 회귀 2개 및 기존 경계 테스트 강화. 별도 로컬·실 DART API·Production E2E 미실행.
+4. 진도: 계획 11/24 업무 100/100 DONE, 잔여 기본0h+예비0h, 실투입 미계측. 전체 22 DONE/3 BLOCKED/35 NOT_STARTED.
+5. 위험·차단: 비합성 수동 사실의 출처 진위 인증 false 유지, engine.calculate 구형 탐색성 위험신호는 verified-only gate 미경유. DAKER 10/25·11/09 실계정 제출권한 각60% BLOCKED/실제 11/10 공식접수 NOT_STARTED; DART 원문뷰어 90% BLOCKED. 11/18·19 상호평가 영수증·11/22 예비일 미착수.
+6. GitHub: hibi89/hibi89-kic-proofinvest, lead/kic, 코드 42fc6f46c95bf6ca010ee893e7cb49555f2d88f4; 수정 proofinvest/risk.py·tests/test_risk.py, [QA](docs/roles/lead/RISK_THRESHOLD_EXPLANATION_REGRESSION_20261024.md), 원장 docs/roles/lead/MASTER_PROGRESS.json. 직전 86d5a0b82a85d587aeeeaec2162b3b9e118ab0a5 역커밋 가능.
+7. 배포 환경: Actions ubuntu-latest Python3.11; Vercel/웹 서비스·실 OpenDART API/Agent E2E/운영 URL 미구현·미검증.
+8. 보안·백업: 10쪽 frozen PDF/편집 PPTX·Private Library 6개 기존 보존, 본 작업 다운로드/수정/공개 업로드 없음. 토큰/비밀/PII·브랜치 강제푸시 없음.
+9. 다음 작업: 2026-11-25 Risk 누락/0분모 회귀 0/100 기본1h+예비2h=3h. P0 DAKER 인증 제출 권한 확인 가능해지면 우선 회수; 기존 미착수 사건 완료 판정 금지.
+10. 기준일/원격: 2026-10-24 KST, 코드 42fc6f46c95bf6ca010ee893e7cb49555f2d88f4, CI #40081727073; 인수인계 최신 문서 커밋 SHA는 lead/kic 원격 조회로 검증. 실제 시간 미계측.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / Research 11-23 중복근거
 
 1. **목표·확정 요구**: KIC ProofInvest 합성/수동근거 기반 Python3.10+ Research·Verification·Risk. DAKER 예선 2026-11-12 10:00 KST PDF 제출은 참가자 권한/최종 승인 의존.
