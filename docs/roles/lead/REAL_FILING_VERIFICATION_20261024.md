@@ -1,3 +1,5 @@
+> **2026-10-25 KST DART official viewer independent recheck:** attempted official Samsung FY2024 DART viewer `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250311001085`, direct fetch **502 Bad Gateway**. Independent secondary filing indexes corroborate receipt number/2024 filing year but are NOT first-party viewer or exact financial table. Previously reviewed issuer PDF supports 2024/2023 CFS revenue manual arithmetic; do NOT upgrade to actual DART original authenticated evidence. **10/30 DART gate stays 90/100 BLOCKED**; remaining base0.5h+reserve1h, actual time unmeasured. No code/API/auth changes. **Canonical 29 DONE/3 BLOCKED/28 NOT_STARTED**, DAKER 10/25 90% and 11/09 80% BLOCKED, 11/10 official submit NOT_STARTED. [Current DART recheck](DART_OFFICIAL_VIEWER_RECHECK_20261025.md). Next: official viewer direct evidence via permitted browser, otherwise preserve block; no blind repeated retries or claims of completion.
+
 # KIC ProofInvest — 실제 기업 공시자료 2개년 매출 수동 검산 영수증
 > 2026-10-24 14:13:38 KST | 사용자 확정 예선 실증 10/30 작업의 **10/24 선행 착수**, `lead/kic` | 자동 OpenDART API **미호출**, 실제 DART 원문 화면 **미열람**.
 
