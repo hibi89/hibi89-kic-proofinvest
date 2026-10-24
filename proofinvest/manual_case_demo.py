@@ -6,6 +6,7 @@ An issuer page lists that source's publication date as 2025-02-18.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 from typing import Any
 
@@ -16,6 +17,25 @@ IR_PAGE = "https://www.samsung.com/global/ir/reports-disclosures/public-disclosu
 IR_PUBLICATION_DATE = "2025-02-18"
 EXPECTED_PDF = ("https://images.samsung.com/is/content/samsung/assets/global/"
                 "ir/docs/2025_SEC_Consolidated_Financial_statements.pdf")
+
+
+
+# Pin the exact bytes of the originally reviewed, public repository JSON.
+# This is a Git blob object id, NOT authentication of the remote issuer PDF.
+REVIEWED_GIT_BLOB_SHA1 = "5535653a44297cc34022709be264801402688ecf"
+
+
+def read_reviewed_evidence() -> dict[str, Any]:
+    raw = EVIDENCE_PATH.read_bytes()
+    object_id = hashlib.sha1(
+        b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw
+    ).hexdigest()
+    if object_id != REVIEWED_GIT_BLOB_SHA1:
+        raise ValueError("Previously reviewed evidence bytes changed; re-review before replay")
+    data = json.loads(raw.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Pinned evidence is not an object")
+    return data
 
 
 def make_research_request(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -49,7 +69,7 @@ def make_research_request(evidence: dict[str, Any]) -> dict[str, Any]:
 
 def run_manual_case(claim: str = "16.20") -> dict[str, Any]:
     """Return the source-linked manual case; withhold absent balance-sheet Risk."""
-    evidence = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
+    evidence = read_reviewed_evidence()
     if not isinstance(evidence, dict):
         raise ValueError("Invalid pinned issuer evidence")
     result = evaluate_offline_chain(
@@ -63,6 +83,7 @@ def run_manual_case(claim: str = "16.20") -> dict[str, Any]:
         "issuer_ir_listing": IR_PAGE,
         "issuer_ir_listed_at": IR_PUBLICATION_DATE,
         "manual_evidence_record": "docs/evidence/samsung_2024_cfs_revenue.json",
+        "reviewed_record_git_blob_sha1": REVIEWED_GIT_BLOB_SHA1,
         "latest_fiscal_year_claimed": False,
         "actual_pdf_reopened_on_this_execution": False,
         "dart_viewer_accessed_on_this_execution": False,
