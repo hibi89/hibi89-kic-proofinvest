@@ -1,5 +1,23 @@
 # 통합 수뇌부 → KIC 총괄 상시 전달문
 
+## [ACTIVE] 통합 총괄 최신 감사 지시 — 2026-10-24 19:12 KST
+
+**지시 분류: 최우선 P0 제출 자격/접수 검증. 기존 개발 방식과 독립적인 선행 구현 허용을 유지하며, 차단 작업을 완료로 위장하지 않는다.** 사용자 요청에 따라 통합 총괄이 이 저장소에 직접 기록함. 다음 작업 시작 전 본 절을 확인하고 대응을 `docs/roles/lead/TO_HACKATHON_LEAD.md`에 기록해라.
+
+1. **P0 DAKER 권한**: 현재 참가자/팀장 실제 로그인 상태, 팀 전환·제출 주체, 최종 PDF 업로드 권한과 제출 화면 확인이 필수. 사용자 본인 인증이 필요하면 `필요한 화면/클릭/권한/위험·사용자 승인 단계`를 한 번에 정리해 요청하고 BLOCKED_EXTERNAL 유지. 최종 제출·계정 변경·비공개 PDF 공개는 명시적 사용자 승인 전 실행 금지. 최우선 내부 목표 11/10, 공식 마감 11/12 10:00 KST.
+2. **동결 10쪽 PDF 보존**: 이미 확보한 비공개 동결 PDF/PPTX는 디자인·표현의 임의 재작업 금지. 공식 양식 위반이나 사실 오류 근거가 있을 때만 수정하고 재검증. 사용자 민감 PDF를 공개 저장소에 올리지 마라.
+3. **실 DART 증빙 분리**: 실제 공시 뷰어 접수번호와 원문 검산 90% BLOCKED, 실제 OpenDART/Agent E2E 미검증을 유지. 129개 오프라인 테스트 성공도 출처 진위·대회 접수를 증명하지 않는다.
+4. **선행 개발 판단**: 독립적 가치가 있는 현재 READY 작업은 계속하되, DAKER P0 해결에 필요한 사용자 조치를 구체화하는 일을 뒤로 밀지 마라. 불필요한 화면/동결 PDF 꾸미기 반복은 중지.
+5. **답신 형식**: `ACCEPTED / IMPLEMENTED_VERIFIED / BLOCKED_EXTERNAL / DISAGREED_WITH_REASON`, 필요한 사용자 조치, 실제 검증 SHA·CI, 다음 차단 해제조건을 `TO_HACKATHON_LEAD.md`에 기록. 새 채팅은 최신 HEAD와 정본 JSON 우선으로 수치를 갱신한다. 감독 의견을 수신한 것 자체는 구현 완료가 아님.
+
+**발송 시점 참고:** KIC `lead/kic` 60일 정본 25 DONE/3 BLOCKED/32 NOT_STARTED, 기존 소스 `52504948599c` [129/129 CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40084712270). 이 숫자는 자동 갱신되지 않으니 그때마다 최신 원격 원장을 읽어라.
+
+[통합 감사](https://github.com/hibi89/hackathon-command-center-2026/blob/main/docs/audits/SUPERVISOR_QUALITY_CHECK_20261024.md) · [시정 추적](https://github.com/hibi89/hackathon-command-center-2026/blob/main/data/supervisor_findings.json)
+
+---
+
+## 기존 지시 이력 (최신 ACTIVE 지시가 우선)
+
 **발신:** 해커톤 통합 총괄 · **사용자 승인 전달:** 2026-10-24 KST · **권한:** 독립 감독 의견 및 시정 요청. 실제 개발·커밋은 KIC 총괄 담당.
 
 ## 반드시 반영할 판단
@@ -19,21 +37,3 @@
 3. 통합 수뇌부 원본: [중앙 감사](https://github.com/hibi89/hackathon-command-center-2026/blob/main/docs/audits/SUPERVISOR_PROGRESS_REVIEW_20261024_1719.md) / [시정 원장](https://github.com/hibi89/hackathon-command-center-2026/blob/main/data/supervisor_findings.json). 중앙 저장소에 지적했다고 KIC가 이미 구현한 것은 아니다.
 
 **절대 보장하지 않는 것:** 실제 API/Agent/웹/Production 성공, 인증된 제출권한, 최종 DAKER 접수. 자동 백그라운드 작업도 하지 않는다.
-
-
-## [ACTIVE] 통합 총괄 최신 감사 지시 — 2026-10-24 19:12 KST
-
-**지시 분류: 최우선 P0 제출 자격/접수 검증. 기존 개발 방식과 독립적인 선행 구현 허용을 유지하며, 차단 작업을 완료로 위장하지 않는다.** 사용자 요청에 따라 통합 총괄이 이 저장소에 직접 기록함. 다음 작업 시작 전 본 절을 확인하고 대응을 `docs/roles/lead/TO_HACKATHON_LEAD.md`에 기록해라.
-
-1. **P0 DAKER 권한**: 현재 참가자/팀장 실제 로그인 상태, 팀 전환·제출 주체, 최종 PDF 업로드 권한과 제출 화면 확인이 필수. 사용자 본인 인증이 필요하면 `필요한 화면/클릭/권한/위험·사용자 승인 단계`를 한 번에 정리해 요청하고 BLOCKED_EXTERNAL 유지. 최종 제출·계정 변경·비공개 PDF 공개는 명시적 사용자 승인 전 실행 금지. 최우선 내부 목표 11/10, 공식 마감 11/12 10:00 KST.
-2. **동결 10쪽 PDF 보존**: 이미 확보한 비공개 동결 PDF/PPTX는 디자인·표현의 임의 재작업 금지. 공식 양식 위반이나 사실 오류 근거가 있을 때만 수정하고 재검증. 사용자 민감 PDF를 공개 저장소에 올리지 마라.
-3. **실 DART 증빙 분리**: 실제 공시 뷰어 접수번호와 원문 검산 90% BLOCKED, 실제 OpenDART/Agent E2E 미검증을 유지. 129개 오프라인 테스트 성공도 출처 진위·대회 접수를 증명하지 않는다.
-4. **선행 개발 판단**: 독립적 가치가 있는 현재 READY 작업은 계속하되, DAKER P0 해결에 필요한 사용자 조치를 구체화하는 일을 뒤로 밀지 마라. 불필요한 화면/동결 PDF 꾸미기 반복은 중지.
-5. **답신 형식**: `ACCEPTED / IMPLEMENTED_VERIFIED / BLOCKED_EXTERNAL / DISAGREED_WITH_REASON`, 필요한 사용자 조치, 실제 검증 SHA·CI, 다음 차단 해제조건을 `TO_HACKATHON_LEAD.md`에 기록. 새 채팅은 최신 HEAD와 정본 JSON 우선으로 수치를 갱신한다. 감독 의견을 수신한 것 자체는 구현 완료가 아님.
-
-**발송 시점 참고:** KIC `lead/kic` 60일 정본 25 DONE/3 BLOCKED/32 NOT_STARTED, 기존 소스 `52504948599c` [129/129 CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40084712270). 이 숫자는 자동 갱신되지 않으니 그때마다 최신 원격 원장을 읽어라.
-
-[통합 감사](https://github.com/hibi89/hackathon-command-center-2026/blob/main/docs/audits/SUPERVISOR_QUALITY_CHECK_20261024.md) · [시정 추적](https://github.com/hibi89/hackathon-command-center-2026/blob/main/data/supervisor_findings.json)
-
----
-
