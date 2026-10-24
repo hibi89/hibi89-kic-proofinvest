@@ -1,3 +1,48 @@
 > **KIC 현재 진도는 JSON 단일 정본에서 확인:** [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json) · [자동생성 MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md). 이 규약에는 과거 완료 건수·NEXT 날짜·차단 점수를 복제하지 않습니다. 작업을 시작할 때마다 lead/kic 최신 HEAD와 정본을 재조회하십시오.
 
-# KIC ProofInvest — 영구 한 줄 인수인계 의무 규약undefined
+# KIC ProofInvest — 영구 한 줄 인수인계 의무 규약
+
+> 2026-10-24 14:44:22 KST 최초 고정. **KIC 총괄 겸 단일 실제 개발자**가 앞으로 수행하는 **모든 작업 단위**에 적용한다. 이 문서는 [CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md), [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md), [LEAD_FULLSTACK_PROTOCOL.md](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md)보다 오래된 작업자 배차 문구보다 **우선**한다. 규약 수정은 사용자 지시와 새 GitHub 증거를 남겨야 한다.
+
+## 유일한 새 채팅 명령
+
+`[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
+
+이 **한 줄만** 새 채팅에 입력하면 KIC 저장소 `hibi89/hibi89-kic-proofinvest`의 **최신 원격 `lead/kic` HEAD**와 다음 파일을 조회해 상황을 복원한다. 긴 별도 프롬프트·이전 채팅 텍스트·사용자의 설명을 다시 요구하지 않는다. 내용이 부족하면 GitHub 실제 파일·커밋·CI로 복원하고 **부족/미검증**을 기록한다. 한 줄은 가능한 다음 개발을 **시작하라는 실행 지시**이기도 하다.
+
+## 작업 완료 선언의 절대 조건 (Definition of Done)
+
+**코드 구현/문서 작성 자체가 끝났어도 아래 인수인계와 원격 확인이 끝나지 않으면 `DONE` 또는 100%로 보고할 수 없다.** 사용자가 새 채팅을 만드는 시점은 예고되지 않으므로, **매 사용자 `ㄱ` 작업 주기의 끝과 모든 부분중단·BLOCKED·실패·선행 완료 시점**에 아래 내용을 저장해야 한다.
+
+1. **원격 상태 확인:** 최신 `lead/kic` SHA, 실제 바뀐 코드·테스트·문서, GitHub Actions run ID·성공/실패/미실행. 실 API/실 DAKER 접수/실제 배포는 별개 증빙 없는 한 `NOT_VERIFIED`. `main`은 임의 병합/덮어쓰기 금지.
+2. **중앙 복원 상태 갱신:** 루트 `KIC_RESUME_STATE.md`에 **현재/마지막 작업ID, 계획 날짜와 실제 실행일, 상태(DONE/PARTIAL/BLOCKED/FAILED/READY), 검증된 코드·테스트·CI SHA, 완료 내용, 못 한 내용/오류/재시도 횟수, 접근·비용·승인 의존성, 다음 한 개의 실행 가능한 과제와 실제 시작 경로**를 명시. **새 채팅은 이 문서만 먼저 봐도 시작 가능**해야 한다.
+3. **진척률·시간 공시:** `docs/roles/lead/DAILY_PROGRESS.md`에 **원래 계획일 별도 100점 분모, 획득 점수, %**, 실제 작업시간(모르면 `미계측`), **남은 순작업 h + 오류·검수 예비 h = 보수적 예상 잔여 h**를 증거와 함께 기록한다. 다른 날짜의 선행 완료를 오늘의 분모에 더하지 않는다. BLOCKED는 증거 없으면 100%로 올리지 않는다.
+4. **다음 작업 포인터 갱신:** `docs/roles/lead/LEAD_ACTIVE_WORK.md`의 **문서 맨 위**에 완료된 게이트와 **다음 실제 코딩/검증 작업**을 배치한다. 오래된 덧붙임이 보이더라도 최신 상단 상태가 우선. 완료된 기능 재작성 금지.
+5. **상세 인계 및 상위 총괄 공시:** `docs/roles/lead/STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md` 각각에 **성공/미검증/차단/다음 작업/증거 SHA·CI**가 일치하도록 최신 덧붙임을 기재. 큰 코드 변경은 이슈·설계 판단·수정 파일과 검증 방법까지 기록. 의존성이 있는 `docs/roles/lead/BLOCKED_WORK_RECOVERY_20261024.md` 및 일정표는 변경 시 함께 업데이트한다.
+6. **GitHub 원격 영수증:** 위 필수 인계 파일을 **실제 저장소 `lead/kic`에 커밋하고 원격 HEAD를 다시 조회**한다. 최신 문서와 브랜치가 일치하는지 확인한다. CI가 새 SHA에서 돌아가면 결과를 확인하며, 아직 `queued/running`이면 그 사실을 **PENDING**으로 공시하고 **테스트 통과/100%라고 주장하지 않는다**. CI가 실패하면 FAILED/PARTIAL로 복원문서에 남기고 코드 수정 후 재실행한다.
+7. **사용자 종료 보고:** `오늘 작업(원래 계획 날짜) N/100 = N% | 남은 기본 Xh + 예비 Yh = Zh | 실제 소요: 미계측/계측값 | 완료/미완료/차단 | 코드 SHA, CI RUN | 다음 작업`을 보여주되 **GitHub 기록이 최종 진실의 출처**다. GitHub 푸시 실패 시 완료가 아니라 **LOCAL_ONLY/UNPUBLISHED**로 설명한다.
+
+## 절대로 누락하지 않는 상태 구분
+
+- **DONE**: 구현·증거 검증 및 상기 1~7항 중 해당하는 종료 절차 완료. 100점 근거 확보. 종료 뒤 **다음 일감 포인터가 반드시 존재**한다.
+- **PARTIAL / BLOCKED / FAILED**: 진척된 점수만 획득. 미완료 이유·남은 시간·다음 재시도 날짜/조건을 남긴다. 작업이 실패했다고 복원 파일을 남기지 않는 행위 금지.
+- **IN_PROGRESS**: 코드가 원격에 올라가도 CI 또는 보고 미완료라면, 최종 정리 전까지 100% 금지. 장시간 작업에는 중간 체크포인트(코드 SHA·실패·다음 수행점)도 남긴다.
+- **READY**: 아직 착수하지 않은 단일 다음 작업; 0%와 보수적 기본+예비 추정을 공시한다.
+- **BLOCKED 작업 회수**: 실제 미해결 일정과 점수는 [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json)의 차단 행 및 [복구 일정](docs/roles/lead/BLOCKED_WORK_RECOVERY_20261024.md)에서 조회한다. 독립 작업을 선행해도 차단 해제 근거 없이는 완료로 표시하지 않는다.
+
+## 새 채팅에서 절대 하지 말 것
+
+- 사용자에게 이전 대화 복붙·긴 인수인계 프롬프트나 같은 질문 재요청.
+- 과거 `feature/research`/구 배차 지시를 새 READY로 착각해 재개발.
+- `main` 기본 브랜치의 오래된 STATUS/HANDOFF를 `lead/kic` 최신 상태로 오독.
+- 오프라인 테스트 PASS를 실제 공시 자동수집·원본 인증·Production·공식 DAKER 제출 성공으로 표현.
+- 새 채팅 명령을 자동 예약/백그라운드 작업으로 간주. **명령이 입력된 그 세션에서 즉시 최신 GitHub 내용을 읽고 실제 작업**한다.
+
+## 향후 변경이 생기면
+
+이 규약은 **향후 모든 KIC 작업 종료에 계속 유효**하며, 매번 같은 내용을 새로 작성할 필요 없다. 단 **매 종료 시 중앙 상태 파일과 해당 5개 운영 문서는 최신화가 필수**다. 다음 작업에 대한 증거가 바뀌면 `KIC_RESUME_STATE.md`를 반드시 최신 내용으로 바꿔야 한다.
+
+## 현재 상태의 단일 정본
+- 날짜·점수·NEXT 작업: [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json) / [자동 생성 60일 표](docs/roles/lead/MASTER_PROGRESS.md).
+- 실행·검수·CI: [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) / [LEAD_ACTIVE_WORK.md](docs/roles/lead/LEAD_ACTIVE_WORK.md) / [DAILY_PROGRESS.md](docs/roles/lead/DAILY_PROGRESS.md).
+- 이 규약은 고정 운영 원칙만 포함하며 진행 숫자·미래 결과를 복제하지 않는다.
