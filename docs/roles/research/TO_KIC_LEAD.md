@@ -23,3 +23,14 @@
 - 총괄에게 전달할 내용:
 - 제안 대안 및 영향:
 - 총괄이 결정할 사항 / 회신 희망:
+
+## KIC-R-001 실행 기록
+
+### 2026-10-24 KST | [IN_PROGRESS] KIC-R-001 | 오프라인 근거 정규화 착수
+- task_id: `KIC-R-001`
+- branch: `feature/research`
+- starting_remote_HEAD: `1f05adcedff85526f9121a0a470d8f21f40d57f8`
+- source_instruction: `lead/kic@b845170c2b81d438afcf8b2e7179e19af90cd41c`, `docs/roles/lead/tasks/KIC-R-001.md`
+- approved_scope: 신규 `proofinvest/research.py`, `tests/test_research.py`, Research 전용 역할 문서. 오프라인 입력만 처리.
+- no_live_calls: OpenDART/LLM/HTTP/SDK 미호출, 공통 계약 및 타 브랜치 변경 금지.
+- state: 사용자 실행 요청으로 착수; 테스트·완료 상태는 후속 커밋에서만 판정.
