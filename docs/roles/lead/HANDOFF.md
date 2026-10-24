@@ -1,3 +1,18 @@
+## 최신 KIC 10항 인수인계 — 2026-10-24 P2 루트 정본 일치
+1. 목적: 새 채팅마다 읽는 영구 규약 첫 줄의 오래된 11/2/47 숫자로 인해 KIC 진도를 잘못 재개하는 위험 제거.
+2. 구현: `KIC_HANDOFF_CONTRACT.md`에서 숫자 복제 삭제, JSON/자동생성표 링크만; `master_progress.py` CI 계약 검사 추가.
+3. 테스트: 신규 5, 전체 [GitHub Actions 40101963094](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40101963094) 214/214 PASS, 실패0.
+4. 범위/시간: 추가 P2 단위 100/100, 잔여 기본0h+예비0h, 실제 시간 미계측; 60일 정본은 29 DONE/3 BLOCKED/28 NOT_STARTED; NEXT 2026-12-03 미래.
+5. 외부 차단: DAKER 본인/팀장·업로드 10/25·11/09 각 60% BLOCKED; DART 직접원문 10/30 90% BLOCKED. 공식 11/10 제출 아직 안 함.
+6. Git: `lead/kic` 코드 SHA `d1ef10a1f5fc80855de1998815df37172966e04f`, 루트 규약·검사·테스트 변경. 상세 [QA](ROOT_CONTRACT_HEADER_QA_20261024.md).
+7. 배포: 오프라인 CI만, 실API·LLM Agent·웹 Production·실브라우저 시연/제출 없음.
+8. 보안/복구: private 동결 PDF/PPTX·Library6 불변. 직전 정상 `069d1af`, Git normal revert로 되돌릴 수 있음.
+9. 다음: 인증된 DAKER KIC에서 신청상태·팀장 여부·제출 버튼·초안/최종 상태 읽기 전용 확인. 실제 업로드·팀 전환·최종 제출은 사용자 명시 승인 없이는 진행 금지. [점검 절차](docs/roles/lead/DAKER_P0_MOBILE_INSPECTION_20261024.md).
+10. 마감: 사용자 목표 2026-11-10 조기제출, 공식 2026-11-12 10:00 KST, 제출 후 영수증 확인. 현재 CI는 코드 검증만.
+
+
+> **KIC P2 정본 인수인계 버그 해결 (2026-10-24 23:xx KST):** 루트 `KIC_HANDOFF_CONTRACT.md` 구식 상태 **11 DONE/2 BLOCKED/47 NOT_STARTED·NEXT 2026-11-06** 삭제, JSON/자동생성 진도표 링크만 남겼습니다. CI checker에 정본 단일 참조 검증과 회귀테스트5개 추가. 코드 `d1ef10a1f5fc80855de1998815df37172966e04f`, [CI 40101963094](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40101963094) **214/214 PASS**. 별도 개선 100/100, 남은 기본0h+예비0h, 실제시간 미계측. 공식 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED, NEXT 2026-12-03 미래 발표 WAIT. DAKER 10/25·11/09 각60% BLOCKED, DART 10/30 90% BLOCKED, 11/10 제출 미실시, 실제 DART/API/Agent/Production 미검증. 인증된 DAKER 역할·최종버튼은 사용자 본인 화면 확인 필요; 최종 제출은 별도 승인 필수. 비공개 PDF/PPTX 및 Library 6파일 무변경. [수정 증거](ROOT_CONTRACT_HEADER_QA_20261024.md) · [DAKER 본인 화면 읽기 전용 점검](DAKER_P0_MOBILE_INSPECTION_20261024.md).
+
 ## 10-field latest KIC HANDOFF — 2026-10-24 KST: public CI judge receipt
 1. 목표: 모바일에서 로컬 명령을 실행하지 않아도 심사용 과거 수동기록 3사례 결과를 받을 수 있게 함.
 2. 설계: CI log-only(A) vs 전체 디렉터리 upload(B, 부적절) vs bounded public JSON allowlist(C, 채택). 공개 필드·2048B 상한·추가/변조 판별.
