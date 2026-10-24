@@ -31,6 +31,28 @@ jobs:
           python -m proofinvest.snapshot_store --read > /tmp/proofinvest-snapshot-read.json
           python -c 'import json; a,b,c=[json.load(open(p)) for p in ("/tmp/proofinvest-snapshot-created.json","/tmp/proofinvest-snapshot-reused.json","/tmp/proofinvest-snapshot-read.json")]; assert (a["status"],b["status"],c["status"])==("CREATED","REUSED_NO_RECALCULATION","READ_NO_RECALCULATION"); assert a["risk_display_pct"]==b["risk_display_pct"]==c["risk_display_pct"]=="266.67"; assert all(x["authenticated_external_source"] is False for x in (a,b,c))'
 
+      - name: Assemble, verify and restore public synthetic-only demo
+        run: |
+          mkdir -p /tmp/kic-synthetic-demo
+          python scripts/synthetic_demo_bundle.py build /tmp/kic-synthetic-demo/proofinvest-offline-demo.zip
+          python scripts/synthetic_demo_bundle.py verify /tmp/kic-synthetic-demo/proofinvest-offline-demo.zip
+          python scripts/synthetic_demo_bundle.py extract /tmp/kic-synthetic-demo/proofinvest-offline-demo.zip /tmp/kic-synthetic-demo/restore
+          (
+            cd /tmp/kic-synthetic-demo/restore
+            python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/kic-synthetic-demo/restored-cli.json
+            export HOME="$(mktemp -d)"
+            python -m proofinvest.snapshot_store --save > /tmp/kic-synthetic-demo/restored-save.json
+            python -m proofinvest.snapshot_store --read > /tmp/kic-synthetic-demo/restored-read.json
+          )
+          python -c 'import json; a=json.load(open("/tmp/kic-synthetic-demo/restored-cli.json")); b=json.load(open("/tmp/kic-synthetic-demo/restored-read.json")); assert a["source_kind"]=="SYNTHETIC_FIXTURE" and a["status"]=="demo_not_real"; assert b["source_kind"]=="SYNTHETIC_FIXTURE" and b["risk_display_pct"]=="266.67" and b["authenticated_external_source"] is False'
+      - name: Archive PUBLIC SYNTHETIC demo only (no private PDF/PPTX)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-synthetic-demo-recovery
+          path: /tmp/kic-synthetic-demo/proofinvest-offline-demo.zip
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Synthetic demo (no credentials)
         run: python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/proofinvest-demo.json
       - name: Recorded real filing scenario demo (offline, no network)
