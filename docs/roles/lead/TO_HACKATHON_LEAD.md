@@ -1,3 +1,5 @@
+> **상위 총괄 선행 실적 2026-10-24 14:10:01 KST**: Verification 10/29 기간·연간 보고서 오염차단 **100% / 남은 0h**, CI [40065103938](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065103938) **40/40 PASS**(최초 CI 39/40 실패는 잘못된 합성 테스트 기대값, 수정 후 재검증). DAKER 10/25 **35% / 접근 후 예상 잔여 3h BLOCKED**. 다음은 10/30 실제 공시 원본 1개기업 수치 2개년 검산이며 아직 0%. `DAILY_PROGRESS.md`를 최우선 조회.
+
 > **상위 해커톤 총괄 실작업 최신 (2026-10-24 14:02:36 KST):** KIC Verification 중복 계정 fail-closed 10/28 계획을 앞당겨 완료 **100/100=100%, 남은 예상 0h**, [CI 40064628185](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40064628185) 31/31 PASS. DAKER 10/25 계획은 **35/100=35%, 계정+공식양식 미확인 65점 BLOCKED, 접근 후 잔여 기본 1h+예비 2h=약 3h**. 실제 시간 미계측. 리드 실적판 [DAILY_PROGRESS.md](DAILY_PROGRESS.md). 다음 10/29 기간/CFS/OFS 검증, 실제 공시 10/30.
 
 > **전체 총괄 현재 KIC DAKER 진행 점검 (2026-10-24 13:58:12 KST):** [일일 실적판](DAILY_PROGRESS.md) 10/24 원래 계획 **100% / 0h**, 10/25 예정업무 **선착수 35/100 = 35%**, 남은 **순작업 1h + 오류/접근 예비 2h = 접근 이후 약 3h**, 사용자 계정 및 공식 PPTX 다운로드 65점 BLOCKED. [실사 근거](DAKER_PREFLIGHT_20261024.md). 실제 팀 전환·최종 제출 없음, 실작업시간 미계측. 이 수치는 프로젝트 전체 진척률 아님.
@@ -296,3 +298,9 @@
 - 1차 통합 CI [40065041525](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065041525) **39 PASS / 1 FAIL**. `test_only_ofs_rows_must_match_year_and_report`은 OFS 합성 매출 999/100 → 성장률 899%인데 **주장값 20%와 verified 기대를 동시에 사용**해 테스트 기대값이 자기모순. 계산 엔진은 올바르게 `conflict`를 반환했다.
 - 수정: 테스트 주장값을 실제 합성 데이터의 899%로 바꾸고, 2023 메타데이터일 때 `unavailable`, 2024로 고치면 `verified`를 검증한다. 엔진 코드/실 API/자료는 변경 없음.
 - **후속 CI 결과 확인 전 10/29 선행 작업은 PENDING(60/100=60%, 남은 순작업 0.5h+예비 1h=1.5h)**. 같은 오류 반복 2회 시 다른 방법 검토. 미계측/실공시 미검증.
+
+
+## 2026-10-24 14:10:01 KST — 10/29 기간·연간 CFS/OFS 혼합 방지 선행 최종 판정
+- 실제 코드 구현 `1150085`, 첫 CI `40065041525` **39 PASS/1 FAIL**은 테스트 데이터가 899% 성장인데 20%를 주장하면서 verified를 기대한 **테스트 오류**. 계산 엔진 올바르게 conflict 반환. 입력 수정 `1200a0f` 후 새 CI [40065103938](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065103938) **40/40 PASS 및 CLI PASS** 재검증.
+- **10/29 계획 100/100 = 100%, 남은 순작업 0h + 예비 0h = 0h**. 원래 10/24 작업 100%, 10/28 중복 방지 100%와 별개인 하루 목표. 실측시간 **미계측**.
+- 10/25 DAKER 35%·잔여 접근 후 약 3h(1h 기본+2h 예비), 외부 인증/주최 PPTX BLOCKED 유지. 다음 작업은 **10/30 실제 기업 공개 공시 매출 직접 검산**; synthetic 테스트와 실기업 실증 구분. [VERIFICATION_PERIOD_REVIEW_20261024.md](VERIFICATION_PERIOD_REVIEW_20261024.md) 참고.
