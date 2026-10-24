@@ -112,6 +112,31 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(result["status"], "partial")
         self.assertEqual(len(result["findings"]), 1)
 
+    def test_license_label_does_not_grant_republication(self):
+        for label in ("SYNTHETIC_FIXTURE", "CC-BY-4.0", "public domain", "OpenDART"):
+            with self.subTest(label=label):
+                data = copy.deepcopy(self.data)
+                data["sources"][0]["license"] = label
+                result = normalize_research(data)
+                self.assertEqual(result["status"], "success")
+                source = result["sources"][0]
+                self.assertEqual(source["license"], label)
+                self.assertEqual(source["rights_review_status"], "not_verified")
+                self.assertEqual(source["redistribution_clearance"], "not_established")
+
+    def test_one_source_rights_status_does_not_certify_another(self):
+        data = copy.deepcopy(self.data)
+        extra = dict(data["sources"][0], id="S2", license="unknown")
+        data["sources"].append(extra)
+        data["findings"][0]["source_ids"] = ["S1", "S2"]
+        result = normalize_research(data)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual({x["id"] for x in result["sources"]}, {"S1", "S2"})
+        self.assertTrue(all(
+            x["redistribution_clearance"] == "not_established"
+            for x in result["sources"]
+        ))
+
     def test_missing_license_rejects_evidence(self):
         self.data["sources"][0]["license"] = ""
         self.assertEqual(normalize_research(self.data)["status"], "unavailable")

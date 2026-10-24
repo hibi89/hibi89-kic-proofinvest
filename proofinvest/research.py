@@ -52,6 +52,9 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
       findings: [{claim,source_ids,as_of}].
 
     Rejected records remain visible only as warning codes, never as evidence.
+    An input license label is untrusted, NOT legal rights evidence.
+    Accepted source metadata always marks redistribution as unestablished
+    until a distinct human/legal permission check (not implemented here).
     """
     if not isinstance(payload, Mapping):
         raise TypeError("payload must be a mapping")
@@ -115,7 +118,14 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         if published > as_of:
             warn("future_published", f"source id {sid!r} was published after requested as_of")
             continue
-        accepted[sid] = {key: source[key] for key in required}
+        # A caller's license label is merely metadata: it is not evidence
+        # that the publisher granted republication or commercial re-use.
+        # Keep citation usability separate from legal redistribution clearance.
+        accepted[sid] = {
+            **{key: source[key] for key in required},
+            "rights_review_status": "not_verified",
+            "redistribution_clearance": "not_established",
+        }
 
     for sid in conflicted:
         accepted.pop(sid, None)
