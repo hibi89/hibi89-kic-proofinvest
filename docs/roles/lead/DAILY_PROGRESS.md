@@ -1,3 +1,5 @@
+> **LIVE 60일 정본 2026-10-24:** [MASTER_PROGRESS.md](MASTER_PROGRESS.md), [JSON](MASTER_PROGRESS.json). DONE 11/BLOCKED 2/NOT_STARTED 47; 다음 `2026-11-06` PDF 10쪽 사실검수(0%, 기본1.5h+예비3.5h=5h). DAKER60%·DART90% 차단. 비공개 PDF/PPTX 2개 사용자 Library 업로드 성공. 과거 로그와 충돌하면 이 정본 우선.
+
 ## 2026-10-24 KST — 11/05 예선 기획서 8~10쪽·전체10쪽 PDF v1 선행 작업
 | 100점 완료기준 | 가중치 | 확보 |
 |---|---:|---:|

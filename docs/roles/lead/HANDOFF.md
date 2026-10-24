@@ -1,3 +1,5 @@
+> **LIVE 60일 정본 2026-10-24:** [MASTER_PROGRESS.md](MASTER_PROGRESS.md), [JSON](MASTER_PROGRESS.json). DONE 11/BLOCKED 2/NOT_STARTED 47; 다음 `2026-11-06` PDF 10쪽 사실검수(0%, 기본1.5h+예비3.5h=5h). DAKER60%·DART90% 차단. 비공개 PDF/PPTX 2개 사용자 Library 업로드 성공. 과거 로그와 충돌하면 이 정본 우선.
+
 ## LIVE 2026-10-24 KST — KIC-PDF-P8-P10-20261105 선행 완료
 - 원래 11/05 예정 8~10쪽·전체10쪽 PDF v1 작업을 실제 10/24에 선행 **DONE 100/100=100%**. 비공개 v0.3 10장 PPTX에서 8~10쪽만 수정, 새 PPTX v0.4 10장·전체 PDF v1 10쪽·8~10쪽 검토PDF 3쪽 생성. 기존 1~7쪽 독립 렌더 픽셀 차이 0, 신규3쪽 bbox·육안·PDF 하이퍼링크4개 PASS. [QA](PDF_PAGES_8_10_QA_20261024.md).
 - 실증: 삼성전자 FY2024/2023 연결매출 수동 검산 +16.20%, Python verified-only offline tests **82/82 PASS** 이전 GitHub CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40071181513. 공시 API 실호출·Agent/LLM·웹 UI/Production·DAKER 실제 제출 완료 주장은 금지.

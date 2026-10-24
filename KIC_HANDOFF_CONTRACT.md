@@ -1,3 +1,5 @@
+> **KIC 60일 통합 진도 정본 — 2026-10-24 KST:** [MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md) / [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json). 날짜별 11 DONE / 2 BLOCKED / 47 NOT_STARTED. **NEXT `2026-11-06` 전체10쪽 PDF 사실검수 0%, 기본1.5h+예비3.5h=5h**. DAKER 60%, DART 90% BLOCKED. 최신 PPTX/PDF 비공개 Library에 **2개 영구 저장 성공**, 공개 GitHub에는 원본 미업로드. 아래 옛 포인터는 시점별 이력.
+
 # KIC ProofInvest — 영구 한 줄 인수인계 의무 규약
 
 > 2026-10-24 14:44:22 KST 최초 고정. **KIC 총괄 겸 단일 실제 개발자**가 앞으로 수행하는 **모든 작업 단위**에 적용한다. 이 문서는 [CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md), [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md), [LEAD_FULLSTACK_PROTOCOL.md](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md)보다 오래된 작업자 배차 문구보다 **우선**한다. 규약 수정은 사용자 지시와 새 GitHub 증거를 남겨야 한다.
@@ -41,3 +43,7 @@
 이 규약은 **향후 모든 KIC 작업 종료에 계속 유효**하며, 매번 같은 내용을 새로 작성할 필요 없다. 단 **매 종료 시 중앙 상태 파일과 해당 5개 운영 문서는 최신화가 필수**다. 다음 작업에 대한 증거가 바뀌면 `KIC_RESUME_STATE.md`를 반드시 최신 내용으로 바꿔야 한다.
 
 **마지막 직접 확인한 개발 증거 (스냅샷)**: Risk verified-only 입력 게이트 **2026-10-24**, 테스트 **67/67 PASS**, 코드 `5f05a0bb237ebfbe4837a21c2aaa37fb276a82b9`; 다음 미착수는 **11/01 Risk 결측·0분모·음수자본 처리**. 새로운 채팅은 항상 **원격 최신 상태**로 이 내용을 재검증.
+
+
+## 60일 전체 체크리스트 의무 (2026-10-24 추가)
+`docs/roles/lead/MASTER_PROGRESS.json`만 상태 정본으로 편집하고, 매 작업 종료 시 `python scripts/master_progress.py --write`로 전체 표를 재생성한다. `python scripts/master_progress.py --check`에서 계획 60일 날짜/작업/시간과 상태/근거·핵심 인수인계 next 날짜가 어긋나면 CI 실패한다. 기존 원본 계획은 보존. PPTX/PDF는 영구 비공개 Library에 백업하고 업로드 성공 영수증이 없으면 보관 완료 주장 금지. PDF 제출은 별도 승인/공식 접수 증거 필요.

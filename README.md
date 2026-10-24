@@ -1,3 +1,5 @@
+> **KIC 60일 통합 진도 정본 — 2026-10-24 KST:** [MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md) / [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json). 날짜별 11 DONE / 2 BLOCKED / 47 NOT_STARTED. **NEXT `2026-11-06` 전체10쪽 PDF 사실검수 0%, 기본1.5h+예비3.5h=5h**. DAKER 60%, DART 90% BLOCKED. 최신 PPTX/PDF 비공개 Library에 **2개 영구 저장 성공**, 공개 GitHub에는 원본 미업로드. 아래 옛 포인터는 시점별 이력.
+
 > **상시 강제 규칙 (2026-10-24 14:44:22 KST)**: [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) — **모든 작업 종료·부분중단마다 GitHub 최신화+복원 상태+일일 100점 진도+남은 시간+다음 작업 갱신·원격 확인이 끝나야만 종료 가능**. 사용자 시작 명령은 오직 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`; 추가 인수인계 프롬프트 요청 금지. 이 문구보다 오래된 종료 규칙은 본 강제 규약으로 대체.
 
 > **KIC 전용 새 채팅 입력 — 이 한 줄만 사용:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`

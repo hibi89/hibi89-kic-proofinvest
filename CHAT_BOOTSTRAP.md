@@ -1,3 +1,5 @@
+> **KIC 60일 통합 진도 정본 — 2026-10-24 KST:** [MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md) / [MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json). 날짜별 11 DONE / 2 BLOCKED / 47 NOT_STARTED. **NEXT `2026-11-06` 전체10쪽 PDF 사실검수 0%, 기본1.5h+예비3.5h=5h**. DAKER 60%, DART 90% BLOCKED. 최신 PPTX/PDF 비공개 Library에 **2개 영구 저장 성공**, 공개 GitHub에는 원본 미업로드. 아래 옛 포인터는 시점별 이력.
+
 > **LIVE NEXT 2026-10-24**: 11/05 PDF 8~10쪽·전체10쪽 v1 검토본 **100/100 DONE**. QA: docs/roles/lead/PDF_PAGES_8_10_QA_20261024.md. 실 기획서 비공개 바이너리는 채팅 다운로드만, 영구 Library/GitHub 없음. **NEXT 11/06 전체 사실/출처/구현경계 검수 READY 0/100, 기본1.5h+예비3.5h=5h.** DAKER60%/DART90% BLOCKED. 최신 KIC_RESUME_STATE.md 우선, 아래 과거 포인터는 이력.
 
 > **LIVE NEXT 2026-10-24 KST**: 11/04 예정 ProofInvest PDF 5~7쪽 선행 **100/100 DONE / 잔여0h**, v0.3 PPTX·검토3쪽/전체10쪽 PDF QA 완료([QA](docs/roles/lead/PDF_PAGES_5_7_QA_20261024.md)), 다운로드 산출물은 **Library 영구저장/공개 GitHub 미업로드**. 현재 DAKER **60% BLOCKED**(팀 제출권한40점), DART **90% BLOCKED**(공식 접수번호10점). **다음 11/05 8~10쪽+PDF v1, 0/100 READY, 기본2h+예비3h=5h**. 새 채팅은 무조건 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) 우선. 아래 오래된 다음 작업 포인터는 이력.
