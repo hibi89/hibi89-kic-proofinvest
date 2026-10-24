@@ -1,3 +1,5 @@
+> **LIVE 2026-10-24 KST — MASTER_PROGRESS 12 DONE / 2 BLOCKED / 46 NOT_STARTED**: [상태표](MASTER_PROGRESS.md) / [JSON](MASTER_PROGRESS.json). 11/06 전체 기획서 사실검수 **100/100 DONE**, 기본0h+예비0h, 실소요 미계측. 표지 버전/Tool 오해 문구 수정, 새10쪽 PDF+PPTX 비공개 Library 업로드 성공(**총4개 파일**). [QA](PDF_FACT_CHECK_20261024.md). DAKER 60%·DART 90% 차단 유지. **NEXT 2026-11-07 최종 인쇄/이미지/링크 검수 0/100, 기본1.5h+예비3.5h=5h**. 아래 과거 인수인계는 이력.
+
 > **LIVE 60일 정본 2026-10-24:** [MASTER_PROGRESS.md](MASTER_PROGRESS.md), [JSON](MASTER_PROGRESS.json). DONE 11/BLOCKED 2/NOT_STARTED 47; 다음 `2026-11-06` PDF 10쪽 사실검수(0%, 기본1.5h+예비3.5h=5h). DAKER60%·DART90% 차단. 비공개 PDF/PPTX 2개 사용자 Library 업로드 성공. 과거 로그와 충돌하면 이 정본 우선.
 
 > **CURRENT 2026-10-24 KST KIC-PDF-P8-P10-20261105**: 8~10쪽 개정 및 전체10쪽 PDF v1 검토본 **100/100 DONE**, 남은 기본0h+예비0h, 실작업시간 미계측. v0.4 10장 PPTX/PDF 10쪽 및 부분3쪽 QA 통과, 앞7쪽 픽셀 동일, 출처 링크4개. [QA](PDF_PAGES_8_10_QA_20261024.md). 사용자 식별자료 PPTX/PDF는 비공개 채팅 다운로드만, Public GitHub/영구 Library 미보관. DAKER 60% 권한 BLOCKED(접근후2h), DART 90% 접수번호 BLOCKED(접근후1.5h). **NEXT 11/06 전체10쪽 사실검수 0/100 READY, 기본1.5h+예비3.5h=5h**. 제품코드 기존82 PASS CI40071181513, 실API/Agent/배포/최종접수 미검증. 아래 과거 상태는 이력.
