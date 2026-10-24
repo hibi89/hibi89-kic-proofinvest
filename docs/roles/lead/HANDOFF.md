@@ -1,3 +1,17 @@
+## LIVE HANDOFF 10-field: 2026-10-24 canonical next-task CI reliability
+1. Goal: avoid recurring errors when per-turn mobile updates prepend to long handoffs.
+2. Design: unique ISO task-date marker in each of 3 handoff docs, checked against JSON throughout entire file; no stale-prose false positive.
+3. Tests: 7 new unittest cases and CI pending, no live APIs.
+4. Scope/progress: additional CI repair distinct from 60-day schedule; canonical 29 DONE/3 BLOCKED/28 NOT_STARTED, next 2026-12-03 WAIT.
+5. External blocker: authenticated DAKER submission screen unavailable in current connected Browser; DART official viewer not verified.
+6. Git branch: lead/kic; changed master_progress.py, 3 handoffs, new test and QA. Read actual new HEAD/CI.
+7. Product: CI-only operational quality, not Production/Vercel.
+8. Preservation: private 10-page PDF/PPTX and 6 Library backups intact.
+9. Next: DAKER team-leader final PDF upload authority and phone verification if needed; user approval before final submission, target 11/10.
+10. Recovery: prior valid HEAD 850b488; no forced update. QA docs/roles/lead/HANDOFF_POINTER_CONTRACT_QA_20261024.md.
+
+> **LIVE 2026-10-24 KST: CI handoff pointer reliability repair** — The canonical next-date is now declared exactly once in each of three handoff files and validated against MASTER_PROGRESS.json without a 2500-character cutoff. New 7 offline regressions; GitHub CI verification pending. Unchanged ledger: 29 DONE / 3 BLOCKED / 28 NOT_STARTED; next 2026-12-03 future result; DAKER authority two 60% gates and DART original one 90% gate remain BLOCKED. Current browser connector cannot inspect authenticated DAKER; no final upload. [QA](HANDOFF_POINTER_CONTRACT_QA_20261024.md).
+
 ## LIVE HANDOFF 10항 — 2026-10-24 21:29 KST / DART JSON 독립검증 오인 차단
 1. **목표·기술**: 수동 공시 기록의 출처 플래그를 공식 DART 직접검증으로 잘못 올리지 않도록 Python 오프라인 신뢰경계를 강화.
 2. **완료·설계**: JSON 신뢰(A, 부적합) 대비 DART 자기선언 무시(B, 채택). 다른 수동 수치 verified/conflict/unavailable 산술 결과 보존.

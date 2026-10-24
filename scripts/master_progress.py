@@ -25,6 +25,19 @@ DATE_RE = re.compile(r"^\| (2026-\d\d-\d\d) \|.*$", re.M)
 SOURCE_RE = re.compile(r"^\|\s*(\d\d/\d\d)\([월화수목금토일]\)\s*\|")
 
 
+# Unique explicit declaration, independent of where new reports are prepended.
+# Historical mentions of a date must never count as the current NEXT task.
+HANDOFF_POINTER = re.compile(r"^<!-- KIC_CANONICAL_NEXT_TASK_DATE: (20\d{2}-\d{2}-\d{2}) -->$", re.M)
+
+
+def validate_handoff_pointer(text: str, expected_day: str, name: str = "<handoff>") -> None:
+    markers = HANDOFF_POINTER.findall(text)
+    if len(markers) != 1:
+        raise ValueError("Expected exactly one canonical next-task marker: " + name)
+    if markers[0] != expected_day:
+        raise ValueError("Canonical next-task marker mismatch: " + name)
+
+
 def fmt(x):
     return str(float(x)).removesuffix(".0") + "h"
 
@@ -96,8 +109,7 @@ def check_data(data):
     if rr is None or rr["status"] != "NOT_STARTED" or rr["phase"] == "FINALIST_ONLY":
         raise ValueError("Next ready task must be an unstarted non-finalist day")
     for name in ("KIC_RESUME_STATE.md", "CHAT_BOOTSTRAP.md", "docs/roles/lead/LEAD_ACTIVE_WORK.md"):
-        if next_day not in (ROOT / name).read_text(encoding="utf-8")[:2500]:
-            raise ValueError("Current handoff pointer not synchronized: " + name)
+        validate_handoff_pointer((ROOT / name).read_text(encoding="utf-8"), next_day, name)
     backup = data["backup"]
     if backup.get("type") == "USER_PRIVATE_LIBRARY":
         if len(backup.get("files", [])) != backup.get("verified_count", 0):
