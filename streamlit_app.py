@@ -8,7 +8,6 @@ then:
 from pathlib import Path
 
 from proofinvest.offline_view import load_synthetic_snapshot
-from proofinvest.manual_case_demo import run_manual_case
 from proofinvest.snapshot_store import _fixture_digest, read_synthetic_snapshot_with_provenance
 
 _SOURCE_SYNTHETIC = "합성 데이터 시연"
@@ -32,8 +31,11 @@ def _render_manual_case(st) -> None:
     }
     choice = st.selectbox("검증할 성장률 주장", list(claims))
     try:
+        # Synthetic recovery archives deliberately exclude issuer/source modules.
+        # Import the real-issuer path only when the full local repo offers it.
+        from proofinvest.manual_case_demo import run_manual_case
         result = run_manual_case(claims[choice])
-    except (ValueError, OSError, TypeError, KeyError):
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
         st.error("수동 검증 기록이 없거나 변경되었습니다. 산출 결과를 표시하지 않습니다.")
         return
     verification = result["verification"]
@@ -78,7 +80,13 @@ def _render_manual_case(st) -> None:
 
 def render_app(st) -> None:
     st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
-    source = st.selectbox("자료 유형", [_SOURCE_SYNTHETIC, _SOURCE_MANUAL])
+    # The public recovery ZIP is synthetic-only: never offer an unavailable
+    # manual issuer mode or import its dependencies from an unrelated install.
+    evidence_file = Path(__file__).resolve().parent / "docs/evidence/samsung_2024_cfs_revenue.json"
+    available_sources = [_SOURCE_SYNTHETIC]
+    if evidence_file.is_file():
+        available_sources.append(_SOURCE_MANUAL)
+    source = st.selectbox("자료 유형", available_sources)
     if source == _SOURCE_MANUAL:
         st.title("ProofInvest — 실제 발행사 수동기록 검산")
         _render_manual_case(st)

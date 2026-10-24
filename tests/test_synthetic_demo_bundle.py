@@ -80,6 +80,26 @@ class SyntheticRecoveryBundleTests(unittest.TestCase):
         self.assertEqual(report["source_kind"], "SYNTHETIC_FIXTURE")
         self.assertEqual(report["status"], "demo_not_real")
 
+    def test_restored_synthetic_only_streamlit_ui_runs_without_manual_modules(self):
+        self.archive.write_bytes(bundle.build_bytes())
+        target = self.root / "restored_streamlit"
+        bundle.extract_verified(self.archive, target)
+        # A standalone ZIP intentionally excludes issuer evidence and modules.
+        self.assertFalse((target / "proofinvest" / "manual_case_demo.py").exists())
+        self.assertFalse((target / "docs" / "evidence").exists())
+        code = (
+            "from streamlit.testing.v1 import AppTest\n"
+            "at=AppTest.from_file('streamlit_app.py').run(timeout=15)\n"
+            "assert not at.exception, [str(e.message) for e in at.exception]\n"
+            "assert at.selectbox[0].options == ['합성 데이터 시연']\n"
+            "assert 'SYNTHETIC_FIXTURE' in at.warning[0].value\n"
+        )
+        process = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=target, capture_output=True, text=True, check=False, timeout=40,
+        )
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+
     def test_refuses_overwriting_existing_restore_directory(self):
         self.archive.write_bytes(bundle.build_bytes())
         target = self.root / "target"
