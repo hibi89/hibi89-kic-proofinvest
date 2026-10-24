@@ -224,6 +224,57 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
         self.assertFalse(out["risk_calculated"])
         self.assertIsNone(out["triggered"])
         self.assertIn("Negative equity", out["reason"])
+        self.assertEqual(out["withheld_reason_code"], "NEGATIVE_EQUITY")
+        self.assertIn("위험 없음", out["withheld_explanation_ko"])
+        self.assertIsNone(out["ratio_pct"])
+        self.assertIsNone(out["comparison_ratio_pct"])
+
+    def test_negative_equity_does_not_report_naive_negative_ratio_as_safe(self):
+        data = facts()
+        data[0]["current_amount"] = "80"
+        data[1]["current_amount"] = "-10"
+        # Naive signed 80 / -10 * 100 = -800%, misleadingly below 200%.
+        out = self.compute(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["withheld_reason_code"], "NEGATIVE_EQUITY")
+        self.assertIn("자본총계가 음수", out["withheld_explanation_ko"])
+        self.assertIn("별도 공시 확인", out["withheld_explanation_ko"])
+        self.assertIsNone(out["triggered"])
+        self.assertIsNone(out["ratio_pct"])
+        self.assertIsNone(out["comparison_ratio_pct"])
+        self.assertFalse(out["risk_calculated"])
+        self.assertFalse(out["authenticated_external_source"])
+        self.assertEqual(out["facts"]["equity"], "-10")
+
+    def test_negative_equity_with_zero_liabilities_still_withheld(self):
+        data = facts()
+        data[0]["current_amount"] = "0"
+        data[1]["current_amount"] = "-1"
+        result = self.compute(data)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["withheld_reason_code"], "NEGATIVE_EQUITY")
+        self.assertIsNone(result["triggered"])
+        self.assertIsNone(result["ratio_pct"])
+        self.assertFalse(result["risk_calculated"])
+
+    def test_withheld_explanation_only_for_negative_or_zero_equity(self):
+        good = self.compute()
+        self.assertIsNone(good["withheld_explanation_ko"])
+        neg = facts()
+        neg[1]["current_amount"] = "-0.01"
+        neg_result = self.compute(neg)
+        self.assertEqual(neg_result["withheld_reason_code"], "NEGATIVE_EQUITY")
+        self.assertIsInstance(neg_result["withheld_explanation_ko"], str)
+        zero = facts()
+        zero[1]["current_amount"] = "0"
+        zero_result = self.compute(zero)
+        self.assertEqual(zero_result["withheld_reason_code"], "ZERO_EQUITY_DENOMINATOR")
+        self.assertIn("정의되지", zero_result["withheld_explanation_ko"])
+        absent = facts()
+        absent[1]["current_amount"] = None
+        absent_result = self.compute(absent)
+        self.assertEqual(absent_result["withheld_reason_code"], "MISSING_FINANCIAL_AMOUNT")
+        self.assertIsNone(absent_result["withheld_explanation_ko"])
 
     def test_missing_equity_never_bypasses_gate(self):
         for value in (None, "", "N/A"):

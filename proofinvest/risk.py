@@ -159,6 +159,7 @@ def calculate_verified_debt_to_equity(
         "ratio_pct": None,
         "comparison_ratio_pct": None,
         "triggered": None,
+        "withheld_explanation_ko": None,
         "threshold_pct": 200,
         "threshold_operator": ">=",
         "comparison_basis": "unrounded_decimal_ratio",
@@ -181,11 +182,20 @@ def calculate_verified_debt_to_equity(
         if equity == 0:
             result["status"] = "unavailable"
             result["withheld_reason_code"] = "ZERO_EQUITY_DENOMINATOR"
+            result["withheld_explanation_ko"] = (
+                "자본총계가 0이므로 부채/자본 비율은 정의되지 않습니다. "
+                "0%나 안전 판정으로 대체하지 않고 계산을 보류합니다."
+            )
             result["reason"] = "Zero equity denominator: ratio calculation withheld"
             return result
         if equity < 0:
             result["status"] = "unavailable"
             result["withheld_reason_code"] = "NEGATIVE_EQUITY"
+            result["withheld_explanation_ko"] = (
+                "자본총계가 음수이므로 일반적인 부채/자본 비율을 위험 기준과 "
+                "비교할 수 없습니다. 음수 계산값을 '위험 없음'으로 해석하지 "
+                "않고 보류합니다. 자본잠식 여부·원인은 별도 공시 확인이 필요합니다."
+            )
             result["reason"] = "Negative equity: ordinary debt-to-equity ratio withheld"
             return result
         if liabilities < 0:
