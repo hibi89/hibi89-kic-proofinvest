@@ -1,7 +1,7 @@
 """Offline view model and actual Streamlit AppTest smoke checks."""
 import copy
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from proofinvest.offline_view import load_synthetic_snapshot
 
@@ -36,13 +36,13 @@ class SyntheticOfflineViewTests(unittest.TestCase):
         valid = offline_view._FIXTURE.read_text(encoding="utf-8")
         bad = valid.replace('"rcept_no":""', '"rcept_no":"12345678901234"', 1)
         self.assertNotEqual(bad, valid)
-        with patch.object(offline_view._FIXTURE, "read_text", return_value=bad):
+        with patch.object(offline_view, "_FIXTURE", Mock(read_text=Mock(return_value=bad))):
             with self.assertRaisesRegex(ValueError, "synthetic"):
                 offline_view.load_synthetic_snapshot()
 
     def test_missing_fixture_fails_closed(self):
         from proofinvest import offline_view
-        with patch.object(offline_view._FIXTURE, "read_text", return_value="{}"):
+        with patch.object(offline_view, "_FIXTURE", Mock(read_text=Mock(return_value="{}"))):
             with self.assertRaisesRegex(ValueError, "fixture"):
                 offline_view.load_synthetic_snapshot()
 
@@ -58,7 +58,7 @@ class StreamlitHeadlessTests(unittest.TestCase):
         self.assertTrue(at.title)
         self.assertIn("오프라인 합성 데이터", at.title[0].value)
         self.assertTrue(at.warning)
-        self.assertIn("SYNTHETIC_FIXTURE", at.warning[0].message)
+        self.assertIn("SYNTHETIC_FIXTURE", at.warning[0].value)
         self.assertTrue(any(m.label == "외부 출처 인증" and m.value == "미인증" for m in at.metric))
 
 
