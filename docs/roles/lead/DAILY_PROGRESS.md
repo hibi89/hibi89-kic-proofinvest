@@ -1,3 +1,17 @@
+## 2026-10-24 KST / 계획 11/28 Streamlit 합성 화면 선행
+
+| 업무 100점 | 배점 | 완료 |
+|---|---:|---:|
+| 합성 only·보안 범위/선택 설치 설계 | 20 | 20 |
+| Streamlit UI·순수 view model | 35 | 35 |
+| 테스트6개·AppTest 포함 CI 135/135 PASS | 35 | 35 |
+| README/QA/60일 정본·상위 P0 인계 | 10 | 10 |
+| **합계** | **100** | **100/100** |
+
+- 예정11/28 실완료10/24, 잔여 기본0h+예비0h, 실제시간 미계측.
+- 코드 b9d3d9ff12e4 / [CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40085362379) 135 PASS. 신규 UI 테스트 초기 실패3건 교정. 정본 26 DONE/3 BLOCKED/31 NOT_STARTED.
+- 통합 총괄 지시 ACCEPTED: DAKER 실계정 참가유형·팀장·최종 단일 PDF 제출권한은 BLOCKED_EXTERNAL이며 사용자 인증 확인 필요. frozen 비공개 PDF 미변경.
+- NEXT 11/30 저장/재조회 분리 0/100 기본1h+예비2h=3h, 11/29 예비일 미사용/NOT_STARTED.
 ## 2026-10-24 KST — 11/27 Risk 교차경로 통합/CI 선행 완료
 
 | 작업 100점 | 배점 | 획득 |

@@ -1,3 +1,15 @@
+## LIVE HANDOFF 2026-10-24 KST / 11/28 Streamlit UI
+
+1. 목표: KIC ProofInvest 오프라인 UI; 11/12 10:00 KST DAKER 공식 제출은 인증·명시 승인 필요.
+2. 선택: CLI만 vs 실제 Streamlit 합성 읽기전용 화면 + 헤드리스 AppTest 중 후자. 외부 파일·API·실계정 입력 없음. 신규 streamlit_app.py, proofinvest/offline_view.py.
+3. 검증: 코드 b9d3d9ff12e4a7151b8efaed4acc203d34b84752 최종 CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40085362379 135/135 PASS, AppTest 화면 경고/외부원문 미인증 확인, progress check 2종/합성 및 수동기록 CLI PASS. 최초 UI CI #40085201505 새 테스트 모킹/속성 오류 3건 수정.
+4. 진도: 11/28 업무 100/100 DONE, 잔여 기본0h+예비0h/실제 미계측, 60일 26 DONE/3 BLOCKED/31 NOT_STARTED. 11/29 예비일 NOT_STARTED.
+5. P0 chief 19:12 instruction ACCEPTED / BLOCKED_EXTERNAL: 사용자 DAKER 로그인 후 개인/팀 참가 형태, 팀장/실제 제출권한, 단일 PDF 업로드 버튼 조건 확인 필요. 계정 변경·공개·실제 제출은 승인 전 금지.
+6. 경로/실행: lead/kic 최신 HEAD, requirements-ui.txt (Streamlit1.66/Python3.11), pip install -r requirements-ui.txt ; python -m streamlit run streamlit_app.py. Core CLI Python3.10+ 표준라이브러리 유지. QA docs/roles/lead/STREAMLIT_OFFLINE_UI_SKELETON_20261024.md.
+7. 제한: 실 OpenDART API/실제 공시·브라우저 눈검사/배포·Agent E2E 미검증. AppTest 성공 != Production 성공.
+8. 보안: frozen private 10p PDF/PPTX/Private Library 백업6개 미열람·미수정·공개 GitHub 미게시. 통합 총괄의 다른 커밋 유지, force push/main 미변경.
+9. NEXT 11/30 저장/재조회 1경로 0/100, 기본1h+예비2h=3h. DAKER 10/25·11/09 각60% BLOCKED, DART 원문90% BLOCKED, 11/10 공식제출 NOT_STARTED.
+10. 원격·복원: code SHA b9d3d9ff12e4a7151b8efaed4acc203d34b84752 CI #40085362379; 최초 UI 코드는 bd423a0656f84deed24895ea9b9c290572845bb1. 이전 HEAD baa86739d45f286a9ecad83cb1c41466267e1b62 revert 가능. 끝날 때 최신 remote SHA/CI 검사.
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-27 Risk interop
 
 1. **목표·대회**: KIC ProofInvest Research/Verification/Risk Python3.10+ 오프라인 기능. DAKER 2026-11-12 10:00 KST 공식 예선은 인증된 참가자/팀장 계정 제출권한 및 사용자 승인 필요.
