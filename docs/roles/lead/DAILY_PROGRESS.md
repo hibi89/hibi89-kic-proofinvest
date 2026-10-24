@@ -1,3 +1,15 @@
+## 2026-10-24 KST — 11/09 DAKER pre-upload eligibility: 60/100 BLOCKED
+
+| Planned 11/09 gate | Weight | Earned |
+|---|---:|---:|
+| Immutable single PDF SHA/10-page/file match | 30 | 30 |
+| Public official DAKER individual/team/submit/deadline rules | 20 | 20 |
+| Authenticated team/personal account actual submission rights | 40 | **0 BLOCKED** |
+| Evidence, canonical 60-day ledger, handoff and GitHub CI | 10 | 10 |
+| **Total** | **100** | **60/100** |
+
+[QA](DAKER_SUBMISSION_PREFLIGHT_20261024.md): user private candidate unchanged; verified 10-page PDF and editable PPTX. Browser listed no DAKER authenticated tab; personal/team type and final-submit button cannot be verified. No official final submit. Original planning date 2026-11-09; advanced on 2026-10-24. After access, estimated remaining base0.5h+reserve1.5h=2h; unknown login delay; actual measured work time unmeasured. Master [14 DONE / 3 BLOCKED / 43 NOT_STARTED](MASTER_PROGRESS.md); DAKER10/25 60% and DART10/30 90% separate blockers. **NEXT independent READY 2026-11-14** Verification exception regression 0/100, base1h+reserve2h=3h. 11/10 actual submission NOT_STARTED, user approval required.
+
 > 2026-10-24: 2026-11-08 planned PDF freeze DONE 100/100 (remaining base0h+reserve0h; actual time 미계측). Single 10-page PDF candidate and PPTX frozen, hashes unchanged, 6 private Library files. [Evidence](PDF_FREEZE_20261024.md). Master 14 DONE/2 BLOCKED/44 NOT_STARTED. NEXT 2026-11-09 READY 0/100 base1h+reserve3h=4h. DAKER60%/DART90% BLOCKED.
 
 > 2026-11-07 PDF visual QA 100/100 DONE; next 2026-11-08 freeze READY 0/100. 13 DONE / 2 BLOCKED / 45 NOT_STARTED. Remain 11/07 0h+0h; actual time unmeasured. Private PDF/PPTX unchanged. DAKER 60%, DART 90% blocked. [Master](MASTER_PROGRESS.md)
