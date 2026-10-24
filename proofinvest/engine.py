@@ -138,14 +138,23 @@ def calculate(rows:list[dict], year:int, claim_revenue_growth_pct:str|None=None,
         checks.append(Check("revenue_yoy_pct","unavailable",None,None,
                             "공시 접수번호·출처 링크가 없어 비합성 매출 검증 보류"))
     else:
-        growth=(rev["current"]-rev["previous"])/abs(rev["previous"])*100
-        explanation="공시 수치로 전년 대비 증감률 재계산 (분모는 전기 절댓값)"
-        state="verified"
-        if claim_revenue_growth_pct is not None:
-            claim=amount(claim_revenue_growth_pct)
-            if claim is None:state="unavailable";explanation="사용자 주장 수치 형식 오류"
-            elif abs(claim-growth)>Decimal("0.1"):state="conflict";explanation=f"주장 {claim}% 와 계산 결과 차이 0.1%p 초과"
-        checks.append(Check("revenue_yoy_pct",state,str(growth.quantize(Decimal("0.01"))),rev["source"],explanation))
+        # Decimal accepts arbitrarily long plain strings, but its active
+        # precision may be insufficient to quantize extreme YoY results.
+        # Fail closed for this metric instead of crashing the entire report.
+        try:
+            growth=(rev["current"]-rev["previous"])/abs(rev["previous"])*100
+            growth_display=str(growth.quantize(Decimal("0.01")))
+        except (InvalidOperation, ArithmeticError, OverflowError, ZeroDivisionError):
+            checks.append(Check("revenue_yoy_pct","unavailable",None,None,
+                                "매출 증감률 계산·표현 범위 초과로 검증 보류"))
+        else:
+            explanation="공시 수치로 전년 대비 증감률 재계산 (분모는 전기 절댓값)"
+            state="verified"
+            if claim_revenue_growth_pct is not None:
+                claim=amount(claim_revenue_growth_pct)
+                if claim is None:state="unavailable";explanation="사용자 주장 수치 형식 오류"
+                elif abs(claim-growth)>Decimal("0.1"):state="conflict";explanation=f"주장 {claim}% 와 계산 결과 차이 0.1%p 초과"
+            checks.append(Check("revenue_yoy_pct",state,growth_display,rev["source"],explanation))
     debt=data.get("liabilities");equity=data.get("equity")
     # Legacy CLI risk is an exploratory, UNVERIFIED signal, never the
     # verified-only Risk entrypoint. Apply matching fail-closed arithmetic
