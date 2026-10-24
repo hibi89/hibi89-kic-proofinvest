@@ -1,12 +1,8 @@
-> **KIC 일별 진척률·남은 예상시간:** [DAILY_PROGRESS.md](docs/roles/lead/DAILY_PROGRESS.md)에서 날짜별 100% 분모, 실제 검증된 완료 점수, 남은 기본/예비 시간·차단/이월을 확인. **매 작업 종료 시 갱신** 규약은 [DAILY_PROGRESS_PROTOCOL.md](docs/roles/lead/DAILY_PROGRESS_PROTOCOL.md). 전체 프로젝트 완성률과 별개.
-
-> **KIC 한 줄 시작 명령 (사용자 원문):** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` → [KIC CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) → `lead/kic` 최신 HEAD/인수인계/활성 업무 조회 후 **총괄이 직접 다음 실작업 수행**. 아래의 `[해커톤총괄 ...]` 표현도 별칭으로만 인정. 실제 대회 구분이 명시된 이 문장은 KIC 저장소로 바로 연결한다.
-
-> **새 채팅 고정 문구:** `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` → [KIC CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) (반드시 `lead/kic`). 역할/원격 HEAD/직접 개발 중단점 자동 복원 규칙. **총괄=개발자**, 구형 작업자 READY는 이력일 뿐.
-
-> **CURRENT POLICY — 2026-10-24 KST: KIC 총괄 = 유일한 설계자·개발자·테스터·검수자.** 별도 Research/Verification/Risk 작업자 채팅과 작업자용 READY 디스패치 체계는 종료. 현재 작업은 [LEAD_ACTIVE_WORK](docs/roles/lead/LEAD_ACTIVE_WORK.md), 실행 절차는 [LEAD_FULLSTACK_PROTOCOL](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md)를 따른다. 기능 브랜치는 삭제하지 않는 이력·원본이며 기본 신규 작업은 `lead/kic`에서 직접 수행한다. 기존 문서의 '작업자에게 넘기라'는 문구는 역사 기록으로만 해석한다.
-
-> **KIC 확정 단독 실행 일정(2026-10-24)**: [docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md](docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md) · **0원 비용 기준** [BUDGET_20261024.md](docs/roles/lead/BUDGET_20261024.md) · **상위 총괄 진행 보고** [TO_HACKATHON_LEAD.md](docs/roles/lead/TO_HACKATHON_LEAD.md). 본 링크들은 `lead/kic` 브랜치의 문서이며 `main`에서는 같은 경로가 없을 수 있음.
+> **KIC 전용 새 채팅 입력 — 이 한 줄만 사용:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
+>
+> **새 채팅 즉시 수행:** [CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) → [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) → `lead/kic` 최신 작업·실제 코드·테스트·CI 조회 후 **다음 미완료 작업 직접 실행**. 추가 인수인계 문장 불필요. **현재 개발 브랜치 `lead/kic`**이며 `main`과 과거 작업자 `feature/*`는 별개 이력이다.
+>
+> **일일 진척·남은 시간:** [DAILY_PROGRESS.md](docs/roles/lead/DAILY_PROGRESS.md). 완료/차단 요약과 차후 재시도: [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md). 처음 발견된 오래된 README/STATUS/HANDOFF 문구보다 최신 정본을 우선한다.
 
 # ProofInvest | KIC AI Agent Competition
 

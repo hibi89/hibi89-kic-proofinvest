@@ -22,3 +22,9 @@ Effective 2026-10-24 KST. Supersedes worker-chat dispatch and earlier role separ
 - Before each task: current KST day, immutable daily 100-point evidence gates, budget, and current [DAILY_PROGRESS.md](DAILY_PROGRESS.md) snapshot. Never repeat early-completed deliverables.
 - **At EVERY actual work-end, partial handoff, block, or user `ㄱ` cycle completion**: update `DAILY_PROGRESS.md` with **earned points/100, percent, independently estimated remaining base hours + contingency hours = conservative remaining hours**, actual time observed or `미계측`, blockers/rollover, SHA/CI. Synchronize `LEAD_ACTIVE_WORK.md`, `STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md` in same work unit. State same numbers in reply; do not assert total project completed.
 - Empty progress is not success. Unknown dependency time != zero hours. Only evidence-backed gate completion earns points; prior daily plan 100% is distinct from whole KIC milestone completion. See [DAILY_PROGRESS_PROTOCOL.md](DAILY_PROGRESS_PROTOCOL.md).
+
+## 2026-10-24 14:39:37 KST — 새 채팅 한 줄 인수인계 의무 (CURRENT, 과거 문구에 우선)
+- 사용자 입력 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`은 **재질문 없이 GitHub에서 KIC 총괄 역할을 최신 복원하고 다음 READY *실행 가능한* 코딩 과제를 수행**한다는 뜻.
+- 새 채팅의 최초 정본은 반드시 `lead/kic` 루트 `CHAT_BOOTSTRAP.md` 와 `KIC_RESUME_STATE.md`. 기존 `HANDOFF.md`의 긴 순차 덧붙임은 이력이다. 원격 HEAD·코드·CI와 불일치 시 실제 증거를 우선하여 정본 상태를 고친다.
+- 매 *실제 작업 종료/중단* 때 같은 커밋으로 `KIC_RESUME_STATE.md`의 완료/차단/다음 작업, `LEAD_ACTIVE_WORK.md`, `DAILY_PROGRESS.md`, `STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md`를 갱신. 오류·미계측 시간·일일 완료율%와 남은 예상시간(기본+예비), SHA와 CI 성공/실패 명시. **공시 시스템만 정비할 때는 과거 일일 작업완료율을 왜곡하지 않는다**.
+- 진척률은 60일 전체가 아닌 해당 날짜 100점 게이트. 의존성이 풀린 타 날짜 과제는 선행 가능하며 DAKER/DART 35%/90% 차단점수를 임의 보정하지 않는다.

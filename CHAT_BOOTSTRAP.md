@@ -1,26 +1,24 @@
-> **상시 최신 운영규칙(2026-10-24 사용자 승인):** [작업 순서 유연화·선행 개발 규약](docs/WORK_ORDER_FLEX_POLICY_20261024.md)을 시작할 때 반드시 읽어라. 오늘 완료 게이트를 통과했다면 미래 작업을 당겨서 수행 가능. 외부 BLOCKED·원래 날짜별 100점 분모·원격 검증은 유지. 구형 '하루 1건 제한/날짜 순차만' 문구보다 이 최신 정책이 우선.
+# KIC ProofInvest — 새 채팅 **한 줄만**으로 복원
 
-# KIC ProofInvest — 새 채팅 한 줄 인수인계 진입점
+> **유일한 KIC 시작 문구 (사용자가 그대로 입력):** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
 
-**사용자 요청 KIC 전용 고정 문구(우선)**: `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
+이 문장은 **KIC 해커톤 총괄 겸 직접 개발자 역할**, 저장소 **`hibi89/hibi89-kic-proofinvest`**, 작업 브랜치 **`lead/kic`**를 자동 선택하는 지시다. 별도 장문의 인수인계 텍스트를 사용자에게 요구하지 않는다. GitHub 연결의 최신 원격 상태를 읽고, 그 채팅에서 실제 다음 작업을 수행한다.
 
-**통합 범용 별칭(보조)**: `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` — 대회 이름이 명시되지 않으면 상위 총괄에서 구분한다.
+## 반드시 실행할 시작 순서 (사용자 추가 질문 없이)
+1. 연결된 **GitHub**에서 저장소 `hibi89/hibi89-kic-proofinvest`의 **`lead/kic` 최신 원격 HEAD SHA**를 먼저 조회한다. `main`은 오래된 안정 코드이므로 현행 작업 포인터로 사용하지 않는다.
+2. 해당 HEAD의 루트 [**KIC_RESUME_STATE.md**](KIC_RESUME_STATE.md)를 **최우선 정본**으로 읽는다. 여기에 완료·부분완료·중단·다음 실제 코딩 작업·잔여시간·CI 증거가 한곳에 있다. 이 파일 자체에 적힌 SHA는 관측 당시 증거이며, **최신 원격 HEAD를 계속 확인한다**.
+3. [LEAD_ACTIVE_WORK.md](docs/roles/lead/LEAD_ACTIVE_WORK.md) → [DAILY_PROGRESS.md](docs/roles/lead/DAILY_PROGRESS.md) → [BLOCKED_WORK_RECOVERY_20261024.md](docs/roles/lead/BLOCKED_WORK_RECOVERY_20261024.md) → [DAILY_CAPACITY_PLAN_20261024.md](docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md) → [WORK_ORDER_FLEX_POLICY_20261024.md](docs/WORK_ORDER_FLEX_POLICY_20261024.md) → [LEAD_FULLSTACK_PROTOCOL.md](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md) 순서로 확인한다. 그 뒤 해당 코드·테스트와 최신 CI를 직접 확인한다.
+4. **한 줄 문장은 실행 지시이기도 하다**: `KIC_RESUME_STATE.md`의 다음 개발 작업이 이미 완료되지 않았고 접근 가능한 상태라면, 과거 조사/코딩을 반복하지 말고 바로 착수·테스트·GitHub 커밋한다. 두 번 이상 동일 실패 시 다른 경로를 선택하거나 BLOCKED로 남긴다. **추가 인수인계 프롬프트 요청 금지**.
+5. 완료 또는 부분중단 시 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md)·`LEAD_ACTIVE_WORK.md`·`DAILY_PROGRESS.md`·`STATUS.md`·`HANDOFF.md`·`TO_HACKATHON_LEAD.md`를 최신화하고 **일일 100점 기준 완료율 및 남은 순작업/오류 예비시간**, 실제 작업시간(미계측 가능), 코드 SHA/CI/외부 미검증 사항을 기록한다. 원격 HEAD와 CI 재확인 후 사용자에게 동일 수치 보고. 다음 새 채팅에도 **이 한 줄만** 재사용한다.
 
-**이 저장소의 실 작업 소유자:** KIC 총괄 겸 유일한 직접 개발자. GitHub `hibi89/hibi89-kic-proofinvest`, **`lead/kic`**. 전체 4채팅 운영 중 KIC 전담 채팅 1개. [상위 통합 진입점](https://github.com/hibi89/hackathon-command-center-2026/blob/main/CHAT_BOOTSTRAP.md).
+## 현재 복원 관문 (변경되면 정본 상태 파일을 반드시 최신화)
+- **2026-10-24 마지막 구현 검증**: 10/31 Risk verified-only **100%, 잔여 0h**, [67/67 CI PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066732288).
+- **다음 즉시 개발:** 11/01 Risk 결측·0분모·음수자본의 안전 중단/계산. 기본 1.5h+예비 3.5h=최대 5h (아직 미착수). Risk 게이트와 기존 엔진의 우회경로를 대조.
+- **차단 유지:** 10/25 DAKER 팀권한/공식 양식 **35%**, 10/30 DART 공식 사업보고서 접수 원문 대조 **90%**. 외부 인증 없이 완료 처리하지 않는다. 다음 재확인 목표 각각 10/25~26, 10/27.
+- **프로젝트 미완료:** 전체 Agent 통합, 공식 양식 PDF 최종화·실제 제출, 실 OpenDART API·Production 데모, `main` 통합. 최종 접수 목표 **11/10**, 공식 예선 마감 **11/12 10:00 KST**.
 
-## 한 줄 입력 후 실제 실행 순서
-1. **최신 원격 HEAD**를 조회하고 `CHAT_BOOTSTRAP.md → docs/roles/lead/HANDOFF.md → docs/roles/lead/STATUS.md → docs/roles/lead/LEAD_ACTIVE_WORK.md → docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md → docs/roles/lead/TO_HACKATHON_LEAD.md → AGENTS.md → REQUIREMENTS.md → 실제 소스/테스트/CI` 순서로 확인한다. `main` 기본 브랜치의 낡은 문서와 혼동하지 않는다.
-2. 현행 `LEAD_ACTIVE_WORK.md`의 **승인된 첫 미완료 업무를 이 채팅에서 직접 개발·검수**한다. 별도 Research/Verification/Risk AI 채팅/구형 `NEXT_TASK.md` READY 실행은 금지. 종전 기능별 브랜치는 원본 이력/증거로 보존하며, 검증된 내용만 `lead/kic`에 안전하게 이관한다.
-3. **새 채팅 이전 기록(현재 시점 참고)**: `feature/research`의 KIC-R-001 완료 및 오프라인 26 테스트 PASS는 **구 작업자 보고**. 총괄 독립 코드/테스트 검증·병합 대기. 현재 실행 지시 상세/증거의 최신본은 반드시 `LEAD_ACTIVE_WORK.md`에서 새로 읽는다. OpenDART 실 API, Production, DAKER 팀 전환/공식 PDF 제출은 별도 실증 전 성공 주장이 불가.
-4. 정당한 필요 승인: 공통 스키마 동결·실 API/외부데이터, 유료 지출, 원본/보안/권한 변경. 신규 현금 지출 0원. 기능·원본 보존, GitHub 커밋 신원/HEAD 검증, 가능한 CI/로컬 테스트 진행.
-5. **작업 종료/채팅 이동 전 갱신**: `LEAD_ACTIVE_WORK.md`, `docs/roles/lead/STATUS.md`, `HANDOFF.md`, `TO_HACKATHON_LEAD.md`, 실제 변경 코드/테스트/오류 근거를 동일 작업 안에 최신화·커밋하고 원격 SHA를 확인한다. 이 진입 문서는 역할·파일 경로가 바뀌지 않는 한 굳이 매번 고치지 않는다.
-
-**공식 기한:** KIC 2026-11-12 10:00 KST 예선 PDF; 내부 목표 11/10. 실제 제출 영수증 및 팀 전환 확인 필수.
-
-**역할 식별:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`에는 KIC가 명시되어 있으므로 새 채팅에서 KIC 총괄 겸 개발자 역할과 이 저장소 `lead/kic`를 직접 선택한다. 대회를 특정하지 않은 범용 별칭만 입력하면 상위 통합 총괄 또는 기존 채팅의 명시적 역할을 확인한다.
-
-## 2026-10-24 13:21:02 KST — 일별 안전 작업량 자동 복원
-- 새 KIC 총괄 채팅은 LEAD_ACTIVE_WORK와 함께 docs/roles/lead/DAILY_CAPACITY_PLAN_20261024.md의 **해당 날짜·예상시간·복구예비·이월 기준**을 확인해야 한다. 한 번에 하나의 작업 단위를 수행하되 완료 후 같은 날 다른 독립 작업을 선행할 수 있다. 실제 시간은 원장에 업데이트한다.
-
-## 2026-10-24 13:52:13 KST — 매 작업 종료 100% 진척·잔여시간 필수 복원
-- 새 채팅은 `docs/roles/lead/DAILY_PROGRESS.md` 및 `DAILY_PROGRESS_PROTOCOL.md`에서 **오늘 확보점수/100, 작업 완료율 %, 남은 예상 순작업 h·복구 예비 h·합계, 실제 계측/미계측**을 확인한다. 작업 종료 때 GitHub 실적판 + STATUS/HANDOFF/상위 보고 + 사용자 답변을 함께 갱신한다.
+## 충돌/안전 규칙
+- **최신성 우선순위:** 최신 GitHub 소스·CI의 실제 영수증 ＞ `KIC_RESUME_STATE.md`/현행 작업포인터 ＞ 날짜별 마지막 확정 진척 기록 ＞ 긴 `HANDOFF.md`·`STATUS.md`의 오래된 문단 ＞ 과거 채팅. 예전 문서의 `Research 수용 대기`, `READY 작업자 채팅 실행`, `하루 1건만` 같은 구형 규칙은 **폐기된 이력**.
+- KIC 총괄이 **하나의 채팅방에서 직접 설계·개발·테스트·검수**한다. 별도 Research/Verification/Risk 작업자 채팅이나 옛 `WORKER_ROUTER.md`/`NEXT_TASK.md` 사용 금지. 기능 구분은 코드 모듈만.
+- 앞당겨 완료한 다른 날짜 작업을 같은 날짜 완료율에 합산하지 않는다. 미검증/차단된 날을 100%로 꾸미지 않는다. 실제 투입 시간 미계측이면 `미계측`.
+- `lead/kic`에서만 개발, `main`·`feature/*`를 승인 없이 변경/강제 푸시하지 않는다. public GitHub 비공개 기획서/토큰 저장 금지. 실 API/돈 지출/팀 전환·접수는 별도 승인과 증거 필요.

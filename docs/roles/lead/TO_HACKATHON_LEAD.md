@@ -1,3 +1,5 @@
+> **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
+
 > **2026-10-24 14:33:21 KST 상위 총괄 공시:** 10/31 Risk verified-only 체크 **100/100=100%, 잔여 0h, [CI 67/67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713)**, `5f05a0b`. 단, Risk 원시 계산 경로는 아직 신규 게이트 미통합. 다음 11/01 안전 계산 작업, DAKER 35%/접근 후 3h·DART 90%/접근 후 1.5h 차단 별도 유지. `DAILY_PROGRESS.md` 조회.
 
 > **2026-10-24 14:26:10 KST 상위 총괄 필독:** KIC 건너뛴 업무 복구 날짜 확정 — [BLOCKED_WORK_RECOVERY_20261024.md](BLOCKED_WORK_RECOVERY_20261024.md). DAKER 35%→10/25~26 계정·주최 PPTX 확인(접속 후 약 3h), 실제 사업보고서 DART 원문 확인 90%→10/27 재확인(접속 후 약 1.5h). 11/06 PDF 미실증 고지·11/09 권한 점검·11/10 조기 제출 목표. 기존 10/26·27 Research 완료라 용량 재배정일 뿐 미진척 자동완료 아님. 다음 `ㄱ`는 Risk 10/31 선행 개발.

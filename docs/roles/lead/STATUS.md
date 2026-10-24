@@ -1,3 +1,5 @@
+> **단일 새 채팅 복원 정본 (2026-10-24 14:39:37 KST)**: [KIC_RESUME_STATE.md](../../../KIC_RESUME_STATE.md) 및 [CHAT_BOOTSTRAP.md](../../../CHAT_BOOTSTRAP.md). KIC 최종 Risk 입력 게이트 100%/67 PASS, 다음 **11/01 Risk 안전 계산(아직 0%, 계획 1.5h+예비 3.5h=5h)**, DAKER 35%·DART 90% BLOCKED. 기존 본문에는 지난 시점 임시 수치가 들어 있으니 **최신 정본과 원격 CI가 우선**.
+
 > **2026-10-24 14:33:21 KST KIC Risk 입력검사 선행 완료 100% / 남은 0h**, [CI 67 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40066575713), 실 API 미검증, 안전 비율 계산 11/01 남음. DAKER 35%, DART 90% BLOCKED 유지.
 
 > **최신 KIC 선행 실적 2026-10-24 14:20:07 KST:** 11/02 출처 기반 3가지 주장 판정 **100% / 잔여 0h**, [CI 54/54 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065759471); 10/25 DAKER 35% 접근 차단, 10/30 DART 90% 접근 차단. 다음 코딩은 10/31 Risk 검증된 수치만 허용.
