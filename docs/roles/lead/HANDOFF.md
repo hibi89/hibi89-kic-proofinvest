@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / Research 11-23 중복근거
+
+1. **목표·확정 요구**: KIC ProofInvest 합성/수동근거 기반 Python3.10+ Research·Verification·Risk. DAKER 예선 2026-11-12 10:00 KST PDF 제출은 참가자 권한/최종 승인 의존.
+2. **실제 개발·대안**: 서로 다른 `source_id`가 동일 HTTPS URL을 가리켜 출처를 부풀리는 버그 확인. A 모든 중복 URL 출처를 제외하고 명시 경고 vs B 첫 출처만 구제·메타데이터 병합 중 A 채택. Research normalizer에서 `duplicate_source_url`로 모두 제외, 독립 finding 보존; 실제 URL alias/리디렉션은 미해결.
+3. **테스트·CI 실측**: GitHub 코드 `164d810855fd336526a45c5b85080980c0ec11bd`. 기존 106 + 신규5 = **111/111 PASS**, [GitHub CI #40081231968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40081231968); `python -m unittest discover -s tests -v`, 두 progress --check, 합성 CLI, 수동실기업 기록 CLI 모두 CI PASS. 최초 `8a8b43d0` CI #40081158022 1 FAIL(기존 권리 독립 테스트 fixture URL 중복)→직접 수정 후 최종 PASS. 로컬/실 API 테스트 안 함.
+4. **진도·차단**: 11/23 계획업무 100/100 DONE, 남은 기본0h+예비0h, 실제시간 미계측. 60일 **21 DONE/3 BLOCKED/36 NOT_STARTED**. DAKER 권한 10/25·11/09 각60% BLOCKED, 10/30 DART 뷰어 접수번호90% BLOCKED, 11/10 최종 접수 0% 미착수.
+5. **실패 원인·대안·복구**: 동일 URL 다른 source ID 합산 불가. 오래된 fixture가 독립 권리를 시험하면서 URL을 재사용한 오류를 바꾸어 교정(코드 방어 우회하지 않음). 다른 리디렉션/URL 쿼리 별칭 검사는 원문 네트워크 없이 확정할 수 없어 추후 과제. 재시도/회피는 모두 GitHub SHA·CI로 추적.
+6. **GitHub/브랜치/파일**: `hibi89/hibi89-kic-proofinvest` `lead/kic` 코드 SHA `164d810855fd336526a45c5b85080980c0ec11bd`, `proofinvest/research.py`, `tests/test_research.py`, `tests/test_peers.py`; [QA](docs/roles/lead/RESEARCH_DUPLICATE_CITATIONS_REGRESSION_20261024.md), 정본 `docs/roles/lead/MASTER_PROGRESS.json`. 변경 전 `f671074568070d7bd9b4c96d220a0f6dc15ea9d6` git revert 가능.
+7. **Production/환경**: GitHub Actions ubuntu-latest Python3.11, 실제 Vercel/Production URL/웹 UI/인증 OpenDART/Agent E2E 미구현·미검증. `success`는 Research 구조검사 의미, 실제 기업 공시 인증이 아님.
+8. **원본·백업·보안**: 기존 frozen 10p PDF/PPTX 및 사용자 Private Library 6개 백업 기록 그대로 보존, 이번 작업 조회/수정/공개 업로드 안 함. 키·토큰·PII·비공개 자료 게시/권한 변경/강제 push 없음.
+9. **다음 업무**: **2026-11-24 Risk 임계값과 코드 설명 일치 점검**, READY 0/100, 기본1h+예비2h=3h. DAKER 인증 제출권한이 사용 가능해지면 P0 우선. 11/18·11/19 상호평가 실제 영수증·11/22 예비일은 미래/조건부 NOT_STARTED 유지.
+10. **검증시점·경로**: 2026-10-24 KST 코드 `164d810855fd336526a45c5b85080980c0ec11bd`, 성공 CI #40081231968, 최초 실패 CI #40081158022. 최신 문서 SHA는 원격 `lead/kic` HEAD로 재조회. 투입시간 미계측.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 KST / Peer screening 11-21
 
 1. **목적·확정 요구**: KIC ProofInvest Python 3.10+ Research→Verification→Risk 오프라인 데모, 예선 DAKER PDF 제출 11/12 10:00 KST 사용자/팀장 인증·사전승인 의존.

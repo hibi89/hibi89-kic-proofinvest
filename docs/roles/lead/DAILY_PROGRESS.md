@@ -1,3 +1,18 @@
+## 2026-10-24 KST — 11/23 Research 중복 근거 회귀 선행 완료
+
+| 11/23 업무 / 100점 | 배점 | 획득 |
+|---|---:|---:|
+| 중복 URL 결함 재현·A/B 대응 검토 | 20 | 20 |
+| 여러 source_id 하나 URL 전부 제외·출처 오염 차단 | 35 | 35 |
+| 신규5개 회귀/기존 fixture 1건 수정·최종 CI 111 PASS | 35 | 35 |
+| 실패/성공 SHA·원장/QA/상위 보고/인수인계 | 10 | 10 |
+| **합계** | **100** | **100/100 = 100%** |
+
+- **원래 2026-11-23 예정, 실제 2026-10-24 선행.** 남은 기본0h + 예비0h = **0h**, 실제 투입시간 미계측. 60일 **21 DONE/3 BLOCKED/36 NOT_STARTED**.
+- `research.py`, `test_research.py`, `test_peers.py`: 최초 `8a8b43d0`에서 CI #40081158022 1 FAIL(기존 fixture가 중복 URL), 수정 `164d810855fd` 후 [GitHub CI #40081231968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40081231968) **111/111 PASS**. [QA](RESEARCH_DUPLICATE_CITATIONS_REGRESSION_20261024.md). 실패기록 생략/변명 금지.
+- DAKER 10/25·11/09 실계정 제출권한 각60/100 BLOCKED (접근 후 각 기본0.5h+예비1.5h, 동일 원인 중복 수행 금지), DART 원문 10/30 90/100 BLOCKED(접근 후0.5h+1h). 공식 11/10 접수 NOT_STARTED. 11/18·11/19 평가 결과·11/22 예비일은 NOT_STARTED 유지.
+- **NEXT 2026-11-24** Risk 임계값/코드 설명 점검 0/100, 기본1h+예비2h=3h, P0 DAKER 접근 가능하면 우선 점검. frozen PDF/PPTX 비공개 원본 변경 없음.
+
 ## 2026-10-24 KST — 11/21 Peer 선정 근거 선행 완료
 
 | 11/21 업무 100점 배점 | 배점 | 획득 |
