@@ -1,3 +1,15 @@
+## 10-field latest KIC HANDOFF — 2026-10-24 KST: public CI judge receipt
+1. 목표: 모바일에서 로컬 명령을 실행하지 않아도 심사용 과거 수동기록 3사례 결과를 받을 수 있게 함.
+2. 설계: CI log-only(A) vs 전체 디렉터리 upload(B, 부적절) vs bounded public JSON allowlist(C, 채택). 공개 필드·2048B 상한·추가/변조 판별.
+3. 테스트: 신규 6, 전체 [GitHub Actions 40101393570](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40101393570) 209/209 PASS. 실제 GitHub artifacts ID 12562706988 확인.
+4. 진행률: 부가작업 100/100, 남은 기본0h+예비0h, 실제 시간 미계측. 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED, NEXT 2026-12-03 미래발표.
+5. 차단: DAKER 참가자/팀장 제출권한(10/25,11/09) 60% each BLOCKED, DART 원문(10/30) 90% BLOCKED, 11/10 실제 제출 미착수. 계정 본인 인증 필요.
+6. Git: lead/kic code SHA 0255dc672b2c3fe6f76f4984b6c40b2b71062f24, workflow+scripts/public_judge_artifact.py+tests/test_public_judge_artifact.py. [QA](docs/roles/lead/PUBLIC_JUDGE_REPLAY_ARTIFACT_QA_20261024.md). 후속 문서 HEAD/CI 별도 확인.
+7. 이용: 성공 Actions run 40101393570 → Artifacts → proofinvest-public-judge-replay; 14일 보존 후 만료. 실브라우저 육안/Production/Vercel 아님.
+8. 보안: JSON 아티팩트는 공개 시연 산술 상태만. private Library6, 동결 KIC 10쪽 PDF/PPTX 무변경·비공개.
+9. 다음: DAKER 로그인 참가유형·팀장 제출권한/휴대폰 인증·최종 버튼 확인 후 사용자 별도 승인 하에 11/10 예정 최종 제출. 11/12 10:00 마감, 접수증 실제 '최종' 확인.
+10. 복구: 코드 이전 정상 HEAD f303ba15; Git revert로 변경 복구 가능. 강제푸시·원장 날짜 완료 위조 금지.
+
 ## KIC 최신 10항 HANDOFF — 2026-10-24 23:00 KST / 3사례 심사용 검증 재현
 1. **목표**: 기존 수동발행사 재무 검산 기록의 조용한 값 교체를 방지하고 심사자 재현 테스트를 한 명령에 집약.
 2. **설계**: 발행사 원문 재다운로드/기존 메타데이터 신뢰 대신 Git blob 원본 바이트 고정; 변경 시 예외, 3사례 산술 상태만 재현하며 Risk 전부 보류.

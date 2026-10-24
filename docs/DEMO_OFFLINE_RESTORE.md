@@ -1,3 +1,5 @@
+> **2026-10-24 새 공개 오프라인 검증 아티팩트:** [GitHub Actions #40101393570](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40101393570)에는 기존 `proofinvest-synthetic-demo-recovery` ZIP 외에 **`proofinvest-public-judge-replay`** (artifact ID 12562706988, 보존 14일)이 별도로 있습니다. 이 JSON은 세 수동 전사 매출 성장률 산술 시나리오의 상태만 공개하며 실제 기업 보고서 PDF, KIC 제출 기획서 PDF/PPTX, 키·개인경로·실 AI Agent 자료는 넣지 않습니다. [QA](roles/lead/PUBLIC_JUDGE_REPLAY_ARTIFACT_QA_20261024.md).
+
 > **2026-10-24 추가 검증:** 공개 ZIP은 여전히 합성 데이터만 포함합니다. `streamlit_app.py`는 원본 저장소에서만 삼성전자 수동검산 옵션을 노출하고, 합성 전용 ZIP을 복원한 별도 폴더에서는 합성 옵션만 표시합니다. [CI 40099102467](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40099102467)에서 **별도 subprocess Streamlit AppTest**로 복원 앱을 실행해 오류가 없음을 확인했습니다. 실제 브라우저/Production 검증은 하지 않았습니다. [상세](roles/lead/MANUAL_ISSUER_STREAMLIT_UI_QA_20261024.md).
 
 # KIC ProofInvest — 공개 합성 데모 복원 절차
