@@ -17,7 +17,7 @@
 | 담당 2 | `feature/verification` | 공시·재무 수치 교차검증 |
 | 담당 3 | `feature/risk` | 설명 가능한 위험 신호 탐지 |
 
-각 담당자가 새 채팅에서 시작할 때: **해당 브랜치의 `HANDOFF.md → STATUS.md → AGENTS.md → REQUIREMENTS.md → 소스 코드` 순으로 확인**. 다른 브랜치를 자의로 수정하지 않습니다.
+각 담당자가 새 채팅에서 시작할 때: **자기 브랜치의 `docs/roles/<role>/HANDOFF.md` → 같은 폴더 `STATUS.md`·`OPERATIONS.md` → 루트 `AGENTS.md`·`REQUIREMENTS.md` → 소스 코드 순으로 확인**. `main`의 루트 HANDOFF는 공통 통합 문서이며 개인 담당 인수인계가 아니다. 다른 브랜치를 자의로 수정하지 않습니다.
 
 ## 오프라인 검증
 
@@ -35,4 +35,4 @@ Python 3.10+; 추가 라이브러리 없이 실행. 결과 `SYNTHETIC_FIXTURE`�
 - 2026-11-12 10:00 KST 예선: 공식 양식에 맞는 10페이지 이내 PDF. 본선 선발 후 2026-12-22 10:00 KST MVP 제출.
 - Source: https://daker.ai/public/hackathons/kic-ai-agent-competition
 
-문서 기준 `docs/BRANCH_WORKFLOW.md`, `REQUIREMENTS.md`, `STATUS.md`, `HANDOFF.md`.
+역할별 직접 링크: [AI 역할·브랜치 진입점](docs/ROLE_COORDINATION.md). 문서 기준 `docs/BRANCH_WORKFLOW.md`, `REQUIREMENTS.md`, `STATUS.md`, `HANDOFF.md`.
