@@ -108,6 +108,26 @@ class EngineTests(unittest.TestCase):
         # OFS synthetic revenue 999 vs 100 => 899% growth, not 20%.
         self.assertEqual(calculate(rows,2024,"899",True)["checks"][0]["state"],"verified")
 
+    def test_annual_report_cannot_reuse_stale_year_end(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2023.01.01 ~ 2023.12.31",
+                   frmtrm_dt="2022.01.01 ~ 2022.12.31") for r in ROWS]
+        self.assertEqual(parse_accounts(rows,2024),{})
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"unavailable")
+
+    def test_annual_report_cannot_skip_prior_fiscal_year(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.01.01 ~ 2024.12.31",
+                   frmtrm_dt="2022.01.01 ~ 2022.12.31") for r in ROWS]
+        self.assertEqual(parse_accounts(rows,2024),{})
+        self.assertIsNone(calculate(rows,2024,"20",True)["risk_signals"][0]["triggered"])
+
+    def test_non_december_annual_fiscal_year_still_allowed(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2023.04.01 ~ 2024.03.31",
+                   frmtrm_dt="2022.04.01 ~ 2023.03.31") for r in ROWS]
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
     def test_no_live_without_key(self):
         import os
         old=os.environ.pop('OPENDART_API_KEY',None)
