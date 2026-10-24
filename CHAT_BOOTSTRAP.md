@@ -39,6 +39,8 @@
 
 ## 전체 60일 단일 진척표 정책 (2026-10-24)
 - **[MASTER_PROGRESS.md](MASTER_PROGRESS.md)** 전체 60일 예정·선행/완료·블록·예상/예비시간·회수일 확인.
-- 상태 숫자의 유일한 JSON 정본은 **`data/master_progress.json`**; 과거 `DAILY_PROGRESS.md`는 스냅샷 기록·세부 증거이므로 삭제하지 않는다.
+- 상태 숫자의 유일한 JSON 정본은 **`docs/roles/lead/MASTER_PROGRESS.json`**; 과거 `DAILY_PROGRESS.md`는 스냅샷 기록·세부 증거이므로 삭제하지 않는다.
 - 매 작업 종료: JSON 최신화 → `python render_master_progress.py --write` → `python render_master_progress.py --check` 및 GitHub CI 성공 → 같은 커밋 인계. MD 수동 수정 금지.
 - 10/25 DAKER 60% BLOCKED·10/30 DART 90% BLOCKED 유지. 11/03~11/05 비공개 PDF QA 근거와 실제 사용자 파일 영구 저장·제출 여부를 구분. 다음 활성 11/06 PDF 최종 사실검수.
+
+**단일 정본 정리:** `docs/roles/lead/MASTER_PROGRESS.json` → `docs/roles/lead/MASTER_PROGRESS.md` 자동생성. 루트 `MASTER_PROGRESS.md`는 정본 링크 안내이며 별도 원장은 없음. 코드/작업 종료 시 원장과 인계 모두 동기화.
