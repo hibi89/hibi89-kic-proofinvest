@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / Risk 11-25 결측·0분모
+
+1. 목적: KIC ProofInvest Python3.10+ 합성·수동근거 구조 검사/부채자본 탐색. DAKER 공식 예선 11/12 10:00 KST 제출은 사용자의 인증 권한·최종 승인 필요.
+2. 실제 구현/설계: Risk 게이트 결측·형식오류·필수 계정 부족·0분모 보류 사유에 withheld_reason_code를 도입. A reason 문자열 해석(취약) vs B 코드 필드(채택). 여타 입력 실패 INPUT_GATE_REJECTED, 계산 성공 null. 기존 ratio/threshold 수학·부채비율 기준 불변.
+3. 테스트·CI: [GitHub CI #40082329914](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40082329914) 117/117 PASS, 60일 JSON/Markdown 2회 sync PASS, 합성·삼성 수동기록 offline CLI 성공. 신규4 테스트가 결측·잘못된 숫자·빈 fact·-0 분모의 위험 신호 null/false를 점검. 로컬/실 API/E2E 미실행.
+4. 진척: 계획 11/25 업무 실제 10/24 선행 100/100 DONE, 남은 기본0h+예비0h·실투입 미계측. 전체 23 DONE/3 BLOCKED/34 NOT_STARTED.
+5. 결함·원인·제약: 이전에는 자유 형식 reason만 있어서 상위 UI가 0분모/결측을 텍스트로 파싱해야 했다. 이제 코드로 분리하나 실제 DART 원문·상용 API 인증이 아니며 레거시 engine.calculate는 별도 경로.
+6. 저장소/SHA: hibi89/hibi89-kic-proofinvest lead/kic, 변경 proofinvest/risk.py·tests/test_risk.py, 코드 0c82f6577e3f8e317131cb9d824b4e1cbf27deaa, [QA](docs/roles/lead/RISK_MISSING_ZERO_DENOMINATOR_QA_20261024.md), docs/roles/lead/MASTER_PROGRESS.json. 직전 a6aec576f07bd064ba1ef8f97aa249ea25f9c775에서 정상 git revert 가능, main/feature 미수정.
+7. Production: GitHub Actions ubuntu-latest/Python3.11. 배포 URL/실기업 OpenDART API·웹/Agent E2E 미검증. 오프라인 계산기 성공을 투자 추천으로 과장 금지.
+8. 원본·보안: 동결 비공개 PDF/PPTX 및 사용자 Private Library 6개 백업 기존 기록 유지; 이번 작업에서 파일 조회·수정·공개 업로드 없음. 비밀키·PII·계정 변경·force push 없음.
+9. 다음 작업 및 차단: 2026-11-26 Risk 음수자본 설명·오류 사례 READY 0/100 기본1h+예비2h=3h. DAKER 10/25·11/09 인증권한 각60% BLOCKED(같은 접근 원인), 11/10 제출 미착수, DART 공식 원문 90% BLOCKED. 상호평가11/18·19와 예비일11/22 NOT_STARTED.
+10. 기준·검증일: 2026-10-24 KST, 코드 0c82f6577e3f8e317131cb9d824b4e1cbf27deaa, CI #40082329914. 최종 문서 HEAD는 원격 재조회; 실투입시간 미계측.
+
 ## LIVE HANDOFF 10항 — 2026-10-24 Risk 11/24
 
 1. 목표: KIC ProofInvest 근거 중심 오프라인 Research/Verification/Risk Python3.10+; 예선 11/12 10:00 KST DAKER 인증/최종 승인 의존.

@@ -1,3 +1,18 @@
+## 2026-10-24 KST — 11/25 Risk 누락·0분모 반례 선행 완료
+
+| 11/25 업무 100점 | 배점 | 획득 |
+|---|---:|---:|
+| 결측·형식오류·0분모 사례 재현 및 대안 검토 | 20 | 20 |
+| fail-closed withheld_reason_code로 계산 보류 사유 분리 | 35 | 35 |
+| 신규 회귀4건 포함 GitHub CI 117/117 PASS | 35 | 35 |
+| 원장·QA·인수인계/총괄 보고/원격 증거 동기화 | 10 | 10 |
+| **합계** | **100** | **100/100** |
+
+- 원래 11/25 계획, 실제 10/24 선행. 남은 기본0h+예비0h, 실제 소요 미계측. 코드 0c82f6577e3f, [GitHub CI #40082329914](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40082329914), [QA](RISK_MISSING_ZERO_DENOMINATOR_QA_20261024.md); 원장 23 DONE/3 BLOCKED/34 NOT_STARTED.
+- null/empty/N/A/대시 결측, NaN/문자/지수 형식 불가, +0 및 -0 분모는 위험 수치·신호 null, 계산 false로 유지. 수동값 진위 인증한 것은 아님.
+- DAKER 제출권한 10/25·11/09 각60% BLOCKED, DART 10/30 90% BLOCKED, 공식 11/10 제출 미착수. 11/18·19 상호평가/11/22 예비일 NOT_STARTED 유지.
+- **NEXT 2026-11-26 Risk 음수자본 설명·오류 사례 0/100**, 기본1h+예비2h=3h. 실 DAKER 계정 접근 가능 시 P0 우선. 동결 PDF/PPTX 변경 없음.
+
 ## 2026-10-24 KST — 11/24 Risk 판정 설명 선행 완료
 
 | 업무 | 배점 | 획득 |
