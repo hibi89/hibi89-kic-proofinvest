@@ -66,6 +66,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Bounded rule-based workflow controller (NO AI/remote API)
+        run: |
+          python -m proofinvest.agent_controller --claim 16.20 > /tmp/kic-offline-controller-matched.json
+          python -m proofinvest.agent_controller --claim 30 > /tmp/kic-offline-controller-conflict.json
+          python -c 'import json; a=json.load(open("/tmp/kic-offline-controller-matched.json")); b=json.load(open("/tmp/kic-offline-controller-conflict.json")); assert a["reason_code"]=="RISK_FACTS_NOT_ELIGIBLE" and b["reason_code"]=="GROWTH_CLAIM_CONFLICT"; assert all(x["external_tool_calls"]==0 and x["ai_agent_executed"] is False and x["live_api_called"] is False and len(x["tool_calls"])<=1 for x in (a,b))'
       - name: Synthetic demo (no credentials)
         run: python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/proofinvest-demo.json
       - name: Recorded real filing scenario demo (offline, no network)

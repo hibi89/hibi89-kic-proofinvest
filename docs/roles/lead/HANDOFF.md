@@ -1,3 +1,16 @@
+## KIC 최신 HANDOFF 10항 — 2026-10-24 규칙기반 오프라인 실행 제어
+1. Objective: 기존 연구·수동검산·Risk 함수를 1회 제한된 오프라인 tool 단계에서 연결하고 불확실성별 검토 결정을 실제 출력.
+2. Design: PLAN→EVALUATE→DECIDE→REPORT state trace, 잘못된 기업/연도 선차단, Risk 없으면 자료 추가 요구, 계산 완료해도 출처 인증 필요. LLM/실자율 Agent 아님.
+3. Verification: 신규13, [GitHub CI40103929809](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40103929809) 227/227 PASS; 문서 후속 CI에서 matched/conflict CLI 확인.
+4. Progress: 별도 task 100/100 (후속 CI 통과 후), 잔여 base0h+reserve0h, actual 시간 미계측. 정본 29/3/28, NEXT 2026-12-03 미래발표.
+5. Blocked: DAKER 10/25·11/09 각60% 팀장 권한, DART 10/30 90% 실원문, Nov10 제출 NOT_STARTED. No vote performed.
+6. Git provenance: `lead/kic` code `3aa9a3a4e416e6a9632d18ab339cf8314d6c6ea8` files `proofinvest/agent_controller.py`, `tests/test_agent_controller.py`; [QA](BOUNDED_OFFLINE_CONTROLLER_QA_20261024.md). Latest docs commit/CI fetch before reporting.
+7. Production: no external tool, API, secret, LLM run, browser real E2E, Vercel or public web deployed.
+8. Private: frozen 10-page KIC PDF/PPTX and 6 Library backups untouched; CI data from existing previously manually reviewed public issuer JSON only.
+9. Next: Obtain authenticated DAKER individual/team leader authority view and final PDF button evidence, then explicit participant approval before upload/submit; official cutoff Nov12 10am, Nov12–19 peer-vote eligibility separately.
+10. Rollback: previous `ad16c99`, normal Git revert not force push. Actual work duration not observed.
+
+
 ## KIC 10항 LIVE HANDOFF — 2026-10-24 KST / 상호평가 필수 리스크
 1. 목표: 제출하면 끝이라는 착각을 막고 DAKER 자격→최종 접수→상호평가 최소 참여의 외부 P0 절차를 분리.
 2. 선택: 실계정에서만 할 수 있는 투표·팀장 권한은 읽기전용 검사/증거 대기로, 투표 횟수 임의 추측/AI 자동투표는 하지 않음.
