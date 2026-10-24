@@ -51,6 +51,62 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(parse_accounts(duplicated,2024)["revenue"]["current"],Decimal(120))
         self.assertEqual(calculate(duplicated,2024,"20",True)["checks"][0]["state"],"verified")
 
+    def test_matching_annual_metadata_keeps_comparable_rows(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011") for r in ROWS]
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
+    def test_selected_statement_mixed_year_fails_closed(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011") for r in ROWS]
+        rows[2]["bsns_year"]="2023"
+        result=calculate(rows,2024,"20",True)
+        self.assertEqual(result["checks"][0]["state"],"unavailable")
+        self.assertIsNone(result["risk_signals"][0]["triggered"])
+
+    def test_quarterly_report_not_annual_comparison(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011") for r in ROWS]
+        rows[0]["reprt_code"]="11013"
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"unavailable")
+
+    def test_missing_report_metadata_amid_annual_rows_fails_closed(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011") for r in ROWS]
+        del rows[2]["reprt_code"]
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_period_dates_accept_ranges_and_single_end_dates(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.01.01 ~ 2024.12.31",
+                   frmtrm_dt="2023.01.01 ~ 2023.12.31") for r in ROWS]
+        rows[2]["thstrm_dt"]="2024.12.31"
+        rows[2]["frmtrm_dt"]="2023.12.31"
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
+    def test_mixed_disclosed_period_end_dates_fail_closed(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.01.01 ~ 2024.12.31",
+                   frmtrm_dt="2023.01.01 ~ 2023.12.31") for r in ROWS]
+        rows[2]["thstrm_dt"]="2024.09.30"
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_reversed_or_unreadable_period_dates_fail_closed(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.12.31",frmtrm_dt="2023.12.31") for r in ROWS]
+        rows[0]["frmtrm_dt"]="2025.12.31"
+        self.assertEqual(parse_accounts(rows,2024),{})
+        rows[0]["frmtrm_dt"]="not a date"
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_invalid_nonselected_ofs_does_not_poison_cfs(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011") for r in ROWS]
+        rows[1]["bsns_year"]="2022"
+        rows[1]["reprt_code"]="11013"
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
+    def test_only_ofs_rows_must_match_year_and_report(self):
+        rows=[dict(ROWS[1],bsns_year="2023",reprt_code="11011")]
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"unavailable")
+        rows[0]["bsns_year"]="2024"
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
     def test_no_live_without_key(self):
         import os
         old=os.environ.pop('OPENDART_API_KEY',None)
