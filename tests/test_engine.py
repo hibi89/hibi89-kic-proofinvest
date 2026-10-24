@@ -156,6 +156,36 @@ class EngineTests(unittest.TestCase):
         rows[1]["amount_unit"]="천원"
         self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
 
+    def test_real_mode_missing_filing_reference_is_unavailable(self):
+        result=calculate(ROWS,2024,"20",False)
+        check=result["checks"][0]
+        self.assertEqual(check["state"],"unavailable")
+        self.assertIsNone(check["value"])
+        self.assertIsNone(check["source"])
+        self.assertIn("접수번호",check["explanation"])
+
+    def test_real_mode_malformed_filing_reference_is_unavailable_even_if_math_matches(self):
+        rows=[dict(r) for r in ROWS]
+        rows[0]["rcept_no"]="not-a-filing"
+        result=calculate(rows,2024,"20",False)
+        self.assertEqual(result["checks"][0]["state"],"unavailable")
+        self.assertIsNone(result["checks"][0]["value"])
+
+    def test_structurally_valid_filing_reference_preserves_non_demo_result(self):
+        rows=[dict(r) for r in ROWS]
+        rows[0]["rcept_no"]="12345678901234"  # synthetic format-only reference, not a real filing
+        result=calculate(rows,2024,"20",False)
+        self.assertEqual(result["checks"][0]["state"],"verified")
+        self.assertEqual(result["checks"][0]["source"],
+                         "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=12345678901234")
+        self.assertEqual(result["status"],"financial_checks_only")
+
+    def test_source_free_synthetic_demo_keeps_explicit_fixture_result(self):
+        result=calculate(ROWS,2024,"20",True)
+        self.assertEqual(result["checks"][0]["state"],"verified")
+        self.assertEqual(result["source_kind"],"SYNTHETIC_FIXTURE")
+        self.assertEqual(result["status"],"demo_not_real")
+
     def test_no_live_without_key(self):
         import os
         old=os.environ.pop('OPENDART_API_KEY',None)

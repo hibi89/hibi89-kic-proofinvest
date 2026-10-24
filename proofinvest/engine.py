@@ -132,6 +132,11 @@ def calculate(rows:list[dict], year:int, claim_revenue_growth_pct:str|None=None,
     rev=data.get("revenue")
     if not rev or rev["current"] is None or rev["previous"] in (None,Decimal(0)):
         checks.append(Check("revenue_yoy_pct","unavailable",None,None,"매출액 현재·전기 수치 또는 분모가 없음"))
+    elif not is_demo and not rev["source"]:
+        # Arithmetic alone cannot be presented as a real filing check when
+        # the selected revenue row lacks a usable filing reference.
+        checks.append(Check("revenue_yoy_pct","unavailable",None,None,
+                            "공시 접수번호·출처 링크가 없어 비합성 매출 검증 보류"))
     else:
         growth=(rev["current"]-rev["previous"])/abs(rev["previous"])*100
         explanation="공시 수치로 전년 대비 증감률 재계산 (분모는 전기 절댓값)"
