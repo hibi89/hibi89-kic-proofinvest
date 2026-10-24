@@ -53,3 +53,9 @@
 - KIC 내 우선순위: (1) 공식 원본 기획서/팀 제출 권한 확인 (2) 중앙 공통 데이터 계약 설계·승인 (3) 세 기능 병렬 구현·오프라인 검증 (4) 11/05 PDF 1차, 11/08 내용 동결, **11/10 조기 제출** (5) 제출 후 MVP 선행 개발.
 - 점검 기준 SHA: `main 1300b9b31a5b86792d15ed7a2dce7c24849dbd87`, `lead/kic d081a59c62e5686fac93f9f0ec97e86f79832ccb`(문서 수정 전), Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`. 메시지함 신규 요청 0, CI 9/9 PASS(합성), 실 API·서비스·제출 미검증.
 - **설계 변경·개발 지시·실 API 호출·실 제출 미실행**. 본 일정은 KIC 사용자의 일정 범위 지시를 반영한 계획이며 별도 기술·계정 승인 게이트 유지.
+
+## 2026-10-24 12:20:30 KST — KIC 전용 원가·무료 운영 예산 검증
+- 공식 최신 가격 조사: OpenDART 원칙적 무료, GitHub Public Actions 무료, Gemini 2.5 Flash/Lite 무료 티어, Streamlit Community Cloud 무료, Supabase Free DB 500MB, Cloudflare Pages 정적 페이지 무료.
+- **정책 제안: 신규 현금지출 0원**(기존 PC/인터넷/구독/시간 제외). 신규 유료 결제·배포 업그레이드·호스팅 계약·라이브 API 호출은 **실행하지 않음**. 예비비 1만~3만원은 *필요 시 사용자 별도 승인 제안*일 뿐 지출 아님.
+- `docs/roles/lead/BUDGET_20261024.md` 신규: 개발/예선/본선 비용 구성, 유료 전환 시 100/1000/10000회 토큰 계산, 무료 API·DB·호스팅 수면 리스크, Gemini 무료 데이터 제품 개선 조건, 실제 운영 게이트/출처.
+- 세 담당 메시지함 `research 1f05adcedff8`, `verification d6b4827c1d4f`, `risk 3573455fd208` HEAD 원문 최신 확인 후 새 요청 0건. `main` 기능 코드 미변경, 실제 Gemini·OpenDART API 사용 미실시. 비용 시뮬레이션은 테스트된 실제 사용량 아님.
