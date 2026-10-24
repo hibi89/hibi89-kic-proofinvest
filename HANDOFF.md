@@ -1,3 +1,15 @@
+## KIC 10항 HANDOFF — 2026-10-24 KST / 루트 복원 규약 손상 보수
+1. 목표: `KIC_HANDOFF_CONTRACT.md`의 문자 그대로의 `undefined` 본문 손상 복구.
+2. 설계: Git `069d1af`의 정상 영구 정책을 되살리고 오래된 진도 수치는 정본 링크로 교체; 본문 무결성 검사 추가.
+3. 테스트: 신규 unittest 6건 코드 커밋, Actions 실제 결과 미검증 (성공 주장 금지).
+4. 진도: 별도 P1 80/100 PARTIAL, 기본 0.2h + 예비 0.8h = 1h 추정, 실제 소요 미계측. 60일 정본 29/3/28, NEXT 2026-12-03 미래.
+5. 오류: 옛 헤더 전용 검사는 손상된 본문을 탐지하지 못함. Git status/runs 조회 빈 값은 CI 성공 증거가 아님.
+6. 저장소: `hibi89/hibi89-kic-proofinvest`, `lead/kic`, 코드 SHA `8ec15b8` / `6a66b26` / `773b40a`; [QA](docs/roles/lead/ROOT_CONTRACT_BODY_RESTORATION_QA_20261024.md). 최종 원격 HEAD 재검사.
+7. 배포: 오프라인 프로그램만; 실 DART/API, 실제 Agent/브라우저/Production 미검증.
+8. 백업: 원본 정책 Git 이력 보존, 동결 비공개 PDF/PPTX·Library6 무변경, force push 없음.
+9. 다음: 최종 GitHub Actions 테스트 확인 후 정상/실패를 문서화; DAKER 최종버튼은 사용자 인증 필요, 별도 승인 없이 제출 금지.
+10. 차단: DAKER 10/25·11/09 각60%, DART 10/30 90%; 내부 제출 11/10 아직 미실시, 상호평가 미시작.
+
 ## KIC 최신 HANDOFF 10항 — 2026-10-24 규칙기반 오프라인 실행 제어
 1. Objective: 기존 연구·수동검산·Risk 함수를 1회 제한된 오프라인 tool 단계에서 연결하고 불확실성별 검토 결정을 실제 출력.
 2. Design: PLAN→EVALUATE→DECIDE→REPORT state trace, 잘못된 기업/연도 선차단, Risk 없으면 자료 추가 요구, 계산 완료해도 출처 인증 필요. LLM/실자율 Agent 아님.
