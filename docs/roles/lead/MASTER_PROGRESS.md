@@ -2,9 +2,9 @@
 
 > **진도 단일 정본:** [MASTER_PROGRESS.json](MASTER_PROGRESS.json). 아래 표는 해당 JSON에서 생성된 뷰입니다. 원래 배정 일정은 [DAILY_CAPACITY_PLAN_20261024.md](DAILY_CAPACITY_PLAN_20261024.md)에 보존. 
 > **재생성:** `python scripts/master_progress.py --write` / **CI 검증:** `python scripts/master_progress.py --check`.
-> 스냅샷 2026-10-24 KST · DONE **28** / BLOCKED **3** / NOT_STARTED **29** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
+> 스냅샷 2026-10-24 KST · DONE **29** / BLOCKED **3** / NOT_STARTED **28** / PARTIAL **0**. 전체 개발 완성률이 아닌 **날짜별 작업 판정**입니다.
 
-**다음 READY: 2026-12-02** 선발 결과 대비 코드·데모 점검 및 백업 0%, 기본 1h + 예비 2h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **6h** + 예비 **28.5h** = **34.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
+**다음 READY: 2026-12-03** 10:00 본선 결과 확인 및 일정 전면 재산정 0%, 기본 0.5h + 예비 2.5h = 3h. 미완료 초기 41일 일정 잔여 계획 합계 기본 **5h** + 예비 **26.5h** = **31.5h**(외부 접근대기 불명). 본선 19일은 결과에 따라 조건부이며 포함하지 않았습니다.
 
 **차단:** 10/25 DAKER 제출권한 **60%**(접근 후 기본0.5h+예비1.5h), 10/30 DART 공식원문 **90%**(접근 후 기본0.5h+예비1h), 11/09 팀 제출권한·PDF 단일 최종본 대조 **60%**(접근 후 기본0.5h+예비1.5h). 완료 처리 금지.
 
@@ -58,7 +58,7 @@
 | 2026-11-29 | 전체 예비일: 지연·배포 장애 대안 | **NOT_STARTED** | 0% | — | 0h+3h | 0h+3h | 미계측 | — |
 | 2026-11-30 | 저장/재조회 분리 최소 1경로 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/OFFLINE_SNAPSHOT_SAVE_RELOAD_QA_20261024.md) · `69bd4efdf6` · [CI 40086307653](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40086307653) |
 | 2026-12-01 | 합성 결과→화면→출처 1경로 점검 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/STORED_SNAPSHOT_UI_SOURCE_CHAIN_QA_20261024.md) · `c7f724c1cd` · [CI 40087863189](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40087863189) |
-| 2026-12-02 | 선발 결과 대비 코드·데모 점검 및 백업 | **NOT_STARTED** | 0% | — | 1h+2h | 1h+2h | 미계측 | — |
+| 2026-12-02 | 선발 결과 대비 코드·데모 점검 및 백업 | **DONE** | 100% | 2026-10-24 | 1h+2h | 0h+0h | 미계측 | [근거](../../../docs/roles/lead/DEMO_RECOVERY_BUNDLE_CI_20261024.md) · `b1297a45e8` · [CI 40088827748](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40088827748) |
 | 2026-12-03 | 10:00 본선 결과 확인 및 일정 전면 재산정 | **NOT_STARTED** | 0% | — | 0.5h+2.5h | 0.5h+2.5h | 미계측 | — |
 
 ## 본선 진출 시에만 · 19일

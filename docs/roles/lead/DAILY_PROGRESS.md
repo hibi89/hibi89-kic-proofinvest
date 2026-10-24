@@ -1,3 +1,17 @@
+## 2026-10-24 KST — 12/02 코드·데모 점검/합성 복원 백업 선행
+
+| 업무 (날짜별 100점) | 배점 | 획득 |
+|---|---:|---:|
+| 코드·데모 백업/복원 범위 설계 | 20 | 20 |
+| allowlist ZIP + manifest/checksum 및 추출 안전성 구현 | 35 | 35 |
+| 신규 회귀6개·신규 위치 CLI 복원·아티팩트 업로드/CI155 PASS | 35 | 35 |
+| 상세 QA/정본 진도/상위 총괄 및 새 채팅 복원 | 10 | 10 |
+| **합계** | **100** | **100/100** |
+
+- 12/02 업무를 10/24에 선행. 실제 작업시간 미계측, 잔여 기본0h+예비0h. 코드 b1297a45e8cb [GitHub Actions #40088827748](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40088827748) 155/155 PASS(초기 CI 1FAIL은 fixture 문자열 기대 테스트 오류, 후속 수정).
+- GitHub Actions artifact #12558286763 proofinvest-synthetic-demo-recovery(약26,504B/14일), 14개 공개코드·합성 fixture만 기록·복원·실제 CLI 실행. frozen 비공개 PDF/PPTX/Private Library6개 백업은 미변경, 공개 업로드 절대 금지.
+- P0 DAKER 실계정 제출권한 두 슬롯 60% BLOCKED_EXTERNAL, P1 DART 원문90% BLOCKED, 공식 제출 미착수. 독립 데모 CI가 공식 인증·실제 운영 증거는 아님.
+- 60일 29 DONE/3 BLOCKED/28 NOT_STARTED. **NEXT 2026-12-03** 10시 공식 본선 결과 확인/일정 재산정 0/100 기본0.5h+예비2.5h, **공식 발표일 도래 전 WAIT_OFFICIAL_RESULT**. 11/22·29 예비일, 11/18·19 투표 영수증 미착수 그대로.
 ## 2026-10-24 KST — 12/01 저장 합성 결과→화면→출처 체인 선행 검수
 
 | 날짜별 100점 과제 | 배점 | 획득 |

@@ -1,3 +1,15 @@
+## LIVE HANDOFF 10항 — 2026-10-24 / 12-02 코드·데모 복원 안전 백업
+
+1. **목표**: KIC ProofInvest 데모의 소스/가상 fixture만 선택적 합성 복원 백업, 12/02 계획 선행. DAKER 정식 예선 제출/계정 업로드권한/비공개 산출물은 이 백업과 완전히 별개.
+2. **기술 판단**: 문서형 복원(A)만으로 실제 복원 증거 불충분. 14개 파일 allowlist와 SHA-256 manifest, 격리된 restore+CLI 실행(B) 채택. 동결 PDF/PPTX를 허가 없이 GitHub Artifact로 복사하지 않음.
+3. **코드**: scripts/synthetic_demo_bundle.py, tests/test_synthetic_demo_bundle.py, docs/DEMO_OFFLINE_RESTORE.md, .github/workflows/ci.yml. 코드 SHA b1297a45e8cb29fe814cd7ce719e250a4fbbf96e, 전 회차 6e0a896b19154b41a1197b7420f2cb43e7d53a70. Git branch lead/kic 외 무작업.
+4. **검증/실패 이력**: 첫 코드 6807e9dc CI #40088761217에서 신규 test fixture의 잘못된 문자열 기대로 1FAIL, 테스트 교정 SHA b1297a45e8cb29fe814cd7ce719e250a4fbbf96e 후 [GitHub Actions #40088827748](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40088827748) 155/155 PASS. master integrity x2, 합성/수동기록 offline CLI, Streamlit AppTest, snapshot CLI 모두 성공.
+5. **아티팩트 영수증**: GitHub run #40088827748 실제 Actions artifact ID 12558286763, name proofinvest-synthetic-demo-recovery, size 26504B, 보존 14일. Archive build, verify, extract, fresh directory CLI + save/read CI 성공. 이 공개 합성 아티팩트는 frozen/private 10p PDF/PPTX 백업을 대체하지 않음.
+6. **재현**: python scripts/synthetic_demo_bundle.py build /tmp/proofinvest-synthetic-demo.zip → verify → extract /tmp/proofinvest-synthetic-demo.zip /tmp/proofinvest-restore-fresh → 복원에서 python -m proofinvest --claim-revenue-growth-pct 20. 세부 문서 docs/DEMO_OFFLINE_RESTORE.md. 사용자 로컬 PC 조작 불필요.
+7. **사실 경계**: 합성 출처 SHA는 파일 무결성만 확인, 실 DART 원문 진위/라이선스/실 Agent/웹 배포/Windows 실기기/DAKER 제출 미검증. ZIP reproducible은 완제품 배포 완료와 동치 아님.
+8. **P0 외부 BLOCKED**: DAKER 10/25 및 11/09 개인/팀장 단일 PDF 업로드권한 각60% BLOCKED_EXTERNAL, DART 공식 뷰어 접수번호 10/30 90% BLOCKED; 실제 제출 11/10 NOT_STARTED. 사용자 본인 로그인으로 참가유형·팀장/파일 업로드 버튼만 확인하고, 명시적 승인 전 팀 변경·제출/파일 공개하지 않는다.
+9. **상태/다음 일정**: 12/02 과제 100/100 DONE·잔여0h+0h·실제시간 미계측, 60일 29 DONE/3 BLOCKED/28 NOT_STARTED. 다음 2026-12-03 공식 10:00 본선결과 확인 0/100 기본0.5h+예비2.5h, 10/24 현재 WAIT_OFFICIAL_RESULT(미래 외부 의존), 발표/진출 단정 금지. 11/22·29 예비일 미사용, 11/18·19 평가 미확인.
+10. **Git/복원**: 새 대화 'ㄱ'은 최신 lead/kic HEAD와 FROM_HACKATHON_COMMAND.md 및 JSON 정본 재확인. 향후 외부 승인 접근되면 DAKER P0 우선; 증거 SHA·CI #40088827748와 latest docs HEAD 비교. force push/main·feature 변경 없음.
 ## LIVE HANDOFF 10항 — 2026-10-24 / 12-01 saved Streamlit provenance integration
 
 1. **목표**: KIC ProofInvest 오프라인 합성-only 화면에 11/30 분리 저장·재조회 경로를 12/01 단위로 통합. DAKER 예선 P0 제출권한은 사용자 실제 인증/승인 의존.
