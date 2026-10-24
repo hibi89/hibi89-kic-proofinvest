@@ -52,6 +52,8 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
       findings: [{claim,source_ids,as_of}].
 
     Rejected records remain visible only as warning codes, never as evidence.
+    Two distinct IDs that claim the same exact HTTPS URL are both removed;
+    URL aliases/tracking parameters are NOT normalized or authenticated.
     An input license label is untrusted, NOT legal rights evidence.
     Accepted source metadata always marks redistribution as unestablished
     until a distinct human/legal permission check (not implemented here).
@@ -129,6 +131,18 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     for sid in conflicted:
         accepted.pop(sid, None)
+
+    # Source IDs are caller-assigned labels, not proof of independent sources.
+    # Distinct IDs pointing at the exact same URL cannot count as two
+    # references, especially when their metadata or licenses disagree.
+    url_to_ids: dict[str, list[str]] = {}
+    for sid, source in accepted.items():
+        url_to_ids.setdefault(source["url"], []).append(sid)
+    for ids in url_to_ids.values():
+        if len(ids) > 1:
+            warn("duplicate_source_url", f"one URL assigned multiple source IDs: {ids!r}")
+            for sid in ids:
+                accepted.pop(sid, None)
     result["sources"] = list(accepted.values())
 
     for index, finding in enumerate(findings):

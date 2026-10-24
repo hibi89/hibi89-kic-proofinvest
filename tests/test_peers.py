@@ -99,6 +99,29 @@ class PeerScreenTests(unittest.TestCase):
         self.assertEqual(out["status"], "unavailable")
         self.assertIn("missing_comparison_metadata", out["candidates"][0]["reasons"])
 
+    def test_cross_module_duplicate_url_alias_cannot_qualify_peer(self):
+        target, candidate = data()
+        normalized = research()
+        self.assertEqual(normalized["status"], "success")
+        # Recreate caller-supplied records instead of bypassing the normalizer.
+        src = [
+            {"id": key, "title": "SYNTHETIC_FIXTURE", "url": "https://example.org/shared",
+             "published_at": "2024-12-31", "collected_at": "2025-01-10",
+             "license": "SYNTHETIC_FIXTURE"}
+            for key in ("S1", "S2")
+        ]
+        poisoned = normalize_research({
+            "target_name": "Synthetic target", "as_of": "2025-01-31",
+            "sources": src,
+            "findings": [{"claim": "Claim with aliased citations",
+                          "source_ids": ["S1", "S2"], "as_of": "2025-01-31"}],
+        })
+        self.assertEqual(poisoned["status"], "unavailable")
+        result = screen_peer_candidates(target, [candidate], poisoned)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["candidates"], [])
+        self.assertIn("no_usable_research_evidence", result["warnings"])
+
     def test_pure_deterministic_and_no_unlinked_data(self):
         target, candidate = data()
         evidence = research()

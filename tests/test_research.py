@@ -77,6 +77,55 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertEqual(len(result["sources"]), 1)
 
+    def test_distinct_ids_same_url_are_not_two_evidence_sources(self):
+        alias = dict(self.data["sources"][0], id="S2")
+        self.data["sources"].append(alias)
+        self.data["findings"][0]["source_ids"] = ["S1", "S2"]
+        result = normalize_research(self.data)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["sources"], [])
+        self.assertEqual(result["findings"], [])
+        self.assertIn("duplicate_source_url", self._codes(result))
+        self.assertIn("unavailable_evidence", self._codes(result))
+
+    def test_distinct_ids_same_url_with_conflicting_license_are_rejected(self):
+        alias = dict(self.data["sources"][0], id="S2", license="Different rights claim")
+        self.data["sources"].append(alias)
+        result = normalize_research(self.data)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["sources"], [])
+        self.assertIn("duplicate_source_url", self._codes(result))
+
+    def test_distinct_sources_remain_valid_and_order_independent(self):
+        original = copy.deepcopy(self.data)
+        other = dict(original["sources"][0], id="S2",
+                     url="https://example.org/research/independent-source")
+        original["sources"].append(other)
+        original["findings"][0]["source_ids"] = ["S1", "S2"]
+        first = normalize_research(original)
+        self.assertEqual(first["status"], "success")
+        self.assertEqual({s["id"] for s in first["sources"]}, {"S1", "S2"})
+        second = copy.deepcopy(original)
+        second["sources"].reverse()
+        reversed_result = normalize_research(second)
+        self.assertEqual(reversed_result["status"], "success")
+        self.assertEqual({s["id"] for s in reversed_result["sources"]}, {"S1", "S2"})
+
+    def test_duplicate_source_does_not_poison_independent_finding(self):
+        original = copy.deepcopy(self.data)
+        original["sources"].append(dict(original["sources"][0], id="S2"))
+        original["sources"].append(dict(original["sources"][0], id="S3",
+                                        url="https://example.org/research/independent"))
+        original["findings"] = [
+            dict(claim="Alias-dependent claim", source_ids=["S1"], as_of="2026-01-31"),
+            dict(claim="Independent claim", source_ids=["S3"], as_of="2026-01-31"),
+        ]
+        result = normalize_research(original)
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual([s["id"] for s in result["sources"]], ["S3"])
+        self.assertEqual([f["claim"] for f in result["findings"]], ["Independent claim"])
+        self.assertIn("duplicate_source_url", self._codes(result))
+
     def test_future_published_source_excluded(self):
         self.data["sources"][0]["published_at"] = "2026-02-01"
         self.data["sources"][0]["collected_at"] = "2026-02-02"
