@@ -1,3 +1,5 @@
+> **UPDATE 2026-10-25 KST — DAKER upload eligibility check:** Added final extension `.pdf` (case-insensitive, including `.PDF`; `.pdf.txt` rejected) and conservative maximum **20,000,000 bytes** as additional mandatory gates before digest calculation. The pinned candidate is **513,113 bytes**, below that limit. Valid original bytes with a non-PDF filename yield `DO_NOT_UPLOAD / PDF_EXTENSION_REQUIRED`; oversized PDF yields `DO_NOT_UPLOAD / DAKER_PDF_SIZE_LIMIT_EXCEEDED`. Five new synthetic regressions, code `2273a49`, [CI 40111994431](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40111994431) **254/254 PASS**. This does not establish actual DAKER backend submission authority, file reception or final receipt. Preflight may be run locally only when the user elects to do so; no private original was accessed during this improvement. [QA](roles/lead/DAKER_PDF_UPLOAD_ELIGIBILITY_QA_20261025.md). Original text below reflects prior 2026-10-24 checks.
+
 # KIC 예선 — 동결 PDF 동일파일 검사와 실제 제출 절차 (2026-10-24 KST)
 
 ## 목적·제약

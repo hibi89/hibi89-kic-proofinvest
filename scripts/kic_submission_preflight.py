@@ -1,8 +1,9 @@
 """Offline byte-identity guard for the privately frozen KIC preliminary PDF.
 
 This check never uploads, rewrites, parses, or prints the PDF or its local path.
-It only confirms that the selected file is byte-identical to the prior
-privately reviewed candidate. It cannot prove submission rights or receipt.
+It confirms a PDF-eligible filename, conservative size bound, and exact
+byte identity with the privately reviewed candidate. It cannot prove actual
+DAKER upload permissions, backend acceptance, or a final submission receipt.
 """
 from __future__ import annotations
 
