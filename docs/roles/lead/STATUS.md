@@ -45,3 +45,11 @@
 - `main 1300b9b31a5b`, `lead/kic 25fe5f60642a`, Research `1f05adcedff8`, Verification `d6b4827c1d4f`, Risk `3573455fd208` (이번 커밋 전 실 확인); 최신 5개 Actions PASS. main job 로그에서 **Ran 9 tests ... OK** 확인. 별도 실 API/브라우저/Production/최종 제출 미검증.
 - 통합 총괄 `hackathon-command-center-2026`의 일정과 충돌 방지: KIC 11/10 조기 제출 → 공식 11/12 10:00 → PayPal 11/13 05:00 → UGREEN 11/16 16:45. 사용자 제출 화면 최종 버튼·상호평가 필수 투표 확인 필요.
 - 별도 승인: 공통 데이터 스키마, OpenDART live 호출, 비용/보안. **신규 담당 지시 없음**. 자세한 기록은 `AUDIT_EXECUTION_PLAN_20261024.md` 및 `MESSAGE_REVIEW.md` 참조.
+
+
+## 2026-10-24 12:15:11 KST — KIC 독립 실행 일정으로 확정 반영(일정 편성; 기능 구현 아님)
+- 사용자 최신 지시: **KIC 일정만 독립적으로 운영**. 다른 대회의 마감/작업 시간과 충돌 여부를 KIC 일정 설계에 고려하지 않음.
+- `docs/roles/lead/AUDIT_EXECUTION_PLAN_20261024.md`를 KIC 전용으로 개정: 10/24~11/10 예선 일일 마일스톤, 11/12~12/02 본선 대비 선행 개발, 12/03 진출 후 12/22 제출까지 조건부 일정.
+- KIC 내 우선순위: (1) 공식 원본 기획서/팀 제출 권한 확인 (2) 중앙 공통 데이터 계약 설계·승인 (3) 세 기능 병렬 구현·오프라인 검증 (4) 11/05 PDF 1차, 11/08 내용 동결, **11/10 조기 제출** (5) 제출 후 MVP 선행 개발.
+- 점검 기준 SHA: `main 1300b9b31a5b86792d15ed7a2dce7c24849dbd87`, `lead/kic d081a59c62e5686fac93f9f0ec97e86f79832ccb`(문서 수정 전), Research `1f05adcedff85526f9121a0a470d8f21f40d57f8`, Verification `d6b4827c1d4f65cfceb25b5773c046d0d1a7eb9c`, Risk `3573455fd20807a5fbb1c0e5f6db75b37daae690`. 메시지함 신규 요청 0, CI 9/9 PASS(합성), 실 API·서비스·제출 미검증.
+- **설계 변경·개발 지시·실 API 호출·실 제출 미실행**. 본 일정은 KIC 사용자의 일정 범위 지시를 반영한 계획이며 별도 기술·계정 승인 게이트 유지.

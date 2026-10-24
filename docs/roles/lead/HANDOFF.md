@@ -46,3 +46,10 @@
 - `main 1300b9b31a5b`, `lead/kic 25fe5f60642a`, Research `1f05adcedff8`, Verification `d6b4827c1d4f`, Risk `3573455fd208` (이번 커밋 전 실 확인); 최신 5개 Actions PASS. main job 로그에서 **Ran 9 tests ... OK** 확인. 별도 실 API/브라우저/Production/최종 제출 미검증.
 - 통합 총괄 `hackathon-command-center-2026`의 일정과 충돌 방지: KIC 11/10 조기 제출 → 공식 11/12 10:00 → PayPal 11/13 05:00 → UGREEN 11/16 16:45. 사용자 제출 화면 최종 버튼·상호평가 필수 투표 확인 필요.
 - 별도 승인: 공통 데이터 스키마, OpenDART live 호출, 비용/보안. **신규 담당 지시 없음**. 자세한 기록은 `AUDIT_EXECUTION_PLAN_20261024.md` 및 `MESSAGE_REVIEW.md` 참조.
+
+
+## 2026-10-24 12:15:11 KST — 최신 KIC 일정 단독 편성 인수인계
+- KIC 일정의 **유일한 KIC 상세 실행표**: `docs/roles/lead/AUDIT_EXECUTION_PLAN_20261024.md` (금번 KIC-only 개정본). 타 대회 일정/시간 배분이 담긴 이전 기록은 **이 실행표의 일정 제약이 아님**.
+- 당면 게이트: 10/25 공식 양식·초안·팀 권한 실 확인; 10/26 공통 데이터 스키마 제안·승인; 10/27~31 세 담당 분리 구현 검토와 합성 통합 흐름(승인 후); 11/05 PDF 1차; 11/08 동결; 11/10 내부 조기 제출.
+- 공식 KIC 예선 11/12 10:00, 상호평가 11/12~19, 12/03 본선 12팀 발표, 진출 시 12/22 10:00 작동 MVP·GitHub 코드·발표 PDF.
+- 코드/PR/API/제출은 이번 계획 작성으로 변경되지 않음. KIC 세 담당 최신 메시지 직접 확인 후 새로운 지시를 시작하고, 총괄 보고/STATUS/HANDOFF 동기화 필수.
