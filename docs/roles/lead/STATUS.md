@@ -115,3 +115,10 @@
 - **기본 1.5h + 예비 3.5h = 5h 한도(10/30, 11/02) 유지**. 원본 접근/기간/연결 정보 부족 시 BLOCKED/이월·재산정, 합성 테스트로 실기업 실증 성공을 꾸미지 않음. 11/03~05 기획서, 11/08 동결, 11/10 내부 조기 제출 유지.
 - OpenDART 공식 웹 공개 공시 열람 가능([공식 소개](https://opendart.fss.or.kr/intro/main.do)). API 인증키 자동 수집/대외 LLM 자료 전송·유료 사용은 별도 승인 게이트이며 이번 수정으로 허가된 것이 아니다.
 - 이번 변경 **일정·검증 계약 수정만**, 실제 특정 기업 숫자 확보·실수치 계산·API 호출·PDF 제출을 실행하지 않았음. 실증은 해당 날짜에 실제 원문과 계산 증거를 저장하고 평가한다.
+
+## 2026-10-24 13:46:48 KST — KIC-R-001 Research lead 인수 / 코드 커밋
+- 총괄이 `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`의 `proofinvest/research.py`와 `tests/test_research.py`를 읽고 기존 엔진·원 과제 `KIC-R-001` 요구와 대조한 후 **두 파일만 원본 Git blob SHA 그대로 `lead/kic`로 선별 이관**. 이전 feature 원본/3역할 브랜치 및 main 코드 무변경.
+- 코드 심사: HTTPS 형식 검사, 출처 ID 중복 충돌 무효화, 날짜·근거 링크·미래 발행 차단, 부족한 근거 `unavailable`, 일부만 유효 시 `partial`, 입력 비변경·결정론 확인. **Research 내부 처리 상태이며 전체 Verification 검증 진실상태와 다르다**.
+- 기존 feature에서 GitHub Actions run [40060805053](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40060805053) **26/26 PASS** 및 합성 CLI 단계 성공 로그 직접 검증. **새 lead/kic 통합 커밋 CI는 아직 PENDING**, 독립 실행 결과 확인 이후에만 인수 최종 승인.
+- 범위·제약: 이 정규화는 기록의 구조·참조 추적만 검사한다. 실제 URL 존재·허가된 법률상 사용권, 근거 원문의 진실, 발행·수집 시각별 시간대 정책은 아직 입증·확정하지 않는다. 입력 `license` 문구 존재 여부만 판단. 새로운 API/유료 호출/실기업 자료 검증/제출 없음.
+- 다음 게이트: CI에서 원본 엔진 9 + 신규 Research 17 회귀 통과, `python -m proofinvest --claim-revenue-growth-pct 20` `SYNTHETIC_FIXTURE` 성공 확인 → `KIC-R-001` lead 단계 ACCEPTED로 확정. 그 후 다음 Verification 작은 단위 구현. DAKER 팀장 권한·PDF 공식 템플릿 별도 P0, 실증 10/30 예정.

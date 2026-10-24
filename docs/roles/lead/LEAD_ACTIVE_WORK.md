@@ -2,11 +2,11 @@
 2026-10-24 KST. **OWNER: KIC lead, same chat as implementer.** No worker chat. This document supersedes NEXT_TASK as execution authority.
 
 ## Current checkpoint: KIC-R-001 take-over / lead independent verification
-- Status: **REPORTED_DONE_BY_FORMER_WORKER / LEAD_REVIEW_REQUIRED**. This is NOT independently accepted nor merged.
+- Status: **LEAD_REVIEW_PASSED / LEAD_CI_PENDING**. Original feature evidence PASS. New lead branch verification is required before final acceptance.
 - Former task: KIC-R-001 — offline evidence normalizer Research.
-- Origin: `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`; record `docs/roles/research/TO_KIC_LEAD.md` there; initial tests claimed 26 local PASS, CI unverified.
-- Action 1: read source + all 17 new tests from actual feature HEAD and compare with requirements / existing `lead/kic` & `main`; check reported Git history, blockers and CI.
-- Action 2: integrate only reviewed safe source/tests onto **`lead/kic`** (not wholesale branch overwrite); run `python -m unittest discover -s tests -v` and `python -m proofinvest --claim-revenue-growth-pct 20` locally if environment available; otherwise mark NOT_RUN and do not claim acceptance.
+- Origin: `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`; record `docs/roles/research/TO_KIC_LEAD.md` there; original feature run 40060805053 **26 PASS / demo PASS** verified from GitHub Actions job log.
+- Action 1: DONE — reviewed original research source and all 17 tests, GitHub evidence run 40060805053.
+- Action 2: IN_PROGRESS — exact two Git blobs integrated into lead (not whole branch). New lead CI tests+demo to be verified. Local test NOT_RUN (container GitHub DNS blocked).
 - Action 3: resolve public proof for data contract and dates/licenses, record accepted/rework, commit evidence; only then move to next Verification implementation and Risk one by one. Avoid any new OpenDART/live API or paid model invocation without approval.
 - Parallel participant gate: KIC 'team conversion' and preliminary PDF validity/submission need real evidence. **Not yet verified**.
 - Primary deadline: 2026-11-12 10:00 KST; internal PDF target 11/10.
@@ -30,3 +30,10 @@
 - 이번 변경 **일정·검증 계약 수정만**, 실제 특정 기업 숫자 확보·실수치 계산·API 호출·PDF 제출을 실행하지 않았음. 실증은 해당 날짜에 실제 원문과 계산 증거를 저장하고 평가한다.
 
 - 당일 실제 실행포인터와 별도로 10/30 원문 검산 및 11/02 예선 실증 게이트를 반드시 우선순위에 포함한다. 이월 중에도 공식 제출 권한/PDF 준비를 우선한다.
+
+## 2026-10-24 13:46:48 KST — KIC-R-001 Research lead 인수 / 코드 커밋
+- 총괄이 `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`의 `proofinvest/research.py`와 `tests/test_research.py`를 읽고 기존 엔진·원 과제 `KIC-R-001` 요구와 대조한 후 **두 파일만 원본 Git blob SHA 그대로 `lead/kic`로 선별 이관**. 이전 feature 원본/3역할 브랜치 및 main 코드 무변경.
+- 코드 심사: HTTPS 형식 검사, 출처 ID 중복 충돌 무효화, 날짜·근거 링크·미래 발행 차단, 부족한 근거 `unavailable`, 일부만 유효 시 `partial`, 입력 비변경·결정론 확인. **Research 내부 처리 상태이며 전체 Verification 검증 진실상태와 다르다**.
+- 기존 feature에서 GitHub Actions run [40060805053](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40060805053) **26/26 PASS** 및 합성 CLI 단계 성공 로그 직접 검증. **새 lead/kic 통합 커밋 CI는 아직 PENDING**, 독립 실행 결과 확인 이후에만 인수 최종 승인.
+- 범위·제약: 이 정규화는 기록의 구조·참조 추적만 검사한다. 실제 URL 존재·허가된 법률상 사용권, 근거 원문의 진실, 발행·수집 시각별 시간대 정책은 아직 입증·확정하지 않는다. 입력 `license` 문구 존재 여부만 판단. 새로운 API/유료 호출/실기업 자료 검증/제출 없음.
+- 다음 게이트: CI에서 원본 엔진 9 + 신규 Research 17 회귀 통과, `python -m proofinvest --claim-revenue-growth-pct 20` `SYNTHETIC_FIXTURE` 성공 확인 → `KIC-R-001` lead 단계 ACCEPTED로 확정. 그 후 다음 Verification 작은 단위 구현. DAKER 팀장 권한·PDF 공식 템플릿 별도 P0, 실증 10/30 예정.

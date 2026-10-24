@@ -1,0 +1,156 @@
+"""Offline, deterministic evidence normalization for ProofInvest Research.
+
+Checks traceability and timestamps, not factual truth or license legality.
+No I/O, remote calls, LLM use, or external dependencies.
+"""
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Any, Mapping
+from urllib.parse import urlsplit
+import re
+
+
+def _day(value: Any) -> date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            return date.fromisoformat(value)
+        if "T" not in value:
+            return None
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.date() if parsed.tzinfo is not None else None
+    except ValueError:
+        return None
+
+
+def _https_url(value: Any) -> bool:
+    if not isinstance(value, str) or not value or any(c.isspace() for c in value):
+        return False
+    try:
+        url = urlsplit(value)
+        return (
+            url.scheme == "https" and url.hostname is not None
+            and "." in url.hostname and not url.username and not url.password
+            and url.port != 0
+        )
+    except ValueError:
+        return False
+
+
+def _text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize pre-supplied records without inventing or fetching evidence.
+
+    The internal (not cross-module approved) input is:
+      target_name: str, target_id?: str, as_of: ISO date,
+      sources: [{id,title,url,published_at,collected_at,license}],
+      findings: [{claim,source_ids,as_of}].
+
+    Rejected records remain visible only as warning codes, never as evidence.
+    """
+    if not isinstance(payload, Mapping):
+        raise TypeError("payload must be a mapping")
+    result: dict[str, Any] = {
+        "status": "unavailable",
+        "source_kind": "PROVIDED_OFFLINE_RECORDS",
+        "target": {"name": payload.get("target_name"), "id": payload.get("target_id")},
+        "as_of": payload.get("as_of"),
+        "sources": [],
+        "findings": [],
+        "warnings": [],
+    }
+
+    def warn(code: str, detail: str) -> None:
+        result["warnings"].append({"code": code, "detail": detail})
+
+    name = payload.get("target_name")
+    target_id = payload.get("target_id")
+    as_of = _day(payload.get("as_of"))
+    if not _text(name) or (target_id is not None and not _text(target_id)) or as_of is None:
+        warn("invalid_request", "target_name, optional target_id or as_of invalid")
+        return result
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", payload["as_of"]):
+        warn("invalid_request", "as_of must be an ISO calendar date")
+        return result
+    sources = payload.get("sources", [])
+    findings = payload.get("findings", [])
+    if not isinstance(sources, list) or not isinstance(findings, list):
+        warn("invalid_collection", "sources and findings must be lists")
+        return result
+
+    seen: dict[str, dict[str, Any]] = {}
+    accepted: dict[str, dict[str, Any]] = {}
+    conflicted: set[str] = set()
+    for index, source in enumerate(sources):
+        if not isinstance(source, dict):
+            warn("invalid_source", f"source[{index}] is not a record")
+            continue
+        sid = source.get("id")
+        if not _text(sid):
+            warn("invalid_source", f"source[{index}] has no id")
+            continue
+        if sid in seen:
+            if source != seen[sid]:
+                conflicted.add(sid)
+                warn("source_id_conflict", f"source id {sid!r} has divergent records")
+            continue
+        seen[sid] = source
+        required = ("id", "title", "url", "published_at", "collected_at", "license")
+        if not all(_text(source.get(key)) for key in required):
+            warn("invalid_source", f"source id {sid!r} has missing required fields")
+            continue
+        if not _https_url(source["url"]):
+            warn("invalid_source_url", f"source id {sid!r} has no valid HTTPS URL")
+            continue
+        published = _day(source["published_at"])
+        collected = _day(source["collected_at"])
+        if published is None or collected is None or collected < published:
+            warn("invalid_source_date", f"source id {sid!r} has invalid chronology")
+            continue
+        if published > as_of:
+            warn("future_published", f"source id {sid!r} was published after requested as_of")
+            continue
+        accepted[sid] = {key: source[key] for key in required}
+
+    for sid in conflicted:
+        accepted.pop(sid, None)
+    result["sources"] = list(accepted.values())
+
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict) or not _text(finding.get("claim")):
+            warn("invalid_claim", f"finding[{index}] has no claim")
+            continue
+        finding_day = _day(finding.get("as_of"))
+        if finding_day is None or finding_day > as_of:
+            warn("invalid_finding_date", f"finding[{index}] has invalid or future as_of")
+            continue
+        ids = finding.get("source_ids")
+        if not isinstance(ids, list) or not ids or any(not _text(sid) for sid in ids):
+            warn("missing_source_ids", f"finding[{index}] has no usable source_ids")
+            continue
+        deduped = list(dict.fromkeys(ids))
+        missing = [sid for sid in deduped if sid not in accepted]
+        if missing:
+            warn("unavailable_evidence", f"finding[{index}] references unavailable ids: {missing!r}")
+            continue
+        if any(_day(accepted[sid]["published_at"]) > finding_day for sid in deduped):
+            warn("finding_precedes_source", f"finding[{index}] predates its cited source")
+            continue
+        result["findings"].append({
+            "claim": finding["claim"].strip(),
+            "source_ids": deduped,
+            "as_of": finding["as_of"],
+        })
+
+    if not result["findings"]:
+        warn("no_supported_findings", "no claim has complete, time-valid linked evidence")
+    result["status"] = (
+        "unavailable" if not result["findings"]
+        else "partial" if result["warnings"] else "success"
+    )
+    return result
