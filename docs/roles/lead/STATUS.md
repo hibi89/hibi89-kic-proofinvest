@@ -13,3 +13,12 @@
 - CI: 저장소 자체의 CI 결과 미확인(초기 로컬 9 PASS와 구분).
 - Production URL: 없음. 공식 팀 전환 상태: 미확인. 본선 진출: 미확정.
 - 다음 단계: 세 기능별 초기 요청 수신 후, 기능별 작업 기준 검수 및 승인.
+
+## 2026-10-24 10:40:26 KST — 총괄 재개 점검 결과
+- 실 확인 SHA: `lead/kic` 최초 조회 `37ee2635e2c1655e8b9032f1d01cbb7aae776f2d`; `main` `9d0d454154a7393627a840113ab811a5b91f121a`; 각 feature SHA와 메시지 검토 원문은 `MESSAGE_REVIEW.md` 참조.
+- 메시지함: 3개 최신 직접 조회, 신규 요청·차단 0건. 신규 기능 지시 없음.
+- `main` 파일 확인: `proofinvest/engine.py`, `dart_adapter.py`, `__main__.py`, `tests/test_engine.py`, `.github/workflows/ci.yml`.
+- GitHub Actions run `40050488506` (`main`, 위 SHA): completed/success; Python unit tests와 synthetic demo 성공. 오프라인 테스트 9개 정의 확인. 실 OpenDART/실 기업 데이터/웹 UI/Production/브라우저는 미검증.
+- 기술 검토상 보완 필요: 공통 데이터 스키마 미동결, 공시 기간·통화·계정 중복/모호성 처리, 출처와 검증 상태를 Risk 및 보고서까지 일관 전달.
+- 공식 공모전 안내 재확인: 예선 PDF 10페이지 이내, 2026-11-12 10:00 KST 마감; 본선 선발 상위 12팀. '팀으로 전환' 및 최종 제출 완료 여부는 사용자 계정 화면에서 미검증.
+- 다음 작업: 공통 계약 설계안 2개 비교 및 승인 → 세 담당자 대상 작업 범위 확정 → 병렬 구현/통합 검수. API 호출·유료 비용·구조 변경은 사전 승인.
