@@ -1,3 +1,5 @@
+> **신규 심사용 3사례 한 명령 재현:** `python -m proofinvest.judge_replay` 또는 `python -m proofinvest.judge_replay --json`. 기존 2024/2023 수동 재무 기록 바이트 무결성을 먼저 확인하고, 산술 일치/불일치/판정보류를 한 번에 출력하며 검증된 부채·자본 부족으로 Risk는 보류. **실 DART/AI Agent/웹배포/투자권고 아님.** [QA](docs/roles/lead/JUDGE_REPLAY_EVIDENCE_FREEZE_QA_20261024.md) · [203개 CI 통과](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40100217119).
+
 > **2026-10-24 UI 신규 시연:** 전체 `lead/kic` 저장소의 `python -m streamlit run streamlit_app.py`에서 **자료 유형**으로 기존 합성 결과 또는 삼성전자 과거 수동검산(16.20% 일치 / 30% conflict / 주장 없음 보류)을 선택할 수 있습니다. 원문·API 인증은 아니며 Risk는 근거 부족 시 보류합니다. 공개 합성 복원 ZIP은 의도대로 합성 모드만 표시합니다. [QA](docs/roles/lead/MANUAL_ISSUER_STREAMLIT_UI_QA_20261024.md). [196/196 CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40099102467).
 
 > **기존 수동 공시 검산 한 명령 실행:** `python -m proofinvest.manual_case_demo` / 거짓 주장 확인 `python -m proofinvest.manual_case_demo --claim 30`. 삼성전자 2024/2023 연결매출 **+16.20%**를 과거 육안 확인된 PDF 메타데이터와 수동 기록으로 검산. 위험 계산 자료 없으면 Risk 보류. **새 PDF 원문 실시간 조회, OpenDART 인증, 실제 AI Agent, DAKER 제출 아님.** [실행/검수 근거](docs/roles/lead/MANUAL_ISSUER_DEMO_CLI_QA_20261024.md).

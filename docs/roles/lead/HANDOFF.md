@@ -1,3 +1,15 @@
+## KIC 최신 10항 HANDOFF — 2026-10-24 23:00 KST / 3사례 심사용 검증 재현
+1. **목표**: 기존 수동발행사 재무 검산 기록의 조용한 값 교체를 방지하고 심사자 재현 테스트를 한 명령에 집약.
+2. **설계**: 발행사 원문 재다운로드/기존 메타데이터 신뢰 대신 Git blob 원본 바이트 고정; 변경 시 예외, 3사례 산술 상태만 재현하며 Risk 전부 보류.
+3. **검증**: 신규7, 전체 [CI 40100217119](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40100217119) **203/203 PASS**; 원본 실제 PDF, DART/AI/브라우저 E2E 미테스트.
+4. **상태**: 별도 독립 작업 100/100, 잔여 기본0h + 예비0h, 실제 시간 미계측. 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED; NEXT 2026-12-03 미래발표.
+5. **차단/대안**: DAKER 10/25·11/09 각60%, DART 10/30 90% BLOCKED; 본인 인증/팀장 제출화면과 발행사 공식 원문 별도 확인 전 해제 불가.
+6. **저장소·SHA**: `lead/kic` 기능 SHA `79bdfc6e2a540d13698dcaf9939274178378e3b5`, proofinvest/manual_case_demo.py·judge_replay.py·tests/test_judge_replay.py. [QA](JUDGE_REPLAY_EVIDENCE_FREEZE_QA_20261024.md). 최종 문서 SHA·CI는 GitHub 재조회.
+7. **시연/배포**: `python -m proofinvest.judge_replay --json`, CI에서 JSON과 텍스트 subprocess 실행. 공개 웹데모/Vercel/실 모델 호출 없음.
+8. **민감원본**: 사용자 동결 비공개 10쪽 PDF/PPTX·Library 6개 수정/업로드 없음, 공개 JSON만 원본 지문 참조. 강제 push 없음.
+9. **다음 액션**: DAKER 인증된 팀장/제출 버튼 요건 확인 후 별도 사용자 명시 승인으로 11/10 조기제출 계획, 11/12 10:00 공식 마감, '최종' 접수증 확인. 12/03 발표는 미래.
+10. **복구 및 시간**: 직전 정상 코드 `09fc0db`, 일반 revert로 원복 가능, 실 작업시간 미계측; GitHub 작업 종료 시 최신 SHA 확인.
+
 ## KIC 최신 10항 인수인계 — 2026-10-24 KST / 삼성전자 수동검산 UI·합성 전용 복원
 1. 목표: 기존 오프라인 Streamlit의 합성 데이터 모드 유지, 수동검산 자료를 투자 인증과 구분해 확인할 수 있는 별도 UI 추가.
 2. 설계: UI 자료 유형에 두 모드. full repo의 issuer 수동기록만 제공, ZIP 복원은 synthetic-only 옵션만 노출하고 모듈 lazy import.
