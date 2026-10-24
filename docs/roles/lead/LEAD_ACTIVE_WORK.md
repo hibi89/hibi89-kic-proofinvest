@@ -1,3 +1,5 @@
+> **2026-10-24 14:26:10 KST BLOCKED TASK RECOVERY:** [BLOCKED_WORK_RECOVERY_20261024.md](BLOCKED_WORK_RECOVERY_20261024.md) — DAKER 35% 10/25~26 접근 후 3h, DART 90% 10/27 공식뷰어 접근 후 1.5h. Research 기존 10/26~27 전부 선행 완료, 코드 반복 금지. Next free development `10/31 Risk verified-only` when user sends `ㄱ`. Blocked % must stay unchanged until evidence. No autonomous scheduled run.
+
 > **LATEST 2026-10-24 14:20:07 KST: 11/02 three-state actual-company manual-record verification ACCEPTED_ON_LEAD. 100/100=100%, remaining base 0h+reserve 0h=0h, CI [40065759471](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40065759471) 54 PASS. Next unblocked unit 10/31 Risk verified-only gate; separate DAKER 35% and DART 90% blocked remain. Follow [DAILY_PROGRESS.md](DAILY_PROGRESS.md), avoid duplicate coding.**
 
 > **2026-10-24 14:18:36 KST ACTIVE: 11/02 실기업 출처 주장 3상태 판정 / CI 전 임시 60/100=60%, 남은 기본 0.5h+예비1h=1.5h. 실제 금융자료 수동검산 영수증 기반. CI PASS 확인 후만 100%; DAKER·DART 별도 BLOCKED.**
