@@ -1,3 +1,5 @@
+> **SUPERSEDED / ARCHIVED — 2026-10-24 KST:** This file is retained for historical task scope and worker-chat handoff evidence. It NO LONGER authorizes a separate worker, READY dispatch or feature-branch write. Only the KIC lead in the same chat continues work on `lead/kic`, following `LEAD_ACTIVE_WORK.md` and `LEAD_FULLSTACK_PROTOCOL.md`. Do not start a worker chat or repeat KIC-R-001.
+
 # KIC ProofInvest — 유일한 활성 작업 지시서
 
 > **이 파일만 작업 디스패치 권한이 있다.** 작업자 채팅은 자신의 이전 역할이나 날짜에 따라 다른 브랜치를 추측하지 않는다.

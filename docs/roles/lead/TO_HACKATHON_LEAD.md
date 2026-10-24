@@ -213,3 +213,12 @@
 - 세 담당 메시지함 신규 보고·차단 0; 5개 HEAD CI offline-tests 성공, 기존 unit tests 9개 확인, PR 0. 실 OpenDART/Agent/UI/Production·PDF 제출은 미완료/미검증.
 - 계약 확정과 실 API/유료 사용은 추가 승인 필요. 기존 발행된 Research **격리 오프라인 과제만** 사용자 작업자 채팅 요청 시 수행 가능. 승인 전 통합 스키마 동결 안 함.
 - KIC 독립 마감 유지: 11/05 PDF 초안, 11/08 동결, 11/10 내부 접수, **11/12 10:00 공식 제출**. DAKER 팀 전환·실제 접수, 제출 양식과 원본 파일 직접 검증은 남은 P0. GitHub 보고는 자동 알림 아님.
+
+
+## 2026-10-24 KST — 참가자 지시에 따른 단일 총괄·개발자 전환 (현행 최우선)
+- **채팅 구조:** 통합 총괄 1 + 각 대회 총괄·개발 겸임 3 = 전체 4개 채팅. KIC 별도 작업자 채팅 폐기. KIC 총괄 1명이 설계/개발/테스트/검수/통합/제출을 같은 대화에서 연속 수행하며 사용자 `ㄱ`을 실행 트리거로 삼음.
+- **코드 작업 브랜치:** `lead/kic` 중심. 세 feature 브랜치는 원본/증거 보존, 삭제/강제갱신 금지. 이관할 검증된 코드만 테스트·차분 검토하여 `lead/kic`에 통합; `main`은 검증 후에만 PR 또는 안전한 fast-forward/merge. 승인 없는 권한/비용/실 API 변경 금지.
+- **현재 작업 실상:** KIC-R-001 Research 작업자는 `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`에서 `[DONE]` 보고; 소스 `proofinvest/research.py`, `tests/test_research.py`, 26 local PASS 주장 (기존 9+신규 17). **총괄 독립 재실행·CI/병합 검수는 아직 하지 않음.** 다음은 해당 실제 코드/원격 CI/데이터 계약 리뷰 및 안전한 통합, 그 다음 Verification/Risk.
+- 종전 `NEXT_TASK.md` / `WORKER_ROUTER.md` / worker 프롬프트는 **은퇴한 이력**, `READY` 문구는 실행 권한 없음. 최신 실행 명세: `docs/roles/lead/LEAD_ACTIVE_WORK.md`; 최상위 기준: `docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md`.
+- 공식 예선 마감 **2026-11-12 10:00 KST**. 팀 전환·PDF 업로드/접수 증거 여전히 확인 필요. 실제 OpenDART/외부 API/Production 미검증. 신규 현금 지출/고객 비밀 데이터 없음.
+- 전환 전 원격 기준 `lead/kic@92e2a787c5e10f84305a1142b2cc2e194bed3a52`, `main@1300b9b31a5b86792d15ed7a2dce7c24849dbd87`. 전환 커밋 SHA는 원격 ref 검증으로 판정.

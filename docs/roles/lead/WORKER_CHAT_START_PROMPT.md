@@ -1,3 +1,5 @@
+> **SUPERSEDED / ARCHIVED — 2026-10-24 KST:** This file is retained for historical task scope and worker-chat handoff evidence. It NO LONGER authorizes a separate worker, READY dispatch or feature-branch write. Only the KIC lead in the same chat continues work on `lead/kic`, following `LEAD_ACTIVE_WORK.md` and `LEAD_FULLSTACK_PROTOCOL.md`. Do not start a worker chat or repeat KIC-R-001.
+
 # KIC — 범용 작업자 채팅방 시작 프롬프트 (사용자가 복사)
 
 아래 내용을 **KIC의 범용 작업자 채팅방 단 하나**를 열어 첫 메시지로 보내세요. Research/Verification/Risk별로 채팅방을 따로 열 필요가 없습니다.

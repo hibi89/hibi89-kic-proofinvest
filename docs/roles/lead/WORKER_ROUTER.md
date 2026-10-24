@@ -1,3 +1,5 @@
+> **SUPERSEDED / ARCHIVED — 2026-10-24 KST:** This file is retained for historical task scope and worker-chat handoff evidence. It NO LONGER authorizes a separate worker, READY dispatch or feature-branch write. Only the KIC lead in the same chat continues work on `lead/kic`, following `LEAD_ACTIVE_WORK.md` and `LEAD_FULLSTACK_PROTOCOL.md`. Do not start a worker chat or repeat KIC-R-001.
+
 # KIC ProofInvest — 단일 작업자 채팅 실행 프로토콜 (필독)
 
 > **최종 사용자 결정**: **KIC 총괄 채팅 1개 + KIC 범용 작업자 채팅 1개**만 필요. Research/Verification/Risk는 **담당 기능과 GitHub 브랜치**일 뿐 사용자에게 3개의 작업자 채팅방을 요구하지 않는다.

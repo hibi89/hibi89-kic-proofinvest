@@ -73,3 +73,12 @@
 - 이번 변경은 **일정 공시/운영 문서에 한정**, 기능 소스·API·팀 상태·본선 결과는 변경되지 않음. 공시만으로 제출 완료로 판단하지 않는다.
 
 - 새로운 작업 지시 전에 기존 규칙대로 세 기능 담당 메시지함·최신 SHA를 먼저 확인하고, **이 일정표의 다음 제출 위험도 함께 확인**한다. 실제 마감 공지가 바뀌면 주최 공식 소스·확인 시간을 기록한 뒤 상위 총괄 보고를 갱신한다.
+
+
+## 2026-10-24 KST — 참가자 지시에 따른 단일 총괄·개발자 전환 (현행 최우선)
+- **채팅 구조:** 통합 총괄 1 + 각 대회 총괄·개발 겸임 3 = 전체 4개 채팅. KIC 별도 작업자 채팅 폐기. KIC 총괄 1명이 설계/개발/테스트/검수/통합/제출을 같은 대화에서 연속 수행하며 사용자 `ㄱ`을 실행 트리거로 삼음.
+- **코드 작업 브랜치:** `lead/kic` 중심. 세 feature 브랜치는 원본/증거 보존, 삭제/강제갱신 금지. 이관할 검증된 코드만 테스트·차분 검토하여 `lead/kic`에 통합; `main`은 검증 후에만 PR 또는 안전한 fast-forward/merge. 승인 없는 권한/비용/실 API 변경 금지.
+- **현재 작업 실상:** KIC-R-001 Research 작업자는 `feature/research@3fb60204d153b5c791c18961ae790f9f7e94de38`에서 `[DONE]` 보고; 소스 `proofinvest/research.py`, `tests/test_research.py`, 26 local PASS 주장 (기존 9+신규 17). **총괄 독립 재실행·CI/병합 검수는 아직 하지 않음.** 다음은 해당 실제 코드/원격 CI/데이터 계약 리뷰 및 안전한 통합, 그 다음 Verification/Risk.
+- 종전 `NEXT_TASK.md` / `WORKER_ROUTER.md` / worker 프롬프트는 **은퇴한 이력**, `READY` 문구는 실행 권한 없음. 최신 실행 명세: `docs/roles/lead/LEAD_ACTIVE_WORK.md`; 최상위 기준: `docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md`.
+- 공식 예선 마감 **2026-11-12 10:00 KST**. 팀 전환·PDF 업로드/접수 증거 여전히 확인 필요. 실제 OpenDART/외부 API/Production 미검증. 신규 현금 지출/고객 비밀 데이터 없음.
+- 전환 전 원격 기준 `lead/kic@92e2a787c5e10f84305a1142b2cc2e194bed3a52`, `main@1300b9b31a5b86792d15ed7a2dce7c24849dbd87`. 전환 커밋 SHA는 원격 ref 검증으로 판정.
