@@ -8,4 +8,4 @@
 
 검증: `python scripts/master_progress.py --check` 또는 `python render_master_progress.py --check`. 갱신: JSON 원장 → `python scripts/master_progress.py --write` → CI 검사 → 같은 커밋으로 인수인계.
 
-현재 60일 중 **11일 DONE, 2일 BLOCKED, 47일 NOT_STARTED**, 다음 미착수 `2026-11-06` PDF 출처·사실 검증. 공식 제출·실 OpenDART 성공을 뜻하지 않습니다.
+**현재 상태 숫자는 이 파일에 별도로 유지하지 않습니다.** 상세 JSON과 자동생성 표를 확인하세요. 공식 접수·실 OpenDART/API·Production 결과는 별도 증빙이 필요합니다.

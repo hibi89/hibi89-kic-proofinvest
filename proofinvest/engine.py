@@ -78,6 +78,25 @@ def _consistent_annual_period(rows: list[dict], year: int) -> bool:
     return True
 
 
+def _consistent_amount_units(rows: list[dict]) -> bool:
+    """Fail closed when selected financial rows disagree on unit metadata.
+
+    An entirely absent optional unit field is tolerated for the legacy
+    synthetic fixture. If any selected row supplies a field, all selected
+    rows must supply the same nonempty value. An unselected OFS/CFS is
+    irrelevant, and amounts are never silently rescaled or converted.
+    """
+    for field in ("currency", "amount_unit", "unit", "unit_nm"):
+        values = [row.get(field) for row in rows]
+        if not any(value is not None for value in values):
+            continue
+        if any(not isinstance(value, str) or not value.strip() for value in values):
+            return False
+        if len({value.strip().upper() for value in values}) != 1:
+            return False
+    return True
+
+
 def parse_accounts(rows: list[dict], year: int, preferred_fs: str = "CFS") -> dict[str,dict]:
     """Pick one statement type; never combine CFS and OFS in ratios."""
     valid=[r for r in rows if r.get("account_nm") in ACCOUNTS]
@@ -86,7 +105,7 @@ def parse_accounts(rows: list[dict], year: int, preferred_fs: str = "CFS") -> di
     if not fs:return {}
     selected=[r for r in valid if r.get("fs_div")==fs]
     # Never rescue only favorable rows from a mixed-period report.
-    if not _consistent_annual_period(selected, year):
+    if not _consistent_annual_period(selected, year) or not _consistent_amount_units(selected):
         return {}
     out={}
     ambiguous=set()

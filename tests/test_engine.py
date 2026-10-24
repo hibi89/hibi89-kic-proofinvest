@@ -128,6 +128,34 @@ class EngineTests(unittest.TestCase):
                    frmtrm_dt="2022.04.01 ~ 2023.03.31") for r in ROWS]
         self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
 
+    def test_mixed_cfs_currency_fails_closed_without_ofs_fallback(self):
+        rows=[dict(r) for r in ROWS]
+        rows[2]["currency"]="USD"
+        self.assertEqual(parse_accounts(rows,2024),{})
+        result=calculate(rows,2024,"20",True)
+        self.assertEqual(result["checks"][0]["state"],"unavailable")
+        self.assertIsNone(result["risk_signals"][0]["value"])
+
+    def test_mixed_explicit_amount_units_fail_closed(self):
+        rows=[dict(r,amount_unit="원") for r in ROWS]
+        rows[3]["amount_unit"]="천원"
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_partial_amount_unit_metadata_fails_closed(self):
+        rows=[dict(r) for r in ROWS]
+        rows[0]["amount_unit"]="원"
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_uniform_unit_metadata_preserves_calculation(self):
+        rows=[dict(r,amount_unit="원",unit_nm="원") for r in ROWS]
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
+    def test_unselected_ofs_unit_conflict_does_not_poison_cfs(self):
+        rows=[dict(r,amount_unit="원") for r in ROWS]
+        rows[1]["currency"]="USD"
+        rows[1]["amount_unit"]="천원"
+        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+
     def test_no_live_without_key(self):
         import os
         old=os.environ.pop('OPENDART_API_KEY',None)
