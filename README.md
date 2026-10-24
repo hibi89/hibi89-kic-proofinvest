@@ -1,3 +1,5 @@
+> **KIC 확정 단독 실행 일정(2026-10-24)**: [docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md](docs/roles/lead/KIC_MASTER_SCHEDULE_20261024.md) · **0원 비용 기준** [BUDGET_20261024.md](docs/roles/lead/BUDGET_20261024.md) · **상위 총괄 진행 보고** [TO_HACKATHON_LEAD.md](docs/roles/lead/TO_HACKATHON_LEAD.md). 본 링크들은 `lead/kic` 브랜치의 문서이며 `main`에서는 같은 경로가 없을 수 있음.
+
 # ProofInvest | KIC AI Agent Competition
 > **3개 대회 전체 일정·충돌·제출 마감:** [docs/COMPETITION_SCHEDULE.md](docs/COMPETITION_SCHEDULE.md) (**2026-10-24 KST 공시**). 이 브랜치에서 작업을 시작할 때 마감과 내부 조기 제출 목표를 확인하며 공식 변경 시 대회 총괄에게 보고한다.
 
