@@ -103,9 +103,10 @@ class EngineTests(unittest.TestCase):
 
     def test_only_ofs_rows_must_match_year_and_report(self):
         rows=[dict(ROWS[1],bsns_year="2023",reprt_code="11011")]
-        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"unavailable")
+        self.assertEqual(calculate(rows,2024,"899",True)["checks"][0]["state"],"unavailable")
         rows[0]["bsns_year"]="2024"
-        self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
+        # OFS synthetic revenue 999 vs 100 => 899% growth, not 20%.
+        self.assertEqual(calculate(rows,2024,"899",True)["checks"][0]["state"],"verified")
 
     def test_no_live_without_key(self):
         import os
