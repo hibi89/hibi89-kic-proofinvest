@@ -1,3 +1,5 @@
+> **KIC 한 줄 시작 명령 (사용자 원문):** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` → [KIC CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) → `lead/kic` 최신 HEAD/인수인계/활성 업무 조회 후 **총괄이 직접 다음 실작업 수행**. 아래의 `[해커톤총괄 ...]` 표현도 별칭으로만 인정. 실제 대회 구분이 명시된 이 문장은 KIC 저장소로 바로 연결한다.
+
 > **새 채팅 고정 문구:** `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]` → [KIC CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md) (반드시 `lead/kic`). 역할/원격 HEAD/직접 개발 중단점 자동 복원 규칙. **총괄=개발자**, 구형 작업자 READY는 이력일 뿐.
 
 > **CURRENT POLICY — 2026-10-24 KST: KIC 총괄 = 유일한 설계자·개발자·테스터·검수자.** 별도 Research/Verification/Risk 작업자 채팅과 작업자용 READY 디스패치 체계는 종료. 현재 작업은 [LEAD_ACTIVE_WORK](docs/roles/lead/LEAD_ACTIVE_WORK.md), 실행 절차는 [LEAD_FULLSTACK_PROTOCOL](docs/roles/lead/LEAD_FULLSTACK_PROTOCOL.md)를 따른다. 기능 브랜치는 삭제하지 않는 이력·원본이며 기본 신규 작업은 `lead/kic`에서 직접 수행한다. 기존 문서의 '작업자에게 넘기라'는 문구는 역사 기록으로만 해석한다.
