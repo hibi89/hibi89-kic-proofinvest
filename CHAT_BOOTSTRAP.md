@@ -1,3 +1,5 @@
+> **LIVE NEXT 2026-10-24 KST**: 11/04 예정 ProofInvest PDF 5~7쪽 선행 **100/100 DONE / 잔여0h**, v0.3 PPTX·검토3쪽/전체10쪽 PDF QA 완료([QA](docs/roles/lead/PDF_PAGES_5_7_QA_20261024.md)), 다운로드 산출물은 **Library 영구저장/공개 GitHub 미업로드**. 현재 DAKER **60% BLOCKED**(팀 제출권한40점), DART **90% BLOCKED**(공식 접수번호10점). **다음 11/05 8~10쪽+PDF v1, 0/100 READY, 기본2h+예비3h=5h**. 새 채팅은 무조건 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) 우선. 아래 오래된 다음 작업 포인터는 이력.
+
 > **NEW LIVE NEXT (2026-10-24 KST)**: 원래 11/03 예정 기획서 1~4쪽 v0.2 선행 작성/QA **100/100 DONE**, 다음 11/04 기획서 **5~7쪽** Agent Workflow/Tool·API/데이터 활용 (READY **0/100**, 기본1.5h+예비3.5h=5h). DAKER 공식 명칭 PPTX 원문 직접 열람 **60/100**(실 참가계정/제출권한 40 BLOCKED, 접근 후2h), DART 접수번호 공식뷰어 **90/100**(접근 후1.5h) 유지. 산출물 PPTX/PDF는 비공개 채팅 다운로드에만 존재·영구 Library 미저장·GitHub 미게시. 최신 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md)와 [QA](docs/roles/lead/PDF_PAGES_1_4_QA_20261024.md) 참조. 아래 11/01·11/03 미착수 문장은 과거 기록.
 
 
