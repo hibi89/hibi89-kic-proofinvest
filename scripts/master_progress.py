@@ -30,6 +30,28 @@ SOURCE_RE = re.compile(r"^\|\s*(\d\d/\d\d)\([월화수목금토일]\)\s*\|")
 HANDOFF_POINTER = re.compile(r"^<!-- KIC_CANONICAL_NEXT_TASK_DATE: (20\d{2}-\d{2}-\d{2}) -->$", re.M)
 
 
+# The root handoff contract is read by every successor chat. Its opening
+# notice must link to canonical data; a second snapshot would inevitably age.
+ROOT_CONTRACT_TITLE = "# KIC ProofInvest — 영구 한 줄 인수인계 의무 규약"
+ROOT_CONTRACT_NOTICE = (
+    "> **KIC 현재 진도는 JSON 단일 정본에서 확인:** "
+    "[MASTER_PROGRESS.json](docs/roles/lead/MASTER_PROGRESS.json) · "
+    "[자동생성 MASTER_PROGRESS.md](docs/roles/lead/MASTER_PROGRESS.md). "
+    "이 규약에는 과거 완료 건수·NEXT 날짜·차단 점수를 복제하지 않습니다. "
+    "작업을 시작할 때마다 lead/kic 최신 HEAD와 정본을 재조회하십시오."
+)
+
+
+def validate_root_contract_header(content: str) -> None:
+    """Reject a stale, duplicated or missing operational status in the root preface."""
+    if content.count(ROOT_CONTRACT_TITLE) != 1:
+        raise ValueError("Root handoff contract heading must occur once")
+    opening = content.split(ROOT_CONTRACT_TITLE, 1)[0].strip()
+    if opening != ROOT_CONTRACT_NOTICE:
+        raise ValueError("Root handoff opening must be canonical link-only")
+
+
+
 def validate_handoff_pointer(text: str, expected_day: str, name: str = "<handoff>") -> None:
     markers = HANDOFF_POINTER.findall(text)
     if len(markers) != 1:
@@ -110,6 +132,7 @@ def check_data(data):
         raise ValueError("Next ready task must be an unstarted non-finalist day")
     for name in ("KIC_RESUME_STATE.md", "CHAT_BOOTSTRAP.md", "docs/roles/lead/LEAD_ACTIVE_WORK.md"):
         validate_handoff_pointer((ROOT / name).read_text(encoding="utf-8"), next_day, name)
+    validate_root_contract_header((ROOT / "KIC_HANDOFF_CONTRACT.md").read_text(encoding="utf-8"))
     backup = data["backup"]
     if backup.get("type") == "USER_PRIVATE_LIBRARY":
         if len(backup.get("files", [])) != backup.get("verified_count", 0):
