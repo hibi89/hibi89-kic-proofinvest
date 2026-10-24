@@ -50,3 +50,10 @@
 - Decision: **KIC-R-001 ACCEPTED_ON_LEAD** as independent offline Research normalizer. **NOT merged to main**; global Research→Verification schema remains proposed, unapproved. Future Verification must not treat Research `success` as verified financial fact.
 - 1일차 완료 범위: original code reviewed, deduplicated import, target CI validated, evidence/status/handoff/upper-lead report updated. 기존 일정표(10/24: 운영 시간표) 또한 이미 완료. 10/26~27 Research 검수·이관 작업을 **선행 완료**했으나 10/25 DAKER '팀 전환' 및 PDF 양식/파일 접근 검증은 여전히 미완료. 자의적으로 공식 일정/제출 시한 변경 없음.
 - Next day gate: **10/25 DAKER 팀 전환·제출권한 및 주최 공식 PDF 양식 접근/기존 초안 확인**(가능한 공개 페이지와 현재 권한 범위). 사용자의 실제 계정 동작/최종 제출은 승인·접근 확인 필요. 이후 Verification 단계 착수(중복 재무계정/기간/연결·별도 fail-closed)하되 전역 계약은 승인 없이 동결하지 말 것.
+
+## 2026-10-24 14:01:06 KST — Verification 중복계정 fail-closed 구현 / 선행 작업
+- 원래 `10/28` 하루 핵심작업인 **같은 CFS/OFS 재무제표 내 중복 계정 1종 차단**을 선행 실행. `proofinvest/engine.py`의 `parse_accounts`는 같은 `fs_div`에서 같은 지표가 2회 이상 등장하면 첫 값을 몰래 채택하지 않고 **그 지표 전체를 배제**, 3회 이상이어도 되살리지 않음. 다른 재무제표(OFS)의 중복이 우선선택 CFS 수치에 영향을 주지 않음.
+- `tests/test_engine.py`에 **5개 테스트 신규 추가**: 상충 매출 두 행 차단, 동일 복제 매출도 차단, 3개 이상 중복 시 복구 금지, 부채 중복 시 부채비율 계산 보류, 선택되지 않은 OFS 중복이 CFS를 오염시키지 않음.
+- 이전 테스트 기준 **26개 PASS**, 이번 변경 예상 31개(9 기존 엔진 + 17 Research + 신규 5), CI 확인 전까지 **31 PASS 주장 금지**. API 호출·비용·실기업 수치 사용 없음.
+- DAKER 선행 점검은 **35/100(35%)**, 실제 계정·공식 PPTX 직접 확보 **65점 BLOCKED** 유지. 공식 PPTX는 출처 링크 획득했으나 다운로드 도구가 파일형식 제한, 컨테이너 DNS 실패. 같은 방법 반복하지 않고 사용자 계정 접근·추후 파일 확보로 이월.
+- `10/24` 원래 하루 계획 100%는 그대로, 이 작업은 **10/28 계획 선행 작업**으로 별도 분모 100점을 등록. 실제 투입시간 **미계측**; 10/28 하루 기본 예상 1.5h + 오류/검수 예비 3.5h = 최대 5h였으며, 재검증 후 남은 시간 조정.

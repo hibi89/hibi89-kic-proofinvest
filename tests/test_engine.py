@@ -20,6 +20,37 @@ class EngineTests(unittest.TestCase):
         for r in test:
             if r['account_nm']=='자본총계':r['thstrm_amount']='0'
         self.assertIsNone(calculate(test,2024)['risk_signals'][0]['triggered'])
+    def test_duplicate_revenue_rejected_in_same_statement(self):
+        duplicated=[dict(r) for r in ROWS]
+        duplicated.append(dict(ROWS[0],thstrm_amount="999"))
+        accounts=parse_accounts(duplicated,2024)
+        self.assertNotIn("revenue",accounts)
+        outcome=calculate(duplicated,2024,"20",True)
+        self.assertEqual(outcome["checks"][0]["state"],"unavailable")
+        self.assertIsNone(outcome["checks"][0]["value"])
+
+    def test_even_identical_duplicate_revenue_rejected(self):
+        duplicated=[dict(r) for r in ROWS]+[dict(ROWS[0])]
+        self.assertEqual(calculate(duplicated,2024,"20",True)["checks"][0]["state"],"unavailable")
+
+    def test_multiple_duplicates_cannot_resurrect_revenue(self):
+        duplicated=[dict(r) for r in ROWS]+[
+            dict(ROWS[0],thstrm_amount=str(n)) for n in (999,998)
+        ]
+        self.assertNotIn("revenue",parse_accounts(duplicated,2024))
+
+    def test_duplicate_risk_input_prevents_risk_signal(self):
+        duplicated=[dict(r) for r in ROWS]+[dict(ROWS[2],thstrm_amount="777")]
+        result=calculate(duplicated,2024,"20",True)
+        self.assertEqual(result["checks"][0]["state"],"verified")
+        self.assertIsNone(result["risk_signals"][0]["triggered"])
+        self.assertIsNone(result["risk_signals"][0]["value"])
+
+    def test_duplicates_outside_selected_cfs_do_not_poison_cfs(self):
+        duplicated=[dict(r) for r in ROWS]+[dict(ROWS[1],thstrm_amount="1")]
+        self.assertEqual(parse_accounts(duplicated,2024)["revenue"]["current"],Decimal(120))
+        self.assertEqual(calculate(duplicated,2024,"20",True)["checks"][0]["state"],"verified")
+
     def test_no_live_without_key(self):
         import os
         old=os.environ.pop('OPENDART_API_KEY',None)

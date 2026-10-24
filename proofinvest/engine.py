@@ -32,10 +32,17 @@ def parse_accounts(rows: list[dict], year: int, preferred_fs: str = "CFS") -> di
     fs=preferred_fs if preferred_fs in fs_set else ("OFS" if "OFS" in fs_set else None)
     if not fs:return {}
     out={}
+    ambiguous=set()
     for r in valid:
         if r.get("fs_div") != fs:continue
         key=ACCOUNTS[r["account_nm"]]
-        if key in out: continue  # ambiguous data; caller may decide to reject duplicates
+        # Never silently accept the first of repeated rows for the same
+        # metric within the selected financial statement type.
+        if key in ambiguous:continue
+        if key in out:
+            del out[key]
+            ambiguous.add(key)
+            continue
         out[key]={"current":amount(r.get("thstrm_amount")),"previous":amount(r.get("frmtrm_amount")),
                   "source": ("https://dart.fss.or.kr/dsaf001/main.do?rcpNo="+r["rcept_no"])
                     if re.fullmatch(r"\d{14}",str(r.get("rcept_no",""))) else None,
