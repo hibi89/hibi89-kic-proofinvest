@@ -1,3 +1,15 @@
+## LIVE HANDOFF 10항 — 2026-10-24 21:29 KST / DART JSON 독립검증 오인 차단
+1. **목표·기술**: 수동 공시 기록의 출처 플래그를 공식 DART 직접검증으로 잘못 올리지 않도록 Python 오프라인 신뢰경계를 강화.
+2. **완료·설계**: JSON 신뢰(A, 부적합) 대비 DART 자기선언 무시(B, 채택). 다른 수동 수치 verified/conflict/unavailable 산술 결과 보존.
+3. **테스트**: `python -m unittest discover -s tests -v`, 신규 2개, 전체 [165/165 CI PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094034839), 실패 0. CI는 실 DART 인증 아님.
+4. **상태/중단**: 추가 안전 작업 100/100 기본0h+예비0h, 실제 시간 미계측. 원장 29 DONE/3 BLOCKED/28 NOT_STARTED, 다음 12/03 결과 확인 미래 대기.
+5. **오류/대안**: 자기선언 위조 가능한 코드 경로 발견·수정. 공식 DART 502 유지, 삼성전자 IR 발행 원본 링크 별도. 실제 정식 접수번호 대조 90% BLOCKED.
+6. **GitHub**: `hibi89/hibi89-kic-proofinvest` `lead/kic`, 코드 SHA `365d7f91ac5cf046906ce6a74e78bbd19e683376`; `proofinvest/evidence_scenarios.py`, `tests/test_evidence_scenarios.py`, [QA](docs/roles/lead/DART_SELF_ATTESTATION_SAFETY_QA_20261024.md).
+7. **배포**: Production URL/Vercel 미적용, 테스트 GitHub Actions Python3.11. 사용자 모바일 로컬 실행 불필요.
+8. **원본/백업·권한**: Private PDF/PPTX와 개인 Library 6개 보존, 공개 원본 문서 복제/외부 데이터 송신 없음. Git 이전 코드 SHA `a456f3f`에 복구 이력 존재.
+9. **다음·승인**: DAKER 실제 참가 형태·팀장 최종업로드 권한/휴대폰 인증 확인 뒤 별도 승인 하 11/10 제출, 11/12 10:00 KST 공식 마감. DART 직접검증 차단은 독립적으로 관리.
+10. **기준 일시**: 2026-10-24 21:29 KST, 코드 [CI 40094034839](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094034839) success, 후속 문서 커밋 SHA/CI 최종 확인 필요. 전체 원장 숫자 불변.
+
 > **LIVE 2026-10-24 21:23 KST — P0 추가 안전 도구: 제출 전 동결 PDF 바이트 지문 검사 (SHA256+크기+헤더), 실제 파일·경로 업로드 없음. 코드 1be86030bccc5e6a5a71597788adae058e8c9c8a; 신규8 포함 GitHub Actions #40093484806 163/163 PASS. 비공개 후보 PDF 신규 CLI 직접 검사/DAKER 실제 업로드권한·접수·DART 공식 원문은 미검증. 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED 유지, NEXT 12/03 공식 결과 미래 대기. 외부 차단: DAKER 10/25·11/09 각60%, DART10/30 90%; 11/10 제출 미착수. 이 부가 작업 100/100·잔여 기본0h+예비0h, 실제 시간 미계측.** [실행·복구 가이드](docs/KIC_FROZEN_PDF_SUBMISSION_PREFLIGHT_20261024.md). 원본 PDF/PPTX와 기존 정본 숫자 수정 없음.
 
 # HANDOFF — KIC ProofInvest main (통합 기준)
