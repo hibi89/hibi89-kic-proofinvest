@@ -81,6 +81,31 @@ class SyntheticSnapshotPersistenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlink"):
             store.read_synthetic_snapshot(self.directory)
 
+    def test_stored_receipt_reports_synthetic_lineage_without_recalculating(self):
+        with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("recalculation")):
+            # Explicit initial save occurs before any read-only assertions.
+            with self.assertRaisesRegex(ValueError, "missing or corrupt"):
+                store.read_synthetic_snapshot_with_provenance(self.directory)
+        store.save_synthetic_snapshot(self.directory)
+        with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("recalculation")):
+            result = store.read_synthetic_snapshot_with_provenance(self.directory)
+        self.assertEqual(result["view"]["risk"]["표시 비율"], "266.67")
+        p = result["provenance"]
+        self.assertEqual(p["source_kind"], "SYNTHETIC_FIXTURE")
+        self.assertEqual(p["source_path"], "fixtures/synthetic_annual.json")
+        self.assertEqual(p["fixture_sha256"], store._fixture_digest())
+        self.assertEqual(p["integrity_status"], "LOCAL_CHECKSUM_MATCH_ONLY")
+        self.assertFalse(p["external_source_authenticated"])
+        self.assertFalse(p["calculation_repeated_on_read"])
+
+    def test_stored_receipt_rejects_corruption_without_fallback(self):
+        store.save_synthetic_snapshot(self.directory)
+        f = self.directory / "synthetic_snapshot_v1.json"
+        f.write_text("BROKEN", encoding="utf-8")
+        with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("fallback calculation")):
+            with self.assertRaisesRegex(ValueError, "missing or corrupt"):
+                store.read_synthetic_snapshot_with_provenance(self.directory)
+
     def test_snapshot_content_limited_to_synthetic_fields(self):
         store.save_synthetic_snapshot(self.directory)
         payload = store.read_synthetic_snapshot(self.directory)

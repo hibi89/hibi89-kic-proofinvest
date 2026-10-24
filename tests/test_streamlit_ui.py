@@ -1,6 +1,10 @@
 """Offline view model and actual Streamlit AppTest smoke checks."""
 import copy
 import unittest
+import json
+import os
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from proofinvest.offline_view import load_synthetic_snapshot
@@ -60,6 +64,65 @@ class StreamlitHeadlessTests(unittest.TestCase):
         self.assertTrue(at.warning)
         self.assertIn("SYNTHETIC_FIXTURE", at.warning[0].value)
         self.assertTrue(any(m.label == "외부 출처 인증" and m.value == "미인증" for m in at.metric))
+
+    def test_saved_ui_uses_only_cached_data_and_shows_provenance(self):
+        from streamlit.testing.v1 import AppTest
+        from proofinvest import snapshot_store as store
+        from proofinvest import offline_view
+
+        app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(os.environ, {"HOME": root}):
+                cache = Path(root) / ".proofinvest-synthetic-cache"
+                cache.mkdir()
+                store.save_synthetic_snapshot(cache)
+                at = AppTest.from_file(str(app)).run(timeout=15)
+                with patch.object(offline_view, "load_synthetic_snapshot", side_effect=AssertionError("calculation")):
+                    with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("calculation")):
+                        at.radio[0].set_value("저장된 결과 재조회 (재계산 없음)").run(timeout=15)
+                self.assertFalse(at.exception)
+                self.assertTrue(at.success)
+                self.assertIn("재계산하지 않음", at.success[0].value)
+                self.assertTrue(any("fixtures/synthetic_annual.json" in m.value for m in at.info))
+                self.assertTrue(any(m.label == "부채/자본 비율" and m.value == "266.67" for m in at.metric))
+                self.assertTrue(any(m.label == "외부 출처 인증" and m.value == "미인증" for m in at.metric))
+
+    def test_saved_ui_missing_record_fails_closed(self):
+        from streamlit.testing.v1 import AppTest
+        from proofinvest import snapshot_store as store
+
+        app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(os.environ, {"HOME": root}):
+                at = AppTest.from_file(str(app)).run(timeout=15)
+                with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("fallback")):
+                    at.radio[0].set_value("저장된 결과 재조회 (재계산 없음)").run(timeout=15)
+                self.assertFalse(at.exception)
+                self.assertTrue(at.error)
+                self.assertIn("자동 재계산", at.error[0].value)
+                self.assertFalse(any(m.label == "부채/자본 비율" for m in at.metric))
+                self.assertFalse(at.success)
+
+    def test_saved_ui_corrupt_record_hides_risk_metrics(self):
+        from streamlit.testing.v1 import AppTest
+        from proofinvest import snapshot_store as store
+
+        app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(os.environ, {"HOME": root}):
+                cache = Path(root) / ".proofinvest-synthetic-cache"
+                cache.mkdir()
+                store.save_synthetic_snapshot(cache)
+                f = cache / "synthetic_snapshot_v1.json"
+                content = json.loads(f.read_text(encoding="utf-8"))
+                content["payload"]["risk"]["표시 비율"] = "999.99"
+                f.write_text(json.dumps(content, ensure_ascii=False), encoding="utf-8")
+                at = AppTest.from_file(str(app)).run(timeout=15)
+                with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("fallback")):
+                    at.radio[0].set_value("저장된 결과 재조회 (재계산 없음)").run(timeout=15)
+                self.assertFalse(at.exception)
+                self.assertTrue(at.error)
+                self.assertFalse(any(m.label == "부채/자본 비율" for m in at.metric))
 
 
 if __name__ == "__main__":

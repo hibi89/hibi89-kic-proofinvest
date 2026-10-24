@@ -90,6 +90,26 @@ def read_synthetic_snapshot(directory: Path) -> dict[str, Any]:
     return _validate_payload(payload)
 
 
+def read_synthetic_snapshot_with_provenance(directory: Path) -> dict[str, Any]:
+    """Read cached values without calculation; attach synthetic-only lineage.
+
+    Local SHA-256 verifies file consistency, NOT actual issuer provenance.
+    """
+    view = read_synthetic_snapshot(directory)
+    return {
+        "view": view,
+        "provenance": {
+            "source_kind": "SYNTHETIC_FIXTURE",
+            "source_path": "fixtures/synthetic_annual.json",
+            "fixture_sha256": _fixture_digest(),
+            "snapshot_payload_sha256": hashlib.sha256(_canonical(view)).hexdigest(),
+            "integrity_status": "LOCAL_CHECKSUM_MATCH_ONLY",
+            "external_source_authenticated": False,
+            "calculation_repeated_on_read": False,
+        },
+    }
+
+
 def save_synthetic_snapshot(directory: Path) -> str:
     """Explicit create-only save; repeated saves reuse without recalculation.
 

@@ -37,7 +37,7 @@
 
 ## 로컬 Streamlit 합성 조회 화면 (선택 설치)
 
-Python **3.11+** 환경에서만 설치·실행합니다. 기본 Python CLI(3.10+)에는 Streamlit 설치가 필요하지 않습니다. 현재 앱은 `fixtures/synthetic_annual.json`만 읽습니다. 로그인, 파일 업로드, API 호출, 계정/제출 버튼이 없습니다.
+Python **3.11+** 환경에서만 설치·실행합니다. 기본 Python CLI(3.10+)에는 Streamlit 설치가 필요하지 않습니다. 현재 앱은 `fixtures/synthetic_annual.json`의 직접 계산 및 **명시적으로 저장된 합성 스냅샷 재조회** 중에서 선택합니다. 로그인, 파일 업로드, API 호출, 계정/제출 버튼이 없습니다.
 
 ```bash
 python -m pip install -r requirements-ui.txt
@@ -48,14 +48,14 @@ python -m streamlit run streamlit_app.py
 
 ## 합성 계산 결과 저장·재조회 (선택, 완전 로컬)
 
-Streamlit UI와 실 OpenDART 호출은 연결하지 않고, **오프라인 합성 fixture 계산 결과만** 사용자 홈의 `.proofinvest-synthetic-cache`에 명시적 명령으로 저장합니다. `--read`는 **재계산하지 않고** 저장 기록을 검증 후 재조회합니다.
+Streamlit UI의 ‘저장된 결과 재조회’ 모드와 연결하며 실 OpenDART 호출은 하지 않습니다. **오프라인 합성 fixture 계산 결과만** 사용자 홈의 `.proofinvest-synthetic-cache`에 명시적 명령으로 저장합니다. `--read`는 **재계산하지 않고** 저장 기록을 검증 후 재조회합니다.
 
 ```bash
 python -m proofinvest.snapshot_store --save
 python -m proofinvest.snapshot_store --read
 ```
 
-첫 `--save`는 계산 후 파일을 최초 1회만 생성하고, 반복 `--save`는 기존 결과를 검증하여 그대로 재사용합니다. 무결성 체크섬 또는 bundled fixture가 바뀌면 **임의 덮어쓰기·자동 재계산 없이 오류로 중지**합니다. 안전하게 재생성이 필요하면 별도 백업 후 해당 로컬 합성 캐시 파일을 사용자가 삭제하고 `--save`를 명시적으로 재실행합니다. SHA-256은 파일 손상 검사이지 재무 사실/출처 진위 인증이 아닙니다. 저장 결과는 실제 기업/개인정보/키를 수집하지 않습니다. **UI 표시 연결은 다음 12월 1일 별도 일정**이며, 이번 작업은 저장·재조회만 독립 검증했습니다.
+첫 `--save`는 계산 후 파일을 최초 1회만 생성하고, 반복 `--save`는 기존 결과를 검증하여 그대로 재사용합니다. 무결성 체크섬 또는 bundled fixture가 바뀌면 **임의 덮어쓰기·자동 재계산 없이 오류로 중지**합니다. 안전하게 재생성이 필요하면 별도 백업 후 해당 로컬 합성 캐시 파일을 사용자가 삭제하고 `--save`를 명시적으로 재실행합니다. SHA-256은 파일 손상 검사이지 재무 사실/출처 진위 인증이 아닙니다. 저장 결과는 실제 기업/개인정보/키를 수집하지 않습니다. UI ‘저장된 결과 재조회 (재계산 없음)’를 선택하면 저장된 결과와 로컬 합성 출처 경로·fixture SHA-256을 표시합니다. 저장 파일이 없거나 손상되면 자동 재계산하지 않고 중단합니다. SHA-256은 공시 원문 진위 인증이 아닙니다.
 
 ## 오프라인 검증
 
