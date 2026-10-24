@@ -53,6 +53,19 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Generate bounded PUBLIC judge replay receipt (manual offline only)
+        run: |
+          mkdir -p /tmp/kic-public-judge-replay
+          python -m scripts.public_judge_artifact /tmp/kic-public-judge-replay/judge-replay.json
+          python -m scripts.public_judge_artifact --verify /tmp/kic-public-judge-replay/judge-replay.json
+      - name: Archive PUBLIC manual judge replay receipt (NO private submission materials)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-public-judge-replay
+          path: /tmp/kic-public-judge-replay/judge-replay.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Synthetic demo (no credentials)
         run: python -m proofinvest --claim-revenue-growth-pct 20 > /tmp/proofinvest-demo.json
       - name: Recorded real filing scenario demo (offline, no network)
