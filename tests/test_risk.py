@@ -144,6 +144,7 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
         out = self.compute()
         self.assertEqual(out["status"], "calculated")
         self.assertEqual(out["ratio_pct"], "266.67")
+        self.assertIsNone(out["withheld_reason_code"])
         self.assertTrue(out["triggered"])
         self.assertTrue(out["risk_calculated"])
         self.assertFalse(out["authenticated_external_source"])
@@ -211,6 +212,7 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
         self.assertEqual(out["status"], "unavailable")
         self.assertIsNone(out["ratio_pct"])
         self.assertIsNone(out["triggered"])
+        self.assertEqual(out["withheld_reason_code"], "ZERO_EQUITY_DENOMINATOR")
         self.assertFalse(out["risk_calculated"])
         self.assertIn("Zero equity", out["reason"])
 
@@ -232,6 +234,54 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
                 self.assertEqual(out["status"], "unavailable")
                 self.assertEqual(out["facts"], {})
                 self.assertIsNone(out["ratio_pct"])
+
+    def test_missing_amount_reports_structured_reason_without_risk(self):
+        for metric_index in (0, 1):
+            for raw in (None, "", "N/A", "-", "   "):
+                with self.subTest(metric=metric_index, raw=raw):
+                    data = facts()
+                    data[metric_index]["current_amount"] = raw
+                    out = self.compute(data)
+                    self.assertEqual(out["status"], "unavailable")
+                    self.assertEqual(out["withheld_reason_code"], "MISSING_FINANCIAL_AMOUNT")
+                    self.assertIsNone(out["ratio_pct"])
+                    self.assertIsNone(out["comparison_ratio_pct"])
+                    self.assertIsNone(out["triggered"])
+                    self.assertFalse(out["risk_calculated"])
+                    self.assertEqual(out["facts"], {})
+
+    def test_missing_fact_row_not_confused_with_zero_denominator(self):
+        data = facts()
+        for incomplete in ([], data[:1]):
+            with self.subTest(rows=len(incomplete)):
+                out = self.compute(incomplete)
+                self.assertEqual(out["status"], "unavailable")
+                self.assertEqual(out["withheld_reason_code"], "REQUIRED_FACTS_MISSING_OR_INVALID")
+                self.assertIsNone(out["ratio_pct"])
+                self.assertIsNone(out["triggered"])
+
+    def test_malformed_numeric_values_fail_without_ratio(self):
+        for raw in ("NaN", "not_a_number", "1e3"):
+            with self.subTest(value=raw):
+                data = facts()
+                data[1]["current_amount"] = raw
+                out = self.compute(data)
+                self.assertEqual(out["status"], "unavailable")
+                self.assertEqual(out["withheld_reason_code"], "MALFORMED_FINANCIAL_AMOUNT")
+                self.assertIsNone(out["ratio_pct"])
+                self.assertFalse(out["risk_calculated"])
+
+    def test_zero_denominator_differs_from_missing_and_never_triggers(self):
+        data = facts()
+        data[1]["current_amount"] = "-0"
+        out = self.compute(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["withheld_reason_code"], "ZERO_EQUITY_DENOMINATOR")
+        self.assertIsNone(out["comparison_ratio_pct"])
+        self.assertIsNone(out["ratio_pct"])
+        self.assertIsNone(out["triggered"])
+        self.assertFalse(out["risk_calculated"])
+        self.assertEqual(out["facts"]["equity"], "-0")
 
     def test_0_liabilities_calculates_with_no_trigger(self):
         data = facts()

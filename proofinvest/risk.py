@@ -55,10 +55,12 @@ def gate_verified_risk_inputs(
         "facts": {},
         "source_url": None,
         "reason": "",
+        "withheld_reason_code": "INPUT_GATE_REJECTED",
     }
 
-    def stop(reason: str) -> dict[str, Any]:
+    def stop(reason: str, code: str = "INPUT_GATE_REJECTED") -> dict[str, Any]:
         result["reason"] = reason
+        result["withheld_reason_code"] = code
         return result
 
     if type(expected_year) is not int or not 2015 <= expected_year <= 2100:
@@ -66,7 +68,7 @@ def gate_verified_risk_inputs(
     if expected_statement not in ("CFS", "OFS") or type(demo) is not bool:
         return stop("Invalid statement or demo mode")
     if not isinstance(facts, list) or len(facts) != 2 or any(not isinstance(x, Mapping) for x in facts):
-        return stop("Two explicitly checked financial facts required")
+        return stop("Two explicitly checked financial facts required", "REQUIRED_FACTS_MISSING_OR_INVALID")
 
     by_metric: dict[str, Mapping[str, Any]] = {}
     for fact in facts:
@@ -106,9 +108,12 @@ def gate_verified_risk_inputs(
             return stop("Unapproved source provenance for this mode")
         if demo and kind != "SYNTHETIC_FIXTURE":
             return stop("Live and synthetic provenance cannot be mixed")
-        value = amount(fact.get("current_amount"))
+        raw_amount = fact.get("current_amount")
+        if raw_amount is None or (isinstance(raw_amount, str) and raw_amount.strip() in ("", "-", "N/A")):
+            return stop(f"Missing financial amount for {metric}", "MISSING_FINANCIAL_AMOUNT")
+        value = amount(raw_amount)
         if value is None:
-            return stop("Financial amount unavailable or malformed")
+            return stop(f"Malformed financial amount for {metric}", "MALFORMED_FINANCIAL_AMOUNT")
         normalized[metric] = value
         current_basis = (issuer_id, evidence_ref, url, kind)
         if basis is not None and basis != current_basis:
@@ -116,6 +121,7 @@ def gate_verified_risk_inputs(
         basis = current_basis
 
     result["status"] = "eligible"
+    result["withheld_reason_code"] = None
     result["facts"] = {metric: str(normalized[metric]) for metric in ("liabilities", "equity")}
     result["source_url"] = basis[2] if basis else None
     result["year"] = expected_year
@@ -174,14 +180,17 @@ def calculate_verified_debt_to_equity(
         equity = Decimal(gated["facts"]["equity"])
         if equity == 0:
             result["status"] = "unavailable"
+            result["withheld_reason_code"] = "ZERO_EQUITY_DENOMINATOR"
             result["reason"] = "Zero equity denominator: ratio calculation withheld"
             return result
         if equity < 0:
             result["status"] = "unavailable"
+            result["withheld_reason_code"] = "NEGATIVE_EQUITY"
             result["reason"] = "Negative equity: ordinary debt-to-equity ratio withheld"
             return result
         if liabilities < 0:
             result["status"] = "unavailable"
+            result["withheld_reason_code"] = "NEGATIVE_LIABILITIES"
             result["reason"] = "Negative liabilities: anomalous balance-sheet input"
             return result
 
@@ -191,10 +200,12 @@ def calculate_verified_debt_to_equity(
         displayed_ratio = ratio.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, OverflowError, ZeroDivisionError, ArithmeticError):
         result["status"] = "unavailable"
+        result["withheld_reason_code"] = "ARITHMETIC_UNREPRESENTABLE"
         result["reason"] = "Numeric calculation could not be safely represented"
         return result
 
     result["status"] = "calculated"
+    result["withheld_reason_code"] = None
     result["risk_calculated"] = True
     result["ratio_pct"] = str(displayed_ratio)
     result["comparison_ratio_pct"] = str(ratio)
