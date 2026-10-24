@@ -1,3 +1,5 @@
+> **2026-10-24 ~20:39 KST 보충 증거:** 로그인된 DAKER 페이지에서 참가 신청·팀 구성 완료(1인 팀) 표시 및 제출 탐색 버튼, 휴대폰 본인확인 안내 확인. 실제 최종 PDF 업로드 권한/접수는 읽기 전용으로 미확인 → **60/100 BLOCKED 유지**. [상세](DAKER_AUTHENTICATED_READONLY_PREFLIGHT_20261024.md). 원래 11/09 사전점검 본문은 역사적 스냅샷으로 보존.
+
 # KIC ProofInvest — DAKER 제출권한 및 동결 PDF 사전점검
 > 예정 작업 2026-11-09 / 선행 수행 2026-10-24 KST / 단일 작업 ID `KIC-DAKER-PREUPLOAD-20261109`
 > **PARTIAL / BLOCKED_BY_AUTHENTICATED_ACCOUNT**: 공개 규정과 비공개 PDF는 검증했지만 참가 계정 권한 화면은 확인되지 않았다. 공식 최종 제출은 수행하지 않음.
