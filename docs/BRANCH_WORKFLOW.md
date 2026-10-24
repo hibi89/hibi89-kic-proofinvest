@@ -1,5 +1,7 @@
 # KIC ProofInvest — branch/role contract
 
+**중요: 담당 브랜치의 고유 기록은 docs/roles/<role>/HANDOFF.md와 STATUS.md다. KIC 총괄은 새 지시마다 feature/research·feature/verification·feature/risk 브랜치의 최신 TO_KIC_LEAD.md 3개를 조회하고 lead/kic의 MESSAGE_REVIEW.md에 SHA·판단을 기록한다.**
+
 ## 구조
 - `main` = **유일한 통합 기준**. 기능별 작업 직접 수행 금지(정상적 통합/문서 갱신 제외).
 - `lead/kic` = **KIC 총괄 전담 채팅방**. 기획서·심사 규정·일정·데이터 계약·검수·통합 PR.
