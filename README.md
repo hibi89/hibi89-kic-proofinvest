@@ -35,6 +35,17 @@
 
 위 feature 브랜치는 이력·원본 비교용으로 보존합니다. **새 작업은 `lead/kic`에서 총괄이 직접 수행하며**, 사용자 승인 없이 `main` 통합·브랜치 삭제·강제 push를 진행하지 않습니다.
 
+## 로컬 Streamlit 합성 조회 화면 (선택 설치)
+
+Python **3.11+** 환경에서만 설치·실행합니다. 기본 Python CLI(3.10+)에는 Streamlit 설치가 필요하지 않습니다. 현재 앱은 `fixtures/synthetic_annual.json`만 읽습니다. 로그인, 파일 업로드, API 호출, 계정/제출 버튼이 없습니다.
+
+```bash
+python -m pip install -r requirements-ui.txt
+python -m streamlit run streamlit_app.py
+```
+
+화면에는 CFS/OFS별 가상 재무 행, 합성 산술 검사 상태, 시연용 부채/자본 탐색 신호, **실제 원문 미인증** 경고를 표시합니다. 임계값 200%는 공인 투자 기준이 아닙니다. 실제 기업 데이터 처리, OpenDART 호출, 웹 배포 또는 DAKER 제출이 아니며 `streamlit.testing.v1.AppTest` 헤드리스 검증은 브라우저 육안 테스트와 다릅니다.
+
 ## 오프라인 검증
 
 ```bash

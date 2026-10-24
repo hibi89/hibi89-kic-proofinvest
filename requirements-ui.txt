@@ -1,0 +1,3 @@
+# Optional, local-only UI. Core CLI keeps its standard-library-only contract.
+# Streamlit 1.66 requires Python 3.11+, while core CLI supports Python 3.10+.
+streamlit>=1.66.0,<1.67.0
