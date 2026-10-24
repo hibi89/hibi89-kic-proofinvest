@@ -1,11 +1,14 @@
+## 2026-10-24 — CI verification closed
+- [GitHub Actions 40094819451](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094819451), HEAD `fd91fdf6ca81b7f050ffd9cf53c82e87f8f2ea72`, **172/172 tests pass** including new 7; pointer-synchronization, full JSON view check, synthetic ZIP recovery all passed. Separate reliability repair 100/100, no change to canonical ledger.
+
 ## 2026-10-24 — separate CI handoff guard (not a 60-day schedule task)
 | Stage | Points | Earned |
 |---|---:|---:|
 | Incident analysis | 20 | 20 |
 | Explicit marker guard and 3 handoff declarations | 35 | 35 |
-| 7 tests and full CI | 30 | Pending CI |
+| 7 tests and full CI | 30 | 30 |
 | Documentation and recovery path | 15 | 15 |
-- Canonical progress 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged. Base/reserve estimated 0h after CI; until then validation pending; actual time not metered.
+- Canonical progress 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged. **Separate CI repair completed 100/100.** Remaining base 0h + contingency 0h; actual time not metered.
 
 > **LIVE 2026-10-24 KST: CI handoff pointer reliability repair** — The canonical next-date is now declared exactly once in each of three handoff files and validated against MASTER_PROGRESS.json without a 2500-character cutoff. New 7 offline regressions; GitHub CI verification pending. Unchanged ledger: 29 DONE / 3 BLOCKED / 28 NOT_STARTED; next 2026-12-03 future result; DAKER authority two 60% gates and DART original one 90% gate remain BLOCKED. Current browser connector cannot inspect authenticated DAKER; no final upload. [QA](HANDOFF_POINTER_CONTRACT_QA_20261024.md).
 

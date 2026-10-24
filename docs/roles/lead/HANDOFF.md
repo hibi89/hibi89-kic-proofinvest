@@ -1,10 +1,12 @@
+> **2026-10-24 KST — canonical NEXT pointer CI 172/172 verified:** Verified all 172 CI tests; distinct reliability task **100/100**, base0h+reserve0h, actual unmeasured. External blockers remain. [Code CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094819451).
+
 ## LIVE HANDOFF 10-field: 2026-10-24 canonical next-task CI reliability
 1. Goal: avoid recurring errors when per-turn mobile updates prepend to long handoffs.
 2. Design: unique ISO task-date marker in each of 3 handoff docs, checked against JSON throughout entire file; no stale-prose false positive.
-3. Tests: 7 new unittest cases and CI pending, no live APIs.
+3. Tests: 7 new unittest cases, [CI 40094819451](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094819451) 172/172 PASS, no live APIs.
 4. Scope/progress: additional CI repair distinct from 60-day schedule; canonical 29 DONE/3 BLOCKED/28 NOT_STARTED, next 2026-12-03 WAIT.
 5. External blocker: authenticated DAKER submission screen unavailable in current connected Browser; DART official viewer not verified.
-6. Git branch: lead/kic; changed master_progress.py, 3 handoffs, new test and QA. Read actual new HEAD/CI.
+6. Git branch: lead/kic; code SHA fd91fdf6ca81b7f050ffd9cf53c82e87f8f2ea72. Changed master_progress.py, 3 handoffs, new test and QA.
 7. Product: CI-only operational quality, not Production/Vercel.
 8. Preservation: private 10-page PDF/PPTX and 6 Library backups intact.
 9. Next: DAKER team-leader final PDF upload authority and phone verification if needed; user approval before final submission, target 11/10.

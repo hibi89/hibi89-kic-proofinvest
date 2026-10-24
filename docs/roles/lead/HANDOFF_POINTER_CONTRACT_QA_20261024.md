@@ -22,3 +22,9 @@
 - Run `python scripts/master_progress.py --check`, `python render_master_progress.py --check`, and `python -m unittest discover -s tests -v`; CI must pass for completion.
 - Rollback via Git revert of this commit if new check proves incompatible; never force-push or change canonical JSON to fake completion.
 - This is a separately tracked CI reliability repair, not another 60-day scheduled DONE. Actual time unmeasured.
+
+## Final independent remote verification
+- Code SHA `fd91fdf6ca81b7f050ffd9cf53c82e87f8f2ea72` on `lead/kic`.
+- [GitHub Actions run 40094819451](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094819451): **COMPLETED / SUCCESS**, 172/172 unittest PASS incl. all 7 new marker regressions. Master JSON sync check and render check PASS; private files not involved.
+- Separate 100-point reliability unit: incident/alternative analysis 20/20, unique marker and CI implementation 35/35, seven regression tests+full remote suite 30/30, QA/Handoff 15/15 = **100/100**; remaining base 0h + reserve 0h; actual execution time unmeasured.
+- Official DAKER real submission authority, official DART viewer, and actual receipt remain **unverified**. No 60-day ledger score changes.
