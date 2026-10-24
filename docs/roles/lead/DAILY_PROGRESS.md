@@ -1,3 +1,16 @@
+## 2026-10-24 22:00 KST — 추가 오프라인 통합 (60일 정본 일정과 별도)
+| 검증 단계 | 배점 | 획득 |
+|---|---:|---:|
+| 기존 모듈 계약 검토 / fail-closed 설계 | 20 | 20 |
+| 출처·기업·연도 일치 통합 및 다음 단계 차단 | 35 | 35 |
+| 신규10 회귀 + 전체182 CI PASS | 30 | 30 |
+| 상태·QA·인수인계 공시 | 15 | 15 |
+| **합계** | **100** | **100** |
+- **추가 작업 100%**, 잔여 기본0h+예비0h; 실제 작업시간 미계측. 정본 29 DONE/3 BLOCKED/28 NOT_STARTED 유지, 2026-12-03 미래 결과 대기. [QA](EVIDENCE_CHAIN_OFFLINE_INTEGRATION_QA_20261024.md) / [CI](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40096210221).
+- DAKER 실제 제출권한/본인 확인 불가, DART 직접 뷰어 502 지속. AI Agent 실행/Production 미확인.
+
+> **LIVE 2026-10-24 22:00 KST — Research→Verification→Risk 출처연결 오프라인 통합 선행 완료:** 코드 `ceaba2c7d976`; 신규 10 테스트, [GitHub Actions #40096210221](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40096210221) **182/182 PASS**. 연구 인용 URL+기업식별자+연도와 수동 매출검산을 연결하고, 주장 conflict/미연결/이종기업·출처 Risk 수치를 fail-closed 보류. 실 AI/LLM, 실제 OpenDART/Agent E2E, 배포, DAKER 인증/제출은 **미검증**. 별도 안전 통합 단위 **100/100**, 잔여 기본0h+예비0h, 실작업시간 미계측. 기존 60일 정본 **29 DONE/3 BLOCKED/28 NOT_STARTED**, NEXT **2026-12-03** 미래 결과확인, DAKER 10/25·11/09 **각 60/100 차단**, DART 10/30 **90/100 차단**, 11/10 최종 제출 NOT_STARTED. 동결 비공개 PDF·PPTX·Library6 불변. [QA](EVIDENCE_CHAIN_OFFLINE_INTEGRATION_QA_20261024.md).
+
 ## 2026-10-24 — CI verification closed
 - [GitHub Actions 40094819451](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40094819451), HEAD `fd91fdf6ca81b7f050ffd9cf53c82e87f8f2ea72`, **172/172 tests pass** including new 7; pointer-synchronization, full JSON view check, synthetic ZIP recovery all passed. Separate reliability repair 100/100, no change to canonical ledger.
 

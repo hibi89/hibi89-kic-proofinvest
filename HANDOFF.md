@@ -1,3 +1,17 @@
+## 10항 최신 인수인계 — 2026-10-24 22:00 KST / 오프라인 출처 연결 통합
+1. **목표**: Research/Verification/Risk 기존 코드를 한 번의 프로그램 호출에서 근거 불일치 안전하게 차단.
+2. **설계**: 원시 결과 단순 연결 대신 ID·URL·연도 같은 출처 계약 검증 후 다음 단계 실행, 전부 오프라인.
+3. **검사**: 신규 테스트 10, 전체 [182/182 GitHub CI PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40096210221), 실패0. 실원문/Agent/운영 검증 아님.
+4. **진척**: 별도 추가 통합 단위100/100, 잔여 기본0h+예비0h, 실시간 미계측. 원장 29/3/28 변화 없음.
+5. **차단/대안**: DAKER 10/25·11/09 60%, DART 10/30 90%, 실 PDF 제출 11/10 미착수. 승인된 사용자 계정/직접 공시 조회 필요.
+6. **Git**: `lead/kic` 코드 `ceaba2c7d976b0ae82b5c912fae36704d7a94ef9`; 새 파일 proofinvest/evidence_chain.py, tests/test_evidence_chain.py. [QA](docs/roles/lead/EVIDENCE_CHAIN_OFFLINE_INTEGRATION_QA_20261024.md). 원격 최신 문서 SHA 재조회.
+7. **운영**: Python 오프라인 모듈 API만 추가, 새 Streamlit 화면/Vercel/Production/실 API/LLM 없음.
+8. **개인정보**: 사용자 Library 비공개 PDF/PPTX 6개 보존, GitHub 미게시; 새로운 테스트는 synthetic-only.
+9. **다음**: DAKER 본인 확인/팀장 최종 제출 가능 상태가 확보되면 P0 제출 사전점검으로 전환. 공식마감 11/12 10:00, 내부 목표 11/10. 다른 일정의 12/03 본선 발표는 미래.
+10. **기준**: 2026-10-24 22:00 KST; 코드 CI 40096210221 PASS; 과거 코드 HEAD 5e5f534, 강제 푸시 금지.
+
+> **LIVE 2026-10-24 22:00 KST — Research→Verification→Risk 출처연결 오프라인 통합 선행 완료:** 코드 `ceaba2c7d976`; 신규 10 테스트, [GitHub Actions #40096210221](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40096210221) **182/182 PASS**. 연구 인용 URL+기업식별자+연도와 수동 매출검산을 연결하고, 주장 conflict/미연결/이종기업·출처 Risk 수치를 fail-closed 보류. 실 AI/LLM, 실제 OpenDART/Agent E2E, 배포, DAKER 인증/제출은 **미검증**. 별도 안전 통합 단위 **100/100**, 잔여 기본0h+예비0h, 실작업시간 미계측. 기존 60일 정본 **29 DONE/3 BLOCKED/28 NOT_STARTED**, NEXT **2026-12-03** 미래 결과확인, DAKER 10/25·11/09 **각 60/100 차단**, DART 10/30 **90/100 차단**, 11/10 최종 제출 NOT_STARTED. 동결 비공개 PDF·PPTX·Library6 불변. [QA](docs/roles/lead/EVIDENCE_CHAIN_OFFLINE_INTEGRATION_QA_20261024.md).
+
 ## LIVE HANDOFF 10항 — 2026-10-24 21:29 KST / DART JSON 독립검증 오인 차단
 1. **목표·기술**: 수동 공시 기록의 출처 플래그를 공식 DART 직접검증으로 잘못 올리지 않도록 Python 오프라인 신뢰경계를 강화.
 2. **완료·설계**: JSON 신뢰(A, 부적합) 대비 DART 자기선언 무시(B, 채택). 다른 수동 수치 verified/conflict/unavailable 산술 결과 보존.
