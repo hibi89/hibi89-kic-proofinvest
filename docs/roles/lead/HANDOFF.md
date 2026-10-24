@@ -1,3 +1,18 @@
+## KIC 10항 최신 인수인계 — 2026-10-24 KST / 삼성전자 실 발행사 수동자료 CLI
+1. 목표: 별도 Research/Verification/Risk API를 한 명령으로 재현하고 실제 이미 검수된 공시 수치를 연결하되 가짜 실Risk 산출 금지.
+2. 설계: `python -m proofinvest.manual_case_demo` 기본 16.20% 산술 일치, `--claim 30` conflict; Risk는 실제 검증된 부채·자본 데이터 부재로 보류.
+3. 테스트: 신규7; 전체 [CI 40096891638](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40096891638) 189/189 PASS. 실PDF 다시 열지 않음.
+4. 상태/시간: 비정규 추가 100/100, 잔여 기본0h+예비0h, 실제시간 미계측. 60일 정본 29 DONE/3 BLOCKED/28 NOT_STARTED; NEXT 2026-12-03 결과 대기.
+5. 외부 차단: DAKER 10/25·11/09 60/100, DART 10/30 90/100 미완. 사용자 DAKER 계정/휴대폰 인증·팀장 업로드 권한 확인 전 제출 금지.
+6. Git: `lead/kic`, 기능 SHA `a630451473eb34bf32dd4e827bae09f2f70f61dc`; 새 proofinvest/manual_case_demo.py, tests/test_manual_case_demo.py. [검수보고](MANUAL_ISSUER_DEMO_CLI_QA_20261024.md).
+7. 운영: 오프라인 표준라이브러리 명령, 실제 AI/LLM/실 API/Vercel/Production/투자권고 없음.
+8. 보안: 공개 저장소에 기업 공개 숫자·출처 URL만; 사용자 비공개 동결 PDF/PPTX 및 Library6 무수정.
+9. 다음: 본인 DAKER 권한·최종제출 화면을 실제 확인 후 별도 사용자 승인으로 11/10 제출, 접수증 최종상태 확인; 11/12 10:00 공식 마감.
+10. 실패/복구: CLI 소스 고정값 변경 시 오류 차단, 189 PASS, 이전 코드 HEAD d61a146; 강제 푸시 불필요.
+
+
+> **LIVE 2026-10-24 KST — 삼성전자 수동검산 출처연결 오프라인 CLI 완료:** `python -m proofinvest.manual_case_demo`로 기존 2024/2023 연결매출 16.20% 수동검산 근거를 Research→Verification→Risk에 연결, `--claim 30`은 conflict. 공식 발행사 게시일 2025-02-18 확인. Risk 부채·자본 미확보 → 계산 보류, DART 직접원문/실 API/Agent/Production/최종제출 모두 미검증. 코드 `a630451473eb`, GitHub Actions #40096891638 **189/189 PASS**, 신규7. 추가 독립 단위 100/100, 잔여 기본0h+예비0h, 실제 시간 미계측. 정본 60일 **29 DONE/3 BLOCKED/28 NOT_STARTED**, NEXT **2026-12-03**(미래), DAKER 10/25·11/09 각60% BLOCKED, DART 10/30 90% BLOCKED, 11/10 제출 NOT_STARTED. 개인 비공개 PDF/PPTX·Library6 파일 변경 없음. [QA](MANUAL_ISSUER_DEMO_CLI_QA_20261024.md).
+
 ## 10항 최신 인수인계 — 2026-10-24 22:00 KST / 오프라인 출처 연결 통합
 1. **목표**: Research/Verification/Risk 기존 코드를 한 번의 프로그램 호출에서 근거 불일치 안전하게 차단.
 2. **설계**: 원시 결과 단순 연결 대신 ID·URL·연도 같은 출처 계약 검증 후 다음 단계 실행, 전부 오프라인.
