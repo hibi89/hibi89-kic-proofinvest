@@ -67,6 +67,11 @@ def _consistent_annual_period(rows: list[dict], year: int) -> bool:
             previous = _period_end(row.get("frmtrm_dt"))
             if current is None or previous is None or previous >= current:
                 return False
+            # A valid pair must end in the requested reporting year and the
+            # immediately preceding year; consistent but stale rows are not
+            # comparable to the current annual disclosure.
+            if current.year != year or previous.year != year - 1:
+                return False
             end_pairs.add((current, previous))
         if len(end_pairs) != 1:
             return False
