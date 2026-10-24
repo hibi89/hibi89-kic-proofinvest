@@ -139,8 +139,10 @@ def calculate_verified_debt_to_equity(
     """Fail-closed numeric Risk calculation via the verified-only input gate.
 
     A structurally 'verified' label is an upstream assertion, NOT proof of
-    source authenticity. The 200% limit is an exploratory signal, never an
-    investment recommendation. The legacy engine.calculate demo is separate.
+    source authenticity. Threshold is a >= 200% comparison on the unrounded
+    Decimal ratio; only the displayed ratio uses ROUND_HALF_UP to 2 places.
+    It is an exploratory signal, never an investment recommendation.
+    The legacy engine.calculate demo is separate.
     """
     gated = gate_verified_risk_inputs(
         facts, expected_year=expected_year,
@@ -149,9 +151,18 @@ def calculate_verified_debt_to_equity(
     result = {
         **gated,
         "ratio_pct": None,
+        "comparison_ratio_pct": None,
         "triggered": None,
         "threshold_pct": 200,
-        "note": "200%는 시연용 탐색 임계값이며 투자 판단 기준이 아님",
+        "threshold_operator": ">=",
+        "comparison_basis": "unrounded_decimal_ratio",
+        "display_rounding": "ROUND_HALF_UP_2DP",
+        "note": (
+            "부채총계/자본총계×100의 반올림 전 비율이 200% 이상이면 탐색 신호. "
+            "표시 수치는 소수 둘째 자리 반올림하므로 표시 200.00%도 "
+            "미반올림 계산값이 200% 미만이면 신호가 아님. "
+            "200%는 시연용 임계값이며 투자 판단 기준이 아님"
+        ),
     }
     if gated["status"] != "eligible":
         return result
@@ -186,6 +197,7 @@ def calculate_verified_debt_to_equity(
     result["status"] = "calculated"
     result["risk_calculated"] = True
     result["ratio_pct"] = str(displayed_ratio)
+    result["comparison_ratio_pct"] = str(ratio)
     result["triggered"] = triggered
     result["reason"] = (
         "Deterministic Decimal calculation from matching upstream verified facts; "

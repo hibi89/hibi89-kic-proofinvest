@@ -148,6 +148,12 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
         self.assertTrue(out["risk_calculated"])
         self.assertFalse(out["authenticated_external_source"])
         self.assertEqual(out["source_kind"], "SYNTHETIC_FIXTURE")
+        self.assertEqual(out["threshold_pct"], 200)
+        self.assertEqual(out["threshold_operator"], ">=")
+        self.assertEqual(out["comparison_basis"], "unrounded_decimal_ratio")
+        self.assertEqual(out["display_rounding"], "ROUND_HALF_UP_2DP")
+        self.assertEqual(out["comparison_ratio_pct"], "266.6666666666666666666666667")
+        self.assertIn("투자 판단 기준이 아님", out["note"])
 
     def test_valid_ratio_below_threshold(self):
         data = facts()
@@ -159,14 +165,44 @@ class VerifiedDebtToEquityCalculationTests(unittest.TestCase):
     def test_exact_threshold_triggers(self):
         data = facts()
         data[0]["current_amount"] = "60"
-        self.assertTrue(self.compute(data)["triggered"])
+        result = self.compute(data)
+        self.assertTrue(result["triggered"])
+        self.assertEqual(result["comparison_ratio_pct"], "200")
 
     def test_unrounded_ratio_controls_trigger(self):
         data = facts()
         data[0]["current_amount"] = "59.999"
         out = self.compute(data)
         self.assertEqual(out["ratio_pct"], "200.00")
+        self.assertEqual(out["comparison_ratio_pct"], "199.9966666666666666666666667")
         self.assertFalse(out["triggered"])
+        self.assertIn("미반올림", out["note"])
+
+    def test_threshold_metadata_consistent_across_calculated_and_withheld(self):
+        good = self.compute()
+        data = facts()
+        data[1]["current_amount"] = "0"
+        held = self.compute(data)
+        for out in (good, held):
+            self.assertEqual(out["threshold_pct"], 200)
+            self.assertEqual(out["threshold_operator"], ">=")
+            self.assertEqual(out["comparison_basis"], "unrounded_decimal_ratio")
+            self.assertEqual(out["display_rounding"], "ROUND_HALF_UP_2DP")
+            self.assertIn("투자 판단 기준이 아님", out["note"])
+        self.assertEqual(held["status"], "unavailable")
+        self.assertIsNone(held["comparison_ratio_pct"])
+        self.assertIsNone(held["triggered"])
+
+    def test_exploratory_rule_never_authenticates_external_source(self):
+        data = facts()
+        for fact in data:
+            fact["source_kind"] = "MANUAL_PRIMARY_SOURCE_VERIFICATION"
+        result = calculate_verified_debt_to_equity(data, expected_year=2024)
+        self.assertEqual(result["status"], "calculated")
+        self.assertTrue(result["triggered"])
+        self.assertFalse(result["authenticated_external_source"])
+        self.assertEqual(result["threshold_operator"], ">=")
+        self.assertIn("시연용", result["note"])
 
     def test_zero_equity_safely_withheld(self):
         data = facts()
