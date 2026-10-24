@@ -1,3 +1,16 @@
+## LIVE HANDOFF 10항 — 2026-10-24 KST / 11-17 Verification QA
+
+1. **목표·확정요구·기술**: KIC ProofInvest 예선 상위12팀 목표, Python 3.10+ 오프라인 금융 Research/Verification/Risk. 실제 Agent/Production은 미완료. 공식 PDF 예선 마감 2026-11-12 10:00 KST.
+2. **완료 기능·설계 결정**: README 오래된 작업자 READY/진도 안내 제거, single `lead/kic` 운영 경로/상태 JSON 링크로 수정, `tests/test_current_readme.py` 정적 회귀 2건. A 문구만 변경 vs B 코드화 CI 재발 방지 중 B 채택.
+3. **테스트/명령·성공/실패**: `python scripts/master_progress.py --check`, `python render_master_progress.py --check`, `python -m unittest discover -s tests -v`, 합성/수동기록 오프라인 CLI. [CI #40079648079](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40079648079): **96 PASS/0 FAIL/0 ERROR**, runner Node20·punycode WARN; 실제 로컬 독립/브라우저·공식 API 미실행.
+4. **완료·진행·차단·정지점**: 11/17 계획 업무 100/100 DONE/남은 기본0h+예비0h, 60일 18 DONE/3 BLOCKED/39 NOT_STARTED. 11/18·11/19 상호평가 아직 시작 전이라 NOT_STARTED, 11/10 DAKER 실제 접수 미착수.
+5. **오류·원인·재시도/대안**: README 구 작업자 배차가 현행 역할 오인 유발(수정+회귀 통과). DAKER 실계정 권한 P0 접근 불가, DART 원문 인증 P1 90% 차단. 비합성 14자리 DART 접수번호 구조검사만 가능, 원본 진위 미확인. Node warnings CI 차단 안 함. 동일 외부 인증 시도만 반복 금지, 실제 로그인/뷰어 복구 시 회수.
+6. **저장소·브랜치·SHA·경로**: `hibi89/hibi89-kic-proofinvest`, `lead/kic`, 검증 SHA `53cdecdc5777ecefbb9977ed32ecf9cbffee29c8`; `README.md`, `tests/test_current_readme.py`, [QA](docs/roles/lead/VERIFICATION_CI_BLOCKER_AUDIT_20261024.md), `docs/roles/lead/MASTER_PROGRESS.json`; 문서 HEAD는 GitHub 원격 조회 기준.
+7. **Production URL/Vercel/실행 환경**: GitHub Actions ubuntu-latest/Python3.11, 실제 Vercel/Production URL 없음. HTTP/브라우저/API E2E/토큰 미검증; CI green != 운영 성공.
+8. **원본·백업·인증·수정금지**: 비공개 Library 동결 PDF/PPTX 6건 기록 보존, 이번 조회·수정 없음. Git history로 `fa51b0f8eb6025b9155a8888fd21e4e007ce9f9d` 복구 가능. Public GitHub 토큰/PII/비공개 PDF 금지, 사용자 인증·공식 제출 사전 승인.
+9. **다음 우선순위·완료기준·승인**: **2026-11-20 Research 출처·라이선스 0/100**, 기본1h+예비2h=3h, 공개자료 권리 증명·출처/사용 가능 범위 분리. 외부 P0 DAKER 참가/팀장 제출권한 복구가 항상 우선, 11/18·11/19 상호평가 증거는 공식 시점 이후 확인. 11/12 마감/최종 제출 의사결정은 참가자 담당.
+10. **갱신 일시/검증·문서 기준**: 2026-10-24 KST; 코딩 기준 `53cdecdc5777ecefbb9977ed32ecf9cbffee29c8`, CI 40079648079; 최종 문서 SHA는 `lead/kic` 원격 HEAD 재검증. 실제 시간 미계측, 장기 보관/배포·공식 접수 실증 없음.
+
 ## 2026-10-24 KST LIVE HANDOFF — 11/16 선행 과제
 
 1. **목적·요구·기술**: KIC ProofInvest 3단계 금융 근거 검증 스타터, Python 3.10+; 예선 PDF 제출 11/12 10:00 KST. 자동 투자 권고·매매 제외.

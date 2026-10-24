@@ -1,3 +1,18 @@
+## 2026-10-24 KST — 11/17 Verification CI·잔여 장애 목록 선행 완료
+
+| 11/17 업무 | 배점 | 획득 |
+|---|---:|---:|
+| 기존 CI 로그·96개 전체 회귀 PASS/FAIL 점검 | 20 | 20 |
+| README 구형 배차/진도 정정 + 정적 회귀 2개 | 30 | 30 |
+| DAKER/DART·원본 진위·Risk·Production·CI 경고 P0/P1/P2 분리 | 30 | 30 |
+| JSON 정본·QA·STATUS/HANDOFF/상위 보고·최종 CI 검증 | 20 | 20 |
+| **합계** | **100** | **100/100 = 100%** |
+
+- **원래 예정일 2026-11-17 / 실제 완료일 2026-10-24 KST**. 해당 업무 남은 기본 **0h** + 예비 **0h** = **0h**, 실제 소요 **미계측**.
+- 코드 SHA `53cdecdc5777`, [CI #40079648079](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40079648079) **96/96 PASS**, [분리 점검 QA](VERIFICATION_CI_BLOCKER_AUDIT_20261024.md), 60일 **18 DONE/3 BLOCKED/39 NOT_STARTED**. WARN(Node 20/punycode)·BLOCKED(인증/원문)·NOT_STARTED(상호평가/실서비스)는 PASS 결과로 지우지 않음.
+- **DAKER 10/25·11/09 각각 60% BLOCKED**, 로그인 접근 후 각각 기본0.5h+예비1.5h=2h(동일 원인 중복 수행 금지), 대기시간 미정. **DART 10/30 90% BLOCKED**(기본0.5h+예비1h=1.5h), 11/10 실제 제출 NOT_STARTED. 10쪽 frozen PDF/편집 PPTX 및 비공개 Library 6개 기존 기록 유지, 이번 변경 없음.
+- **11/18·11/19 NOT_STARTED**: 실제 상호평가·영수증은 미래 외부 의존이므로 선행 완료 주장 금지, 해당 시점에 회수. **NEXT independent 11/20 Research 출처·라이선스 0/100**, 기본1h+예비2h=3h. 사용자 접근 가능한 DAKER P0 우선.
+
 ## 2026-10-24 KST — 11/16 Verification 근거 누락·불확실성 선행 완료
 
 | 11/16 계획 작업 100점 게이트 | 배점 | 획득 |
