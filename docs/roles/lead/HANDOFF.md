@@ -1,3 +1,15 @@
+## KIC HANDOFF 10 fields — 2026-10-25 KST extreme Decimal verification guard
+1. **Goal:** prevent malformed, extreme-magnitude offline revenue inputs from crashing `calculate` before returning a safe report; DAKER P0 remains unchanged.
+2. **Design:** option A narrow Decimal arithmetic/quantization exception guard returning `unavailable` chosen; option B arbitrary input digit cap rejected as quality regression. Existing successful outputs unchanged.
+3. **Tests:** source `f818042002acb83d1195a4e601282cc78dce76b6`, [GitHub CI 40106998826](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40106998826) `completed/success`, **236/236 PASS** (two new), 60-day guards, offline UI/CLI/artifacts green. Real DART/API/Agent/Production/DAKER E2E not tested.
+4. **Progress:** independent extra P1 100/100 after docs CI; remaining base0h+reserve0h after confirmation, actual time not measured. Canonical 29/3/28 unchanged, future 12/03 awaiting outcome.
+5. **Failure:** Python Decimal accepts an 80-digit plain number; default precision may cause `growth.quantize(0.01)` `InvalidOperation` outside any catch. Safely withhold only this metric; no repeat of the error.
+6. **Provenance:** `hibi89/hibi89-kic-proofinvest` `lead/kic` source `f818042002acb83d1195a4e601282cc78dce76b6` (`proofinvest/engine.py`, `tests/test_engine_numeric_bounds.py`), previous valid HEAD `11ee0b9`; new handoff docs commit SHA requires remote confirmation. QA `docs/roles/lead/VERIFICATION_EXTREME_DECIMAL_QA_20261025.md`.
+7. **Service/deployment:** Python3.11 GitHub Actions only. Vercel/Production not deployed; external API/LLM Agent/DAKER user browser unverified.
+8. **Backups/security:** Git SHA ancestry provides non-destructive rollback. No public private 10-page PDF/PPTX, six Library originals, secrets, account settings or external data changed. No force push.
+9. **Next:** authenticated participant-only DAKER team leader/submission button preflight; separate user approval before final PDF upload and confirmation. Do not redo previously completed 11/14-17 schedule tasks; future DART official source check stays blocked.
+10. **Timestamp/evidence:** 2026-10-25 KST; verified CI `40106998826` at `f818042002acb83d1195a4e601282cc78dce76b6`. DAKER 10/25/11/09 60% BLOCKED, DART 10/30 90% BLOCKED; official 11/10 submit not started, peer-vote not begun.
+
 ## KIC 10-field HANDOFF — 2026-10-25 KST / root contract P1 CI closure
 1. **Goal:** recover and verify permanent one-line GitHub handoff policy without stale snapshots.
 2. **Design:** keep strict body-section validator; repair one outdated positive test to append to a real valid contract; separately reject meaningless long text. Loosening validator rejected.

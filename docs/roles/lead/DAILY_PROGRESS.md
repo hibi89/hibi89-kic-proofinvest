@@ -1,3 +1,17 @@
+## 2026-10-25 KST — independent verification extreme-Decimal safety fix (outside 60-day plan)
+| Evidence gate | Weight | Earned |
+|---|---:|---:|
+| Reproduce extreme-number `Decimal.quantize` crash and compare minimal alternatives | 20 | 20 |
+| Add narrow fail-closed calculation/formatting guard, preserve independent Risk behavior | 40 | 40 |
+| Add 2 synthetic/non-synthetic regressions, full CI run | 30 | 30 |
+| GitHub handoff, QA and remote documentation CI confirmation | 10 | **10 on verified docs CI** |
+| **Independent task total** | **100** | **100 after verified docs CI** |
+
+- **Confirmed code**: `f818042002acb83d1195a4e601282cc78dce76b6`, [CI 40106998826](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40106998826) 236/236 tests PASS, errors 0, 60-day guards + offline CLI/demo/artifact stages green. Before modification plain 80-digit revenue input could raise `InvalidOperation` during result formatting. This does not establish any real filing was affected.
+- **Remaining base0h + contingency0h = 0h after handoff validation**; actual elapsed time **미계측**, external authentication wait undefined. The P1 code fix has no impact on official 60-day calendar or participant rights.
+- **Canonical** 29 DONE / 3 BLOCKED / 28 NOT_STARTED; NEXT 12/03 future. DAKER 10/25 and 11/09 60% BLOCKED each, DART 10/30 90% BLOCKED, Nov10 submission not started.
+- Rollback uses normal Git revert from prior `11ee0b9`; private 10-page frozen submission and six Library artifacts not accessed or modified.
+
 ## 2026-10-25 KST — independent handoff P1 CI closure (outside 60-day schedule)
 | P1 gate | Weight | Earned |
 |---|---:|---:|
