@@ -1,3 +1,9 @@
+> **KIC 새 채팅방에서는 아래 한 줄만 입력하면 됨:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
+>
+> **본 `main`은 구형 안정 코드**. 새 채팅은 `lead/kic`의 [실제 시작 절차](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/CHAT_BOOTSTRAP.md) → [KIC 최신 복원·다음 작업](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/KIC_RESUME_STATE.md) → [실제 완료율](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/roles/lead/DAILY_PROGRESS.md)을 원격 최신 HEAD 기준으로 직접 읽고 **하나의 KIC 총괄 채팅에서 바로 개발 재개**한다. 과거 Research/Verification/Risk 별도 작업자 READY·`main`의 역사 기록은 실행 지시가 아니다.
+>
+> 2026-10-24 14:39 KST까지 확인된 마지막 검증: `lead/kic` Risk 입력 게이트 100%, 67/67 테스트 성공; 다음은 11/01 결측·0분모·음수자본 안전 계산. DAKER 제출권한 35%, DART 직접 뷰어 확인 90% 차단. **항상 위 링크에서 최신치를 다시 읽어야 한다.**
+
 > **2026-10-24 새 채팅 한 줄 재개:** `[해커톤총괄 깃헙 레포지토리 확인하고 작업하셈]`  
 > `KIC ProofInvest`의 현행 총괄 겸 직접 개발자 업무는 [lead/kic 브랜치의 CHAT_BOOTSTRAP.md](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/CHAT_BOOTSTRAP.md)에서 복원한다. **현재 작업은 `main`이 아닌 `lead/kic`의 `docs/roles/lead/LEAD_ACTIVE_WORK.md`가 기준**이다. 통합 상황실: [CHAT_BOOTSTRAP.md](https://github.com/hibi89/hackathon-command-center-2026/blob/main/CHAT_BOOTSTRAP.md). 별도 작업자 채팅/옛 디스패처는 이력만 보존.
 

@@ -1,3 +1,9 @@
+> **KIC 새 채팅방에서는 아래 한 줄만 입력하면 됨:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`
+>
+> **본 `main`은 구형 안정 코드**. 새 채팅은 `lead/kic`의 [실제 시작 절차](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/CHAT_BOOTSTRAP.md) → [KIC 최신 복원·다음 작업](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/KIC_RESUME_STATE.md) → [실제 완료율](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/roles/lead/DAILY_PROGRESS.md)을 원격 최신 HEAD 기준으로 직접 읽고 **하나의 KIC 총괄 채팅에서 바로 개발 재개**한다. 과거 Research/Verification/Risk 별도 작업자 READY·`main`의 역사 기록은 실행 지시가 아니다.
+>
+> 2026-10-24 14:39 KST까지 확인된 마지막 검증: `lead/kic` Risk 입력 게이트 100%, 67/67 테스트 성공; 다음은 11/01 결측·0분모·음수자본 안전 계산. DAKER 제출권한 35%, DART 직접 뷰어 확인 90% 차단. **항상 위 링크에서 최신치를 다시 읽어야 한다.**
+
 # ProofInvest — AI 작업자 공통 규칙
 
 1. **기본 인수인계 순서**: docs/ROLE_COORDINATION.md → 통합 HANDOFF.md → STATUS.md → AGENTS.md → 소스. 각 브랜치 고유 역할의 최신 STATUS/HANDOFF와 실소스를 대조하고 원격 HEAD를 확인한다.
