@@ -1,3 +1,5 @@
+> **2026-10-25 조직 고정 — 해총/스총:** 해총은 [해커톤 상황실](https://github.com/hibi89/hackathon-command-center-2026) 통합감독, 스총은 Private SMAX² 제품총괄. 이 저장소 실개발은 기존 **KIC `lead/kic` 총괄**이 담당. [역할·최신 우선순위](docs/HAECHONG_STECHONG_ROLE_BOUNDARY_20261025.md)를 참고. 기존 한 줄 복원명령은 변경하지 않음.
+
 > **상시 강제 규칙 (2026-10-24 14:44:22 KST)**: [KIC_HANDOFF_CONTRACT.md](KIC_HANDOFF_CONTRACT.md) — **모든 작업 종료·부분중단마다 GitHub 최신화+복원 상태+일일 100점 진도+남은 시간+다음 작업 갱신·원격 확인이 끝나야만 종료 가능**. 사용자 시작 명령은 오직 `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]`; 추가 인수인계 프롬프트 요청 금지. 이 문구보다 오래된 종료 규칙은 본 강제 규약으로 대체.
 
 > **2026-10-24 14:39:37 KST 새 채팅 고정 한 줄:** `[kic 해커톤 깃헙 레포지토리 확인하고 작업하셈]` → 루트 [KIC_RESUME_STATE.md](KIC_RESUME_STATE.md) + [CHAT_BOOTSTRAP.md](CHAT_BOOTSTRAP.md)를 최우선 읽기. 이전 역할별 작업자 지침/과거 Research 대기는 폐기된 이력이다. KIC 단일 총괄 겸 개발자가 최신 lead/kic HEAD에서 다음 과제를 직접 수행한다. 
