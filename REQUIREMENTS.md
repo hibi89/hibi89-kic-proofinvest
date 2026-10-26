@@ -1,3 +1,5 @@
+> **2026-10-27 FINAL OWNER DIRECTION / SUPERSEDES OLD INTERNAL EXPANSION TARGETS:** Read [KIC final product direction](docs/architecture/FINAL_KIC_PRODUCT_DIRECTION_20261027.md) and [preliminary submission freeze](SUBMISSION_SCOPE_FREEZE_20261027.md) first. Finalist-only external context EXACTLY 3 U.S. benchmark indices (S&P 500, Nasdaq-100, DJIA) + 4 all-items inflation YoY (US, China, euro area HICP, Japan). Preserve SEC issuer finance/issuance/major-holder evidence. Conditional leak-safe sklearn ML and measured pretrained English SEC filing text retrieval DL; no neural stock forecasting. Big Mac/Truflation, extra FX/rates/metals/countries excluded. The 3-domestic-firms testing item below is a **historical internal test idea**, NOT a binding preliminary product requirement or license to invent company facts. Nov12 10:00 KST official PDF-only; no code/API/model/official file edit completed by this design change.
+
 # REQUIREMENTS — KIC ProofInvest
 
 - **목표**: 2026 KIC AI Agent 공모전 예선 상위 12팀 본선 진출.
