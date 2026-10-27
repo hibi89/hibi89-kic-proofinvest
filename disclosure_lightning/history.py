@@ -455,11 +455,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--db", type=Path, required=True)
     parser.add_argument("--cik", required=True)
-    parser.add_argument("--manifest-sha256", required=True)
+    parser.add_argument("--manifest-sha256")
     parser.add_argument("--name")
     parser.add_argument("--input-json", type=Path)
     parser.add_argument("--batch-dir", type=Path)
     parser.add_argument("--list-manifest", action="store_true")
+    parser.add_argument("--review-amendments", action="store_true")
     parser.add_argument("--max-pages", type=int, default=4)
     parser.add_argument("--as-of", required=True)
     parser.add_argument("--collected-at",
@@ -467,19 +468,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--forms", default="10-K,10-K/A,10-Q,10-Q/A,8-K,8-K/A")
     args = parser.parse_args(argv)
     try:
-        options = [bool(args.input_json), bool(args.batch_dir), args.list_manifest]
+        options = [bool(args.input_json), bool(args.batch_dir),
+                   args.list_manifest, args.review_amendments]
         if sum(options) != 1:
-            raise ValueError("SELECT_ONE_SINGLE_BATCH_OR_MANIFEST_MODE")
-        if args.list_manifest:
-            if args.name or args.collected_at:
-                raise ValueError("MANIFEST_LISTING_CANNOT_IMPORT")
+            raise ValueError("SELECT_ONE_SINGLE_BATCH_MANIFEST_OR_REVIEW_MODE")
+        if args.review_amendments:
+            if args.name or args.collected_at or args.manifest_sha256:
+                raise ValueError("AMENDMENT_REVIEW_IS_READ_ONLY_NO_IMPORT_ARGS")
+            result = review_amendment_candidates(
+                db_path=args.db, cik=args.cik, as_of=args.as_of)
+        elif args.list_manifest:
+            if not args.manifest_sha256 or args.name or args.collected_at:
+                raise ValueError("MANIFEST_LISTING_REQUIRES_PIN_ONLY")
             result = {"status": "READ_ONLY_UNVERIFIED_MANIFEST", "pages":
                       list_manifest_pages(db_path=args.db, cik=args.cik,
                                           manifest_sha256=args.manifest_sha256,
                                           as_of=args.as_of)}
         else:
-            if args.collected_at is None:
-                raise ValueError("COLLECTION_TIMESTAMP_REQUIRED")
+            if not args.manifest_sha256 or args.collected_at is None:
+                raise ValueError("MANIFEST_PIN_AND_COLLECTION_TIMESTAMP_REQUIRED")
             forms = core.parse_forms(args.forms)
             if args.batch_dir is not None:
                 if args.name:
