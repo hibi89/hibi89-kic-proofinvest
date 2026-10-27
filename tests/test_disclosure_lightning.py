@@ -97,6 +97,25 @@ class DisclosureLightningTests(unittest.TestCase):
             with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "limit"):
                 core.list_filings(self.db, cik=CIK, limit=limit)
 
+    def test_list_orders_by_filing_date_across_accession_year_rollover(self):
+        payload = json.loads(self.raw)
+        recent = payload["filings"]["recent"]
+        for key, values in (
+                ("accessionNumber", ["0000320193-99-000001", "0000320193-00-000001"]),
+                ("form", ["10-K", "10-K"]),
+                ("filingDate", ["1999-01-01", "2000-01-01"]),
+                ("acceptanceDateTime", ["1999-01-01T12:00:00Z", "2000-01-01T12:00:00Z"]),
+                ("primaryDocument", ["old-1999.htm", "old-2000.htm"])):
+            recent[key].extend(values)
+        raw = json.dumps(payload).encode("utf-8")
+        indexed = core.index_submissions(
+            raw, cik=CIK, as_of="2026-10-27", forms=core.ALLOWED_FORMS,
+            collected_at="2026-10-27T00:00:00Z",
+        )
+        core.save_index(self.db, raw, indexed)
+        latest = core.list_filings(self.db, cik=CIK, limit=1)
+        self.assertEqual(latest[0]["filed_at"], "2025-10-18")
+
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
         core.save_index(self.db, self.raw, baseline)

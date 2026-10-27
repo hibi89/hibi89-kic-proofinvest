@@ -443,7 +443,8 @@ def list_filings(db_path: Path, *, cik: str, limit: int = 50) -> list[dict]:
     with closing(sqlite3.connect(uri, uri=True)) as conn:
         return [json.loads(row[0]) for row in conn.execute(
             "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=?"
-            " ORDER BY accession DESC LIMIT ?", (PROVIDER, cik10(cik), limit)
+            " ORDER BY json_extract(filing_json, '$.filed_at') DESC, accession DESC LIMIT ?",
+            (PROVIDER, cik10(cik), limit)
         )]
 
 
