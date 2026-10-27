@@ -1,3 +1,11 @@
+## P10 — SEC point-in-time 보수적 처리 (2026-10-28 KST)
+
+같은 UTC 날짜의 공시를 조회하면서 원본 SEC-style 인덱스의 `acceptanceDateTime`이 누락되거나 timezone 없는 문자열인 경우, **그날 특정 관측 시각보다 먼저 접수됐는지 증명할 수 없어 해당 행을 제외**합니다. 이 규칙을 최근 `index_submissions`와 과거 `history.index_history_page`에 함께 반영했습니다. 유효한 timezone-aware 접수 시각은 P9부터 관측 UTC 시각과 정확히 비교합니다. 관측일 이전 날짜의 공시는 기존 일자 범위 기준으로 유지하며, SEC 독립 인증 여부는 계속 거짓입니다. 이는 로컬 관측 시각을 주장하는 데이터의 look-ahead 위험을 줄이는 것이지 원본의 실제 입수·게시 시각을 인증하는 것은 아닙니다.
+
+회귀 테스트 두 개가 `tests/test_disclosure_lightning.py`에 추가됐습니다. **현재 검증 근거는 이전 P6 로컬 호환 shim 9/9 PASS + P10 동등한 판단식의 독립 경계 검사 6/6 PASS뿐**이며, 최신 GitHub 브랜치 전체 `unittest`/Actions는 조회되지 않아 **미검증**입니다. 별도 공식 제출물/데모/KIC 코드/실 SEC 통신은 변경하지 않았습니다.
+
+---
+
 ## P9 — 관측 이전 접수 시각 검증 (2026-10-28 KST)
 
 최근 공시와 과거 `filings.files`의 **알려진 timezone-aware `acceptanceDateTime`**이 로컬 `collected_at` 관측 시각보다 늦으면 그 행은 제외합니다. 종전 구현은 `filingDate` 날짜만 비교하여 **같은 날짜 내 미래 접수**를 잠재적으로 포함할 수 있었습니다. 이번 수정은 `2026-10-28T12:00:00+09:00` (03:00 UTC) 행이 02:59:59 UTC 관측에서는 제외되고 03:00 UTC 관측에서 포함되는 경계를 명시합니다.
