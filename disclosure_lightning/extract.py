@@ -37,7 +37,7 @@ def _clean(value: str) -> str:
 _HTML_TYPES = frozenset({"text/html"})
 _META_TAG = re.compile(rb"<meta\b[^>]{0,512}>", re.IGNORECASE)
 _META_CHARSET = re.compile(
-    rb"\bcharset\s*=\s*['\"]?\s*([a-zA-Z0-9_-]+)", re.IGNORECASE
+    rb"(?<![A-Za-z0-9_-])charset\s*=\s*['\"]?\s*([a-zA-Z0-9_-]+)", re.IGNORECASE
 )
 _HTML_CODECS = {
     "utf-8": ("utf-8", "utf-8"),

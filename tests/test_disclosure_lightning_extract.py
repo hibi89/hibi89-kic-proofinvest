@@ -225,6 +225,15 @@ class ExtractedFilingTests(unittest.TestCase):
                     input_origin="OFFLINE_FILE_UNVERIFIED",
                 )
 
+    def test_data_charset_attribute_is_not_an_encoding_declaration(self):
+        raw = b'<meta data-charset="windows-1252"><p>Revenue \x93growth\x94</p>'
+        with self.assertRaisesRegex(ValueError, "ENCODING"):
+            extract.extract_bytes(
+                raw, content_type="text/html", filing_sha256=hashlib.sha256(raw).hexdigest(),
+                issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+                input_origin="OFFLINE_FILE_UNVERIFIED",
+            )
+
     def test_no_parser_remote_io_or_script_execution(self):
         with patch("urllib.request.urlopen") as req:
             r = self.run_from_saved()
