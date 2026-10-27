@@ -369,7 +369,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="DL SEC filing index offline-first MVP")
     parser.add_argument("--cik", required=True, help="SEC CIK; zero-padded internally")
     parser.add_argument("--as-of", required=True, help="Exclude filings after YYYY-MM-DD")
-    parser.add_argument("--forms", default="10-K,10-Q,8-K", help="Allowed SEC forms")
+    parser.add_argument("--forms", default="10-K,10-K/A,10-Q,10-Q/A,8-K,8-K/A", help="Allowed SEC forms; includes amendments by default")
     parser.add_argument("--input-json", type=Path, help="Local SEC-style response JSON (offline)")
     parser.add_argument("--allow-network", action="store_true", help="Explicit one GET to data.sec.gov")
     parser.add_argument("--collected-at", help="Offline record observation time (ISO 8601 with offset). "
