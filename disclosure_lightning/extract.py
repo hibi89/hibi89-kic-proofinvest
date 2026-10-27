@@ -146,7 +146,7 @@ def extract_bytes(raw: bytes, *, content_type: str,
             block = _fragment(text, line, "UTF8_RAW_LINE_BYTE_SPAN")
             block["source_locator"] = {
                 "type": "UTF8_RAW_LINE_BYTE_SPAN", "line": line,
-                "byte_start": start_byte, "byte_end_exclusive": end_byte,
+                "start_byte": start_byte, "end_byte_exclusive": end_byte,
             }
             block["raw_span_sha256"] = hashlib.sha256(raw_line).hexdigest()
             # The exact RAW line span is verified, but cleaned 'text' is
