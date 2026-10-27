@@ -671,5 +671,70 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 1)
 
 
+    def test_unknown_same_day_acceptance_recent_is_excluded(self):
+        base = json.loads(self.raw)
+        base["filings"]["recent"]["filingDate"][0] = "2026-10-28"
+        observation = "2026-10-28T01:00:00Z"
+        accession = base["filings"]["recent"]["accessionNumber"][0]
+        for invalid in (None, "", "2026-10-28T00:45:00"):
+            with self.subTest(unknown_acceptance=invalid):
+                snapshot = json.loads(json.dumps(base))
+                snapshot["filings"]["recent"]["acceptanceDateTime"][0] = invalid
+                actual = core.index_submissions(
+                    json.dumps(snapshot).encode(), cik=CIK, as_of="2026-10-28",
+                    forms=FORMS, collected_at=observation)
+                self.assertNotIn(accession,
+                                 [item["accession"] for item in actual["filings"]])
+        prior = json.loads(json.dumps(base))
+        prior["filings"]["recent"]["filingDate"][0] = "2026-10-27"
+        prior["filings"]["recent"]["acceptanceDateTime"][0] = None
+        allowed = core.index_submissions(
+            json.dumps(prior).encode(), cik=CIK, as_of="2026-10-28",
+            forms=FORMS, collected_at=observation)
+        self.assertIn(accession, [item["accession"] for item in allowed["filings"]])
+
+    def test_unknown_same_day_acceptance_history_is_excluded(self):
+        from disclosure_lightning import history
+        page_name = "CIK0000320193-submissions-001.json"
+        index = json.dumps({
+            "cik": 320193, "name": "SYNTHETIC ONLY",
+            "filings": {
+                "recent": {"accessionNumber": [], "form": [],
+                           "filingDate": [], "primaryDocument": []},
+                "files": [{
+                    "name": page_name, "filingCount": 1,
+                    "filingFrom": "2026-10-28", "filingTo": "2026-10-28"}],
+            },
+        }).encode()
+        indexed = core.index_submissions(
+            index, cik=CIK, as_of="2026-10-28",
+            forms=core.parse_forms("10-K"),
+            collected_at="2026-10-28T00:00:00Z")
+        core.save_index(self.db, index, indexed)
+        params = {
+            "db_path": self.db, "cik": CIK, "name": page_name,
+            "manifest_sha256": hashlib.sha256(index).hexdigest(),
+            "as_of": "2026-10-28",
+            "collected_at": "2026-10-28T01:00:00Z",
+            "forms": core.parse_forms("10-K"),
+        }
+        payload = {
+            "accessionNumber": ["0000320193-26-000001"],
+            "form": ["10-K"], "filingDate": ["2026-10-28"],
+            "primaryDocument": ["synthetic.htm"],
+            "acceptanceDateTime": [""],
+        }
+        for invalid in ("", "2026-10-28T00:45:00"):
+            with self.subTest(unknown=invalid):
+                payload["acceptanceDateTime"][0] = invalid
+                parsed = history.index_history_page(
+                    json.dumps(payload).encode(), **params)
+                self.assertEqual(parsed["indexed_count"], 0)
+        payload["acceptanceDateTime"][0] = "2026-10-28T00:45:00Z"
+        parsed = history.index_history_page(
+            json.dumps(payload).encode(), **params)
+        self.assertEqual(parsed["indexed_count"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
