@@ -1,3 +1,15 @@
+## 2026-10-27 — Annual fiscal range validation repair (ten-field handoff)
+1. **Goal:** Do not permit a 10-K/annual-style synthetic/OpenDART report to treat explicit 3-month statement periods as annual solely because their end years match.
+2. **Decision:** `proofinvest/engine.py` reads 1 or 2 explicit date tokens; if two, requires a plausible 330–380 day full year; rejects reversed, invalid or more than two tokens. Preserves historical end-date-only input rather than falsely inventing start dates. No new data/API.
+3. **Tests:** Three regression methods in `tests/test_engine.py`; exactly [CI #40523573438](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40523573438) SUCCESS **334/334 offline unittests**, including Streamlit AppTest.
+4. **Limits:** Offline structural data safety is verified; financial period validity without start date, issuer source authenticity, live HTTP, LLM Agent, production and DAKER final upload are not verified.
+5. **Failure/recovery:** Initial commit `4e3a456` failed because JavaScript-authored Python regex contained extra escapes; fixed in code `454d1f627396b52ced1010d685bbcfe35026370a`, exact-source CI success. Original version in Git history; no force push.
+6. **Repo/SHA:** `hibi89/hibi89-kic-proofinvest@lead/kic` code `454d1f627396b52ced1010d685bbcfe35026370a`; changes: `proofinvest/engine.py`, `tests/test_engine.py`. Documentation successor SHA must be checked separately.
+7. **Runtime:** Python offline unittest and existing GitHub Actions only; no hosted application URL.
+8. **Privacy:** Original user-private organizer PDF/PPTX, hash pin, candidate PDF, Bid Owl private branches, keys and real issuer data unchanged; no live API request.
+9. **Next authority:** Official PDF <=10p seven sections due **2026-11-12 10:00 KST**; user selects exact private PDF/title, grants separate DAKER upload/submit permission and verifies receipt. Disclosure Lightning remains deferred until Bid Owl basis validated.
+10. **State/date:** 2026-10-27 KST, actual elapsed hours not independently measured. Official 60-day ledger remains **29 DONE / 3 BLOCKED / 28 NOT_STARTED**. Documentation CI pending.
+
 ## 2026-10-27 KST — SEC HTTP protocol interrupted-response repair (10-field handoff)
 1. **Goal:** An explicit opted-in SEC CompanyConcept fetch must fail closed, not propagate uncaught protocol exceptions into Streamlit/CLI.
 2. **Implementation / design choice:** `proofinvest/sec_api_client.py` catches `http.client.HTTPException` alongside prior urllib/OSError failures; `IncompleteRead` and `BadStatusLine` are not OSError and previously escaped the error gate. Minimal handler extension chosen over global exception-catching or automatic retries.
