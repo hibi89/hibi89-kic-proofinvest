@@ -1,3 +1,4 @@
+> **LATEST OWNER DIRECTIVE 2026-10-27 23:50 KST:** KIC DL lead is the former Bid Owl chief, and standalone technical MVP due **Oct28–29**. This overrides earlier direction to wait for Dec03 finalist *for isolated DL branch development only*. Build NOW on feature/disclosure-lightning, then test/harden and implement frontend toward submission. KIC preliminary PDF-only scope remains unchanged. See KIC chief orders at https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/disclosure-lightning/TO_DL_LEAD.md and write progress at docs/disclosure-lightning/TO_KIC_LEAD.md. New standalone code is original PUBLIC implementation, not a copy of private Bid_Owl. No automatic concurrent agent runs or live SEC calls.
 # Disclosure Lightning — DL Team Handoff
 
 **Owner:** DL technical lead (GPT-6 in the owner's ChatGPT workflow)  
