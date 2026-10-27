@@ -35,6 +35,9 @@ class LocalRiskScreenTests(unittest.TestCase):
         self.assertIn("LOCAL_IXBRL_CONTEXT_MATCH_UNVERIFIED", result["reason_codes"])
         self.assertIn("LOCAL_NUMERIC_TEXT_MATCH_UNVERIFIED", result["reason_codes"])
         self.assertFalse(result["source_authenticated"])
+        self.assertTrue(result["corroboration"]["ixbrl_context_match"])
+        self.assertTrue(result["corroboration"]["numeric_text_match"])
+        self.assertFalse(result["corroboration"]["issuer_authenticated"])
 
     def test_bad_digests_fail_closed(self):
         for digest in ("x" * 64, "A" * 64, "a" * 63, None, 1):
