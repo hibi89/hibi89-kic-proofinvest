@@ -1,3 +1,15 @@
+## 2026-10-27 KST — private KIC prelim candidate / next gate
+1. Product: ProofInvest Global, SEC-first citation-linked overseas investment research; frozen preliminary requires 10-page-or-fewer organizer PDF and 7 sections.
+2. Work: separate 10-page editable PPTX and PDF from existing owner template; old original assets unchanged, no publication or submission; chosen clone/edit over risky blank-slide recreation.
+3. QA: PDF 10 pages, 493,104 bytes, rendered and checked, 7 sections. Existing previous code CI 40489441194 SUCCESS 257/257 offline tests; candidate PDF is NOT independently accepted by organizer.
+4. Current: private candidate PREPARED_FOR_REVIEW, not final submit; 60-day canonical 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged.
+5. Risks: pinned original hash does not match revised PDF; do not override safe preflight. No errors in local PDF geometry/size checks. Alternative is keep original frozen candidate if new one is not approved.
+6. Repo/branch: hibi89/hibi89-kic-proofinvest @ lead/kic. QA memo docs/roles/lead/GLOBAL_PRELIM_REVIEW_STATUS_20261027.md.
+7. Production: none; no live SEC, API, LLM, ML/DL, Browser production or DAKER submit proof.
+8. Original/backup: owner private original PPTX/PDF, Library assets unchanged; new copies only in conversation working files, no keys or private candidate in public GitHub.
+9. Next: user reviews exact private PDF/title, then separately approves new hash/file upload and DAKER final confirmation/receipt; Elo voting after 11/12.
+10. Date: 2026-10-27 KST. Code CI at prior SHA fc5af7b; this doc is NOT independent submission success.
+
 ## 2026-10-27 KST — verified MVP UI trace handoff (out-of-plan task)
 1. **Goal / architecture:** Preserve existing offline Research → Verification → Risk, connect an explicit trace of existing bounded PLAN/EVALUATE/DECIDE/REPORT to manual-case Streamlit. No LLM/autotrading/SEC live fetch.
 2. **Completed / rationale:** Selected minimal Streamlit checkbox bridge over independent FastAPI/React dashboard; no new dependencies or irreversible redesign. Source and 3 new tests at `4fa5152fe84fad95ea311af89875aa1362dee949`.
