@@ -268,6 +268,30 @@ class DisclosureLightningTests(unittest.TestCase):
             fetch.assert_not_called()
         self.assertFalse(self.db.exists())
 
+    def test_kic_issuer_metadata_matches_curated_numeric_contract_without_auth(self):
+        # This is DL PRODUCER contract only: proofinvest/dl_bridge.py is on
+        # lead/kic and must still be integration-tested after PR review.
+        from proofinvest.sec_companyfacts import run_curated_apple_demo
+        fixture = (
+            Path(__file__).resolve().parents[1] /
+            "disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json"
+        ).read_bytes()
+        indexed = core.index_submissions(
+            fixture, cik=CIK, as_of="2025-11-01",
+            forms=core.parse_forms("10-K"), collected_at="2025-11-01T10:30:00Z",
+        )
+        verdict = run_curated_apple_demo(as_of="2025-11-01")
+        self.assertEqual(verdict["status"], "calculated_unverified")
+        self.assertEqual(indexed["indexed_count"], 1)
+        filing = indexed["filings"][0]
+        self.assertEqual(filing["issuer_cik"], verdict["cik"])
+        self.assertEqual(filing["accession"], verdict["accession"])
+        self.assertEqual(filing["filed_at"], verdict["filing_date"])
+        self.assertEqual(indexed["as_of_cutoff"], verdict["as_of"])
+        self.assertEqual(filing["index_raw_sha256"], indexed["source_sha256"])
+        self.assertIsNone(filing["raw_sha256"])
+        self.assertEqual(filing["evidence_status"], "OFFLINE_SOURCE_UNVERIFIED")
+
     def test_network_requires_explicit_consent_and_contact(self):
         with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
             with self.assertRaisesRegex(ValueError, "Network disabled"):
