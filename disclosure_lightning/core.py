@@ -176,6 +176,7 @@ def index_submissions(
         raise ValueError("SEC acceptance timestamps have mismatched count")
     observation_time = _observation_time(collected_at or _timestamp(), cutoff=cutoff)
     observation_day = date.fromisoformat(observation_time[:10])
+    observed_instant = datetime.fromisoformat(observation_time.replace("Z", "+00:00"))
     digest = hashlib.sha256(raw).hexdigest()
     entries = []
     seen = set()
@@ -191,11 +192,17 @@ def index_submissions(
         filed = parse_day(days[i])
         if filed > cutoff or filed > observation_day:
             continue
+        accepted_at = _accepted(accepted[i]) if accepted is not None else None
+        if (accepted_at is not None
+                and datetime.fromisoformat(accepted_at).astimezone(timezone.utc) > observed_instant):
+            # A timestamp that occurs after the local observation could not
+            # have been observed then; skip rather than backdate availability.
+            continue
         uri = _source_uri(target, accession, docs[i])
         entries.append({
             "schema_version": "1.0", "provider": PROVIDER, "issuer_cik": target,
             "accession": accession, "form": form, "filed_at": filed.isoformat(),
-            "accepted_at": _accepted(accepted[i]) if accepted is not None else None,
+            "accepted_at": accepted_at,
             "collected_at": observation_time, "source_uri": uri,
             "index_source_uri": f"https://data.sec.gov/submissions/CIK{target}.json",
             "index_raw_sha256": digest, "raw_sha256": None,
