@@ -244,7 +244,57 @@ CREATE TABLE IF NOT EXISTS filing_observations(
     observation_id INTEGER NOT NULL REFERENCES observations(id),
     PRIMARY KEY(filing_cik,accession,observation_id)
 );
+CREATE TABLE IF NOT EXISTS filing_metadata_versions(
+    provider TEXT NOT NULL,
+    issuer_cik TEXT NOT NULL,
+    accession TEXT NOT NULL,
+    metadata_sha256 TEXT NOT NULL,
+    filing_json TEXT NOT NULL,
+    first_observation_id INTEGER NOT NULL REFERENCES observations(id),
+    PRIMARY KEY(provider,issuer_cik,accession,metadata_sha256)
+);
+CREATE TABLE IF NOT EXISTS filing_version_observations(
+    provider TEXT NOT NULL,
+    issuer_cik TEXT NOT NULL,
+    accession TEXT NOT NULL,
+    metadata_sha256 TEXT NOT NULL,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    PRIMARY KEY(provider,issuer_cik,accession,metadata_sha256,observation_id),
+    FOREIGN KEY(provider,issuer_cik,accession,metadata_sha256)
+      REFERENCES filing_metadata_versions(provider,issuer_cik,accession,metadata_sha256)
+);
 """
+
+
+_VERSION_KEYS = (
+    "provider", "issuer_cik", "accession", "form", "filed_at",
+    "accepted_at", "source_uri", "amends_accession",
+)
+
+
+def _record_metadata_version(
+    db: sqlite3.Connection, filing: dict, observation_id: int,
+) -> int:
+    """Preserve distinct metadata for one accession without rewriting its original.
+
+    Observation timestamp, as-of, and index JSON hash are excluded from the
+    metadata fingerprint: resampling unchanged filings creates observations
+    but no new content version.
+    """
+    digest = hashlib.sha256(_canonical(
+        {field: filing.get(field) for field in _VERSION_KEYS}
+    )).hexdigest()
+    inserted = db.execute(
+        "INSERT OR IGNORE INTO filing_metadata_versions VALUES (?,?,?,?,?,?)",
+        (filing["provider"], filing["issuer_cik"], filing["accession"],
+         digest, _canonical(filing).decode("utf-8"), observation_id),
+    ).rowcount
+    db.execute(
+        "INSERT OR IGNORE INTO filing_version_observations VALUES (?,?,?,?,?)",
+        (filing["provider"], filing["issuer_cik"], filing["accession"],
+         digest, observation_id),
+    )
+    return inserted
 
 
 def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
@@ -263,10 +313,18 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     cik10(indexed.get("issuer_cik"))
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
+    versions_added = 0
     with closing(sqlite3.connect(path)) as conn:
         conn.execute("PRAGMA busy_timeout=5000")
         with conn:
             conn.executescript(SCHEMA)
+            # Non-destructive one-time backfill of the original first-seen
+            # records for databases created before the version-history schema.
+            for previous, old_obs in conn.execute(
+                "SELECT filing_json,first_observation_id FROM filings"
+            ).fetchall():
+                prior = json.loads(previous)
+                _record_metadata_version(conn, prior, old_obs)
             digest = indexed["source_sha256"]
             existing = conn.execute(
                 "SELECT id FROM observations WHERE provider=? AND issuer_cik=? AND sha256=?",
@@ -305,6 +363,7 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
                     "INSERT OR IGNORE INTO filing_observations(filing_cik,accession,observation_id)"
                     " VALUES(?,?,?)", (indexed["issuer_cik"], filing["accession"], obs_id)
                 )
+                versions_added += _record_metadata_version(conn, filing, obs_id)
             total = conn.execute(
                 "SELECT COUNT(*) FROM filings WHERE provider=? AND issuer_cik=?",
                 (PROVIDER, indexed["issuer_cik"]),
@@ -312,6 +371,7 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     return {
         "status": "SAVED" if not existing or inserted else "REUSED",
         "observation_id": obs_id, "new_filings": inserted,
+        "new_metadata_versions": versions_added,
         "total_filings": total, "db_path": str(path),
         "raw_index_sha256": indexed["source_sha256"],
     }
@@ -326,6 +386,44 @@ def list_filings(db_path: Path, *, cik: str, limit: int = 50) -> list[dict]:
             "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=?"
             " ORDER BY accession DESC LIMIT ?", (PROVIDER, cik10(cik), limit)
         )]
+
+
+def list_filing_versions(
+    db_path: Path, *, cik: str, accession: str, limit: int = 100,
+) -> list[dict]:
+    """Read immutable variants in first-observed order; never infer amendment parent."""
+    target = cik10(cik)
+    if (not isinstance(accession, str) or
+            re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession) is None):
+        raise ValueError("Invalid accession")
+    if not isinstance(limit, int) or not 1 <= limit <= 200:
+        raise ValueError("Output limit must be 1..200")
+    uri = f"file:{Path(db_path).expanduser().resolve().as_posix()}?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True)) as conn:
+        records = conn.execute(
+            """
+            SELECT v.metadata_sha256, v.filing_json, o.sha256,
+                   COUNT(vo.observation_id)
+              FROM filing_metadata_versions AS v
+              JOIN observations AS o ON o.id = v.first_observation_id
+              JOIN filing_version_observations AS vo
+                ON vo.provider=v.provider AND vo.issuer_cik=v.issuer_cik
+               AND vo.accession=v.accession
+               AND vo.metadata_sha256=v.metadata_sha256
+             WHERE v.provider=? AND v.issuer_cik=? AND v.accession=?
+             GROUP BY v.metadata_sha256, v.filing_json, o.sha256,
+                      v.first_observation_id
+             ORDER BY v.first_observation_id, v.metadata_sha256
+             LIMIT ?
+            """, (PROVIDER, target, accession, limit),
+        ).fetchall()
+    return [{
+        "metadata_sha256": digest,
+        "metadata": json.loads(snapshot),
+        "first_submissions_sha256": first_snapshot,
+        "observed_in_snapshots": observed,
+        "original_filing_downloaded": False,
+    } for digest, snapshot, first_snapshot, observed in records]
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -376,13 +474,20 @@ def main(argv: list[str] | None = None) -> int:
                         "Not accepted with live --allow-network. Do not invent historical receipts.")
     parser.add_argument("--db", type=Path, required=True, help="Local SQLite ledger")
     parser.add_argument("--list", action="store_true", help="List stored filings without ingesting")
+    parser.add_argument("--history-accession", help="Read metadata versions for one accession")
     args = parser.parse_args(argv)
     try:
         cik = cik10(args.cik)
-        if args.list:
-            if args.input_json or args.allow_network:
-                raise ValueError("--list cannot also import")
-            result = {"status": "READ_ONLY", "filings": list_filings(args.db, cik=cik)}
+        if args.list or args.history_accession:
+            if args.input_json or args.allow_network or (args.list and args.history_accession):
+                raise ValueError("Choose exactly one read-only mode without importing")
+            result = (
+                {"status": "READ_ONLY", "filings": list_filings(args.db, cik=cik)}
+                if args.list else
+                {"status": "READ_ONLY_METADATA_HISTORY",
+                 "versions": list_filing_versions(
+                     args.db, cik=cik, accession=args.history_accession)}
+            )
         else:
             if bool(args.input_json) == bool(args.allow_network):
                 raise ValueError("Choose exactly one --input-json or --allow-network")
