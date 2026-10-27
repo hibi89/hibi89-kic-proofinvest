@@ -27,6 +27,15 @@ class LocalRiskScreenTests(unittest.TestCase):
         self.assertEqual(result["status"], "unavailable")
         self.assertIn("CLAIMED_GROWTH_CONFLICT", result["reason_codes"])
 
+    def test_structural_corrobation_signals_are_not_authentication(self):
+        financial, source = evidence()
+        source["ixbrl_context"] = {"status": "local_ixbrl_revenue_context_match_unverified"}
+        source["numeric_literals"] = {"status": "untrusted_numeric_literals_located"}
+        result = screen_local_evidence(financial, source)
+        self.assertIn("LOCAL_IXBRL_CONTEXT_MATCH_UNVERIFIED", result["reason_codes"])
+        self.assertIn("LOCAL_NUMERIC_TEXT_MATCH_UNVERIFIED", result["reason_codes"])
+        self.assertFalse(result["source_authenticated"])
+
     def test_bad_digests_fail_closed(self):
         for digest in ("x" * 64, "A" * 64, "a" * 63, None, 1):
             with self.subTest(digest=digest):
