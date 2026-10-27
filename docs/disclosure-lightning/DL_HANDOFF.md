@@ -1,3 +1,15 @@
+# DL P4 — UTF-8 raw text line span implementation (2026-10-28 KST)
+
+**Scope/owner:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; source/tests through `8253270db5cf309d963cc76d9b1569389a34c8d8`. **New full-suite GitHub CI not yet confirmed**. Previous exact-run baseline P3 at `eda89fe`: [390/390 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
+
+**Implementation:** `disclosure_lightning/extract.py` records exact raw byte `start_byte`/`end_byte_exclusive` and per-line `raw_span_sha256` for decoded local UTF-8 text/plain (or offline explicit opaque text) backed by the stored full-filing SHA. Checks UTF-8 BOM, Unicode multibyte, CRLF and skipped line positions without changing raw storage. Normalized display text remains separate and is not an original-byte transcription. HTML/XML retains line hints only; never promotes financial or source authenticity. `tests/test_disclosure_lightning_extract.py` adds three tests (BOM/Unicode/CRLF, candidate contract, skipped long line). **No live SEC request, no paid API, no Production or cross-branch merge.**
+
+**Cross-project reconciliation:** KIC lead's `proofinvest/dl_source_span.py` uses `start_byte`/`end_byte_exclusive`; P4 aligned names for a future consumer, but the two schemas are NOT automatically integrated. KIC lead last documented 401/401 offline tests at source `9ab9163`, different branch. Draft PR #1 remains unmerged; do not overwrite lead/kic bridge.
+
+**Next P5:** Check exact branch CI at source SHA; if green update verification ledger. Then review SEC HTML encoding + full historical continuation and source-context consumer with KIC chief. Official 2026-11-12 preliminary PDF-only remains separate and unmodified. No private Bid_Owl content, tokens or external issuer originals in public GitHub.
+
+---
+
 # DL → KIC technical chief | P3 verified extractor (2026-10-28 KST)
 
 **DL source SHA:** `eda89fe461279ab683872469b04437ab1e959be1` · [GitHub Actions CI #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681) **SUCCESS / 390 of 390 Python tests PASS**. All tests are repo-level and synthetic/mock/offline; no actual SEC live HTTP was performed.
