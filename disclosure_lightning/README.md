@@ -1,3 +1,20 @@
+## P6 — SEC 과거 공시 continuation 오프라인 인덱싱 (2026-10-28)
+
+공식 SEC Submissions의 `filings.files[]`는 이전 연도 `CIK##########-submissions-###.json` 페이지를 가리킵니다. DL은 **새로운 네트워크 자동 요청을 추가하지 않고** 사전에 저장된 메인 submissions 응답의 `source_sha256`를 고정해, 명시적으로 제공받은 로컬 history JSON만 수집할 수 있습니다.
+
+1. 기존 `python -m disclosure_lightning`으로 실제/합성 main submissions JSON을 SQLite에 먼저 저장합니다. 파일에는 `filings.files`와 페이지명·날짜 범위·건수가 있어야 합니다.
+2. 첫 실행 결과의 `raw_index_sha256`를 다음 명령의 `--manifest-sha256`에 사용합니다. 예시 이름은 실제 저장된 manifest 파일명과 일치해야 합니다.
+
+```bash
+python -m disclosure_lightning.history --db ./dl.sqlite3 --cik 0000320193 --manifest-sha256 YOUR_EXISTING_64_CHAR_MANIFEST_HASH --name CIK0000320193-submissions-001.json --input-json ./saved-history.json --as-of 2026-10-28 --collected-at 2026-10-28T00:05:00Z
+```
+
+**검증 경계:** 역사 페이지 자체는 상위 JSON의 `filings.recent` wrapper 없이 나열된 병렬 배열이어야 합니다. 고정 메인 원본 SHA·CIK·SEC page basename·filingCount·날짜 범위·accession 중복·배열 정렬·관측 시간 순서·8MB 제한을 확인합니다. 동일 페이지 재수집은 기존 `observations`/filing 상태를 재사용합니다. `index_raw_sha256`는 **페이지 JSON 바이트의 해시**, `raw_sha256`는 여전히 수집되지 않은 공시 원문이라 null입니다. 입력 provenance는 언제나 `OFFLINE_SOURCE_UNVERIFIED`이며, 사용자가 선언한 과거 시각은 실제 SEC 관측 인증이 아닙니다. 대량 다운로드/페이지 자동 추적/429 백오프/실 SEC HTTP는 **미구현**입니다. 공식 SEC API 개요: https://www.sec.gov/search-filings/edgar-application-programming-interfaces
+
+새 모듈 `disclosure_lightning/history.py`, 테스트 `tests/test_disclosure_lightning.py::test_history_continuation_pinned_offline_dedup`. 추가 로컬 9개 시나리오 통과는 *코어 호환 테스트용 shim 환경*의 결과로 실제 저장소 전체 CI와 다릅니다. GitHub Actions 최신 결과는 별도 확인해야 합니다.
+
+---
+
 # Disclosure Lightning (DL) — 최소작동단위
 
 **KIC 저장소 `feature/disclosure-lightning` 전용.** SEC EDGAR 공시 **목록/메타데이터**를 수집해 SQLite에 원본 HTTP JSON과 해시를 불변 저장하고, 재실행 중복을 제거하며, 원본 공시 페이지 주소를 출력합니다. Python 3.11+ 표준 라이브러리만 필요합니다. 크몽 Bid_Owl 사업·입찰 CSV와 별개의 제품입니다.
