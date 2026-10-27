@@ -1,3 +1,15 @@
+## 2026-10-27 KST — v3 pre-submit approval checkpoint
+1. **Target:** KIC ProofInvest Global preliminary, original-format PDF <=10 pages and seven sections, SEC source-linked example.
+2. **Change:** read-only independent v3 file inspection; no production/source/PDF changes. Separate owner-review manifest and QA report were prepared privately; public evidence record [here](docs/roles/lead/SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md).
+3. **Evidence:** real v3 PDF 10 pages, 493063B, SHA256 bd07d0fa6283b9d2430a223402a443f14506f1ff2d147a98b8c3e10428d2e573; 7 headings found, 4 links, 0 outside page; 2025/24 Apple FY2025 SEC 10-K revenue arithmetic +6.43%. Prior GitHub code workflow 40493160101 succeeded 257/257; PDF not part of CI.
+4. **State:** private candidate file QA passed; official approval/DAKER submit/receipt UNDONE. Canonical ledger remains 29 DONE/3 BLOCKED/28 NOT_STARTED.
+5. **Safety/root cause:** existing `kic_submission_preflight.py` pins old 513113-byte SHA and intentionally refuses new v3 with BYTE_SIZE_MISMATCH. No repin allowed without owner signoff and fresh exact-byte QA. Default DO_NOT_UPLOAD; not a regression.
+6. **Location:** hibi89/hibi89-kic-proofinvest @ lead/kic; [public non-private QA](docs/roles/lead/SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md). Private PDF/PPTX/JSON/MD only in conversation workspace; don't copy files or user data to public repo.
+7. **Runtime/Deployment:** no KIC production/Vercel app or live API proof. Streamlit offline only; GitHub Actions succeeded for previous SHA.
+8. **Backup/security:** original frozen PDF/PPTX intact; no credentials/account/DAKER changes, no irreversible Git operations. Old known good SHA recoverable via ordinary history.
+9. **Next:** owner reviews exact PDF/title and grants specific approval. Subsequent safe hash lock (separate from existing pinned old guard), authorized DAKER team-lead final submit and confirmed `최종` receipt. ELO voting later. Full SEC ingestion/ML after finalist only.
+10. **Timestamp:** 2026-10-27 KST; actual working time unmeasured. Documentation commit CI to be checked separately.
+
 ## 2026-10-27 KST — SEC-linked private v3 review copy (10-field delta)
 1. **Goal:** preserve frozen sources and make SEC-first KIC ProofInvest proposal more verifiable with a concrete official filing.
 2. **Finished:** v3 separate candidate PDF+editable PPTX prepared in conversation; 10 pages, 493,063 bytes, SEC Apple 2025 10-K provenance and +6.43% manual FY2025/24 net sales arithmetic. User originals remain unchanged. Alternative: keep previously pinned frozen v1 if v3 not approved.
