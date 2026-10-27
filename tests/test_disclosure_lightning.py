@@ -255,6 +255,16 @@ class DisclosureLightningTests(unittest.TestCase):
                     )
             opener.assert_not_called()
 
+    def test_default_cli_preserves_amendment_filing(self):
+        args = ["--cik", CIK, "--as-of", "2026-10-27",
+                "--db", str(self.db), "--collected-at",
+                "2026-10-27T00:00:00Z", "--input-json", str(FIXTURE)]
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(core.main(args), 0)
+        result = json.loads(output.getvalue())
+        self.assertIn("10-K/A", [x["form"] for x in result["indexed"]["filings"]])
+        self.assertEqual(result["indexed"]["indexed_count"], 3)
+
     def test_live_request_rejects_injected_collected_time_without_io(self):
         with patch("disclosure_lightning.core.fetch_submissions") as fetch:
             with contextlib.redirect_stderr(io.StringIO()) as error:
