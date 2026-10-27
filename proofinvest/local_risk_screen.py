@@ -4,6 +4,7 @@ No issuer authentication, investment recommendation, external API or trading.
 """
 from __future__ import annotations
 from typing import Any
+import re
 
 
 def screen_local_evidence(financial: Any, source_span: Any) -> dict[str, Any]:
@@ -25,10 +26,10 @@ def screen_local_evidence(financial: Any, source_span: Any) -> dict[str, Any]:
     if financial.get("status") != "calculated_unverified":
         flags.append("FINANCIAL_CALCULATION_UNAVAILABLE")
         return result
-    if not isinstance(source_span.get("original_sha256"), str) or len(source_span["original_sha256"]) != 64:
+    if not isinstance(source_span.get("original_sha256"), str) or re.fullmatch(r"[0-9a-f]{64}", source_span["original_sha256"]) is None:
         flags.append("SOURCE_DIGEST_MISSING")
         return result
-    if not isinstance(source_span.get("start_byte"), int) or not isinstance(source_span.get("end_byte_exclusive"), int) or source_span["start_byte"] < 0 or source_span["end_byte_exclusive"] <= source_span["start_byte"]:
+    if type(source_span.get("start_byte")) is not int or type(source_span.get("end_byte_exclusive")) is not int or source_span["start_byte"] < 0 or source_span["end_byte_exclusive"] <= source_span["start_byte"]:
         flags.append("SOURCE_SPAN_INVALID")
         return result
     flags.append("LOCAL_EVIDENCE_REVIEW_ONLY")
