@@ -14,7 +14,7 @@ import re
 import sqlite3
 import sys
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import core
@@ -328,7 +328,8 @@ def review_amendment_candidates(*, db_path: Path, cik: str,
         ).fetchall()
         if len(rows) > limit:
             raise ValueError("AMENDMENT_REVIEW_INCOMPLETE_LEDGER_LIMIT")
-        source_cache: dict[str, tuple[dict, datetime.date]] = {}
+        source_cache: dict[str, tuple[dict, date]] = {}
+        source_bytes_loaded = 0
         receipts = []
         for (encoded,) in rows:
             receipt = json.loads(encoded)
@@ -353,6 +354,9 @@ def review_amendment_candidates(*, db_path: Path, cik: str,
                 if stored is None or not isinstance(stored[0], bytes):
                     raise ValueError("AMENDMENT_INDEX_ORIGINAL_NOT_FOUND")
                 response, first_seen = stored
+                source_bytes_loaded += len(response)
+                if len(source_cache) >= 128 or source_bytes_loaded > 128_000_000:
+                    raise ValueError("AMENDMENT_REVIEW_SOURCE_BYTE_BUDGET_EXCEEDED")
                 if hashlib.sha256(response).hexdigest() != digest:
                     raise ValueError("AMENDMENT_INDEX_ORIGINAL_CORRUPTED")
                 moment = datetime.fromisoformat(first_seen.replace("Z", "+00:00"))
