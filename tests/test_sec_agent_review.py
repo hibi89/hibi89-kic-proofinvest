@@ -1,0 +1,100 @@
+"""SEC post-verification decision tests; no network or external data."""
+import copy
+import unittest
+
+from proofinvest.sec_agent_review import review_sec_verdict
+
+_BASE = {
+    "schema": "proofinvest.sec-companyfacts-offline.v1",
+    "status": "calculated_unverified",
+    "reason_code": "STRUCTURAL_NUMERIC_COMPARISON_ONLY",
+    "source_kind": "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED",
+    "live_api_called": True, "http_request_attempted": True,
+    "authenticated_external_source": False, "source_rights_verified": False,
+    "ai_agent_executed": False, "official_contest_submission": False,
+    "risk_calculated": False, "growth_pct": "6.43",
+    "current_usd": "416161000000", "prior_usd": "391035000000",
+}
+
+
+class SecPostVerificationTests(unittest.TestCase):
+    def test_structural_success_requires_human_authentication(self):
+        r = review_sec_verdict(_BASE)
+        self.assertEqual(r["status"], "needs_authentication")
+        self.assertEqual(r["reason_code"], "SEC_STRUCTURAL_RESULT_ONLY")
+        self.assertEqual(r["next_action"], "INDEPENDENT_SEC_SOURCE_AND_RIGHTS_REVIEW")
+        self.assertEqual([t["step"] for t in r["trace"]],
+                         ["PLAN", "EVALUATE", "DECIDE", "REPORT"])
+        self.assertEqual(r["external_tool_calls"], 0)
+        self.assertFalse(r["ai_agent_executed"])
+
+    def test_conflict_blocks_regardless_of_live_transport(self):
+        r = review_sec_verdict(_BASE | {"status": "conflict"})
+        self.assertEqual(r["status"], "blocked")
+        self.assertEqual(r["reason_code"], "SEC_GROWTH_CLAIM_CONFLICT")
+
+    def test_http_gate_failure_never_retries(self):
+        r = review_sec_verdict({
+            "schema": "proofinvest.sec-concept-http-gate.v1",
+            "status": "unavailable", "reason_code": "SEC_NETWORK_OR_HTTP_ERROR",
+            "source_kind": "SEC_API_NETWORK_ATTEMPT_NOT_FACT_CERTIFICATION",
+            "live_api_called": True, "http_request_attempted": True,
+            "authenticated_external_source": False,
+            "source_rights_verified": False, "ai_agent_executed": False,
+            "official_contest_submission": False, "growth_pct": None,
+        })
+        self.assertEqual(r["reason_code"], "SEC_EVIDENCE_UNAVAILABLE")
+        self.assertTrue(r["upstream_http_request_attempted"])
+        self.assertEqual(r["external_tool_calls"], 0)
+
+    def test_no_opt_in_failure_has_zero_upstream_http(self):
+        v = {
+            "schema": "proofinvest.sec-concept-http-gate.v1",
+            "status": "unavailable", "reason_code": "NETWORK_OPT_IN_REQUIRED",
+            "source_kind": "SEC_API_NETWORK_ATTEMPT_NOT_FACT_CERTIFICATION",
+            "live_api_called": False, "http_request_attempted": False,
+            "authenticated_external_source": False,
+            "source_rights_verified": False, "ai_agent_executed": False,
+            "official_contest_submission": False, "growth_pct": None,
+        }
+        r = review_sec_verdict(v)
+        self.assertEqual(r["reason_code"], "SEC_EVIDENCE_UNAVAILABLE")
+        self.assertFalse(r["upstream_http_request_attempted"])
+
+    def test_forged_attestation_flags_fail_closed(self):
+        for change in (
+            {"authenticated_external_source": True},
+            {"ai_agent_executed": True}, {"source_rights_verified": True},
+            {"official_contest_submission": True},
+            {"live_api_called": False}, {"http_request_attempted": False},
+        ):
+            with self.subTest(change=change):
+                r = review_sec_verdict(_BASE | change)
+                self.assertEqual(r["reason_code"], "UNTRUSTED_VERDICT_CONTRACT")
+
+    def test_bad_or_untrusted_payload_cannot_elevate(self):
+        for payload in (
+            None, {}, [], _BASE | {"schema": "untrusted"},
+            _BASE | {"source_kind": "CALLER_ASSERTED_AUTHENTICATED"},
+            _BASE | {"growth_pct": "NaN"}, _BASE | {"current_usd": "-5"},
+            _BASE | {"risk_calculated": True},
+        ):
+            with self.subTest(payload=payload):
+                r = review_sec_verdict(payload)
+                self.assertEqual(r["status"], "blocked")
+
+    def test_deterministic_does_not_modify_inputs(self):
+        obj = copy.deepcopy(_BASE)
+        original = copy.deepcopy(obj)
+        self.assertEqual(review_sec_verdict(obj), review_sec_verdict(obj))
+        self.assertEqual(obj, original)
+
+    def test_wrong_filing_shape_must_not_be_authenticated(self):
+        obj = _BASE | {"status": "verified"}
+        r = review_sec_verdict(obj)
+        self.assertEqual(r["reason_code"], "UNTRUSTED_VERDICT_CONTRACT")
+        self.assertFalse(r["authenticated_external_source"])
+
+
+if __name__ == "__main__":
+    unittest.main()

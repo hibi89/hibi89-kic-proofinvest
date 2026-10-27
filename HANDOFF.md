@@ -1,3 +1,15 @@
+## 2026-10-27 KST — SEC verified-format numeric result to bounded local review (10-field handoff)
+1. **Goal / architecture:** Preserve domestic 8-digit DART controller while connecting US 10-digit SEC CompanyConcept's already-calculated verdict to a read-only local PLAN/EVALUATE/DECIDE/REPORT; no new LLM, new data feeds or first-round PDF change.
+2. **Decision/work:** Compared reusing `run_offline_controller` (wrong issuer schema; high regression risk) vs isolated `review_sec_verdict` attached to existing adapter (zero extra API cost, simpler tests); selected latter. `proofinvest/sec_agent_review.py`, `proofinvest/sec_api_client.py`, `streamlit_app.py` changed. Conflict blocks, unavailable holds, arithmetic-only escalates for independent human verification. No trading.
+3. **QA:** Eight new offline review tests; existing HTTP and Streamlit assertions strengthened. Full GitHub Actions at exact new commit must be inspected; all HTTP mocked. Unverified external SEC, source authenticity and UI Production not upgraded.
+4. **Status:** Implementation code added subject to CI; actual authentic SEC sample, LLM planner and DAKER submission remain unverified/not done. Scheduled KIC master stays 29 DONE / 3 BLOCKED / 28 NOT_STARTED.
+5. **Risk / recovery:** Domestic company identifier 8 chars and US SEC CIK 10 chars would be incompatible if merged. Avoid making network calls in the bridge or labelling structural math as certified. Roll back to parent with normal Git history if regression; no force push.
+6. **Repo/branch:** `hibi89/hibi89-kic-proofinvest@lead/kic`; source modules, new `tests/test_sec_agent_review.py`, existing `tests/test_sec_api_client.py` and `tests/test_sec_live_streamlit.py`.
+7. **Runtime/deploy:** Local `python -m unittest discover -s tests -v`; CI offline-tests on GitHub. No KIC Vercel/Production URL or Production SHA; Streamlit remains local only.
+8. **Backup/privacy:** Old tested Git parent kept. No credentials, real contact info, private official contest PDF/PPTX, raw source file, key or new third-party calls committed. User's unchanged frozen hash gate untouched.
+9. **Next:** Confirm CI on actual HEAD, then inspect evidence gaps without live request. Real SEC HTTPS calls/LLM/official DAKER title/PDF upload require separate authorization. KIC prelim <=10p by Nov12 10:00 KST.
+10. **Timestamp:** 2026-10-27 KST; exact SHA and CI to be verified after GitHub write; elapsed development time unmeasured.
+
 ## 2026-10-27 KST — SEC archive citation link integrity (10-field handoff)
 1. **Goal / design:** Correct broken SEC EDGAR filing-detail source link in existing KIC evidence workflow, respecting the preliminary submission freeze. Compared deterministic in-process official URL format against extra runtime lookup: selected deterministic path, zero extra API/cost and lower maintenance.
 2. **Code:** `proofinvest/sec_companyfacts.py` now builds /Archives/edgar/data/{cik_without_padding}/{accession_without_hyphens}/{accession}-index.htm. Updated `streamlit_app.py` curated link and the mocked live UI expectation. Single-request SEC API guard remains unchanged.

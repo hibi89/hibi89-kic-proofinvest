@@ -95,6 +95,10 @@ class SecHttpAdapterTests(TestCase):
         self.assertFalse(v["authenticated_external_source"])
         self.assertFalse(v["source_rights_verified"])
         self.assertFalse(v["ai_agent_executed"])
+        self.assertEqual(v["bounded_review"]["status"], "needs_authentication")
+        self.assertEqual(v["bounded_review"]["reason_code"], "SEC_STRUCTURAL_RESULT_ONLY")
+        self.assertEqual(v["bounded_review"]["external_tool_calls"], 0)
+        self.assertTrue(v["bounded_review"]["upstream_http_request_attempted"])
         self.assertEqual(len(requests), 1)
         req, timeout = requests[0]
         self.assertEqual(req.full_url,
@@ -125,6 +129,8 @@ class SecHttpAdapterTests(TestCase):
         with patch.object(client, "_open_once", side_effect=fake):
             v = client.run_sec_annual_revenue(**ARGS)
         self.assertEqual(v["reason_code"], "SEC_NETWORK_OR_HTTP_ERROR")
+        self.assertEqual(v["bounded_review"]["reason_code"], "SEC_EVIDENCE_UNAVAILABLE")
+        self.assertEqual(v["bounded_review"]["status"], "blocked")
         self.assertIsNone(v["growth_pct"])
         self.assertEqual(len(calls), 1)
 
@@ -189,6 +195,7 @@ class SecHttpAdapterTests(TestCase):
             v = client.run_sec_annual_revenue(**(ARGS | {"claimed_growth_pct": "30"}))
         self.assertEqual(v["status"], "conflict")
         self.assertEqual(v["reason_code"], "GROWTH_CLAIM_CONFLICT")
+        self.assertEqual(v["bounded_review"]["reason_code"], "SEC_GROWTH_CLAIM_CONFLICT")
 
     def test_cli_defaults_off_even_if_contact_present(self):
         cliargs = [

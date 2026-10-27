@@ -15,6 +15,7 @@ import urllib.request
 from typing import Any, Mapping
 
 from .sec_companyfacts import TAG, _date, verify_sec_annual_revenue
+from .sec_agent_review import review_sec_verdict
 
 MAX_RESPONSE_BYTES = 8_000_000
 SEC_ORIGIN = "https://data.sec.gov"
@@ -36,7 +37,7 @@ def _open_once(request: urllib.request.Request, *, timeout: int):
 
 
 def _failure(reason: str, *, attempted: bool = False) -> dict[str, Any]:
-    return {
+    verdict = {
         "schema": "proofinvest.sec-concept-http-gate.v1",
         "status": "unavailable",
         "reason_code": reason,
@@ -51,6 +52,7 @@ def _failure(reason: str, *, attempted: bool = False) -> dict[str, Any]:
         "current_usd": None,
         "prior_usd": None,
     }
+    return {**verdict, "bounded_review": review_sec_verdict(verdict)}
 
 
 def _valid_contact(raw: Any) -> bool:
@@ -170,7 +172,7 @@ def run_sec_annual_revenue(
         current_end=current_end, prior_end=prior_end,
         as_of=as_of, claimed_growth_pct=claimed_growth_pct,
     )
-    return {
+    verdict = {
         **result,
         "source_kind": "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED",
         "live_api_called": attempted,
@@ -179,6 +181,7 @@ def run_sec_annual_revenue(
         "source_rights_verified": False,
         "ai_agent_executed": False,
     }
+    return {**verdict, "bounded_review": review_sec_verdict(verdict)}
 
 
 def main(argv: list[str] | None = None) -> int:

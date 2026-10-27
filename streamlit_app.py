@@ -238,6 +238,22 @@ def _render_sec_live_case(st) -> None:
         {"연도": "FY2024", "매출 (백만 USD)": int(verdict["prior_usd"]) // 1_000_000},
     ], use_container_width=True, hide_index=True)
     st.markdown("[SEC 공식 10-K 접수 페이지](" + verdict["sec_filing_index"] + ")")
+    review = verdict.get("bounded_review")
+    if (isinstance(review, dict)
+            and review.get("mode") == "RULE_BASED_SEC_VERDICT_REVIEW_NOT_LLM_AGENT"
+            and review.get("reason_code") == "SEC_STRUCTURAL_RESULT_ONLY"
+            and review.get("ai_agent_executed") is False
+            and review.get("external_tool_calls") == 0
+            and isinstance(review.get("trace"), list)
+            and [item.get("step") for item in review["trace"]] == [
+                "PLAN", "EVALUATE", "DECIDE", "REPORT"]):
+        st.subheader("SEC 검증 후 판단 추적 — 규칙 기반, AI Agent 아님")
+        st.dataframe([{"단계": item["step"], "결정": item["decision"]}
+                      for item in review["trace"]],
+                     use_container_width=True, hide_index=True)
+        st.info("추가 확인: " + review["next_action"])
+    else:
+        st.warning("SEC 판단 추적을 검증하지 못해 Agent 흐름을 표시하지 않습니다.")
     st.caption(
         "단일 SEC 공식 CompanyConcept HTTPS 응답에 대한 산술 검산입니다. "
         "출처 권리/실제 제출/원문 독립 재인증/LLM·ML·DL 모두 별도 검증 대상입니다."

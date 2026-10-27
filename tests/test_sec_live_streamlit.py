@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 from proofinvest import sec_api_client
+from proofinvest.sec_agent_review import review_sec_verdict
 
 APP = Path(__file__).resolve().parents[1] / "streamlit_app.py"
 LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
@@ -47,6 +48,13 @@ class SecLiveStreamlitTests(unittest.TestCase):
             "live_api_called": True, "ai_agent_executed": False,
             "authenticated_external_source": False, "source_rights_verified": False,
         }
+        verdict.update({
+            "schema": "proofinvest.sec-companyfacts-offline.v1",
+            "source_kind": "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED",
+            "http_request_attempted": True, "official_contest_submission": False,
+            "risk_calculated": False,
+        })
+        verdict["bounded_review"] = review_sec_verdict(verdict)
         with patch.object(sec_api_client, "run_sec_annual_revenue", return_value=verdict) as func:
             at = screen()
             func.assert_not_called()
@@ -56,6 +64,8 @@ class SecLiveStreamlitTests(unittest.TestCase):
             self.assertTrue(any("000032019325000079/" in x.value
                                 for x in at.markdown))
             self.assertTrue(any("원문 독립 재인증" in x.value for x in at.caption))
+            self.assertTrue(any("규칙 기반, AI Agent 아님" in x.value for x in at.subheader))
+            self.assertTrue(any("INDEPENDENT_SEC_SOURCE_AND_RIGHTS_REVIEW" in x.value for x in at.info))
             func.assert_called_once()
             self.assertTrue(func.call_args.kwargs["allow_network"])
 
