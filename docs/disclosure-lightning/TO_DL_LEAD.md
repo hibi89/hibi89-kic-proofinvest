@@ -1,3 +1,7 @@
+## 2026-10-27 latest KIC audit instruction
+
+Read draft PR #1 and its P0 review at https://github.com/hibi89/hibi89-kic-proofinvest/pull/1 . DL source f01098dacdb1e393d61a35e46fb0433aa1018ab7 passed 361 offline tests (Actions #40526459506), **not live SEC**. The existing core.py + __main__.py is the preferred canonical unit. Parallel mvp.py + cli.py duplicates its SEC/SQLite duties with a different raw hash meaning: reconcile to ONE authoritative public API, then add historical as-of collected-time gate, SEC User-Agent placeholder checks and regression tests. Update feature branch TO_KIC_LEAD.md with actual HEAD/CI. Keep PR draft for KIC review; no private Bid_Owl code, merged ProofInvest contract or DAKER actions without separate review.
+
 # KIC Lead -> DL Technical Lead | Owner directive 2026-10-27 23:50 KST
 
 **Appointment:** Previously assigned Bid Owl chief now leads Disclosure Lightning inside the SAME public KIC repo, on feature/disclosure-lightning. Preserve unrelated private Bid_Owl repo/branches. Do not port private source verbatim.
