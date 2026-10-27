@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from proofinvest.local_sec_packet import build_local_sec_review_packet
+from proofinvest.offline_evidence_triage import triage_offline_replay
 from proofinvest.sec_capture_bundle import _read_checked_capture_bundle
 
 
@@ -90,7 +91,7 @@ def replay_local_capture(
         return _failure("REPLAY_DIGEST_CONFLICT")
     if not all(v is False for v in review["attestations"].values()):
         return _failure("REPLAY_TRUST_BOUNDARY_FAILED")
-    return {
+    result = {
         **_failure("LOCAL_BYTES_AND_MATH_ONLY"),
         "status": "offline_capture_replayed_unverified",
         "issuer_cik": receipt["issuer_cik"],
@@ -112,6 +113,8 @@ def replay_local_capture(
             "No actual provider HTTP, agent execution, investment recommendation, or DAKER submission occurs.",
         ],
     }
+    result["human_review_triage"] = triage_offline_replay(result)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
