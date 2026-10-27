@@ -19,6 +19,7 @@ class BatchReviewTests(unittest.TestCase):
             )
         self.assertEqual(output["count"], 2)
         self.assertEqual(output["blocked_count"], 2)
+        self.assertEqual(output["action_counts"]["RECHECK_LOCAL_ARCHIVE"], 2)
         self.assertEqual([x["index"] for x in output["items"]], [0, 1])
         self.assertNotIn("one.zip", str(output))
         self.assertFalse(output["external_http_called"])
@@ -50,6 +51,7 @@ class BatchReviewTests(unittest.TestCase):
             )
         self.assertEqual(output["blocked_count"], 1)
         self.assertEqual(output["ready_for_human_review_count"], 0)
+        self.assertEqual(output["action_counts"]["RECHECK_LOCAL_ARCHIVE"], 1)
         self.assertNotIn("SHOULD_NOT_LEAK", str(output))
 
     def test_batch_limit(self):
