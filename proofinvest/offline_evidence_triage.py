@@ -52,6 +52,9 @@ def triage_offline_replay(replay: Any) -> dict[str, Any]:
     if not isinstance(replay.get("risk"), dict):
         reasons.append("RISK_REVIEW_MISSING")
         return result
+    if replay["risk"].get("status") != "reviewed_unverified":
+        reasons.append("RISK_ASSESSMENT_UNAVAILABLE")
+        return result
     if not isinstance(replay.get("source_span"), dict):
         reasons.append("SOURCE_SPAN_MISSING")
         return result
