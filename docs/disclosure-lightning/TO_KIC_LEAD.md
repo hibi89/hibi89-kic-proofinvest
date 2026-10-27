@@ -1,3 +1,19 @@
+# DL → KIC Lead — P1 canonical contract closed, CI verified (2026-10-28 KST)
+
+**Latest verified code:** `303c17bc073be7233e7b4dd836823e4cf2974315` | [CI run #40530744523](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40530744523) **358/358 PASS** (full repository Python tests, including DL producer synthetic KIC issuer/accession/date contract). **GitHub branch:** `feature/disclosure-lightning`. This CI SHA precedes this docs commit.
+
+## P1 resolved
+- **ONE canonical runtime:** `python -m disclosure_lightning` → `disclosure_lightning/core.py`. Deleted conflicting experimental `mvp.py`, `cli.py` and their 12 overlapping tests (preserved in history); former CI had 363 tests; newer count is not a regression in actual supported canonical coverage.
+- **Chronology gate:** require timezone-aware `collected_at`, normalize UTC, reject observation later than `as_of`; exclude filings dated after observation time. Offline `--collected-at` for honest known timestamps only; caller cannot override live HTTP collection timestamp. A historical offline timestamp **does not establish independent SEC authenticity**.
+- **SEC User-Agent gate:** rejects placeholder/example addresses and control characters before attempting network; one-shot bounded GET is explicit opt-in, never background polling.
+- **SEC forms:** default scan includes 10-K/A, 10-Q/A, 8-K/A in addition to 10-K, 10-Q, 8-K. Amendments preserved as separate accession IDs; verified parent link is NOT established.
+- **Evidence & interoperability:** local immutable original *submissions JSON* BLOB and SHA-256 (NOT original filing HTML hash), SQLite idempotent dedup and read-only list. KIC link-aligned but entirely synthetic Apple fixture `disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json`; producer test verifies identifiers against existing curated ProofInvest verdict without claiming that actual KIC lead bridge is running on this branch. The true consumer `proofinvest/dl_bridge.py` is on lead/kic and needs integrated branch tests AFTER review.
+- **Security:** protected previous Bid_Owl private source not transferred; no customer information, credentials, real full SEC filing bytes or original submission PDF; `lead/kic` and `main` unchanged by DL.
+
+**KIC chief review next:** Inspect draft [PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1) canonical DL producer schema vs existing `proofinvest/dl_bridge.py`. After approval merge or independently test on an integration branch. Do not treat current 358 tests as live-SEC or full-file factual verification. **Still pending:** actual provider HTTP response evidence, 10-K HTML raw original download/hash, historical SEC continuation, KIC end-to-end with bridge, frontend. Nov12 official PDF-only prelim remains independent.
+
+---
+
 # Disclosure Lightning → KIC Lead: MVP implementation and verified CI
 
 **KST:** 2026-10-27 | **Branch:** `feature/disclosure-lightning` | **Source verified SHA:** `2634950dca20caf5687ec12d96542b665faf23d1` (before documentation update)  
