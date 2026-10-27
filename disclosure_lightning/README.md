@@ -1,3 +1,19 @@
+## P8 — 수정공시 후보 확인 (오프라인·읽기 전용)
+
+SEC Submissions 인덱스를 로컬 SQLite에 저장한 뒤 다음 명령으로 수정공시(10-K/A, 10-Q/A, 8-K/A)의 **검토용** 후보만 조회합니다.
+
+```bash
+python -m disclosure_lightning.history --db ./dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --review-amendments
+```
+
+이 모드는 `--manifest-sha256`, `--name`, `--collected-at`, `--input-json`, `--batch-dir`와 함께 사용할 수 없으며 어떤 새 관측 또는 공시도 저장하지 않습니다. 기존 `filings.filing_json.amends_accession`을 변경하지 않습니다.
+
+판정은 해당 공시의 저장된 인덱스 원본 JSON(`index_raw_sha256`)을 해시 검증하고, SEC 메타데이터의 `reportDate`, 원래 유형(10-K/10-Q/8-K), **더 이른 filingDate**, CIK이 모두 일치하는 과거 원본 후보만 고려합니다. **정확히 한 개**이면 `UNVERIFIED_PERIOD_MATCH_CANDIDATE`, 여러 개면 `AMBIGUOUS_MULTIPLE_BASE_MATCHES`, 원래 `reportDate`가 없으면 `REPORT_PERIOD_MISSING_NO_INFERENCE`, 일치 원본이 없으면 `NO_UNIQUE_BASE_MATCH`. `authoritative_amends_accession=null`과 `authenticated_amendment_relation=false`는 항상 유지합니다. 원본이 실제 수정 대상이라는 뜻은 아닙니다. 보고기간·인덱스 출처가 의심되거나 원본 해시가 불일치하면 안전하게 오류 처리합니다. 관측 시점이 조회 마감일보다 늦은 자료는 제외합니다. 기본 검사 500건, 최대 2,000건이며 미완전 구간은 오류로 표시하고 출처 응답 스캔에는 최대 128건/128MB 예산을 설정했습니다.
+
+**검증 상태:** 회귀 테스트 5개 코드로 추가 완료. 이 브랜치의 *실제 전체 GitHub Actions 또는 전체 unittest 결과는 아직 확인되지 않았습니다*. 모든 로컬 기록은 `OFFLINE_UNVERIFIED` 경계를 유지합니다. <https://www.sec.gov/search-filings/edgar-application-programming-interfaces>
+
+---
+
 ## P7 — 과거 SEC 공시 JSON 다중 페이지 오프라인 처리 (2026-10-28 KST)
 
 기존 `python -m disclosure_lightning.history`를 확장했습니다. **실제 SEC 자동 다운로드는 하지 않습니다.** 먼저 저장된 메인 Submissions 응답의 고정 SHA-256을 기반으로 공식 `filings.files[]`에 기재된 페이지명/건수/날짜를 조회합니다.
