@@ -1,3 +1,15 @@
+## 2026-10-27 KST — SEC verification hold → local Agent trace complete (ten-field handoff)
+1. **Goal:** Explain why SEC result is unavailable/conflicted while never upgrading unverified SEC figures to authenticated evidence or growing prelim scope.
+2. **Implementation:** SEC local verdict reviewer accepts strict source/reason/flags/NULL-only verifier holds, including filing future relative to as-of and missing annual facts. Streamlit shows read-only PLAN/EVALUATE/DECIDE/REPORT for unavailable, conflicting and calculated results. Uses existing opt-in SEC adapter: zero new external calls; legacy domestic issuer controller unchanged.
+3. **Test/evidence:** `tests/test_sec_agent_review.py` adds two methods, `tests/test_sec_live_streamlit.py` adds two methods; `tests/test_sec_api_client.py` strengthens earlier hold checks. Source SHA `388506d8e05db5526d6f301c5c0bd54e205ca0e2`; [CI #40511244259](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40511244259) completed SUCCESS with **316/316 passed** and no SEC network.
+4. **Outcome:** Code and CI VERIFIED. Real SEC HTTPS provider, actual filing/source authentication, LLM Agent, Production, KIC DAKER receipt and Elo voting NOT VERIFIED.
+5. **Design alternatives:** Merging SEC and 8-digit DART controller rejected as incompatible; extending existing distinct SEC reviewer chosen as lower regression risk/zero cost. Unknown/fabricated SEC reason and residual amount fail closed rather than masquerading as legitimate hold.
+6. **Repo/branch:** `hibi89/hibi89-kic-proofinvest@lead/kic`; updated modules `proofinvest/sec_agent_review.py`, `streamlit_app.py`, three test files. HEAD docs-only successor must be verified after commit.
+7. **Runtime:** Offline `python -m unittest discover -s tests -v` and GitHub Actions Streamlit AppTest; still no production URL. New hold traces never display numeric success metrics.
+8. **Backup/privacy:** Original frozen PDF/PPTX, current canonical PRIVATE v4.1 review-only ZIP and old hash lock preserved; no user documents/secrets in public GitHub; ordinary Git history backup, no force push.
+9. **Blockers/next:** User selects exact private candidate SHA and title and separately authorizes DAKER upload/final click; official prelim deadline Nov12 10:00 KST, subsequent Elo separately. Continue bounded code development only if substantive defects, not docs cycling.
+10. **Time:** 2026-10-27 KST; elapsed work time not independently measured. Official 60-day baseline 29 DONE / 3 BLOCKED / 28 NOT_STARTED unchanged.
+
 ## 2026-10-27 KST — Canonical KIC v4.1 private review-only packet / duplicate-name correction
 1. **Objective:** Avoid wrong PDF upload caused by two distinct documents with the same basename. No approved submission and no new feature scope.
 2. **Facts:** Original packet/top-level PDF = 487051 bytes SHA256 `12318b8635fbc0911b8d18d14a17f65a8b9be618e9e11c095095d722fd8fd5ed`; separate prior private-preflight folder PDF = 512217 bytes SHA256 `716d9372e78823ea656980ff766df2fd67afa8b3598602e07a2abc7cd5418340`. Their page text and four link destinations match, but bytes DIFFER. Neither is automatically approved. Never choose by basename.
