@@ -302,6 +302,153 @@ def import_history_directory(*, directory: Path, db_path: Path,
         collected_at=collected_at, forms=forms, max_pages=max_pages,
     )
 
+
+def review_amendment_candidates(*, db_path: Path, cik: str,
+                                as_of: str, limit: int = 500) -> dict:
+    """Review potential amendment parents; NEVER write an amends_accession.
+
+    A matching form and reportDate are not the SEC's explicit amendment link.
+    Require a unique earlier base filing and pinned, byte-verified metadata;
+    omit guesses when the required fields are missing or ambiguous.
+    """
+    target = core.cik10(cik)
+    cutoff = core.parse_day(as_of)
+    if type(limit) is not int or not 1 <= limit <= 2000:
+        raise ValueError("INVALID_AMENDMENT_REVIEW_LIMIT")
+    candidate = Path(db_path).expanduser()
+    if candidate.is_symlink() or not candidate.is_file():
+        raise ValueError("EXISTING_REGULAR_DL_DB_REQUIRED")
+    uri = candidate.resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True)) as conn:
+        conn.execute("PRAGMA query_only=ON")
+        rows = conn.execute(
+            "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=?"
+            " ORDER BY accession ASC LIMIT ?",
+            (core.PROVIDER, target, limit + 1),
+        ).fetchall()
+        if len(rows) > limit:
+            raise ValueError("AMENDMENT_REVIEW_INCOMPLETE_LEDGER_LIMIT")
+        source_cache: dict[str, tuple[dict, datetime.date]] = {}
+        receipts = []
+        for (encoded,) in rows:
+            receipt = json.loads(encoded)
+            if (not isinstance(receipt, dict)
+                    or receipt.get("provider") != core.PROVIDER
+                    or receipt.get("issuer_cik") != target
+                    or not isinstance(receipt.get("accession"), str)
+                    or not isinstance(receipt.get("form"), str)):
+                raise ValueError("AMENDMENT_LEDGER_RECEIPT_INVALID")
+            filed = core.parse_day(receipt.get("filed_at"))
+            if filed > cutoff:
+                continue
+            digest = receipt.get("index_raw_sha256")
+            if not isinstance(digest, str) or not DIGEST_RE.fullmatch(digest):
+                raise ValueError("AMENDMENT_INDEX_DIGEST_MISSING")
+            if digest not in source_cache:
+                stored = conn.execute(
+                    "SELECT response,seen_at FROM observations WHERE "
+                    "provider=? AND issuer_cik=? AND sha256=?",
+                    (core.PROVIDER, target, digest),
+                ).fetchone()
+                if stored is None or not isinstance(stored[0], bytes):
+                    raise ValueError("AMENDMENT_INDEX_ORIGINAL_NOT_FOUND")
+                response, first_seen = stored
+                if hashlib.sha256(response).hexdigest() != digest:
+                    raise ValueError("AMENDMENT_INDEX_ORIGINAL_CORRUPTED")
+                moment = datetime.fromisoformat(first_seen.replace("Z", "+00:00"))
+                if moment.tzinfo is None or moment.utcoffset() is None:
+                    raise ValueError("AMENDMENT_INDEX_OBSERVATION_UNTRUSTED")
+                source_cache[digest] = (
+                    core._validate_raw(response),
+                    moment.astimezone(timezone.utc).date(),
+                )
+            original, observed_day = source_cache[digest]
+            if observed_day > cutoff:
+                # A later observation cannot prove availability at an earlier
+                # as-of date, even if the filing itself is years old.
+                continue
+            nested = original.get("filings")
+            entries = nested.get("recent") if isinstance(nested, dict) else original
+            if not isinstance(entries, dict):
+                raise ValueError("AMENDMENT_INDEX_SOURCE_INVALID")
+            ids = entries.get("accessionNumber")
+            if not isinstance(ids, list):
+                raise ValueError("AMENDMENT_INDEX_MISSING_ACCESSIONS")
+            positions = [i for i, entry in enumerate(ids)
+                         if entry == receipt["accession"]]
+            if len(positions) != 1:
+                raise ValueError("AMENDMENT_RECEIPT_SOURCE_NOT_UNIQUE")
+            index = positions[0]
+            for key, expected in (
+                ("form", receipt["form"]), ("filingDate", filed.isoformat())
+            ):
+                aligned = entries.get(key)
+                if (not isinstance(aligned, list) or len(aligned) != len(ids)
+                        or aligned[index] != expected):
+                    raise ValueError("AMENDMENT_RECEIPT_SOURCE_METADATA_MISMATCH")
+            dates = entries.get("reportDate")
+            period = None
+            if isinstance(dates, list):
+                if len(dates) != len(ids):
+                    raise ValueError("AMENDMENT_REPORT_DATE_MISALIGNED")
+                value = dates[index]
+                if value not in ("", None):
+                    period = core.parse_day(value)
+                    if period > filed:
+                        raise ValueError("AMENDMENT_REPORT_DATE_AFTER_FILING")
+            receipts.append({
+                "accession": receipt["accession"], "form": receipt["form"],
+                "filed_at": filed.isoformat(),
+                "period_end": period.isoformat() if period else None,
+                "index_raw_sha256": digest,
+            })
+    base = {}
+    for row in receipts:
+        if row["form"] in ("10-K", "10-Q", "8-K") and row["period_end"]:
+            key = (row["form"], row["period_end"])
+            base.setdefault(key, []).append(row)
+    result = []
+    for amend in receipts:
+        form = amend["form"]
+        if form not in ("10-K/A", "10-Q/A", "8-K/A"):
+            continue
+        original_form = form[:-2]
+        period_end = amend["period_end"]
+        earlier = [
+            record for record in base.get((original_form, period_end), [])
+            if record["filed_at"] < amend["filed_at"]
+            and record["accession"] != amend["accession"]
+        ] if period_end else []
+        status = (
+            "REPORT_PERIOD_MISSING_NO_INFERENCE" if period_end is None
+            else "NO_UNIQUE_BASE_MATCH" if not earlier
+            else "UNVERIFIED_PERIOD_MATCH_CANDIDATE" if len(earlier) == 1
+            else "AMBIGUOUS_MULTIPLE_BASE_MATCHES"
+        )
+        result.append({
+            "amendment_accession": amend["accession"],
+            "amendment_form": form,
+            "filed_at": amend["filed_at"],
+            "report_period_end": period_end,
+            "status": status,
+            "candidate_parent_accession": earlier[0]["accession"]
+            if len(earlier) == 1 else None,
+            "candidate_count": len(earlier),
+            "authoritative_amends_accession": None,
+            "authenticated_amendment_relation": False,
+            "index_raw_sha256": amend["index_raw_sha256"],
+        })
+    return {
+        "status": "READ_ONLY_UNVERIFIED_AMENDMENT_REVIEW",
+        "issuer_cik": target,
+        "as_of_cutoff": cutoff.isoformat(),
+        "indexed_filings_checked": len(receipts),
+        "amendments": result,
+        "ledger_mutated": False,
+        "source_authenticity_verified": False,
+        "note": "Matching form/period is a candidate, not proof of original amendment target.",
+    }
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="DL offline SEC historical continuation page importer"
