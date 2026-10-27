@@ -41,3 +41,23 @@ A successful authorized HTTPS transfer is labelled `SEC_HTTPS_RESPONSE_UNVERIFIE
 - The `original_filing_receipts` schema is **additive** to the canonical DL store. The already existing `proofinvest/dl_bridge.py` is metadata-only. Never automatically promote `raw_sha256` to official verification, or silently fuse original bytes into the KIC numeric verifier.
 - A single per-file original response and bounded single-company submissions response are tested with synthetic/mock HTTP. No live SEC access, original-content claim certification, EDGAR pagination, 429 backoff, bulk synchronization, full KIC document extraction, or production/frontend release is proven. These are separate next acceptance gates.
 - No customer data, SEC keys or private `hibi89/Bid_Owl` code is committed. The KIC public repo, Nov12 PDF-only preliminary requirements and the KIC lead's `lead/kic` approval gate remain unchanged.
+
+## P3 — 근거 텍스트 추출·검토 후보 (2026-10-28)
+
+새 `disclosure_lightning/extract.py`는 로컬 원본 바이트를 SHA-256으로 다시 확인하고, **완전 오프라인**으로 텍스트 조각을 추출합니다. 외부 링크, 임의 HTML/스크립트 실행, 숫자 해석, AI 및 자동 투자 판단은 하지 않습니다.
+
+실제 SEC 원문 없이도 합성 HTML 파일로 전체 경로를 실행할 수 있습니다:
+
+```bash
+# 1) 이미 SEC 모양의 합성 index를 저장한 경우, 테스트 HTML을 로컬에 직접 준비
+# 2) 그 파일을 'OFFLINE_FILE_UNVERIFIED'로 저장 (선언한 MIME은 인증 근거 아님)
+python -m disclosure_lightning.originals --db ./dl-local.sqlite3 --cik 0000320193 --accession 0000320193-25-000901 --input-file ./synthetic-filing.html --content-type text/html
+# 3) 위 결과의 filing_sha256에 실제 출력된 64자리 값을 넣어 근거 추출
+python -m disclosure_lightning.extract --db ./dl-local.sqlite3 --cik 0000320193 --accession 0000320193-25-000901 --sha256 YOUR_ACTUAL_FILING_SHA256 --summary-only
+python -m disclosure_lightning.extract --db ./dl-local.sqlite3 --cik 0000320193 --accession 0000320193-25-000901 --sha256 YOUR_ACTUAL_FILING_SHA256 --find Revenue
+```
+
+- `--find`는 정규식이 아니라 단순 리터럴 대소문자 무시 검색입니다. 결과는 `evidence-candidates.v1`이며 **원본 줄 근사 위치**(`HTML_PARSER_LINE_HINT`), 텍스트 SHA-256과 원문 SHA-256을 연결합니다. 정확한 HTML 원본 바이트 시작/끝 범위는 **아직 계산하지 않으므로 `exact_raw_byte_range_verified=false`**입니다.
+- 텍스트가 250,000자/1,200블록 등 제한을 초과하거나 HTML의 숨김 태그가 닫히지 않으면 `truncated=true`가 되며 CLI는 종료코드 2로 비완료임을 알립니다. 출력한 일부 문장을 전체 공시의 완전한 내용으로 주장하면 안 됩니다.
+- UTF-8 이외 인코딩·비지원 형식(PDF 등)은 명시적으로 거부합니다. 실제 SEC 제출 HTML의 복잡한 렌더링, Inline XBRL 문맥, 재무 주석, 표 구조, 페이지 바이트 구간, 출처 독립 인증은 여전히 **미구현/인간 검토 필수**입니다. HTMLParser는 스크립트·style·head를 추출에서 제외하며 별도 브라우저 렌더링이 없습니다.
+- KIC의 `proofinvest/dl_bridge.py`는 **현시점 메타데이터 검산용**입니다. 근거 추출 반환물을 실제 금융 사실 검증·RAG에 연결하려면 KIC 총괄이 `source_span` 계약을 승인하고 교차 브랜치 테스트를 수행해야 합니다. `financial_claim_verified=false`, `source_authenticity_verified=false`를 유지해야 합니다.
