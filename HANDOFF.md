@@ -1,3 +1,15 @@
+## 2026-10-27 KST — SEC-linked private v3 review copy (10-field delta)
+1. **Goal:** preserve frozen sources and make SEC-first KIC ProofInvest proposal more verifiable with a concrete official filing.
+2. **Finished:** v3 separate candidate PDF+editable PPTX prepared in conversation; 10 pages, 493,063 bytes, SEC Apple 2025 10-K provenance and +6.43% manual FY2025/24 net sales arithmetic. User originals remain unchanged. Alternative: keep previously pinned frozen v1 if v3 not approved.
+3. **QA:** 10 pages rendered, 7 fields, no page-outside text, 4 hyperlink targets; prior KIC code CI #40491440843 257/257 PASS *offline only*. Candidate not DAKER accepted; no new automated SEC/LLM/Production testing.
+4. **Status:** v3 PRIVATE_REVIEW_READY, not submitted. Official master 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged; old v1 pinned hash remains active.
+5. **Risks:** v3 byte SHA differs from old frozen gate. Do not bypass or silently repin; approval required. No confidential PDF in public GitHub.
+6. **Repository:** hibi89/hibi89-kic-proofinvest lead/kic; evidence note docs/roles/lead/SEC_V3_PRELIM_QA_20261027.md; previously verified code-doc SHA 1043b0f.
+7. **Production:** not deployed and no live browser; official DAKER PDF receipt absent.
+8. **Backup/security:** original private frozen PDF/PPTX and older review v2 preserved; no credentials or private candidate uploaded.
+9. **Next:** participant approves exact PDF/title → separate authorized hash preflight → final DAKER submission and receipt → Elo voting; finalist-only SEC API/conditional models after official qualification.
+10. **Time:** 2026-10-27 KST; actual authoring hours unmeasured; separate documentation commit CI must be independently checked.
+
 ## 2026-10-27 KST — private KIC prelim candidate / next gate
 1. Product: ProofInvest Global, SEC-first citation-linked overseas investment research; frozen preliminary requires 10-page-or-fewer organizer PDF and 7 sections.
 2. Work: separate 10-page editable PPTX and PDF from existing owner template; old original assets unchanged, no publication or submission; chosen clone/edit over risky blank-slide recreation.
