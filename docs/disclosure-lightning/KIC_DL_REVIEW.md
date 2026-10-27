@@ -1,3 +1,7 @@
+## 2026-10-28 | KIC accepts offline integrated minimum unit
+
+Merged [PR #2](https://github.com/hibi89/hibi89-kic-proofinvest/pull/2) to `lead/kic` SHA `004aa37b1396adff3b21e39591a201af671e6dc7`; [final branch CI #40530905435](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40530905435) SUCCESS 366/366. Run `python -m proofinvest.kic_dl_demo`. One DL `core.py` implementation only, no `mvp.py`/`cli.py` alternate SQLite. This synthetic offline E2E proves functional wiring and idempotence, NOT actual SEC HTTPS, 10-K original-file bytes/authentication, ML/LLM or production. Future DL owner stays on `feature/disclosure-lightning`, report via [draft PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1), reconcile base and do not reintroduce secondary schema. KIC preliminary PDF/DAKER remain separately owner-authorized. Supersedes earlier 'KIC integration not started' checkpoint below.
+
 ## 2026-10-27 — KIC read-only ProofInvest DL bridge implemented and CI passed
 - Exact KIC code SHA: 487ffeae35b4b04191514ec1be9443ab8dca1f68; Actions https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40527851958 **SUCCESS 339/339 offline tests** (5 bridge regressions).
 - New KIC-only consumer `proofinvest/dl_bridge.py`, with `tests/test_dl_bridge.py`. It accepts DL canonical `core.index_submissions` output and a separate KIC SEC numeric verdict, requires CIK+accession+filing date+as-of+UTC collection chronology+source-hash scope agreement, and retains FALSE for independent external authentication and original filing download.
