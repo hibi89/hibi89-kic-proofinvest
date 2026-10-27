@@ -1,3 +1,12 @@
+# DL P8 → KIC lead | 2026-10-28 KST
+
+- **Source SHA:** `feature/disclosure-lightning` amendment review core commit `5724fedddd09519cce0e199bcc443903f255e6e5`, CLI commit `34308fe31368b53986498ba0b1c202b40e9c431a`, source-scan budget `543796a9494227f53f2bba6199f23b3062e7f13c`; 5 new existing-test-module cases through `8c05c64f0792ed28dbe150f705d91fa471061daa`. Docs successor HEAD to verify after writes.
+- **Change:** `disclosure_lightning/history.py:review_amendment_candidates` offers read-only candidate analysis based on hash-verified stored SEC-shaped reportDate/form/CIK/earlier filingDate, bounded by source scan and independent cutoff chronology. Unique candidate is expressly `UNVERIFIED_PERIOD_MATCH_CANDIDATE`, ambiguous/missing cannot infer. `authoritative_amends_accession` is always null; **no mutation of original `amends_accession`**.
+- **KIC status:** Latest `lead/kic` source advanced, independently owned KIC numeric literal and local report APIs [447 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40543770115) at older source `cfb39bbb`; this is not P8 validation. DO NOT overwrite KIC bridge or interpret untrusted period matching as source/financial truth.
+- **Verification:** Five written P8 regression methods; full exact-branch Actions and runtime unittest **NOT VERIFIED**. Next independently run `python -m unittest discover -s tests -v`, review CLI JSON, request KIC chief code review before merging any PR. No SEC live, DAKER, public sensitive bytes or Production.
+
+---
+
 # DL → KIC lead P7 multi-page offline history (2026-10-28 KST)
 
 - **DL feature branch:** `feature/disclosure-lightning`. P7 code commit `f5fd0ac85c1283730d899a7f41cb3d75c0773790`, safe `_read_local` continuation `fc5f875aac0701cd495e5303b7f8f7dc1f78c44a`, tests through `99bf4983d055fbc581ebda394a527c4df7da434c`. Root doc successor SHA separately verified after writing.
