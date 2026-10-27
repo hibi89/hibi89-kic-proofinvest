@@ -12,7 +12,7 @@ def valid_replay():
         "external_http_called": False,
         "official_contest_submission": False,
         "local_integrity": {"status": "bundle_integrity_pass_origin_unverified"},
-        "offline_financial_review": {},
+        "offline_financial_review": {"status": "calculated_unverified"},
         "risk": {},
         "source_span": {},
     }
@@ -48,6 +48,16 @@ class OfflineEvidenceTriageTests(unittest.TestCase):
                 receipt = valid_replay()
                 del receipt[key]
                 self.assertEqual(triage_offline_replay(receipt)["priority"], "high")
+
+    def test_conflict_or_missing_financial_calculation_stays_high_priority(self):
+        for status in ("conflict", "unavailable", None):
+            with self.subTest(status=status):
+                receipt = valid_replay()
+                receipt["offline_financial_review"]["status"] = status
+                result = triage_offline_replay(receipt)
+                self.assertEqual(result["status"], "manual_review_required")
+                self.assertEqual(result["priority"], "high")
+                self.assertFalse(result["trade_authorized"])
 
     def test_rejects_bad_integrity_status(self):
         receipt = valid_replay()
