@@ -37,6 +37,21 @@ class BatchReviewTests(unittest.TestCase):
         self.assertEqual(output["items"][0]["summary"]["reason_codes"], ["REPLAY_UNAVAILABLE"])
         self.assertEqual(output["items"][1]["summary"]["reason_codes"], ["REPLAY_DIGEST_CONFLICT"])
 
+    def test_embedded_summary_is_not_trusted(self):
+        with patch("proofinvest.offline_review_batch.replay_local_capture") as replay:
+            replay.return_value = {
+                "status": "unavailable",
+                "reason_code": "REPLAY_DIGEST_CONFLICT",
+                "review_summary": {"status": "human_review_required", "review_priority": "normal", "raw_source": "SHOULD_NOT_LEAK"},
+            }
+            output = review_capture_batch(
+                [Path("one.zip")], current_end="2025-09-30",
+                prior_end="2024-09-30", needle="revenue",
+            )
+        self.assertEqual(output["blocked_count"], 1)
+        self.assertEqual(output["ready_for_human_review_count"], 0)
+        self.assertNotIn("SHOULD_NOT_LEAK", str(output))
+
     def test_batch_limit(self):
         with self.assertRaises(ValueError):
             review_capture_batch([], current_end="2025-09-30",
