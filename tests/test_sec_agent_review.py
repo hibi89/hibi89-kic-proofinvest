@@ -29,7 +29,9 @@ class SecPostVerificationTests(unittest.TestCase):
         self.assertFalse(r["ai_agent_executed"])
 
     def test_conflict_blocks_regardless_of_live_transport(self):
-        r = review_sec_verdict(_BASE | {"status": "conflict"})
+        r = review_sec_verdict(_BASE | {
+            "status": "conflict", "reason_code": "GROWTH_CLAIM_CONFLICT",
+        })
         self.assertEqual(r["status"], "blocked")
         self.assertEqual(r["reason_code"], "SEC_GROWTH_CLAIM_CONFLICT")
 
@@ -115,6 +117,52 @@ class SecPostVerificationTests(unittest.TestCase):
             with self.subTest(payload=payload):
                 r = review_sec_verdict(payload)
                 self.assertEqual(r["status"], "blocked")
+
+    def test_http_gate_rejects_spoofed_reason_and_residual_amounts(self):
+        gate = _BASE | {
+            "schema": "proofinvest.sec-concept-http-gate.v1",
+            "source_kind": "SEC_API_NETWORK_ATTEMPT_NOT_FACT_CERTIFICATION",
+            "status": "unavailable", "reason_code": "SEC_NETWORK_OR_HTTP_ERROR",
+            "growth_pct": None, "current_usd": None, "prior_usd": None,
+        }
+        self.assertEqual(review_sec_verdict(gate)["reason_code"],
+                         "SEC_EVIDENCE_UNAVAILABLE")
+        for change in (
+            {"reason_code": "FAKE_OFFICIAL_SUCCESS"},
+            {"reason_code": "NETWORK_OPT_IN_REQUIRED"},
+            {"current_usd": "123"},
+            {"prior_usd": "456"},
+            {"sec_filing_index": "https://sec.gov/forged"},
+            {"http_request_attempted": False, "live_api_called": False},
+        ):
+            with self.subTest(change=change):
+                self.assertEqual(
+                    review_sec_verdict(gate | change)["reason_code"],
+                    "UNTRUSTED_VERDICT_CONTRACT",
+                )
+        locally_blocked = gate | {
+            "reason_code": "NETWORK_OPT_IN_REQUIRED",
+            "http_request_attempted": False, "live_api_called": False,
+        }
+        self.assertEqual(review_sec_verdict(locally_blocked)["reason_code"],
+                         "SEC_EVIDENCE_UNAVAILABLE")
+
+    def test_calculated_and_conflict_reason_must_match_status(self):
+        for payload in (
+            _BASE | {"reason_code": "GROWTH_CLAIM_CONFLICT"},
+            _BASE | {"reason_code": "MADE_UP_VERIFICATION"},
+            _BASE | {"status": "conflict"},
+        ):
+            with self.subTest(payload=payload):
+                self.assertEqual(
+                    review_sec_verdict(payload)["reason_code"],
+                    "UNTRUSTED_VERDICT_CONTRACT",
+                )
+        coherent = _BASE | {
+            "status": "conflict", "reason_code": "GROWTH_CLAIM_CONFLICT",
+        }
+        self.assertEqual(review_sec_verdict(coherent)["reason_code"],
+                         "SEC_GROWTH_CLAIM_CONFLICT")
 
     def test_deterministic_does_not_modify_inputs(self):
         obj = copy.deepcopy(_BASE)

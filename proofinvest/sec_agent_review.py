@@ -13,6 +13,20 @@ from typing import Any, Mapping
 _MODE = "RULE_BASED_SEC_VERDICT_REVIEW_NOT_LLM_AGENT"
 _OK_SOURCE = "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED"
 _FAIL_SOURCE = "SEC_API_NETWORK_ATTEMPT_NOT_FACT_CERTIFICATION"
+# The HTTP adapter emits these specific failure codes. Never allow an arbitrary
+# caller-provided uppercase code to masquerade as an official adapter failure.
+_HTTP_LOCAL_FAILURES = frozenset({
+    "INVALID_TARGET", "INVALID_PERIOD_OR_AS_OF", "INVALID_GROWTH_CLAIM",
+    "NETWORK_OPT_IN_REQUIRED", "INVALID_CIK", "VALID_SEC_USER_AGENT_REQUIRED",
+})
+_HTTP_ATTEMPT_FAILURES = frozenset({
+    "UNEXPECTED_RESPONSE_URL", "SEC_HTTP_NON_200",
+    "SEC_INVALID_MEDIA_TYPE", "SEC_RESPONSE_SIZE_LIMIT",
+    "SEC_NETWORK_OR_HTTP_ERROR", "SEC_INVALID_JSON",
+    "SEC_INVALID_RESPONSE", "SEC_CIK_MISMATCH",
+    "SEC_CONCEPT_MISMATCH", "SEC_MISSING_UNITS",
+})
+_HTTP_FAILURES = _HTTP_LOCAL_FAILURES | _HTTP_ATTEMPT_FAILURES
 # Only verifier-defined fail-closed outcomes may be explained as unavailable.
 # Unknown/fabricated reason codes continue to fail the verdict contract.
 _VERIFICATION_HOLD_REASONS = frozenset({
@@ -50,9 +64,12 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             flags_ok and status == "unavailable"
             and verdict.get("schema") == "proofinvest.sec-concept-http-gate.v1"
             and verdict.get("source_kind") == _FAIL_SOURCE
-            and isinstance(verdict.get("reason_code"), str)
-            and re.fullmatch(r"[A-Z_]{3,80}", verdict["reason_code"])
+            and verdict.get("reason_code") in _HTTP_FAILURES
+            and attempted is (verdict["reason_code"] in _HTTP_ATTEMPT_FAILURES)
             and verdict.get("growth_pct") is None
+            and verdict.get("current_usd") is None
+            and verdict.get("prior_usd") is None
+            and verdict.get("sec_filing_index") is None
         ):
             reason, action = "SEC_EVIDENCE_UNAVAILABLE", "CHECK_SOURCE_OR_REQUEST_HUMAN_REVIEW"
         elif (
@@ -76,6 +93,10 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             and verdict.get("schema") == "proofinvest.sec-companyfacts-offline.v1"
             and verdict.get("source_kind") == _OK_SOURCE
             and status in ("calculated_unverified", "conflict")
+            and verdict.get("reason_code") == (
+                "GROWTH_CLAIM_CONFLICT" if status == "conflict"
+                else "STRUCTURAL_NUMERIC_COMPARISON_ONLY"
+            )
             and verdict.get("risk_calculated") is False
             and isinstance(verdict.get("growth_pct"), str)
             and re.fullmatch(r"[+-]?\d{1,6}\.\d{2}", verdict["growth_pct"])
