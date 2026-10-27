@@ -160,7 +160,11 @@ def smoke(root: Path, log: Path) -> dict:
                     return {"status": "FAIL", "step": label,
                             "error": "UNEXPECTED_RESULT", "log": str(log)}
                 if label != "history-base" and (
-                        found.get("selected_batch_missing_manifest_pages") != []
+                        found.get("pages_processed") != 1
+                        or found.get("page_names") != [basename]
+                        or found.get("network_requests") != 0
+                        or found.get("original_filing_authenticated") is not False
+                        or found.get("selected_batch_missing_manifest_pages") != []
                         or found.get("selected_batch_covers_eligible_manifest") is not True
                         or found.get("issuer_history_authenticity_verified") is not False):
                     return {"status": "FAIL", "step": label,
