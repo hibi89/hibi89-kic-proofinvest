@@ -1,3 +1,10 @@
+## 2026-10-27 KST — KIC v3 owner-review ZIP checkpoint
+- Goal: pre-submit independent template equivalence and safe private user handoff; exact organizer-slide layout preserved, **258/258 shapes** geometrically/type/image identical across 10 slides.
+- Candidate PDF SHA bd07d0fa6283b9d2430a223402a443f14506f1ff2d147a98b8c3e10428d2e573, 493063 bytes, 10 pages. Added separate private 5-file ZIP (PDF + PPTX + JSON manifest + verifier + instructions). ZIP byte integrity checks PASS, tampered file FAILS. Original private frozen files unchanged. [Public non-sensitive evidence](docs/roles/lead/SEC_V3_TEMPLATE_PARITY_AND_PACKET_20261027.md).
+- Safety: ZIP and private source not sent to GitHub/DAKER; standalone verifier outputs REVIEW_ONLY_NOT_SUBMITTED and never unlocks the default frozen-byte preflight. No title or exact file approval and no official receipt.
+- Prior code CI 257/257 PASS at b5eccec; separate review docs require latest CI confirmation. No live SEC or Production. 60-day ledger stays 29 DONE/3 BLOCKED/28 NOT_STARTED.
+- **NEXT external gate:** owner reviews exact v3 PDF and title and expressly approves. Only afterward carry out separately authorized safe repin/preflight and DAKER final submission/receipt, and later Elo voting. No original replacement or force push; actual working hours unmeasured.
+
 ## 2026-10-27 KST — v3 pre-submit approval checkpoint
 1. **Target:** KIC ProofInvest Global preliminary, original-format PDF <=10 pages and seven sections, SEC source-linked example.
 2. **Change:** read-only independent v3 file inspection; no production/source/PDF changes. Separate owner-review manifest and QA report were prepared privately; public evidence record [here](docs/roles/lead/SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md).
