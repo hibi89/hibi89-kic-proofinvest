@@ -1,3 +1,18 @@
+# DL P7 — Multi-page SEC history offline batch (2026-10-28 KST)
+
+1. **Goal:** Support several pinned manifest-listed historic SEC submissions pages in a single explicit offline run, retain existing backend, zero API expenses and no auto network requests.
+2. **Architecture/decision:** Compared (A) small sequential idempotent `core.save_index` with full preflight / explicit partial recovery (selected: low change/cost) against (B) refactoring canonical SQLite for a single cross-page atomic transaction (stronger all-or-nothing but larger regression and migration risk). Implemented max 8 pages, 8MB/page, 32MB total, SHA-bound manifest, UTC chronology and cross-page accession uniqueness.
+3. **Tests:** Five regression methods added to existing `tests/test_disclosure_lightning.py`; end-to-end whole-repository GitHub Actions **NOT VERIFIED** on P7 SHA. Previous stable recorded DL P3 source was 390/390 PASS. Current CI status tool lists no commit statuses; PR-only workflow query does not prove workflow absence. Run `python -m unittest discover -s tests -v` when code locally available.
+4. **Outcome/status:** Batch parser, CLI listing, directory ingestion, prevalidate-before-write and partial-recovery implemented and GitHub pushed. No live SEC authentication/production or passed newest whole-repo CI evidence.
+5. **Errors/rollback:** Prior P6 separate new-test-file write twice blocked; P7 extends existing test module. Local `git ls-remote` cannot resolve github.com; tested source execution in local container is blocked without faithful repository materialization. Git ancestors allow rollback without force push. P7 errors explicitly label incomplete saves rather than silently calling them success.
+6. **Repository/branch/SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; P7 source `f5fd0ac85c1283730d899a7f41cb3d75c0773790` and secure read `fc5f875aac0701cd495e5303b7f8f7dc1f78c44a`, tests through `99bf4983d055fbc581ebda394a527c4df7da434c`. Files `disclosure_lightning/history.py`, `tests/test_disclosure_lightning.py`, README, handoffs.
+7. **Runtime/deployment:** `python -m disclosure_lightning.history --list-manifest`, `--batch-dir` offline; no DL Production/Vercel project/URL.
+8. **Data/security:** Keep original SEC index response, original filing hash distinction, issuer/authenticity status as UNVERIFIED; no private Bid_Owl, KIC PDF/PPTX, token, SEC contact or real issuer originals moved to public GitHub. Only bounded on-disk local input; no HTTP.
+9. **Next:** Verify full P7 exact-source CI; test multi-page real-format fixtures when permitted; consider amendment-parent candidate linking without unsupported truth claims. KIC lead must approve any merge/integration. Real HTTP and DAKER final submit need separate authorization.
+10. **KST verification:** 2026-10-28. Remote branch code/test commits confirmed, whole-suite and Production UNVERIFIED, no official contest submission action. Documentation successor SHA to be checked after update.
+
+---
+
 # DL P6 — SEC historical continuation offline minimum unit (2026-10-28 KST)
 
 1. **Goal:** Extend existing recent-only SEC Submissions metadata indexing to explicitly supplied historical `filings.files` JSON, without new network side effects or extra SQLite schema.
