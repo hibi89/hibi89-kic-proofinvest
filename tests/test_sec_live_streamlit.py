@@ -53,7 +53,7 @@ class SecLiveStreamlitTests(unittest.TestCase):
             at.button[0].click().run(timeout=15)
             self.assertFalse(at.exception, [str(x.message) for x in at.exception])
             self.assertTrue(any(m.value == "6.43%" for m in at.metric))
-            self.assertTrue(any("독립 인증" in x.value for x in at.caption))
+            self.assertTrue(any("원문 독립 재인증" in x.value for x in at.caption))
             func.assert_called_once()
             self.assertTrue(func.call_args.kwargs["allow_network"])
 
