@@ -1,3 +1,9 @@
+## 2026-10-28 KST — EXTRA generic local SEC triad evidence assembly
+- **Independent 100/100 DONE:** 20/20 canonical DL archive/KIC SEC source contract reviewed; 40/40 untrusted local triplet pipeline + fail-closed as-of/byte provenance JSON; 30/30 11 dedicated tests + [source CI #40541869622](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40541869622) **437/437 PASS**; 10/10 source GitHub and 10-field handoff written. No live API, DAKER, private bytes, production or DL branch changes.
+- Code SHA `2480d084e025adaaab067bde55a1dfa80b6deaf7`; new `proofinvest/local_sec_packet.py` + `tests/test_local_sec_packet.py` only. This is the first generic locally supplied 10-K triad route, not source authentication or a new finalist macro feed.
+- **This unit** remaining 0h base/0h reserve; actual engineering time unmeasured. Owner authorized contact/live SEC, license, real original truth, official candidate approval and DAKER upload remain open separate units.
+- Historical scheduled 60-day ledger unchanged **29 DONE / 3 BLOCKED / 28 NOT_STARTED**. Next prioritize authenticated provider provenance and prelim owner decision; keep zero-cost/no new UI polish.
+
 ## 2026-10-28 KST — EXTRA atomic synthetic report publishing and UI downloads
 - **Independent 100/100 DONE (outside 60-day ledger):** 20/20 existing writer/UI contract review; 40/40 staged fsync+link no-overwrite file export + download buttons with cross-check and no HTML; 30/30 [exact-source CI #40540680235](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40540680235) **426/426 PASS** including +8 new atomic/UI tests and existing AppTest; 10/10 source GitHub pushed and handoff recorded (docs successor CI independently confirmed).
 - Code SHA `b6050ac77d7de87b138176f55a2a6886c484b103`, four KIC paths (`proofinvest/evidence_report.py`, `streamlit_app.py`, report/UI tests). No DL branch/main, real SEC, DAKER, private organizer PDF or API/ML costs.
