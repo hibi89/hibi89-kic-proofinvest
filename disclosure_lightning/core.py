@@ -437,7 +437,7 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
 
 
 def list_filings(db_path: Path, *, cik: str, limit: int = 50) -> list[dict]:
-    if not 1 <= limit <= 200:
+    if type(limit) is not int or not 1 <= limit <= 200:
         raise ValueError("Output limit must be 1..200")
     uri = Path(db_path).expanduser().resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:

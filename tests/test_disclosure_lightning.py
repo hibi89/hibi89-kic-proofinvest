@@ -91,6 +91,12 @@ class DisclosureLightningTests(unittest.TestCase):
         core.save_index(special_db, self.raw, self.indexed())
         self.assertEqual(len(core.list_filings(special_db, cik=CIK)), 3)
 
+    def test_list_limit_requires_an_integer_not_bool_or_fraction(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        for limit in (True, False, 1.5, "2"):
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "limit"):
+                core.list_filings(self.db, cik=CIK, limit=limit)
+
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
         core.save_index(self.db, self.raw, baseline)
