@@ -40,6 +40,14 @@ def verify_candidate(
     path = Path(path).expanduser()
     if path.is_symlink():
         raise ValueError("Symlinked PDF not allowed")
+    # On Windows, opening a directory with os.open may fail with
+    # PermissionError before fstat can identify it as a non-file. Classify it
+    # up front, then retain the descriptor-level check below against races.
+    try:
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError("PDF must be an ordinary file")
+    except OSError as exc:
+        raise ValueError("PDF unavailable or inaccessible") from exc
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
