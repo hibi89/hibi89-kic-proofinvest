@@ -107,7 +107,14 @@ def fetch_original(*, receipt: dict, user_agent: str,
         raise ValueError("Actual non-placeholder contact-bearing SEC User-Agent required")
     if receipt.get("evidence_status") != "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED":
         raise ValueError("Live original fetch requires previously indexed SEC HTTPS metadata")
-    url = receipt["source_uri"]
+    cik, accession = cik10(receipt.get("issuer_cik")), _accession(receipt.get("accession"))
+    prefix = ("https://www.sec.gov/Archives/edgar/data/"
+              f"{int(cik)}/{accession.replace('-', '')}/")
+    url = receipt.get("source_uri")
+    name = url[len(prefix):] if isinstance(url, str) and url.startswith(prefix) else ""
+    if (not name or DOCNAME.fullmatch(name) is None
+            or name.startswith(".") or ".." in name):
+        raise ValueError("SEC original URL must match its CIK/accession and primary filename")
     req = urllib.request.Request(
         url, headers={
             "User-Agent": user_agent, "Accept": "text/html,application/xhtml+xml,text/plain,application/xml,text/xml",
