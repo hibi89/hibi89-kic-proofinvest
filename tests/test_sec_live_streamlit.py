@@ -41,7 +41,9 @@ class SecLiveStreamlitTests(unittest.TestCase):
 
     def test_explicit_click_mocked_success_displays_unverified_result(self):
         verdict = {
-            "status": "calculated_unverified", "growth_pct": "6.43",
+            "status": "calculated_unverified",
+            "reason_code": "STRUCTURAL_NUMERIC_COMPARISON_ONLY",
+            "growth_pct": "6.43",
             "current_usd": "416161000000", "prior_usd": "391035000000",
             "sec_filing_index": "https://www.sec.gov/Archives/edgar/data/"
                                 "320193/000032019325000079/0000320193-25-000079-index.htm",
