@@ -48,7 +48,8 @@ def verify_sec_annual_revenue(
     """
     if (not isinstance(cik, str) or not re.fullmatch(r"[0-9]{10}", cik)
             or not isinstance(accession, str)
-            or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)):
+            or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)
+            or accession[:10] != cik):
         return _out("INVALID_INPUT")
     asof, curr, prev = _date(as_of), _date(current_end), _date(prior_end)
     if not all((asof, curr, prev)) or not prev < curr:
@@ -59,7 +60,8 @@ def verify_sec_annual_revenue(
         return _out("INVALID_INPUT")
     issuer = companyfacts.get("cik")
     if (type(issuer) not in (int, str) or not str(issuer).isascii()
-            or not str(issuer).isdecimal() or str(int(issuer)).zfill(10) != cik):
+            or not str(issuer).isdecimal() or len(str(issuer)) > 10
+            or str(int(issuer)).zfill(10) != cik):
         return _out("CIK_MISMATCH")
     root = companyfacts.get("facts")
     usgaap = root.get("us-gaap") if isinstance(root, Mapping) else None
