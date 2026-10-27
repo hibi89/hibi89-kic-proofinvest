@@ -48,6 +48,35 @@ class IntradayResearchChronologyTests(unittest.TestCase):
         data["sources"][0]["collected_at"] = "2026-01-10T09:00:00Z"
         self.assertEqual(normalize_research(data)["status"], "success")
 
+    def test_explicit_offsets_accept_valid_cross_calendar_date_order(self):
+        data = fixture()
+        # Published at Jan 10 10:30 UTC, collected Jan 10 23:00 UTC.
+        # Local dates are reversed due to +14:00, not true chronology.
+        data["sources"][0]["published_at"] = "2026-01-11T00:30:00+14:00"
+        data["sources"][0]["collected_at"] = "2026-01-10T23:00:00Z"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "success")
+        self.assertEqual(len(out["findings"]), 1)
+        self.assertEqual(len(out["sources"]), 1)
+
+    def test_explicit_offsets_still_reject_true_reversed_instants(self):
+        data = fixture()
+        # Published at Jan 11 11:30 UTC; collection at 07:00 UTC is early,
+        # despite collected local calendar day being later than published.
+        data["sources"][0]["published_at"] = "2026-01-10T23:30:00-12:00"
+        data["sources"][0]["collected_at"] = "2026-01-11T07:00:00Z"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertIn("invalid_source_date", self.warnings(out))
+
+    def test_mixed_precision_keeps_conservative_day_ordering(self):
+        data = fixture()
+        data["sources"][0]["published_at"] = "2026-01-11"
+        data["sources"][0]["collected_at"] = "2026-01-10T23:00:00Z"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertIn("invalid_source_date", self.warnings(out))
+
     def test_day_precision_legacy_dates_remain_valid(self):
         data = fixture()
         data["sources"][0]["published_at"] = "2026-01-10"

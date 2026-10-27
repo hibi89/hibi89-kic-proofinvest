@@ -129,16 +129,22 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
             continue
         published = _day(source["published_at"])
         collected = _day(source["collected_at"])
-        if published is None or collected is None or collected < published:
+        if published is None or collected is None:
             warn("invalid_source_date", f"source id {sid!r} has invalid chronology")
             continue
-        # Two offset-aware timestamps also have a meaningful intra-day order.
-        # Comparing only local calendar dates could accept documents collected
-        # before publication (including across different UTC offsets).
+        # Explicit-offset timestamps must be ordered by the same UTC clock.
+        # A valid collection can have an EARLIER local calendar date when the
+        # source/collector use different offsets (e.g. +14:00 versus UTC).
+        # Fall back to local day comparison if either value is date-only;
+        # its unknown time of day cannot be reliably compared as an instant.
         published_at = _instant(source["published_at"])
         collected_at = _instant(source["collected_at"])
-        if published_at is not None and collected_at is not None and collected_at < published_at:
-            warn("invalid_source_date", f"source id {sid!r} was collected before publication time")
+        if published_at is not None and collected_at is not None:
+            collected_too_early = collected_at < published_at
+        else:
+            collected_too_early = collected < published
+        if collected_too_early:
+            warn("invalid_source_date", f"source id {sid!r} has invalid publication/collection chronology")
             continue
         if published > as_of:
             warn("future_published", f"source id {sid!r} was published after requested as_of")
