@@ -22,7 +22,8 @@ MAX_FRAGMENT_CHARS = 1200
 MAX_LINE_CHARS = 15_000
 MAX_HIDDEN_NESTING = 256
 SKIP_TAGS = frozenset({
-    "script", "style", "head", "template", "svg", "noscript"
+    "script", "style", "head", "template", "svg", "noscript",
+    "iframe", "object", "canvas", "audio", "video", "noembed", "noframes",
 })
 WS = re.compile(r"\s+")
 CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")

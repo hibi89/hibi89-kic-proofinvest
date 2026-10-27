@@ -325,6 +325,19 @@ class ExtractedFilingTests(unittest.TestCase):
         )
         self.assertEqual([block["text"] for block in xml_result["blocks"]], ["VISIBLE"])
 
+    def test_html_skips_embedded_and_media_fallback_text(self):
+        raw = (
+            b"<iframe>FRAME FALLBACK</iframe><object>OBJECT FALLBACK</object>"
+            b"<canvas>CANVAS FALLBACK</canvas><video>VIDEO FALLBACK</video>"
+            b"<p>VISIBLE BODY</p>"
+        )
+        receipt = extract.extract_bytes(
+            raw, content_type="text/html", filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual([block["text"] for block in receipt["blocks"]], ["VISIBLE BODY"])
+
     def test_missing_or_wrong_saved_digest_fails(self):
         with self.assertRaises(ValueError):
             extract.from_saved_original(
