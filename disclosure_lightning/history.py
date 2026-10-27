@@ -130,12 +130,16 @@ def index_history_page(raw: bytes, *, db_path: Path, cik: str,
             raise ValueError("INVALID_HISTORY_FORM_TYPE")
         if kind not in forms or day > cutoff or day > observed_instant.date():
             continue
+        accepted_at = core._accepted(accepted[i]) if accepted is not None else None
+        if (accepted_at is not None
+                and datetime.fromisoformat(accepted_at).astimezone(timezone.utc) > observed_instant):
+            continue
         uri = core._source_uri(target, accession, documents[i])
         records.append({
             "schema_version": "1.0", "provider": core.PROVIDER,
             "issuer_cik": target, "accession": accession, "form": kind,
             "filed_at": day.isoformat(),
-            "accepted_at": core._accepted(accepted[i]) if accepted is not None else None,
+            "accepted_at": accepted_at,
             "collected_at": observed, "source_uri": uri,
             "index_source_uri": source_uri, "index_raw_sha256": digest,
             "raw_sha256": None, "as_of_cutoff": cutoff.isoformat(),
