@@ -53,6 +53,35 @@ class ManualIssuerStreamlitTests(unittest.TestCase):
         self.assertTrue(any("검증 보류" in w.value for w in at.warning))
         self.assertFalse(at.success)
 
+    def test_explicit_agent_trace_shows_local_decision_and_no_live_agent(self):
+        at = manual_app()
+        self.assertFalse(any(m.label == "로컬 제어기 상태" for m in at.metric))
+        self.assertEqual(len(at.checkbox), 1)
+        at.checkbox[0].set_value(True).run(timeout=15)
+        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+        self.assertTrue(any(m.label == "로컬 제어기 상태"
+                            and m.value == "needs_evidence" for m in at.metric))
+        self.assertTrue(any("RISK_FACTS_NOT_ELIGIBLE" in x.value for x in at.info))
+        self.assertTrue(any("실제 LLM Agent 실행" in x.value for x in at.caption))
+
+    def test_agent_trace_conflict_does_not_claim_success(self):
+        at = manual_app()
+        at.selectbox[1].set_value("30% — 불일치 사례").run(timeout=15)
+        at.checkbox[0].set_value(True).run(timeout=15)
+        self.assertFalse(at.exception)
+        self.assertTrue(any(m.label == "로컬 제어기 상태"
+                            and m.value == "blocked" for m in at.metric))
+        self.assertTrue(any("GROWTH_CLAIM_CONFLICT" in x.value for x in at.info))
+        self.assertFalse(any(m.label == "부채/자본 비율" for m in at.metric))
+
+    def test_agent_trace_missing_claim_withholds_verification(self):
+        at = manual_app()
+        at.selectbox[1].set_value("주장 없음 — 판정 보류").run(timeout=15)
+        at.checkbox[0].set_value(True).run(timeout=15)
+        self.assertFalse(at.exception)
+        self.assertTrue(any("CLAIM_UNAVAILABLE" in x.value for x in at.info))
+        self.assertFalse(at.success)
+
     def test_manual_mode_has_issuer_link_but_no_dart_verified_claim(self):
         at = manual_app()
         self.assertTrue(any("발행기관 IR 게시 페이지" in x.value for x in at.markdown))

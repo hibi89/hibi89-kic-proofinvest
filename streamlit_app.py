@@ -72,9 +72,58 @@ def _render_manual_case(st) -> None:
         use_container_width=True, hide_index=True,
     )
     st.info("Risk 산출 보류: 부채·자본의 검증된 원문 수치가 없습니다. 위험도 0 또는 안전 판정으로 대체하지 않습니다.")
+    _render_offline_agent_trace(st, claims[choice])
     st.caption(
         "출처 권리/재배포 미확인 · 실제 DART 뷰어 미검증 · AI/LLM·실 API 호출 없음 · "
         "산술 'verified'는 회사 재무자료의 현재 진위 또는 대회 제출 인증이 아닙니다."
+    )
+
+
+def _render_offline_agent_trace(st, claim: str) -> None:
+    """Explain an existing bounded local decision without claiming live AI."""
+    st.subheader("Agent 판단 추적 — 규칙 기반 오프라인 시연")
+    if not st.checkbox("PLAN → EVALUATE → DECIDE → REPORT 확인", value=False):
+        st.caption("선택 시 고정된 수동 검증 기록만 재평가합니다. 외부 조회·LLM 호출·자동 투자 판단 없음.")
+        return
+    try:
+        from proofinvest.agent_controller import run_issuer_manual_demo
+
+        decision = run_issuer_manual_demo(claim)
+        if (
+            decision.get("mode") != "RULE_BASED_OFFLINE_NOT_LLM_AGENT"
+            or decision.get("ai_agent_executed") is not False
+            or decision.get("live_api_called") is not False
+            or decision.get("authenticated_external_source") is not False
+            or decision.get("external_tool_calls") != 0
+            or decision.get("tool_budget") != 1
+        ):
+            raise ValueError("Unexpected controller safety contract")
+        trace = decision["trace"]
+        if not isinstance(trace, list) or [r["step"] for r in trace] != [
+            "PLAN", "EVALUATE", "DECIDE", "REPORT"
+        ]:
+            raise ValueError("Unexpected controller trace")
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
+        st.error("고정된 근거 기록 또는 로컬 판단 경로를 확인할 수 없어 Agent 추적 표시를 중단합니다.")
+        return
+
+    st.metric("로컬 제어기 상태", decision["status"])
+    st.info(
+        "판단 코드: " + decision["reason_code"]
+        + " · 사람에게 요청할 다음 조치: " + decision["next_action"]
+    )
+    st.dataframe(
+        [
+            {"단계": row["step"],
+             "판단": row.get("decision", row.get("tool", "오프라인 평가")),
+             "네트워크 호출": "없음"}
+            for row in trace
+        ],
+        use_container_width=True, hide_index=True,
+    )
+    st.caption(
+        "규칙 기반 로컬 제어기 · 내부 검증 도구 최대 1회 · 외부 API 0회 · "
+        "실제 LLM Agent 실행/SEC·DART 원문 인증/수익률 예측/공식 제출이 아닙니다."
     )
 
 
