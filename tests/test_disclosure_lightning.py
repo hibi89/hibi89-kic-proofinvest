@@ -224,7 +224,7 @@ class DisclosureLightningTests(unittest.TestCase):
         for entry in record["filings"]:
             self.assertEqual(entry["collected_at"], record["collected_at"])
         before = self.indexed(
-            collected_at="2025-10-15T08:00:00+09:00",
+            collected_at="2025-10-15T08:00:00Z",
             as_of="2026-10-27",
         )
         self.assertEqual(before["indexed_count"], 1)
@@ -244,7 +244,7 @@ class DisclosureLightningTests(unittest.TestCase):
             "DisclosureLightning contact@placeholder.company",
             "DisclosureLightning contact@corp.invalid",
             "DisclosureLightning fake@example.net",
-            "DisclosureLightning a@corp.com\\r\\nX-Evil: injected",
+            "DisclosureLightning a@corp.com\r\nX-Evil: injected",
         )
         with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
             for user_agent in invalid:
