@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import core
+from .originals import _read_local
 
 MAX_HISTORY_ROWS = 10_000
 MAX_MANIFEST_PAGES = 256
@@ -292,7 +293,9 @@ def import_history_directory(*, directory: Path, db_path: Path,
             present.append(name)
     if not present or len(present) > max_pages:
         raise ValueError("HISTORY_BATCH_NO_FILES_OR_PAGE_LIMIT")
-    raw_pages = {name: (base / name).read_bytes() for name in present}
+    # Reuse the archive's no-follow, regular-file read rather than reopening
+    # a possibly swapped symlink after the preflight stat.
+    raw_pages = {name: _read_local(base / name) for name in present}
     return import_history_batch(
         pages=raw_pages, db_path=db_path, cik=cik,
         manifest_sha256=manifest_sha256, as_of=as_of,
@@ -348,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
                         or not 0 < path.stat().st_size <= core.MAX_JSON_BYTES):
                     raise ValueError("INVALID_BOUNDED_OFFLINE_HISTORY_FILE")
                 result = import_history_page(
-                    raw=path.read_bytes(), db_path=args.db, cik=args.cik,
+                    raw=_read_local(path), db_path=args.db, cik=args.cik,
                     manifest_sha256=args.manifest_sha256, name=args.name,
                     as_of=args.as_of, collected_at=args.collected_at,
                     forms=forms,
