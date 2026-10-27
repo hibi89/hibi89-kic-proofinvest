@@ -93,7 +93,81 @@ def smoke(root: Path, log: Path) -> dict:
                     if name == "list" and len(result.get("filings", [])) != count:
                         return {"status": "FAIL", "step": name,
                                 "error": "BAD_LIST_COUNT", "log": str(log)}
-            return {"status": "PASS", "steps": len(steps), "log": str(log)}
+            # P11 integration: real CLI calls against a disposable historical
+            # SEC-shaped synthetic manifest and continuation, never a customer DB.
+            import hashlib
+            history_db = Path(temp) / "history.sqlite3"
+            history_dir = Path(temp) / "history-pages"
+            history_dir.mkdir()
+            basename = "CIK0000320193-submissions-001.json"
+            manifest = {
+                "cik": 320193, "name": "SYNTHETIC P11 HISTORY",
+                "filings": {
+                    "recent": {
+                        "accessionNumber": [], "form": [],
+                        "filingDate": [], "primaryDocument": [],
+                    },
+                    "files": [{
+                        "name": basename, "filingCount": 1,
+                        "filingFrom": "2014-01-01",
+                        "filingTo": "2014-12-31",
+                    }],
+                },
+            }
+            raw_manifest = json.dumps(manifest, sort_keys=True).encode("utf-8")
+            manifest_path = Path(temp) / "base-submissions.json"
+            manifest_path.write_bytes(raw_manifest)
+            (history_dir / basename).write_bytes(json.dumps({
+                "accessionNumber": ["0000320193-14-000001"],
+                "form": ["10-K"], "filingDate": ["2014-09-15"],
+                "primaryDocument": ["synthetic-history.htm"],
+                "acceptanceDateTime": ["2014-09-15T18:30:00Z"],
+            }).encode("utf-8"))
+            historical_base = [
+                sys.executable, "-B", "-m", "disclosure_lightning",
+                "--db", str(history_db), "--cik", CIK,
+                "--as-of", "2026-10-27",
+                "--input-json", str(manifest_path),
+                "--collected-at", "2026-10-27T00:00:00Z",
+            ]
+            historical_import = [
+                sys.executable, "-B", "-m", "disclosure_lightning.history",
+                "--db", str(history_db), "--cik", CIK,
+                "--manifest-sha256", hashlib.sha256(raw_manifest).hexdigest(),
+                "--batch-dir", str(history_dir),
+                "--as-of", "2026-10-27",
+                "--collected-at", "2026-10-27T00:05:00Z",
+            ]
+            for label, argv, expected, added in (
+                ("history-base", historical_base, "SAVED", 0),
+                ("history-batch", historical_import, "SAVED_BATCH", 1),
+                ("history-replay", historical_import, "REUSED_BATCH", 0),
+            ):
+                proc = subprocess.run(
+                    argv, cwd=root, capture_output=True, text=True,
+                    stdin=subprocess.DEVNULL, timeout=30, check=False,
+                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                )
+                with log.open("a", encoding="utf-8") as handle:
+                    handle.write("STEP " + label + " exit=" +
+                                 str(proc.returncode) + "\n")
+                    handle.write((proc.stdout + proc.stderr)[:12000] + "\n")
+                if proc.returncode != 0:
+                    return {"status": "FAIL", "step": label, "log": str(log)}
+                found = json.loads(proc.stdout)
+                if (found.get("status") != expected or
+                        found.get("new_filings") != added):
+                    return {"status": "FAIL", "step": label,
+                            "error": "UNEXPECTED_RESULT", "log": str(log)}
+                if label != "history-base" and (
+                        found.get("selected_batch_missing_manifest_pages") != []
+                        or found.get("selected_batch_covers_eligible_manifest") is not True
+                        or found.get("issuer_history_authenticity_verified") is not False):
+                    return {"status": "FAIL", "step": label,
+                            "error": "UNEXPECTED_HISTORY_COMPLETENESS_FLAGS",
+                            "log": str(log)}
+            return {"status": "PASS", "steps": len(steps) + 3,
+                    "log": str(log)}
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
         return {"status": "FAIL", "error": type(exc).__name__, "log": str(log)}
 
@@ -129,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         for name in ("core_tests", "offline_cli_smoke", "full_tests"):
             results[name] = {"status": "SKIP", "reason": "SYNTAX_ERROR"}
-    results["git_identity"] = {"status": "PASS" if identity["head"] else "SKIP",
+    results["git_identity"] = {"status": "PASS" if identity["head"] else "FAIL",
                                "reason": None if identity["head"] else "NO_GIT_CHECKOUT"}
     passed = not any(r["status"] == "FAIL" for r in results.values())
     if args.full and results["full_tests"]["status"] != "PASS":
