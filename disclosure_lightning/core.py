@@ -23,6 +23,7 @@ from typing import Any
 PROVIDER = "SEC_EDGAR"
 MAX_JSON_BYTES = 8_000_000
 MAX_RECORDS = 1000
+MAX_HISTORY_RECORDS = 10_000
 ALLOWED_FORMS = frozenset({"10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A"})
 CONTACT_PATTERN = re.compile(r"[A-Za-z0-9_.+%-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
 
@@ -307,6 +308,8 @@ def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
     if not isinstance(accessions, list):
         raise ValueError("Index source accession array is missing")
     n = len(accessions)
+    if n > (MAX_HISTORY_RECORDS if history else MAX_RECORDS):
+        raise ValueError("Index source row limit exceeded")
     forms = _column(recent, "form", n)
     days = _column(recent, "filingDate", n)
     documents = _column(recent, "primaryDocument", n)
@@ -342,6 +345,7 @@ def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
         if (record.get("schema_version") != "1.0"
                 or record.get("provider") != PROVIDER
                 or record.get("issuer_cik") != target
+                or not isinstance(record.get("form"), str)
                 or record.get("form") != forms[i]
                 or record.get("form") not in ALLOWED_FORMS
                 or record.get("filed_at") != filed.isoformat()

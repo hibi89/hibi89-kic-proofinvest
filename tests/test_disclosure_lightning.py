@@ -313,6 +313,22 @@ class DisclosureLightningTests(unittest.TestCase):
                     core.save_index(db, self.raw, candidate)
                 self.assertFalse(db.exists())
 
+    def test_save_index_preserves_recent_source_row_bound(self):
+        payload = json.loads(self.raw)
+        recent = payload["filings"]["recent"]
+        source_rows = core.MAX_RECORDS + 1
+        for key, values in recent.items():
+            recent[key] = [values[0]] * source_rows
+        raw = json.dumps(payload).encode("utf-8")
+        candidate = self.indexed()
+        candidate["source_sha256"] = hashlib.sha256(raw).hexdigest()
+        candidate["source_bytes"] = len(raw)
+        candidate["filings"] = []
+        candidate["indexed_count"] = 0
+        with self.assertRaisesRegex(ValueError, "row limit"):
+            core.save_index(self.db, raw, candidate)
+        self.assertFalse(self.db.exists())
+
     def test_user_agent_placeholders_and_control_characters_rejected_pre_http(self):
         invalid = (
             "", "DisclosureLightning contact@example.com",

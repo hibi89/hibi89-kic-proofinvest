@@ -20,7 +20,7 @@ from pathlib import Path
 from . import core
 from .originals import _read_local
 
-MAX_HISTORY_ROWS = 10_000
+MAX_HISTORY_ROWS = core.MAX_HISTORY_RECORDS
 MAX_MANIFEST_PAGES = 256
 DIGEST_RE = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 
