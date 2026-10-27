@@ -85,9 +85,25 @@ def format_review_queue_csv(batch: dict) -> str:
     return stream.getvalue()
 
 
+def discover_capture_files(directory: Path) -> list[Path]:
+    """List regular ZIP captures, bounded and without following file symlinks."""
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError("Expected a regular local directory")
+    captures = sorted(
+        (entry for entry in directory.iterdir()
+         if entry.suffix.lower() == ".zip" and entry.is_file()
+         and not entry.is_symlink()),
+        key=lambda entry: entry.name,
+    )
+    if not 1 <= len(captures) <= 20:
+        raise ValueError("Expected 1-20 ZIP captures in directory")
+    return captures
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Offline local ZIP batch review; NO NETWORK")
-    parser.add_argument("bundles", nargs="+", type=Path)
+    parser.add_argument("bundles", nargs="*", type=Path)
+    parser.add_argument("--directory", type=Path)
     parser.add_argument("--current-end", required=True)
     parser.add_argument("--prior-end", required=True)
     parser.add_argument("--needle", required=True)
@@ -95,9 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("json", "csv"), default="json",
                         help="CSV emits only the safe prioritized review queue")
     args = parser.parse_args(argv)
+    if bool(args.directory) == bool(args.bundles):
+        parser.error("Provide either ZIP paths or --directory")
     try:
+        captures = discover_capture_files(args.directory) if args.directory else args.bundles
         output = review_capture_batch(
-            args.bundles, current_end=args.current_end, prior_end=args.prior_end,
+            captures, current_end=args.current_end, prior_end=args.prior_end,
             needle=args.needle, claimed_growth_pct=args.claimed_growth_pct,
         )
     except ValueError as exc:
