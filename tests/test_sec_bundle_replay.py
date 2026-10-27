@@ -78,6 +78,9 @@ class ReplayTests(unittest.TestCase):
             opener.assert_not_called()
             self.assertEqual(result["status"], "offline_capture_replayed_unverified")
             self.assertEqual(result["offline_financial_review"]["growth_pct"], "100.00")
+            self.assertEqual(result["human_review_triage"]["status"],
+                             "offline_evidence_ready_for_human_review")
+            self.assertFalse(result["human_review_triage"]["trade_authorized"])
             self.assertEqual(result["offline_financial_review"]["status"], "calculated_unverified")
             self.assertEqual(result["source_span"]["original_sha256"],
                              hashlib.sha256(SYNTHETIC_HTML).hexdigest())
