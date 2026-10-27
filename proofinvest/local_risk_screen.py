@@ -44,4 +44,9 @@ def screen_local_evidence(financial: Any, source_span: Any) -> dict[str, Any]:
         flags.append("NUMERIC_TEXT_MATCH_NOT_CONFIRMED")
     flags.append("LOCAL_EVIDENCE_REVIEW_ONLY")
     result["status"] = "reviewed_unverified"
+    result["corroboration"] = {
+        "ixbrl_context_match": "LOCAL_IXBRL_CONTEXT_MATCH_UNVERIFIED" in flags,
+        "numeric_text_match": "LOCAL_NUMERIC_TEXT_MATCH_UNVERIFIED" in flags,
+        "issuer_authenticated": False,
+    }
     return result
