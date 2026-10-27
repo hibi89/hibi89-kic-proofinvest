@@ -1,3 +1,18 @@
+# DL P5 — bounded HTML charset support (2026-10-28 KST)
+
+1. **Objective:** Decode legitimately non-UTF-8 saved HTML evidence without broad heuristic guessing or silently changing immutable original bytes.
+2. **Design:** Strict `text/html` only, first 4096 raw bytes, first bounded meta charset declaration. Allow UTF-8 and Windows-1252; ISO-8859-1 means Windows-1252 per HTML parsing convention. Unsupported/conflicting declarations and invalid bytes fail closed. MIME-labeled XML/XHTML, plain text remain UTF-8-only.
+3. **Tests:** Three new `tests/test_disclosure_lightning_extract.py` methods; **8/8 local standalone helper behavior checks passed**, however the local test repeats just the helper because repository clone failed DNS. Full exact-branch GitHub Actions **not verified**; previously tested P3 390/390 at [#40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
+4. **Outcome:** New code committed; receipts expose declared/applied encoding while `charset_claim_verified=false`, `source_authenticity_verified=false`, `suitable_for_automatic_financial_facts=false`. P4 line-byte locators remain only for plain UTF-8; HTML uses conservative line hints.
+5. **Failure/recovery:** Local `git clone` failed `Could not resolve host: github.com`; retry not useful in blocked DNS runtime. Continued via authenticated GitHub connector and static diff review; local helper tests 8 pass. Full repo tests/CI pending. Prior code recoverable via Git parents, no force push.
+6. **Repo/branch:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, code/test SHA `8cd8e12d50dc1a9243e167a93d048786965efc8c`; `disclosure_lightning/extract.py`, `tests/test_disclosure_lightning_extract.py`.
+7. **Runtime:** `python -m disclosure_lightning.extract`, offline local original store only; no DL Vercel/Production URL.
+8. **Originals/secrets:** No actual SEC traffic, API keys, private Bid_Owl files or KIC confidential PDF/PPTX in public commits. Git history is rollback; local archived bytes remain immutable.
+9. **Next:** Verify full-suite CI exact source; review KIC latest 408/408 synthetic citation card (KIC `lead/kic@e1c94598`), then SEC historical pagination/continuation or HTML source-context review. KIC owns bridging/UI; do not overwrite.
+10. **Time/status:** 2026-10-28 KST. Code is pushed; full suite and live SEC remain UNVERIFIED. Official KIC 2026-11-12 PDF-only prelim/user approval untouched.
+
+---
+
 # DL P4 — UTF-8 raw text line span implementation (2026-10-28 KST)
 
 **Scope/owner:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; source/tests through `8253270db5cf309d963cc76d9b1569389a34c8d8`. **New full-suite GitHub CI not yet confirmed**. Previous exact-run baseline P3 at `eda89fe`: [390/390 PASS](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
