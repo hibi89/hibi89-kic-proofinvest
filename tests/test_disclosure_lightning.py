@@ -341,5 +341,57 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertIsNone(index["filings"][0]["raw_sha256"])
 
 
+    def test_history_continuation_pinned_offline_dedup(self):
+        from disclosure_lightning import history
+        manifest = {
+            "cik": 320193, "name": "SYNTHETIC",
+            "filings": {
+                "recent": {
+                    "accessionNumber": [], "form": [],
+                    "filingDate": [], "primaryDocument": [],
+                },
+                "files": [{
+                    "name": "CIK0000320193-submissions-001.json",
+                    "filingCount": 2, "filingFrom": "2015-01-01",
+                    "filingTo": "2015-12-31",
+                }],
+            },
+        }
+        base_raw = json.dumps(manifest).encode("utf-8")
+        base = core.index_submissions(
+            base_raw, cik=CIK, as_of="2026-10-28",
+            collected_at="2026-10-28T00:00:00Z",
+            forms=core.parse_forms("10-K,8-K"))
+        core.save_index(self.db, base_raw, base)
+        pin = hashlib.sha256(base_raw).hexdigest()
+        raw = json.dumps({
+            "accessionNumber": [
+                "0000320193-15-000001", "0000320193-15-000002"],
+            "form": ["10-K", "8-K"],
+            "filingDate": ["2015-10-30", "2015-11-02"],
+            "primaryDocument": ["a.htm", "b.htm"],
+        }).encode("utf-8")
+        name = "CIK0000320193-submissions-001.json"
+        params = dict(raw=raw, db_path=self.db, cik=CIK,
+                      manifest_sha256=pin, name=name, as_of="2026-10-28",
+                      collected_at="2026-10-28T00:05:00Z",
+                      forms=core.parse_forms("10-K,8-K"))
+        result = history.index_history_page(**params)
+        self.assertEqual(result["indexed_count"], 2)
+        self.assertTrue(all(x["evidence_status"] == "OFFLINE_SOURCE_UNVERIFIED"
+                            and x["raw_sha256"] is None
+                            for x in result["filings"]))
+        self.assertEqual(core.save_index(self.db, raw, result)["new_filings"], 2)
+        self.assertEqual(core.save_index(self.db, raw, result)["new_filings"], 0)
+        with self.assertRaises(ValueError):
+            history.index_history_page(**{**params, "manifest_sha256": "0" * 64})
+        with self.assertRaises(ValueError):
+            history.index_history_page(**{**params, "collected_at": "2026-10-27T23:59:00Z"})
+        wrong = json.loads(raw)
+        wrong["filingDate"][0] = "2014-11-01"
+        with self.assertRaisesRegex(ValueError, "OUTSIDE"):
+            history.index_history_page(**{**params, "raw": json.dumps(wrong).encode("utf-8")})
+
+
 if __name__ == "__main__":
     unittest.main()
