@@ -25,9 +25,9 @@ def review_capture_batch(
                 bundle, current_end=current_end, prior_end=prior_end,
                 needle=needle, claimed_growth_pct=claimed_growth_pct,
             )
-            summary = result.get("review_summary")
-            if not isinstance(summary, dict):
-                summary = build_offline_review_summary(result)
+            # Always recompute from the replay receipt. Never trust a caller-supplied
+            # embedded summary, which could contain arbitrary raw filing content.
+            summary = build_offline_review_summary(result)
         except (ValueError, TypeError, OSError, KeyError, RecursionError):
             summary = build_offline_review_summary(None)
         items.append({"index": index, "summary": summary})
@@ -36,6 +36,9 @@ def review_capture_batch(
         "count": len(items),
         "blocked_count": sum(i["summary"]["status"] == "blocked" for i in items),
         "high_priority_count": sum(i["summary"]["review_priority"] == "high" for i in items),
+        "ready_for_human_review_count": sum(
+            i["summary"]["status"] == "human_review_required" for i in items
+        ),
         "items": items,
         "source_authenticated": False,
         "investment_recommendation": False,
