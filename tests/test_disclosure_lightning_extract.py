@@ -149,6 +149,69 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(block["source_locator"]["start_byte"], 1801)
         self.assertEqual(block["source_locator"]["end_byte_exclusive"], len(raw))
 
+    def test_declared_windows_1252_html_is_decoded_without_issuer_attestation(self):
+        for label in ("windows-1252", "ISO-8859-1"):
+            with self.subTest(label=label):
+                raw = (
+                    '<html><head><meta charset="' + label +
+                    '"></head><body><p>Revenue '
+                ).encode("ascii") + b"\x93increase\x94</p></body></html>"
+                r = extract.extract_bytes(
+                    raw, content_type="text/html",
+                    filing_sha256=hashlib.sha256(raw).hexdigest(),
+                    issuer_cik=CIK, accession=ACC,
+                    source_uri=self.receipt["source_uri"],
+                    input_origin="OFFLINE_FILE_UNVERIFIED",
+                )
+                self.assertEqual(r["decoded_encoding"], "windows-1252")
+                self.assertEqual(r["html_meta_declared_charset"], label.lower())
+                self.assertFalse(r["charset_claim_verified"])
+                self.assertEqual(r["blocks"][0]["text"], "Revenue “increase”")
+                self.assertFalse(r["blocks"][0]["exact_raw_byte_range_verified"])
+                self.assertFalse(r["source_authenticity_verified"])
+                self.assertFalse(r["suitable_for_automatic_financial_facts"])
+
+    def test_legacy_html_http_equiv_charset_supported_but_not_guessed(self):
+        raw = (
+            b'<html><head><meta http-equiv="Content-Type" '
+            b'content="text/html; charset=windows-1252"></head><body>'
+            b'<p>Revenue \x93change\x94</p></body></html>'
+        )
+        r = extract.extract_bytes(
+            raw, content_type="text/html", filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(r["blocks"][0]["text"], "Revenue “change”")
+        self.assertEqual(r["decoded_encoding"], "windows-1252")
+        raw_no_declaration = b"<p>Revenue \x93change\x94</p>"
+        with self.assertRaisesRegex(ValueError, "ENCODING"):
+            extract.extract_bytes(
+                raw_no_declaration, content_type="text/html",
+                filing_sha256=hashlib.sha256(raw_no_declaration).hexdigest(),
+                issuer_cik=CIK, accession=ACC,
+                source_uri=self.receipt["source_uri"],
+                input_origin="OFFLINE_FILE_UNVERIFIED",
+            )
+
+    def test_conflicting_bom_and_unknown_html_charset_rejected(self):
+        for raw, reason in (
+            (b'\xef\xbb\xbf<meta charset="windows-1252"><p>Revenue</p>',
+             "CONFLICTING"),
+            (b'<meta charset="shift_jis"><p>Revenue</p>',
+             "UNSUPPORTED_DECLARED"),
+            (b'<meta charset="windows-1252"><p>\x81</p>',
+             "ENCODING"),
+        ):
+            with self.subTest(raw=raw[:30]), self.assertRaisesRegex(ValueError, reason):
+                extract.extract_bytes(
+                    raw, content_type="text/html",
+                    filing_sha256=hashlib.sha256(raw).hexdigest(),
+                    issuer_cik=CIK, accession=ACC,
+                    source_uri=self.receipt["source_uri"],
+                    input_origin="OFFLINE_FILE_UNVERIFIED",
+                )
+
     def test_no_parser_remote_io_or_script_execution(self):
         with patch("urllib.request.urlopen") as req:
             r = self.run_from_saved()
