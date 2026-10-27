@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 from typing import Any, Mapping
 
-from .sec_companyfacts import TAG, verify_sec_annual_revenue
+from .sec_companyfacts import TAG, _date, verify_sec_annual_revenue
 
 MAX_RESPONSE_BYTES = 8_000_000
 SEC_ORIGIN = "https://data.sec.gov"
@@ -147,6 +147,15 @@ def run_sec_annual_revenue(
             or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)
             or accession[:10] != cik):
         return _failure("INVALID_TARGET")
+    # Avoid contacting SEC for invalid chronology or malformed claims.
+    curr, prev, asof = _date(current_end), _date(prior_end), _date(as_of)
+    if (curr is None or prev is None or asof is None or not prev < curr
+            or not 330 <= (curr - prev).days <= 380):
+        return _failure("INVALID_PERIOD_OR_AS_OF")
+    if claimed_growth_pct is not None and (
+            not isinstance(claimed_growth_pct, str)
+            or re.fullmatch(r"[+-]?\\d{1,5}(?:\\.\\d{1,4})?", claimed_growth_pct) is None):
+        return _failure("INVALID_GROWTH_CLAIM")
     payload, reason, attempted = get_sec_concept(
         cik=cik, user_agent=user_agent, allow_network=allow_network
     )
