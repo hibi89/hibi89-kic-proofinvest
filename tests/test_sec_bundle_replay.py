@@ -91,6 +91,22 @@ class ReplayTests(unittest.TestCase):
             self.assertFalse(result["external_http_called"])
             self.assertNotIn("<script>", json.dumps(result))
 
+    def test_conflicting_growth_claim_is_escalated_in_real_replay_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            with patch("urllib.request.build_opener",
+                       side_effect=AssertionError("NO NETWORK")) as opener:
+                result = self.run_replay(path, claimed_growth_pct="1.00")
+            opener.assert_not_called()
+            self.assertEqual(result["status"], "offline_capture_replayed_unverified")
+            self.assertEqual(result["offline_financial_review"]["status"], "conflict")
+            triage = result["human_review_triage"]
+            self.assertEqual(triage["status"], "manual_review_required")
+            self.assertEqual(triage["priority"], "high")
+            self.assertIn("FINANCIAL_CLAIM_CONFLICT", triage["reason_codes"])
+            self.assertFalse(triage["investment_recommendation"])
+            self.assertFalse(triage["trade_authorized"])
+
     def test_one_byte_corruption_blocks_reanalysis(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp)
