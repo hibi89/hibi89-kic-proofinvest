@@ -1,3 +1,9 @@
+## 2026-10-27 KST — EXTRA (NOT one of scheduled 60 gates)
+- **Unit:** expose previously implemented bounded controller in existing Streamlit historical issuer screen; weight 100 points independently of day-by-day plan, **100/100 DONE** after verified [CI 40488983968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40488983968) `257/257 PASS` (three new UI tests).
+- Implementation `4fa5152fe84fad95ea311af89875aa1362dee949`, no external/network/account action. Actual elapsed: **미계측**; this extra unit remaining base **0h** + contingency **0h** after CI. Design scope: [MVP_DESIGN_DELTA_20261027.md](MVP_DESIGN_DELTA_20261027.md).
+- Scheduled 2026-10-27 gate remains previously earned **100/100**; DO NOT add today's extra 100 points to its denominator. Current canonical ledger 29 DONE / 3 BLOCKED / 28 NOT_STARTED unchanged.
+- Next separately user-authorized PDF/DAKER gate BLOCKED until evidence; CI is not actual submission or browser proof.
+
 ## 2026-10-25 KST — DAKER PDF upload eligibility preflight, independent quality unit
 - **Issue reproduced:** pinned frozen PDF bytes could yield READY_FOR_USER_REVIEW even if renamed with .txt or .pdf.txt extension, incompatible with observed DAKER authenticated PDF-only upload form. Actual private PDF never accessed or altered.
 - **Fix chosen over rename/copy of private assets:** checks case-insensitive final .pdf suffix and conservative **20,000,000-byte decimal size limit** before hashing. Existing no-symlink, ordinary file, header, exact 513113-byte pinned digest checks preserved. Fail-closed DO_NOT_UPLOAD; no filenames/paths/content printed or uploaded. Uppercase .PDF accepted.

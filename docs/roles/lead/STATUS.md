@@ -1,3 +1,9 @@
+## 2026-10-27 KST — KIC UI MVP evidence
+- Offline bounded controller trace visible after opt-in in Streamlit manual historical case (no new API/LLM); source `4fa5152fe84fad95ea311af89875aa1362dee949`.
+- [CI #40488983968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40488983968) SUCCESS, **257/257 PASS**, including 3 added AppTest scenarios. Real SEC/DART verification, hosted Production/browser, DAKER upload/receipt NOT_VERIFIED.
+- 60-day ledger 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged. Next priority: exact official 7-section candidate PDF privately compare, owner title/upload authorization; Nov12 10:00 KST.
+- [MVP architecture delta](MVP_DESIGN_DELTA_20261027.md). No private PDF, credentials or backups altered.
+
 ## 2026-10-25 KST — DAKER PDF upload eligibility preflight, independent quality unit
 - **Issue reproduced:** pinned frozen PDF bytes could yield READY_FOR_USER_REVIEW even if renamed with .txt or .pdf.txt extension, incompatible with observed DAKER authenticated PDF-only upload form. Actual private PDF never accessed or altered.
 - **Fix chosen over rename/copy of private assets:** checks case-insensitive final .pdf suffix and conservative **20,000,000-byte decimal size limit** before hashing. Existing no-symlink, ordinary file, header, exact 513113-byte pinned digest checks preserved. Fail-closed DO_NOT_UPLOAD; no filenames/paths/content printed or uploaded. Uppercase .PDF accepted.
