@@ -269,6 +269,52 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(originals.main(args[:-2] + ["--list"]), 0)
         self.assertEqual(len(json.loads(out.getvalue())["receipts"]), 1)
 
+    def test_offline_html_source_to_saved_text_evidence_e2e(self):
+        from disclosure_lightning.extract import from_saved_original, find_evidence_candidates
+        html = (
+            b"<html><head><title>HIDDEN</title></head><body>"
+            b"<h1>Synthetic filing heading</h1>"
+            b"<script>UNSAFE SCRIPT</script>"
+            b"<p>Synthetic Revenue &amp; evidence</p>"
+            b"</body></html>"
+        )
+        source = self.root / "fake-source.html"
+        source.write_bytes(html)
+        argv = [
+            "--db", str(self.db), "--cik", C, "--accession", A,
+            "--input-file", str(source), "--content-type", "text/html",
+        ]
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(originals.main(argv), 0)
+        saved = json.loads(stdout.getvalue())
+        self.assertEqual(saved["input_origin"], "OFFLINE_FILE_UNVERIFIED")
+        self.assertFalse(saved["original_filing_retrieved"])
+        self.assertEqual(saved["content_type"], "text/html")
+        receipt = from_saved_original(
+            db_path=self.db, cik=C, accession=A, sha256=saved["filing_sha256"]
+        )
+        self.assertEqual([r["text"] for r in receipt["blocks"]],
+                         ["Synthetic filing heading", "Synthetic Revenue & evidence"])
+        matches = find_evidence_candidates(receipt, term="Revenue")
+        self.assertEqual(matches["returned"], 1)
+        self.assertEqual(matches["candidates"][0]["citation_status"],
+                         "SOURCE_LINE_HINT_NEEDS_REVIEW")
+        self.assertFalse(matches["financial_claim_verified"])
+        with contextlib.redirect_stdout(io.StringIO()) as again:
+            self.assertEqual(originals.main(argv), 0)
+        self.assertEqual(json.loads(again.getvalue())["status"], "REUSED")
+
+    def test_live_mime_override_rejected_before_network_access(self):
+        with patch("disclosure_lightning.originals.fetch_original") as fetch:
+            with contextlib.redirect_stderr(io.StringIO()) as out:
+                code = originals.main([
+                    "--db", str(self.db), "--cik", C, "--accession", A,
+                    "--allow-network", "--content-type", "text/html",
+                ])
+            self.assertEqual(code, 2)
+            self.assertIn("Live content-type", out.getvalue())
+            fetch.assert_not_called()
+
     def test_module_subprocess_invocation_offline(self):
         source = self.root / "synthetic-filing.html"
         source.write_bytes(CONTENT)
