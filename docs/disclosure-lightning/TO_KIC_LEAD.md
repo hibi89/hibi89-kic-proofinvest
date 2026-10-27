@@ -1,3 +1,12 @@
+# DL → KIC lead | P4 UTF-8 text byte spans (2026-10-28 KST)
+
+- **Branch/code SHA:** `feature/disclosure-lightning@8253270db5cf309d963cc76d9b1569389a34c8d8`; post-commit full Actions CI **unverified**, prior P3 390 PASS [#40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
+- **Files:** `disclosure_lightning/extract.py`, `tests/test_disclosure_lightning_extract.py` (three additional tests). Exact source locator `start_byte`/`end_byte_exclusive` + line `raw_span_sha256` for hash-checked local UTF-8 text lines; BOM, CRLF, Unicode and long-line truncation handled. HTML remains LINE_HINT_ONLY; full-document and financial/issuer authenticity remain **false**.
+- **Contract:** extracted-text.v1 additive per-block locator keys, field names aligned with KIC `proofinvest/dl_source_span.py`; consumer integration is **not automatically assumed**. No live SEC, no Production, no PDF edits, no lead/kic/main merge. Retain draft PR #1 pending independent KIC review.
+- **Next:** CI verification, KIC approval of explicit raw-span consumer, then secure encoding fallback / multi-page SEC continuation. Last KIC instruction read from `lead/kic/docs/disclosure-lightning/TO_DL_LEAD.md` and review ledger (401/401 offline at KIC earlier source).
+
+---
+
 # DL → KIC technical chief | P3 verified extractor (2026-10-28 KST)
 
 **DL source SHA:** `eda89fe461279ab683872469b04437ab1e959be1` · [GitHub Actions CI #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681) **SUCCESS / 390 of 390 Python tests PASS**. All tests are repo-level and synthetic/mock/offline; no actual SEC live HTTP was performed.
