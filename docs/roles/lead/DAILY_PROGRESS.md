@@ -1,3 +1,9 @@
+## 2026-10-27 KST — EXTRA v3 read-only pre-submission quality review
+- **Separate work (not a scheduled 60-day item):** actual candidate inspected; PDF 10p/493063B; original old PDF 513113B byte hash unchanged; seven official sections, four known hyperlinks, 0 out-of-bounds text, Apple SEC accession/sales values verified. Private review report/JSON manifest created, all authorization bits FALSE.
+- Official existing `kic_submission_preflight.py` intentionally refuses v3 due pinned old file size/hash. DO_NOT_UPLOAD remains correct until owner exact approval. No re-pin/publish/portal click.
+- Previous code CI 257/257 PASS, no new runtime. This review is evidence-based completed local QA **but submission gate remains BLOCKED**, not an extra planned DONE count. 60-day master 29 DONE/3 BLOCKED/28 NOT_STARTED. Real elapsed time unmeasured; approval-dependent remaining time not estimable.
+- [Evidence](SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md).
+
 ## 2026-10-27 KST — out-of-plan v3 private PDF factual SEC source addition
 - Separate private candidate v3: 10 pages/493,063 bytes; SEC Apple CIK0000320193 10-K accession 0000320193-25-000079, 2025/24 USDm 416,161/391,035, manually computed +6.43%. Original frozen & previous candidate unchanged. QA pass for page boundaries/required 7 sections/links, official portal acceptance NOT_TESTED.
 - User approval before selecting/uploading new PDF; pinned original hash guard must not be bypassed. Offline app CI #40491440843 257/257 PASS is historical working-code test, not new actual SEC integration.
