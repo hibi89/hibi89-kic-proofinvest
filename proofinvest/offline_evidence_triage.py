@@ -42,6 +42,13 @@ def triage_offline_replay(replay: Any) -> dict[str, Any]:
     if not isinstance(replay.get("offline_financial_review"), dict):
         reasons.append("FINANCIAL_REVIEW_MISSING")
         return result
+    financial = replay["offline_financial_review"]
+    if financial.get("status") == "conflict":
+        reasons.append("FINANCIAL_CLAIM_CONFLICT")
+        return result
+    if financial.get("status") not in ("calculated_unverified",):
+        reasons.append("FINANCIAL_CALCULATION_UNAVAILABLE")
+        return result
     if not isinstance(replay.get("risk"), dict):
         reasons.append("RISK_REVIEW_MISSING")
         return result
