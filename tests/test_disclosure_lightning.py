@@ -393,5 +393,116 @@ class DisclosureLightningTests(unittest.TestCase):
             history.index_history_page(**{**params, "raw": json.dumps(wrong).encode("utf-8")})
 
 
+    def _history_batch_fixture(self):
+        from disclosure_lightning import history
+        pages = [
+            {"name": "CIK0000320193-submissions-001.json",
+             "filingCount": 1, "filingFrom": "2014-01-01",
+             "filingTo": "2014-12-31"},
+            {"name": "CIK0000320193-submissions-002.json",
+             "filingCount": 1, "filingFrom": "2015-01-01",
+             "filingTo": "2015-12-31"},
+        ]
+        manifest = {
+            "cik": 320193, "name": "SYNTHETIC TWO PAGE TEST",
+            "filings": {
+                "recent": {"accessionNumber": [], "form": [],
+                           "filingDate": [], "primaryDocument": []},
+                "files": pages,
+            },
+        }
+        original = json.dumps(manifest).encode("utf-8")
+        base = core.index_submissions(
+            original, cik=CIK, as_of="2026-10-28",
+            collected_at="2026-10-28T01:00:00Z",
+            forms=core.parse_forms("10-K,8-K"),
+        )
+        core.save_index(self.db, original, base)
+        source = {}
+        for number, (name, year) in enumerate((
+            ("CIK0000320193-submissions-001.json", 2014),
+            ("CIK0000320193-submissions-002.json", 2015),
+        ), 1):
+            source[name] = json.dumps({
+                "accessionNumber": [f"0000320193-{year % 100:02d}-{number:06d}"],
+                "form": ["10-K"], "filingDate": [f"{year}-09-15"],
+                "primaryDocument": [f"synthetic-{year}.htm"],
+            }).encode("utf-8")
+        args = {
+            "db_path": self.db, "cik": CIK,
+            "manifest_sha256": hashlib.sha256(original).hexdigest(),
+            "as_of": "2026-10-28",
+            "collected_at": "2026-10-28T01:05:00Z",
+            "forms": core.parse_forms("10-K,8-K"),
+        }
+        return history, source, args
+
+    def test_history_multi_page_preflight_and_idempotent_replay(self):
+        history, pages, args = self._history_batch_fixture()
+        result = history.import_history_batch(pages=pages, **args)
+        self.assertEqual(result["pages_processed"], 2)
+        self.assertEqual(result["new_filings"], 2)
+        self.assertEqual(result["provenance"], "OFFLINE_UNVERIFIED")
+        self.assertEqual(result["network_requests"], 0)
+        replay = history.import_history_batch(pages=pages, **args)
+        self.assertEqual(replay["status"], "REUSED_BATCH")
+        self.assertEqual(replay["new_filings"], 0)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 2)
+
+    def test_history_multi_page_rejects_untrusted_before_any_write(self):
+        history, pages, args = self._history_batch_fixture()
+        first, second = sorted(pages)
+        with self.assertRaisesRegex(ValueError, "DUPLICATE_ACCESSION"):
+            other = json.loads(pages[second])
+            other["accessionNumber"] = json.loads(pages[first])["accessionNumber"]
+            history.import_history_batch(
+                pages={first: pages[first], second: json.dumps(other).encode()},
+                **args,
+            )
+        with self.assertRaises(ValueError):
+            history.import_history_batch(
+                pages={first: pages[first], second: b"not-json"}, **args)
+        with sqlite3.connect(self.db) as connection:
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM observations").fetchone()[0], 1)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 0)
+
+    def test_history_manifest_listing_and_local_directory(self):
+        history, pages, args = self._history_batch_fixture()
+        allowed = history.list_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+        self.assertEqual(len(allowed), 2)
+        self.assertTrue(all(item["eligible_by_start_date"] for item in allowed))
+        folder = self.root / "offline-history"
+        folder.mkdir()
+        for name, contents in pages.items():
+            (folder / name).write_bytes(contents)
+        result = history.import_history_directory(directory=folder, **args)
+        self.assertEqual(result["new_filings"], 2)
+        with self.assertRaisesRegex(ValueError, "LIMIT"):
+            history.import_history_directory(
+                directory=folder, max_pages=1, **args)
+
+    def test_history_batch_partial_failure_is_explicit_and_recoverable(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        original_save = core.save_index
+        attempts = [0]
+        def second_page_failure(db_path, raw, indexed):
+            attempts[0] += 1
+            if attempts[0] == 2:
+                raise sqlite3.OperationalError("SYNTHETIC_SAVE_FAILURE")
+            return original_save(db_path, raw, indexed)
+        with patch("disclosure_lightning.history.core.save_index",
+                   side_effect=second_page_failure):
+            with self.assertRaisesRegex(ValueError, "HISTORY_BATCH_PARTIAL_WRITE:1/2"):
+                history.import_history_batch(pages=pages, **args)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 1)
+        resumed = history.import_history_batch(pages=pages, **args)
+        self.assertEqual(resumed["new_filings"], 1)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
