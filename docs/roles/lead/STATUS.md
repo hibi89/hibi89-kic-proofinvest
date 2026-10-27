@@ -1,3 +1,7 @@
+## 2026-10-27 KST — UTC-cutoff evidence verification
+- `proofinvest/research.py` UTC-aware as_of and cited finding boundary bug fixed at source `a4f321c02b3be0a3979a1c5a18669432c8c06dca`, [CI 40519705556](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40519705556) SUCCESS **325/325**, +4 focused tests. No source calls, training, public PDF changes or deployment. Existing UTC-instant collection-order and mixed/date-only behavior preserved.
+- Release status: KIC no live SEC/DART or AI Agent verification, no Production and no DAKER receipt. Private candidate remains owner-review-only, exact-file/title and separately authorized DAKER submission remain P0. Bid Owl/Disclosure Lightning untouched; canonical 29 DONE / 3 BLOCKED / 28 NOT_STARTED.
+
 ## 2026-10-27 KST — KIC cross-offset Research false-rejection QA
 - Source `2f818341db0369d91e9357ac001a1c18cf2e4ffb` on `lead/kic` and [offline workflow #40517950196](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40517950196) **SUCCESS, 321/321**. Publication/collection offsets compared by absolute instants only when both present; mixed date-only input retains conservative date comparison. Three new regression methods; earlier UTC ordering safety kept.
 - No new external connectors/requests, live issuer source attestation, investment recommendation, KIC submission, Production, private document edits or repo sharing. Bid Owl private transformation remains independent and **not started here**.
