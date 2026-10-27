@@ -12,6 +12,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from disclosure_lightning import core, extract, originals
 
@@ -88,7 +89,7 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertFalse(result["source_authenticity_verified"])
 
     def test_no_parser_remote_io_or_script_execution(self):
-        with unittest.mock.patch("urllib.request.urlopen") as req:
+        with patch("urllib.request.urlopen") as req:
             r = self.run_from_saved()
             self.assertEqual(r["block_count"], 3)
             req.assert_not_called()
