@@ -1,3 +1,23 @@
+## P7 — 과거 SEC 공시 JSON 다중 페이지 오프라인 처리 (2026-10-28 KST)
+
+기존 `python -m disclosure_lightning.history`를 확장했습니다. **실제 SEC 자동 다운로드는 하지 않습니다.** 먼저 저장된 메인 Submissions 응답의 고정 SHA-256을 기반으로 공식 `filings.files[]`에 기재된 페이지명/건수/날짜를 조회합니다.
+
+```bash
+# 기존 원본 index를 저장한 뒤, 해당 저장 결과의 raw_index_sha256을 사용
+python -m disclosure_lightning.history --db ./dl.sqlite3 --cik 0000320193 --manifest-sha256 YOUR_64_CHARACTER_HASH --as-of 2026-10-28 --list-manifest
+
+# --batch-dir에 저장된 정확히 일치하는 페이지명만 로컬에서 읽음
+python -m disclosure_lightning.history --db ./dl.sqlite3 --cik 0000320193 --manifest-sha256 YOUR_64_CHARACTER_HASH --as-of 2026-10-28 --collected-at 2026-10-28T01:05:00Z --batch-dir ./downloaded-sec-history --max-pages 4
+```
+
+한 번에 기본 4페이지·최대 8페이지, 각 파일 최대 8MB·총 32MB. 읽기 전 경로/심볼릭 링크/일반 파일을 검사하고 보관 모듈의 `O_NOFOLLOW` 로컬 파일 리더를 재사용합니다. 저장 전에 **모든 선택 페이지**의 manifest 등록 여부·관측 시각·페이지 크기·날짜 범위·배열 구조·accession 중복·원본 digest를 검증합니다. 불일치 시 해당 배치를 전부 거부하고 새 저장을 시작하지 않습니다.
+
+**저장은 여러 페이지를 하나의 SQLite 트랜잭션으로 묶지 않습니다.** 각 페이지를 기존의 idempotent `core.save_index`에 순차 적용합니다. 저장 도중 장애가 나면 `HISTORY_BATCH_PARTIAL_WRITE:x/y:completed=...` 오류로 성공적으로 저장된 페이지 목록을 표시하고, 동일 입력을 다시 실행해 나머지를 처리합니다. 원본 byte SHA는 `index_raw_sha256`로 저장하고 실제 SEC 원본 공시의 `raw_sha256`는 계속 null입니다. 출력 `OFFLINE_UNVERIFIED`는 인증이 아닙니다.
+
+검증: 새 테스트 5개를 `tests/test_disclosure_lightning.py`에 추가(중복/사전검증/폴더/CLI/중간 장애 재개). **GitHub 정확한 HEAD의 전체 CI 결과는 아직 확보하지 못했으므로 PASS로 주장하지 않습니다.** KIC `lead/kic` 통합/UI/제출 파일은 변경하지 않았습니다.
+
+---
+
 ## P6 — SEC 과거 공시 continuation 오프라인 인덱싱 (2026-10-28)
 
 공식 SEC Submissions의 `filings.files[]`는 이전 연도 `CIK##########-submissions-###.json` 페이지를 가리킵니다. DL은 **새로운 네트워크 자동 요청을 추가하지 않고** 사전에 저장된 메인 submissions 응답의 `source_sha256`를 고정해, 명시적으로 제공받은 로컬 history JSON만 수집할 수 있습니다.
