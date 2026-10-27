@@ -1,3 +1,18 @@
+# DL P8 — Verified index bytes / unverified amendment candidates (2026-10-28 KST)
+
+1. **Goal:** Add useful amendment exploration without falsely turning metadata heuristics into an authenticated original/amendment relationship.
+2. **Design/alternatives:** Chose read-only SHA-pinned SQLite original response lookup + `reportDate`/form + strictly earlier filingDate candidate. Rejected write-back/guessing from nearby accession sequences or same-form filings alone: SEC submissions metadata does not reliably encode amendment target. Ambiguity and missing report periods produce no inferred parent. No core schema change.
+3. **Tests:** Five methods appended in `tests/test_disclosure_lightning.py`: unique matching source period, two originals ambiguous, missing reportDate, excluded post-as-of observation, tampered stored bytes, and CLI no-import path (last two integrated into other test names). Code written and GitHub pushed; *actual full repo unittest/GitHub Actions P8 results NOT VERIFIED*.
+4. **Outcome:** `history.review_amendment_candidates` returns read-only fields `candidate_parent_accession` (only unique, still unverified), `authoritative_amends_accession=null` and `authenticated_amendment_relation=false`. Does not edit immutable `filings.filing_json`. CLI `--review-amendments` added, no network.
+5. **Failure/recovery:** GitHub Actions head/commit status inaccessible via available current connector endpoints, previous P7 suite remained unverified. Local git checkout still blocked DNS. Do not claim any newly run full-repo tests. Git parent keeps rollback and feature isolation.
+6. **Repo/branch/SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, first review source `5724fedddd09519cce0e199bcc443903f255e6e5`; CLI `34308fe31368b53986498ba0b1c202b40e9c431a`; bounded scan latest `543796a9494227f53f2bba6199f23b3062e7f13c`, tests `8c05c64f0792ed28dbe150f705d91fa471061daa`. Docs HEAD updated separately.
+7. **Runtime/deployment:** `python -m disclosure_lightning.history --review-amendments` on local SQLite, JSON read-only output. No hosted DL Production URL.
+8. **Sources/backup/security:** Only existing local untrusted synthetic/historical SEC-shaped JSON observations; SHA256 checks detect local corruption, not actual SEC authenticity or source rights. Real SEC GET, private Bid_Owl and KIC PDF/DAKER unchanged.
+9. **Next:** Run exact source tests/CI; audit amendment candidate false positives and possibility of genuine explicit original reference in licensed source files, then narrow reviewed KIC integration. No automatic relation certification.
+10. **As-of / date / verification:** 2026-10-28 KST, P8 source/tests GitHub pushed but full CI unverified; KIC lead independent numeric literal CI 447 PASS is different source/branch. Nov12 prelim PDF unchanged.
+
+---
+
 # DL P7 — Multi-page SEC history offline batch (2026-10-28 KST)
 
 1. **Goal:** Support several pinned manifest-listed historic SEC submissions pages in a single explicit offline run, retain existing backend, zero API expenses and no auto network requests.
