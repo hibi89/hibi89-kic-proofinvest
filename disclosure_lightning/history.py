@@ -167,36 +167,198 @@ def import_history_page(*, raw: bytes, db_path: Path, cik: str,
             "evidence_status": "OFFLINE_SOURCE_UNVERIFIED"}
 
 
+
+def list_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
+                        as_of: str) -> list[dict]:
+    """List the allowed historical files without requesting or reading them."""
+    cutoff = core.parse_day(as_of)
+    _, authority = _stored_manifest(db_path, cik, manifest_sha256)
+    return [
+        {"name": name, "filing_from": spec["first"].isoformat(),
+         "filing_to": spec["last"].isoformat(),
+         "filing_count": spec["count"],
+         "eligible_by_start_date": spec["first"] <= cutoff}
+        for name, spec in sorted(authority["pages"].items())
+    ]
+
+
+def import_history_batch(*, pages: dict[str, bytes], db_path: Path,
+                         cik: str, manifest_sha256: str, as_of: str,
+                         collected_at: str, forms: frozenset[str],
+                         max_pages: int = 4) -> dict:
+    """Preflight all selected local history pages, then save them one by one.
+
+    No implicit HTTP and no all-or-nothing DB guarantee. A partial write is
+    raised with successfully saved page names so an idempotent replay can
+    resume without claiming complete processing.
+    """
+    if type(max_pages) is not int or not 1 <= max_pages <= 8:
+        raise ValueError("INVALID_HISTORY_BATCH_PAGE_LIMIT")
+    if (not isinstance(pages, dict) or not pages
+            or len(pages) > max_pages):
+        raise ValueError("INVALID_HISTORY_BATCH_PAGE_COUNT")
+    # Validate membership and cutoff before reading a single supplied page.
+    manifest = list_manifest_pages(
+        db_path=db_path, cik=cik, manifest_sha256=manifest_sha256,
+        as_of=as_of,
+    )
+    allowed = {item["name"]: item for item in manifest}
+    if not all(isinstance(name, str) and name in allowed for name in pages):
+        raise ValueError("HISTORY_BATCH_CONTAINS_UNLISTED_PAGE")
+    if any(not allowed[name]["eligible_by_start_date"] for name in pages):
+        raise ValueError("HISTORY_BATCH_PAGE_AFTER_AS_OF")
+    total = 0
+    for data in pages.values():
+        if not isinstance(data, bytes) or not 0 < len(data) <= core.MAX_JSON_BYTES:
+            raise ValueError("HISTORY_BATCH_FILE_SIZE_OR_TYPE")
+        total += len(data)
+    if total > 32_000_000:
+        raise ValueError("HISTORY_BATCH_TOTAL_BYTES_EXCEEDED")
+    selected = sorted(pages)
+    parsed = []
+    accessions = set()
+    hashes = set()
+    for name in selected:
+        raw = pages[name]
+        # Always parse the whole page, including excluded form types, to
+        # catch cross-page collisions before any persistent writes.
+        full = core._validate_raw(raw)
+        ids = full.get("accessionNumber")
+        if not isinstance(ids, list):
+            raise ValueError("HISTORY_BATCH_MISSING_ACCESSIONS")
+        for accession in ids:
+            if not isinstance(accession, str) or accession in accessions:
+                raise ValueError("HISTORY_BATCH_DUPLICATE_ACCESSION")
+            accessions.add(accession)
+        indexed = index_history_page(
+            raw, db_path=db_path, cik=cik, manifest_sha256=manifest_sha256,
+            name=name, as_of=as_of, collected_at=collected_at, forms=forms,
+        )
+        if indexed["source_sha256"] in hashes:
+            # observations uniqueness is per digest, not per page name.
+            raise ValueError("HISTORY_BATCH_IDENTICAL_PAGE_BYTES")
+        hashes.add(indexed["source_sha256"])
+        parsed.append((name, raw, indexed))
+    completed = []
+    new_filings = 0
+    for name, raw, indexed in parsed:
+        try:
+            saved = core.save_index(db_path, raw, indexed)
+        except (OSError, sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+            done = ",".join(completed)
+            raise ValueError(
+                f"HISTORY_BATCH_PARTIAL_WRITE:{len(completed)}/{len(parsed)}"
+                f":completed={done}:reason={type(exc).__name__}"
+            ) from exc
+        completed.append(name)
+        new_filings += saved["new_filings"]
+    return {
+        "status": "SAVED_BATCH" if new_filings else "REUSED_BATCH",
+        "pages_processed": len(completed),
+        "page_names": completed,
+        "new_filings": new_filings,
+        "history_manifest_sha256": manifest_sha256,
+        "total_input_bytes": total,
+        "provenance": "OFFLINE_UNVERIFIED",
+        "original_filing_authenticated": False,
+        "network_requests": 0,
+        "note": "Sequential idempotent writes. Not an atomic multi-page transaction.",
+    }
+
+
+def import_history_directory(*, directory: Path, db_path: Path,
+                             cik: str, manifest_sha256: str, as_of: str,
+                             collected_at: str, forms: frozenset[str],
+                             max_pages: int = 4) -> dict:
+    """Read only exact manifest-listed basenames from an explicit local folder."""
+    base = Path(directory).expanduser()
+    if base.is_symlink() or not base.is_dir():
+        raise ValueError("HISTORY_BATCH_DIRECTORY_INVALID")
+    if type(max_pages) is not int or not 1 <= max_pages <= 8:
+        raise ValueError("INVALID_HISTORY_BATCH_PAGE_LIMIT")
+    manifest = list_manifest_pages(
+        db_path=db_path, cik=cik,
+        manifest_sha256=manifest_sha256, as_of=as_of,
+    )
+    eligible = [item["name"] for item in manifest if item["eligible_by_start_date"]]
+    present = []
+    for name in eligible:
+        item = base / name
+        if item.is_symlink():
+            raise ValueError("HISTORY_BATCH_SYMLINK_REJECTED")
+        if item.exists():
+            if not item.is_file() or not 0 < item.stat().st_size <= core.MAX_JSON_BYTES:
+                raise ValueError("HISTORY_BATCH_FILE_INVALID")
+            present.append(name)
+    if not present or len(present) > max_pages:
+        raise ValueError("HISTORY_BATCH_NO_FILES_OR_PAGE_LIMIT")
+    raw_pages = {name: (base / name).read_bytes() for name in present}
+    return import_history_batch(
+        pages=raw_pages, db_path=db_path, cik=cik,
+        manifest_sha256=manifest_sha256, as_of=as_of,
+        collected_at=collected_at, forms=forms, max_pages=max_pages,
+    )
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="DL offline SEC historical continuation page importer")
+    parser = argparse.ArgumentParser(
+        description="DL offline SEC historical continuation page importer"
+    )
     parser.add_argument("--db", type=Path, required=True)
     parser.add_argument("--cik", required=True)
     parser.add_argument("--manifest-sha256", required=True)
-    parser.add_argument("--name", required=True)
-    parser.add_argument("--input-json", type=Path, required=True)
+    parser.add_argument("--name")
+    parser.add_argument("--input-json", type=Path)
+    parser.add_argument("--batch-dir", type=Path)
+    parser.add_argument("--list-manifest", action="store_true")
+    parser.add_argument("--max-pages", type=int, default=4)
     parser.add_argument("--as-of", required=True)
-    parser.add_argument("--collected-at", required=True,
+    parser.add_argument("--collected-at",
                         help="Honest, timezone-aware local observation time; not SEC attestation")
     parser.add_argument("--forms", default="10-K,10-K/A,10-Q,10-Q/A,8-K,8-K/A")
     args = parser.parse_args(argv)
     try:
-        path = args.input_json.expanduser()
-        if (path.is_symlink() or not path.is_file()
-                or not 0 < path.stat().st_size <= core.MAX_JSON_BYTES):
-            raise ValueError("INVALID_BOUNDED_OFFLINE_HISTORY_FILE")
-        raw = path.read_bytes()
-        result = import_history_page(
-            raw=raw, db_path=args.db, cik=args.cik,
-            manifest_sha256=args.manifest_sha256, name=args.name,
-            as_of=args.as_of, collected_at=args.collected_at,
-            forms=core.parse_forms(args.forms),
-        )
+        options = [bool(args.input_json), bool(args.batch_dir), args.list_manifest]
+        if sum(options) != 1:
+            raise ValueError("SELECT_ONE_SINGLE_BATCH_OR_MANIFEST_MODE")
+        if args.list_manifest:
+            if args.name or args.collected_at:
+                raise ValueError("MANIFEST_LISTING_CANNOT_IMPORT")
+            result = {"status": "READ_ONLY_UNVERIFIED_MANIFEST", "pages":
+                      list_manifest_pages(db_path=args.db, cik=args.cik,
+                                          manifest_sha256=args.manifest_sha256,
+                                          as_of=args.as_of)}
+        else:
+            if args.collected_at is None:
+                raise ValueError("COLLECTION_TIMESTAMP_REQUIRED")
+            forms = core.parse_forms(args.forms)
+            if args.batch_dir is not None:
+                if args.name:
+                    raise ValueError("BATCH_CANNOT_SELECT_SINGLE_NAME")
+                result = import_history_directory(
+                    directory=args.batch_dir, db_path=args.db,
+                    cik=args.cik, manifest_sha256=args.manifest_sha256,
+                    as_of=args.as_of, collected_at=args.collected_at,
+                    forms=forms, max_pages=args.max_pages,
+                )
+            else:
+                if not args.name:
+                    raise ValueError("SINGLE_HISTORY_NAME_REQUIRED")
+                path = args.input_json.expanduser()
+                if (path.is_symlink() or not path.is_file()
+                        or not 0 < path.stat().st_size <= core.MAX_JSON_BYTES):
+                    raise ValueError("INVALID_BOUNDED_OFFLINE_HISTORY_FILE")
+                result = import_history_page(
+                    raw=path.read_bytes(), db_path=args.db, cik=args.cik,
+                    manifest_sha256=args.manifest_sha256, name=args.name,
+                    as_of=args.as_of, collected_at=args.collected_at,
+                    forms=forms,
+                )
         print(json.dumps(result, sort_keys=True, ensure_ascii=False))
         return 0
     except (OSError, sqlite3.Error, ValueError, KeyError, TypeError) as exc:
-        print(json.dumps({"status": "DL_HISTORY_FAILED", "reason": str(exc)[:350]}), file=sys.stderr)
+        print(json.dumps({"status": "DL_HISTORY_FAILED", "reason": str(exc)[:350]}),
+              file=sys.stderr)
         return 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
