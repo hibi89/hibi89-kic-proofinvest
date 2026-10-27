@@ -1,3 +1,13 @@
+## P9 — 관측 이전 접수 시각 검증 (2026-10-28 KST)
+
+최근 공시와 과거 `filings.files`의 **알려진 timezone-aware `acceptanceDateTime`**이 로컬 `collected_at` 관측 시각보다 늦으면 그 행은 제외합니다. 종전 구현은 `filingDate` 날짜만 비교하여 **같은 날짜 내 미래 접수**를 잠재적으로 포함할 수 있었습니다. 이번 수정은 `2026-10-28T12:00:00+09:00` (03:00 UTC) 행이 02:59:59 UTC 관측에서는 제외되고 03:00 UTC 관측에서 포함되는 경계를 명시합니다.
+
+소스 파일: `disclosure_lightning/core.py` (최근), `disclosure_lightning/history.py` (과거); 회귀 테스트 2개 추가: `tests/test_disclosure_lightning.py`. 인식 불가능한/시간대 없는 `acceptanceDateTime`은 기존과 같이 `accepted_at=null`로 처리하며, 명시적 정밀 시간 근거가 없다고 보아 오프라인 공시 출처가 인증되었다고 주장하지 않습니다. **인덱스 JSON에 기재된 자체 시각은 독립적으로 인증되지 않은 값**입니다. 기존 원본 해시·SQLite 스키마와 미병합 KIC 경계는 변경하지 않았습니다.
+
+로컬에서 기존 P6 shim을 확보했지만 현재 전체 저장소의 checkout이 아니므로 **P9 전체 CI/테스트 PASS는 미검증**입니다. GitHub Actions push run을 반환하지 않는 connector 도구를 통해 0 status를 관찰했으며, 0건은 통과가 아닙니다.
+
+---
+
 ## P8 — 수정공시 후보 확인 (오프라인·읽기 전용)
 
 SEC Submissions 인덱스를 로컬 SQLite에 저장한 뒤 다음 명령으로 수정공시(10-K/A, 10-Q/A, 8-K/A)의 **검토용** 후보만 조회합니다.
