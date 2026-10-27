@@ -1,3 +1,9 @@
+## 2026-10-27 KST — KIC SEC v3 private submission candidate
+- Verified official SEC Apple FY2025 10-K accession 0000320193-25-000079 and official 2025/24 net sales USD millions 416,161/391,035; manually recomputed +6.43%, **not software auto-SEC fetch**. Separate v3 10-page/493,063-byte PDF and PPTX, visual/page/link checks PASS. Older frozen and v2 remain intact.
+- Public [review memo](SEC_V3_PRELIM_QA_20261027.md); private candidate kept OUT of public GitHub, Library persistence and DAKER. No user title/file authorization, no changed pinned-hash preflight, no final receipt or Elo vote.
+- Previous program CI #40491440843 `257/257 PASS` offline; real SEC API/LLM/ML/DL/Production remain NOT_VERIFIED. 60-day canonical 29 DONE / 3 BLOCKED / 28 NOT_STARTED unchanged.
+- **NEXT:** owner approves *exact candidate PDF and DAKER title*, then separately authorize verification of new immutable hash before portal upload and final receipt. No source code, user originals, credentials, deployment or external account modified. Actual time unmeasured.
+
 ## 2026-10-27 KST — verified MVP UI trace handoff (out-of-plan task)
 1. **Goal / architecture:** Preserve existing offline Research → Verification → Risk, connect an explicit trace of existing bounded PLAN/EVALUATE/DECIDE/REPORT to manual-case Streamlit. No LLM/autotrading/SEC live fetch.
 2. **Completed / rationale:** Selected minimal Streamlit checkbox bridge over independent FastAPI/React dashboard; no new dependencies or irreversible redesign. Source and 3 new tests at `4fa5152fe84fad95ea311af89875aa1362dee949`.
