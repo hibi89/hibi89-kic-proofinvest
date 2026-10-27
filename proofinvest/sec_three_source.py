@@ -33,6 +33,7 @@ from disclosure_lightning.originals import (
 from proofinvest.dl_bridge import assess_dl_sec_handoff
 from proofinvest.sec_companyfacts import _date, verify_sec_annual_revenue
 from proofinvest.local_sec_packet import _json_object
+from proofinvest.sec_capture_bundle import preflight_local_bundle_path, save_local_capture_bundle
 
 _SEC_DOMAIN = "https://data.sec.gov"
 _MAX_FACTS = 8_000_000
@@ -91,6 +92,8 @@ def run_sec_three_source_review(
     user_agent: str = "", allow_network: bool = False,
     acknowledge_three_requests: bool = False,
     claimed_growth_pct: str | None = None,
+    output_bundle: Path | None = None,
+    acknowledge_local_retention: bool = False,
 ) -> dict[str, Any]:
     """Fetch at most one submissions, one CompanyFacts, one original HTTPS GET.
 
@@ -119,6 +122,13 @@ def run_sec_three_source_review(
             not isinstance(claimed_growth_pct, str)
             or re.fullmatch(r"[+-]?\d{1,5}(?:\.\d{1,4})?", claimed_growth_pct) is None)):
         return _error("INVALID_GROWTH_CLAIM", "preflight", 0)
+    if output_bundle is not None:
+        if acknowledge_local_retention is not True:
+            return _error("EXPLICIT_LOCAL_RETENTION_APPROVAL_REQUIRED", "preflight", 0)
+        try:
+            preflight_local_bundle_path(output_bundle)
+        except (OSError, ValueError, TypeError):
+            return _error("LOCAL_BUNDLE_TARGET_UNAVAILABLE", "preflight", 0)
     attempts = 0
     stage = "submissions"
     try:
@@ -188,7 +198,7 @@ def run_sec_three_source_review(
                     or stored.get("source_uri") != linked.get("filing_source_uri")
                     or stored.get("filing_sha256") != hashlib.sha256(original).hexdigest()):
                 raise ValueError("SEC_ORIGINAL_LOCAL_ARCHIVE_INTEGRITY_FAILURE")
-            return {
+            report = {
                 "schema": "proofinvest.sec-3source-explicit-transport.v1",
                 "status": "three_sec_https_responses_captured_unverified",
                 "http_requests_attempted": attempts,
@@ -227,6 +237,16 @@ def run_sec_three_source_review(
                 "note": ("Only SEC HTTPS transport shape, response digests and local arithmetic checked; "
                          "no independent origin, financial truth or redistribution-rights audit."),
             }
+            if output_bundle is not None:
+                stage = "local_bundle"
+                save_local_capture_bundle(
+                    output_bundle, receipt=report,
+                    submissions=raw_submissions, companyfacts=raw_facts,
+                    original_filing=original,
+                )
+                report["capture_bytes_persisted"] = True
+                report["local_bundle_status"] = "SAVED_NEW_NO_OVERWRITE_NOT_SEC_AUTHENTICATED"
+            return report
     except (ValueError, OSError, TypeError, KeyError, OverflowError, RecursionError,
             urllib.error.URLError, http.client.HTTPException):
         # Never leak UA/contact, file content or URLs with unexpected payloads.
@@ -244,6 +264,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--claimed-growth-pct", default=None)
     p.add_argument("--allow-network", action="store_true")
     p.add_argument("--acknowledge-three-requests", action="store_true")
+    p.add_argument("--output-bundle", type=Path,
+                   help="Optional NEW local ZIP; no overwrite and no upload.")
+    p.add_argument("--acknowledge-local-retention", action="store_true",
+                   help="Separately permit storing three raw SEC responses locally.")
     args = p.parse_args(argv)
     response = run_sec_three_source_review(
         cik=args.cik, accession=args.accession,
@@ -252,6 +276,8 @@ def main(argv: list[str] | None = None) -> int:
         user_agent=os.environ.get("PROOFINVEST_SEC_USER_AGENT", ""),
         allow_network=args.allow_network,
         acknowledge_three_requests=args.acknowledge_three_requests,
+        output_bundle=args.output_bundle,
+        acknowledge_local_retention=args.acknowledge_local_retention,
     )
     print(json.dumps(response, sort_keys=True, ensure_ascii=False, indent=2))
     return 0 if response["status"] == "three_sec_https_responses_captured_unverified" else 2
