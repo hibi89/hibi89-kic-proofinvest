@@ -13,7 +13,7 @@ from disclosure_lightning.originals import (
     locate_original, persist_original, read_original_bytes,
 )
 from proofinvest.dl_source_span import anchored_source_span
-from proofinvest.dl_bridge import assess_dl_sec_handoff
+from proofinvest.dl_bridge import assess_dl_sec_handoff, assess_dl_original_handoff
 from proofinvest.kic_dl_demo import (
     AS_OF, COLLECTED_AT, SYNTHETIC_CIK, SYNTHETIC_ACCESSION,
     synthetic_companyfacts, synthetic_submissions,
@@ -65,12 +65,14 @@ def replay_original() -> dict:
         as_of=AS_OF, claimed_growth_pct="100.00",
     )
     linked = assess_dl_sec_handoff(indexed, verdict)
+    original_link = assess_dl_original_handoff(linked, span)
     if not (
         first["new_filings"] == 2 and saved["status"] == "SAVED"
         and repeated["status"] == "REUSED"
         and original == SYNTHETIC_HTML
         and span["status"] == "untrusted_original_span_for_review"
         and linked["status"] == "linked_metadata_only"
+        and original_link["status"] == "linked_untrusted_original_span_for_review"
         and not span["authenticated_external_source"]
         and not linked["authenticated_external_source"]
     ):
@@ -90,6 +92,8 @@ def replay_original() -> dict:
         "escaped_context": span["context_escaped_html"],
         "source_span_status": span["status"],
         "kic_metadata_link": linked["status"],
+        "kic_original_crosslink": original_link["status"],
+        "original_span_metadata_linked": original_link["span_metadata_linked"],
         "authenticated_external_source": False,
         "real_sec_network_called": False,
         "real_filing_retrieved": False,

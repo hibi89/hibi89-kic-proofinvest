@@ -117,7 +117,83 @@ def assess_dl_sec_handoff(index: Any, numeric_verdict: Any) -> dict[str, Any]:
         "accession": accession,
         "filing_date": filed.isoformat(),
         "submissions_sha256": digest,
+        "filing_source_uri": url,
         "note": ("DL metadata and ProofInvest numeric verdict share CIK/accession/date "
                  "and UTC as-of eligibility. Neither SEC original filing nor "
                  "financial values have been independently authenticated."),
+    }
+
+
+def _original_blocked(reason: str) -> dict[str, Any]:
+    return {
+        "schema": "proofinvest.dl-original-crosslink.v1",
+        "status": "unavailable", "reason_code": reason,
+        "span_metadata_linked": False,
+        "authenticated_external_source": False,
+        "numeric_facts_authenticated": False,
+        "archived_bytes_rechecked": False,
+        "live_api_called": False,
+        "official_contest_submission": False,
+    }
+
+
+def assess_dl_original_handoff(link: Any, span: Any) -> dict[str, Any]:
+    """Correlate validated KIC/DL metadata and a caller-supplied local byte span.
+
+    This checks cross-document identity and plausible byte metadata. It does
+    NOT re-read the archive, authenticate SEC, verify passage semantics, or
+    trust escaped HTML supplied by an external caller. Use anchored_source_span
+    first to read and hash-check an actual local archive.
+    """
+    if not isinstance(link, Mapping) or not isinstance(span, Mapping):
+        return _original_blocked("MALFORMED_ORIGINAL_HANDOFF")
+    if (link.get("status") != "linked_metadata_only"
+            or link.get("trace_linked") is not True
+            or link.get("authenticated_external_source") is not False
+            or link.get("original_filing_downloaded") is not False
+            or link.get("live_api_called") is not False
+            or span.get("status") != "untrusted_original_span_for_review"
+            or span.get("authenticated_external_source") is not False
+            or span.get("numerical_claim_verified") is not False
+            or span.get("live_api_called") is not False):
+        return _original_blocked("UNTRUSTED_ORIGINAL_HANDOFF")
+
+    if (span.get("issuer_cik") != link.get("issuer_cik")
+            or span.get("accession") != link.get("accession")
+            or not isinstance(link.get("filing_source_uri"), str)
+            or span.get("source_uri") != link.get("filing_source_uri")
+            or span.get("input_origin") not in (
+                "OFFLINE_FILE_UNVERIFIED", "SEC_HTTPS_RESPONSE_UNVERIFIED"
+            )):
+        return _original_blocked("ORIGINAL_FILING_IDENTITY_MISMATCH")
+
+    digest = span.get("filing_sha256")
+    phrase = span.get("literal_ascii_phrase")
+    if (not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            or not isinstance(phrase, str) or not 4 <= len(phrase) <= 128
+            or not phrase.isascii()
+            or any(ord(ch) < 32 or ord(ch) > 126 for ch in phrase)):
+        return _original_blocked("INVALID_ORIGINAL_SPAN_METADATA")
+    fields = ("original_bytes_size", "start_byte", "end_byte_exclusive",
+              "context_start_byte", "context_end_byte_exclusive")
+    if any(type(span.get(field)) is not int for field in fields):
+        return _original_blocked("INVALID_ORIGINAL_SPAN_METADATA")
+    size, start, end, ctx_start, ctx_end = (span[field] for field in fields)
+    if not (0 <= ctx_start <= start < end <= ctx_end <= size
+            and end - start == len(phrase)):
+        return _original_blocked("INVALID_ORIGINAL_SPAN_METADATA")
+
+    return {
+        **_original_blocked("STRUCTURAL_CROSSLINK_NOT_AUTHENTICATION"),
+        "status": "linked_untrusted_original_span_for_review",
+        "span_metadata_linked": True,
+        "issuer_cik": link["issuer_cik"],
+        "accession": link["accession"],
+        "source_uri": link["filing_source_uri"],
+        "original_filing_sha256": digest,
+        "start_byte": start,
+        "end_byte_exclusive": end,
+        "note": ("CIK/accession/archive URL and byte-offset metadata match "
+                 "caller-supplied records. SEC identity and facts are not verified."),
     }
