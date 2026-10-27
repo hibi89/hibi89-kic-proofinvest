@@ -31,6 +31,48 @@ def _clean(value: str) -> str:
     return WS.sub(" ", CTRL.sub(" ", value)).strip()
 
 
+# Only locally archived HTML may use explicitly declared, bounded legacy
+# charsets. Never guess an encoding from arbitrary undecodable bytes.
+_HTML_TYPES = frozenset({"text/html", "application/xhtml+xml"})
+_META_TAG = re.compile(rb"<meta\b[^>]{0,512}>", re.IGNORECASE)
+_META_CHARSET = re.compile(
+    rb"\bcharset\s*=\s*['\"]?\s*([a-zA-Z0-9_-]+)", re.IGNORECASE
+)
+_HTML_CODECS = {
+    "utf-8": ("utf-8", "utf-8"),
+    "utf8": ("utf-8", "utf-8"),
+    "windows-1252": ("cp1252", "windows-1252"),
+    # HTML treats ISO-8859-1 declarations as Windows-1252 for 0x80..0x9F.
+    # This mapping is for HTML only, not for XML or raw text.
+    "iso-8859-1": ("cp1252", "windows-1252"),
+}
+
+
+def _decode_local_text(raw: bytes, kind: str) -> tuple[str, str, str | None]:
+    declared = None
+    if kind in _HTML_TYPES:
+        for tag in _META_TAG.finditer(raw[:4096]):
+            match = _META_CHARSET.search(tag.group())
+            if match is not None:
+                declared = match.group(1).decode("ascii").lower()
+                break
+    if raw.startswith(b"\xef\xbb\xbf"):
+        if declared is not None and declared not in ("utf-8", "utf8"):
+            raise ValueError("CONFLICTING_UTF8_BOM_AND_HTML_CHARSET")
+        codec, applied = "utf-8-sig", "utf-8"
+    elif declared is not None:
+        if declared not in _HTML_CODECS:
+            raise ValueError("UNSUPPORTED_DECLARED_HTML_CHARSET")
+        codec, applied = _HTML_CODECS[declared]
+    else:
+        codec, applied = "utf-8", "utf-8"
+    try:
+        content = raw.decode(codec, errors="strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError("UNSUPPORTED_ENCODING_OR_INVALID_TEXT_BYTES") from exc
+    return content, applied, declared
+
+
 def _fragment(text: str, line: int, kind: str) -> dict:
     return {
         "text": text,
@@ -103,10 +145,7 @@ def extract_bytes(raw: bytes, *, content_type: str,
     # Restrict it to a local-only UTF-8 plain-text parse (not HTML inference).
     if content_type == "application/octet-stream" and input_origin != "OFFLINE_FILE_UNVERIFIED":
         raise ValueError("OPAQUE_LIVE_CONTENT_NOT_PARSABLE")
-    try:
-        content = raw.decode("utf-8-sig", errors="strict")
-    except UnicodeDecodeError as exc:
-        raise ValueError("UNSUPPORTED_ENCODING_NOT_UTF8") from exc
+    content, applied_encoding, declared_encoding = _decode_local_text(raw, content_type)
     if len(content) > 25_000_000:
         raise ValueError("TEXT_DECODE_LIMIT")
     fragments: list[dict] = []
@@ -167,6 +206,9 @@ def extract_bytes(raw: bytes, *, content_type: str,
         "input_origin": input_origin,
         "source_authenticity_verified": False,
         "content_type": content_type,
+        "decoded_encoding": applied_encoding,
+        "html_meta_declared_charset": declared_encoding,
+        "charset_claim_verified": False,
         "extraction_method": "stdlib-htmlparser" if accuracy.startswith("LINE_HINT") else "utf8-lines",
         "source_locator_accuracy": accuracy,
         "block_count": len(fragments),
