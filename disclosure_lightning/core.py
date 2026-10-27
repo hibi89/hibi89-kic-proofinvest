@@ -258,6 +258,115 @@ CREATE TABLE IF NOT EXISTS filing_observations(
 """
 
 
+def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
+    """Reject caller-edited index metadata that is not supported by raw bytes."""
+    digest = hashlib.sha256(raw).hexdigest()
+    if (indexed.get("schema_version") != "1.0"
+            or indexed.get("source_sha256") != digest
+            or indexed.get("source_bytes") != len(raw)
+            or indexed.get("provider") != PROVIDER):
+        raise ValueError("Index source digest, size, or schema does not match bytes")
+    target = cik10(indexed.get("issuer_cik"))
+    cutoff = parse_day(indexed.get("as_of_cutoff"))
+    observed = _observation_time(indexed.get("collected_at"), cutoff=cutoff)
+    if observed != indexed.get("collected_at"):
+        raise ValueError("Index observation timestamp is not canonical")
+    provenance = indexed.get("provenance")
+    if provenance not in ("OFFLINE_UNVERIFIED", "SEC_HTTPS_RESPONSE"):
+        raise ValueError("Invalid index provenance")
+
+    payload = _validate_raw(raw)
+    if "cik" in payload:
+        source_cik = payload.get("cik")
+        if (type(source_cik) not in (int, str) or not str(source_cik).isascii()
+                or not str(source_cik).isdecimal() or not int(str(source_cik))
+                or cik10(str(int(str(source_cik)))) != target):
+            raise ValueError("Index issuer CIK does not match source bytes")
+        recent = payload.get("filings")
+        recent = recent.get("recent") if isinstance(recent, dict) else None
+        expected_uri = f"https://data.sec.gov/submissions/CIK{target}.json"
+        history = False
+    else:
+        # Historical continuation files are unwrapped arrays whose name was
+        # already constrained by the pinned manifest during indexing.
+        recent = payload
+        source_uri = indexed.get("source_uri")
+        if (not isinstance(source_uri, str) or re.fullmatch(
+                rf"https://data\.sec\.gov/submissions/CIK{target}-submissions-[0-9]{{3}}\.json",
+                source_uri, flags=re.ASCII) is None
+                or not isinstance(indexed.get("history_manifest_sha256"), str)
+                or re.fullmatch(r"[0-9a-f]{64}", indexed["history_manifest_sha256"],
+                                flags=re.ASCII) is None
+                or provenance != "OFFLINE_UNVERIFIED"):
+            raise ValueError("Historical index source is not bound to a pinned page")
+        expected_uri = source_uri
+        history = True
+    if not isinstance(recent, dict):
+        raise ValueError("Index source filing arrays are missing")
+    accessions = recent.get("accessionNumber")
+    if not isinstance(accessions, list):
+        raise ValueError("Index source accession array is missing")
+    n = len(accessions)
+    forms = _column(recent, "form", n)
+    days = _column(recent, "filingDate", n)
+    documents = _column(recent, "primaryDocument", n)
+    accepted = recent.get("acceptanceDateTime")
+    if accepted is not None and (not isinstance(accepted, list) or len(accepted) != n):
+        raise ValueError("Index source acceptance timestamps are misaligned")
+    by_accession: dict[str, int] = {}
+    for i, accession in enumerate(accessions):
+        if isinstance(accession, str):
+            if accession in by_accession:
+                raise ValueError("Duplicate source accession prevents safe index save")
+            by_accession[accession] = i
+
+    records = indexed.get("filings")
+    if (not isinstance(records, list) or type(indexed.get("indexed_count")) is not int
+            or indexed["indexed_count"] != len(records)
+            or indexed.get("source_uri") != expected_uri):
+        raise ValueError("Index summary does not match source bytes")
+    observed_day = date.fromisoformat(observed[:10])
+    observed_instant = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+    seen = set()
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError("Indexed filing record must be an object")
+        accession = record.get("accession")
+        if (not isinstance(accession, str) or accession not in by_accession
+                or accession in seen):
+            raise ValueError("Indexed accession is absent or duplicated in source bytes")
+        seen.add(accession)
+        i = by_accession[accession]
+        filed = parse_day(days[i])
+        accepted_at = _accepted(accepted[i]) if accepted is not None else None
+        if (record.get("schema_version") != "1.0"
+                or record.get("provider") != PROVIDER
+                or record.get("issuer_cik") != target
+                or record.get("form") != forms[i]
+                or record.get("form") not in ALLOWED_FORMS
+                or record.get("filed_at") != filed.isoformat()
+                or record.get("accepted_at") != accepted_at
+                or record.get("collected_at") != observed
+                or record.get("source_uri") != _source_uri(target, accession, documents[i])
+                or record.get("index_source_uri") != expected_uri
+                or record.get("index_raw_sha256") != digest
+                or record.get("raw_sha256") is not None
+                or record.get("as_of_cutoff") != cutoff.isoformat()
+                or record.get("amends_accession") is not None):
+            raise ValueError("Indexed filing metadata does not match source row")
+        status = ("OFFLINE_SOURCE_UNVERIFIED" if history or provenance == "OFFLINE_UNVERIFIED"
+                  else "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED")
+        if record.get("evidence_status") != status:
+            raise ValueError("Indexed filing evidence status does not match provenance")
+        if filed > cutoff or filed > observed_day:
+            raise ValueError("Indexed filing is later than the as-of observation")
+        if accepted_at is None and filed == observed_day:
+            raise ValueError("Same-day filing lacks an offset-aware acceptance time")
+        if (accepted_at is not None
+                and datetime.fromisoformat(accepted_at).astimezone(timezone.utc) > observed_instant):
+            raise ValueError("Indexed filing acceptance follows its observation time")
+
+
 def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     """Atomic, repeatable ingestion with original response bytes preserved."""
     candidate = Path(db_path).expanduser()
@@ -268,10 +377,9 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
         raise ValueError("DB path must be a regular file")
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_JSON_BYTES:
         raise ValueError("Original SEC JSON bytes required")
-    if (not isinstance(indexed, dict) or indexed.get("provider") != PROVIDER
-            or indexed.get("source_sha256") != hashlib.sha256(raw).hexdigest()):
-        raise ValueError("Index evidence digest or provider does not match supplied bytes")
-    cik10(indexed.get("issuer_cik"))
+    if not isinstance(indexed, dict):
+        raise ValueError("Index evidence must be an object")
+    _validate_index_for_save(raw, indexed)
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
     with closing(sqlite3.connect(path)) as conn:

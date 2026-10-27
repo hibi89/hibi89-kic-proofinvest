@@ -264,6 +264,25 @@ class DisclosureLightningTests(unittest.TestCase):
             core.save_index(self.db, self.raw, bad)
         self.assertFalse(self.db.exists())
 
+    def test_rejects_caller_edited_index_metadata_before_creating_db(self):
+        import copy
+
+        wrong_issuer = copy.deepcopy(self.indexed())
+        wrong_issuer["issuer_cik"] = "0000000001"
+        for record in wrong_issuer["filings"]:
+            record["issuer_cik"] = "0000000001"
+        wrong_document = copy.deepcopy(self.indexed())
+        wrong_document["filings"][0]["filed_at"] = "2020-01-01"
+
+        for name, candidate, reason in (
+                ("wrong-issuer", wrong_issuer, "issuer CIK"),
+                ("wrong-document", wrong_document, "does not match source row")):
+            with self.subTest(name=name):
+                db = self.root / f"{name}.sqlite3"
+                with self.assertRaisesRegex(ValueError, reason):
+                    core.save_index(db, self.raw, candidate)
+                self.assertFalse(db.exists())
+
     def test_user_agent_placeholders_and_control_characters_rejected_pre_http(self):
         invalid = (
             "", "DisclosureLightning contact@example.com",
