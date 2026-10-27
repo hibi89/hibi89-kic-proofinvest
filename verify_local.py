@@ -140,8 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         "python": sys.version.split()[0],
         "git": identity,
         "mode": "FULL" if args.full else "CORE",
-        "network_requests": 0,
-        "real_customer_database_touched": False,
+        "network_requests_by_verifier": 0,
+        "child_test_network_calls_instrumented": False,
+        "customer_data_intentionally_accessed_by_verifier": False,
         "results": results,
         "overall": "PASS" if passed else "FAIL",
     }
