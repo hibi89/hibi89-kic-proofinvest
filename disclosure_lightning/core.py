@@ -211,8 +211,11 @@ CREATE TABLE IF NOT EXISTS filing_observations(
 
 def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     """Atomic, repeatable ingestion with original response bytes preserved."""
-    path = Path(db_path).expanduser().resolve()
-    if path.exists() and (path.is_symlink() or not path.is_file()):
+    candidate = Path(db_path).expanduser()
+    if candidate.is_symlink():
+        raise ValueError("DB path cannot be a symbolic link")
+    path = candidate.resolve()
+    if path.exists() and not path.is_file():
         raise ValueError("DB path must be a regular file")
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
