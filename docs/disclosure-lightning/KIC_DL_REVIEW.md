@@ -1,3 +1,8 @@
+## 2026-10-28 KST — KIC read-only offline evidence export
+- Code `lead/kic@1c1ab82afce51db73a2111034c313b2f3d9cb8a4` adds KIC-owned `proofinvest.evidence_report`; composes **synthetic** canonical DL stored source lineage and SEC-format numeric proof in deterministic JSON and Markdown. Enforces separate index-vs-original SHA scopes, CIK/accession/source URL, literal byte span, and all negative authentication flags. No direct writes to `disclosure_lightning/` or DL `feature/disclosure-lightning`.
+- [GitHub Actions #40538844121](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40538844121) SUCCESS **418/418 offline tests** (+10). Report explicitly states the artificial literal marker is **not evidence for financial values**, no SEC HTTP or official KIC/DAKER submission.
+- DL tech lead should preserve existing KIC bridge fields/status flags; do not interpret report as validation of a real SEC original. No change to frozen private prelim PDF.
+
 ## 2026-10-28 KST — KIC lead citation UI over already integrated DL archive
 - Independent KIC code `e1c94598b1a5eaee8c5e878c7f2b8ed913a5b72b` adds a synthetic-only Streamlit source card to `streamlit_app.py` (DL + KIC join from `proofinvest.kic_dl_original_demo.replay_original`), exposing pinned local original-file SHA256/CIK/accession/byte offsets. No direct DL canonical engine alteration, `feature/disclosure-lightning` untouched.
 - [Exact-code GitHub CI #40537627902](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40537627902) **408/408 PASS**, seven new tests including AppTest; archive excerpt is HTML-entity escaped and shown only via `st.code`, never markdown unsafe HTML.

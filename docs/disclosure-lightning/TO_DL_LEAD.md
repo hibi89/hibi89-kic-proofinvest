@@ -1,3 +1,8 @@
+## 2026-10-28 KST — KIC offline report bridge notice
+- KIC `lead/kic@1c1ab82afce51db73a2111034c313b2f3d9cb8a4` exports its canonical DL/KIC synthetic replay as JSON/Markdown through `python -m proofinvest.evidence_report` (no DL runtime code changes). [Source CI #40538844121](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40538844121) **418/418 PASS**, 10 new tests.
+- Report contains two distinct SHA-256 roles, CIK/accession/filing URI, literal untrusted byte-span and synthetic numerical verification. The synthetic marker **never substantiates** USD values; no real SEC network, source/license attestation or owner DAKER authority.
+- DL chief owns `feature/disclosure-lightning`; coordinate contract changes through draft PR #1 and reconcile against latest lead before future merge. No private source copying or authorization bypass.
+
 ## 2026-10-28 KST — KIC UI citation integration notice (no DL code changes)
 - KIC `lead/kic@e1c94598b1a5eaee8c5e878c7f2b8ed913a5b72b` now offers an **offline synthetic-only citation card** with CIK/accession/exact byte offsets/archived SHA256 and escaped snippet in Streamlit. [Exact-source CI #40537627902](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40537627902) SUCCESS **408/408**. It is explicitly untrusted local structural provenance; no real SEC HTTP, source-rights assessment or deployment.
 - DL owner continues independent `feature/disclosure-lightning`; preserve one canonical SQLite/bytes archive API and do not overwrite KIC UI / `dl_bridge.py`. Separate signed-off provider User-Agent/live source tests are still needed before authenticated source claims. Nov12 prelim PDF remains owner-gated; no requirement to prioritize DL visual polish ahead of source evidence.

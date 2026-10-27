@@ -1,3 +1,9 @@
+## 2026-10-28 KST — EXTRA deterministic KIC/DL offline evidence report
+- **100/100 DONE (independent unscheduled functional increment):** 20/20 reviewed canonical synthetic DL index/raw-byte and SEC numeric contracts; 40/40 implemented fail-closed JSON/Markdown report builder and exclusive-create CLI output; 30/30 GitHub [CI #40538844121](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40538844121) **418/418 tests** with ten new security/functional tests; 10/10 code push and handoff documented (docs CI successor check separate).
+- Code SHA `1c1ab82afce51db73a2111034c313b2f3d9cb8a4` in KIC `lead/kic`, new `proofinvest/evidence_report.py` and `tests/test_evidence_report.py`; no DL-owned code change, no new API/model fees, private files or DAKER.
+- **This unit remaining 0h base+0h contingency**, actual time **unmeasured**. Real SEC source rights, provider network, private PDF approval/portal and Production are **separate open tasks**, not zero-hour.
+- Canonical 60-day plan unchanged **29 DONE / 3 BLOCKED / 28 NOT_STARTED**. NEXT local Streamlit synthetic export or atomic file protection, not visual polish; real SEC requires explicit contact-policy opt-in.
+
 ## 2026-10-28 KST — EXTRA synthetic DL original source citation UI
 - **Standalone score 100/100 DONE:** 20/20 preexisting DL archival read/UI trust boundary, 40/40 new Streamlit mode + strict attestation flags and code-only escaped source snippet, 30/30 seven new test methods + [exact code CI #40537627902](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40537627902) **408/408 PASS**, 10/10 GitHub source push and handoff recorded. Production/browser HTTP still NOT VERIFIED.
 - Code SHA `e1c94598b1a5eaee8c5e878c7f2b8ed913a5b72b`; `streamlit_app.py`, `proofinvest/kic_dl_original_demo.py`, `tests/test_dl_archive_streamlit.py`; KIC `lead/kic` branch only, existing synthetic/manual/SEC UI modes untouched, no added model/API costs.
