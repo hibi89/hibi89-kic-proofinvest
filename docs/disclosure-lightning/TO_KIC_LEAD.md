@@ -1,3 +1,24 @@
+# DL → KIC technical chief — ORIGINAL FILE ARCHIVE P2, 2026-10-28 KST
+
+**Branch:** `feature/disclosure-lightning`, **code SHA:** `89cd9024e304b465447936ad58d2de407f2dbe9c` before subsequent documentation. [GitHub CI #40532494845](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40532494845) **SUCCESS, 373/373 Python tests** including 15 DL original-file tests. Docs are committed after the tested code; the latest HEAD should be CI-checked separately.
+
+## Implemented, not just documented
+
+- Canonical SEC metadata module `disclosure_lightning/core.py` remains unchanged, one SQLite schema; added **separate** `disclosure_lightning/originals.py` and `tests/test_disclosure_lightning_originals.py`.
+- Optional official SEC original HTML/XML/TXT GET is **disabled without explicit `--allow-network` and actual contact-bearing SEC User-Agent**. First obtain official SEC `submissions` metadata in the canonical DL DB; requests based on synthetic/unverified metadata are refused. Every URL is validated against its stored CIK/accession/primary file name, with no arbitrary external URL, redirects/proxy, auto retries or background fetching.
+- Both offline caller-supplied synthetic original bytes and simulated SEC HTTP responses can be saved as **exact byte BLOBs with SHA-256**, file size/MIME labels and conservative provenance. Storage is append-only per unique filing/digest; replay deduplicates. `read_original_bytes(db_path,cik,accession,sha256)` retrieves a specific saved original read-only only after re-hashing bytes and detecting corruption. Neither this checksum nor an HTTP 200 means SEC financial claims are authenticated.
+- [Detailed reproduction/limits](ORIGINAL_FILE_ARCHIVE.md). Public repo contains NO fetched SEC issuer originals, credentials, private Bid_Owl source or user data.
+- **KIC lead independently merged offline P0 end-to-end** via [PR #2](https://github.com/hibi89/hibi89-kic-proofinvest/pull/2) on `lead/kic` (KIC CI 366 PASS per lead review ledger). DL original-files layer here is **NOT YET** part of that merged synthetic KIC path or a report parser. Keep `feature/disclosure-lightning` → `lead/kic` [draft PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1) unmerged pending schema/security and original-byte KIC consumer review.
+- **Actual live SEC response, source authenticity, full filing content receipt, SEC fair-use practical rate test, extended filing history, 429 backoff and future DL→KIC HTML extraction remain unverified**. Only GitHub CI synthetic tests + mock HTTP passed. This feature may not be claimed as production/live at KIC contest prelim.
+
+## Next action and approval gates
+
+1. KIC chief review safe SEC raw-body interface `read_original_bytes`; define narrow allowed consumer for source-span extraction, not numeric certification. Do not confuse `index_raw_sha256` (submissions JSON) with `filing_sha256` (primary document bytes).
+2. Only with a valid identifying SEC User-Agent and actual permitted live connectivity, verify ONE official issuer's `submissions` and original filing and capture response metadata in a local-only ledger; then add an end-to-end KIC extraction test.
+3. Later add paginated SEC filing history, one-step bounded retry/backoff, source spans, frontend and performance tests. 2026-11-12 KIC PDF-only preliminary remains wholly independent and requires owner approval.
+
+---
+
 # DL → KIC Lead — P1 canonical contract closed, CI verified (2026-10-28 KST)
 
 **Latest verified code:** `303c17bc073be7233e7b4dd836823e4cf2974315` | [CI run #40530744523](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40530744523) **358/358 PASS** (full repository Python tests, including DL producer synthetic KIC issuer/accession/date contract). **GitHub branch:** `feature/disclosure-lightning`. This CI SHA precedes this docs commit.
