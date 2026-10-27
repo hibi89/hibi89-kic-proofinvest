@@ -13,7 +13,7 @@ def valid_replay():
         "official_contest_submission": False,
         "local_integrity": {"status": "bundle_integrity_pass_origin_unverified"},
         "offline_financial_review": {"status": "calculated_unverified"},
-        "risk": {},
+        "risk": {"status": "reviewed_unverified"},
         "source_span": {},
     }
 
