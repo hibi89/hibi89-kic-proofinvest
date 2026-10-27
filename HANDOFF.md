@@ -1,3 +1,17 @@
+## DL P10 — 2026-10-28 KST | 10-field continuation
+1. **Goal:** Improve reliable point-in-time replay; a same-day acceptance timestamp missing/naive cannot establish filing existed at an earlier observation instant.
+2. **Design/change:** Recent and historical source indexers skip UTC same-day observations with `accepted_at=None`, while preserving P9 offset-aware exact instant gate. Earlier-day records retained; no new provider fetch, SQLite schema or issuer authenticity inference.
+3. **Verification:** Two new regression tests written; previous local P6 **core shim** suite 9/9 PASS, six isolated P10 UTC-gating logic cases PASS. Actual latest GitHub branch source tests `python -m unittest discover -s tests -v` and Actions CI **NOT RUN/VERIFIED** by this session.
+4. **Status:** Code/test pushed; no production, no full verified SEC source, no source-to-numeric claim changes. Full integration validation gate remains open.
+5. **Failure/recovery:** Container `git ls-remote` cannot resolve github.com, public GitHub Actions web fetch DisabledError, Github commit-status/PR-only workflow methods return no push run evidence. No force push; Git parent backup.
+6. **Repo/branch/code SHAs:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; core `2a0b26f21e30398c7afa7471d8fb5cec1ddf12e5`; history `601d3b75cc409fe4cbb131068935537aa8a7fad2`; tests `7652716a869a498ac9aac2d271a16b7795a59e77`, root docs successor verified separately.
+7. **Runtime/deploy:** stdlib `python -m disclosure_lightning` and `python -m disclosure_lightning.history` offline. DL Production URL: none; no published package.
+8. **Data/security:** Public synthetic tests only, no live SEC access, credentials, private Bid_Owl, customer files or KIC PDF/PPTX. Original byte SHA hash scope stays distinct from SEC metadata index SHA.
+9. **Next:** Independently obtain full real GitHub CI/workflow run ID or faithful checkout, run all tests and repair failures before claiming QA complete. KIC lead must review any eventual merge; no automatic DAKER submission.
+10. **Timestamp/evidence:** 2026-10-28 KST, code and tests pushed, isolated checks reported with caveat; full-source CI and real provider provenance remain unverified.
+
+---
+
 ## DL P9 — 2026-10-28 KST | 10-field continuation, feature branch only
 1. **Goal:** Fix point-in-time evidence leak in source indexers: filing filed on UTC same day but accepted later than locally recorded observation must not appear.
 2. **Design/change:** Use existing offset-aware `core._accepted`; compare UTC instant to `_observation_time` and exclude known future accepted filings in both `index_submissions` and `index_history_page`. Missing/naive timestamps remain unverifiable, not silently converted; no existing filing receipt rewrite.
