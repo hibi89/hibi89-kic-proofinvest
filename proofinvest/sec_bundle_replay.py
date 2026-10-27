@@ -14,6 +14,7 @@ from typing import Any
 
 from proofinvest.local_sec_packet import build_local_sec_review_packet
 from proofinvest.offline_evidence_triage import triage_offline_replay
+from proofinvest.local_risk_screen import screen_local_evidence
 from proofinvest.sec_capture_bundle import _read_checked_capture_bundle
 
 
@@ -113,6 +114,7 @@ def replay_local_capture(
             "No actual provider HTTP, agent execution, investment recommendation, or DAKER submission occurs.",
         ],
     }
+    result["risk"] = screen_local_evidence(result["offline_financial_review"], result["source_span"])
     result["human_review_triage"] = triage_offline_replay(result)
     return result
 
