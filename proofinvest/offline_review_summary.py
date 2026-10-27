@@ -19,7 +19,21 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
         "trade_authorized": False,
         "external_http_called": False,
     }
-    if not isinstance(replay, dict) or replay.get("status") != "offline_capture_replayed_unverified":
+    if not isinstance(replay, dict):
+        return summary
+    if replay.get("status") != "offline_capture_replayed_unverified":
+        # Preserve only stable, explicitly known failure codes; never echo
+        # untrusted exception text or local paths into compact output.
+        known_failures = {
+            "ARCHIVED_BYTES_OR_MANIFEST_INVALID",
+            "UNTRUSTED_OR_INCONSISTENT_ARCHIVED_CLOCK",
+            "ARCHIVED_DISCLOSURE_CANNOT_BE_REANALYZED",
+            "REPLAY_DIGEST_CONFLICT",
+            "REPLAY_TRUST_BOUNDARY_FAILED",
+        }
+        code = replay.get("reason_code")
+        if isinstance(code, str) and code in known_failures:
+            summary["reason_codes"] = [code]
         return summary
     triage = replay.get("human_review_triage")
     financial = replay.get("offline_financial_review")
