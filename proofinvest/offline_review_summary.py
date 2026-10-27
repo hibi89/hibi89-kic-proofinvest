@@ -16,6 +16,7 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
         "ixbrl_context_match": False,
         "numeric_text_match": False,
         "reason_codes": ["REPLAY_UNAVAILABLE"],
+        "review_actions": ["RECHECK_LOCAL_ARCHIVE"],
         "source_authenticated": False,
         "investment_recommendation": False,
         "trade_authorized": False,
@@ -91,4 +92,16 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
     codes = triage.get("reason_codes")
     summary["reason_codes"] = sorted(set(code for code in codes
         if isinstance(code, str) and code in allowed_codes)) if isinstance(codes, list) else []
+    actions = ["VERIFY_PROVIDER_ORIGIN_AND_RIGHTS"]
+    if summary["financial_status"] == "conflict":
+        actions.append("RECONCILE_FINANCIAL_CLAIM")
+    elif summary["financial_status"] != "calculated_unverified":
+        actions.append("RECALCULATE_FINANCIAL_EVIDENCE")
+    if summary["risk_status"] != "reviewed_unverified":
+        actions.append("REVIEW_LOCAL_RISK_FLAGS")
+    if not summary["ixbrl_context_match"]:
+        actions.append("INSPECT_IXBRL_CONTEXT_AND_UNITS")
+    if not summary["numeric_text_match"]:
+        actions.append("LOCATE_ORIGINAL_NUMERIC_TEXT")
+    summary["review_actions"] = actions
     return summary
