@@ -226,6 +226,33 @@ def list_originals(*, db_path: Path, cik: str, accession: str) -> list[dict]:
     ]
 
 
+
+def read_original_bytes(*, db_path: Path, cik: str, accession: str,
+                        sha256: str) -> bytes:
+    """Read exactly one persisted raw primary document; verify digest on read.
+
+    This returns untrusted original bytes, NOT normalized finance claims.
+    Never render them as trusted HTML without separate sanitization.
+    """
+    c, a = cik10(cik), _accession(accession)
+    if not isinstance(sha256, str) or re.fullmatch(
+            r"[0-9a-f]{64}", sha256, re.ASCII) is None:
+        raise ValueError("Invalid original filing SHA-256")
+    with closing(_read_conn(db_path)) as db:
+        row = db.execute(
+            "SELECT file_bytes FROM original_filing_receipts "
+            "WHERE issuer_cik=? AND accession=? AND sha256=?",
+            (c, a, sha256),
+        ).fetchone()
+    if row is None:
+        raise KeyError("Original filing receipt not found")
+    raw = row[0]
+    if (not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILING_BYTES
+            or hashlib.sha256(raw).hexdigest() != sha256):
+        raise ValueError("Saved original filing content integrity failed")
+    return raw
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="DL original SEC primary document archive (no unverified promotion)"
