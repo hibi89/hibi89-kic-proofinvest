@@ -1,3 +1,17 @@
+## DL P6 — 2026-10-28 KST; ten-field branch handoff
+1. **Goal/scope:** Implement minimum offline historical `filings.files` continuation without touching KIC lead or original 2026-11-12 prelim PDF contract.
+2. **Feature/design rationale:** `disclosure_lightning/history.py` uses pinned preexisting base SEC JSON observation SHA and lists, validates filename/count/date range/array lengths/duplicate accessions/UTC chronology; one explicit local page at a time into existing SQLite `core.save_index`. Chosen instead of unapproved automatic GET/rate-limit changes.
+3. **Tests:** New regression inside `tests/test_disclosure_lightning.py`; nine local history tests with core-contract shim PASS (initial timezone test expectation corrected). Full actual repository CI **UNVERIFIED**; no hosted runtime verification. Run `python -m unittest discover -s tests -v` when complete source available.
+4. **Status:** Offline module and test are committed; no assertion of real SEC source authentication/real HTTP, KIC numeric verification, Production or automatic financial conclusions.
+5. **Failures/recovery:** Standalone new-test-file GitHub creation blocked twice by safety check, pivoted to existing DL test file `update_file` successfully. Direct local GitHub clone DNS unavailable, hence independent 9 tests use a shim. Git parent history is backup; no force push.
+6. **Repo/branch/SHA/paths:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, core addition `98ae2496264e5356f79e2fe7b6bd14796d99fea6`, committed regression `4dedf4259c907eba6b15b69428bce1c5a1cda13b`; `disclosure_lightning/history.py`, `tests/test_disclosure_lightning.py`, `disclosure_lightning/README.md`.
+7. **Runtime/deployment:** `python -m disclosure_lightning.history` offline CLI with stored manifest; DL Production URL/Vercel project/SHA: **not applicable**.
+8. **Originals/secrets:** Existing observations and source hashes preserved; public repository synthetic contract only, no private Bid_Owl/customer/KIC submission data or identifying User-Agent transferred.
+9. **Next:** Verify exact-source full CI, revise strict SEC history manifests if real fixtures reveal differences, evaluate bounded single opt-in historical GET with owner-provided compliant contact, KIC chief review before bridge/UI integration, then security/stability. No DAKER/upload changes without separate approval.
+10. **Time/verification:** 2026-10-28 KST, code pushed and branch checked before final docs; source CI/live SEC/Production unverified; owner submission gate remains 2026-11-12 10:00 KST PDF-only.
+
+---
+
 ## DL P5 (2026-10-28 KST) — ten-field continuation, feature branch only
 1. **Goal/requirements:** Safely decode declared SEC-style archived legacy HTML for unverified evidence search without changing saved original bytes; independent KIC UI/official prelim untouched.
 2. **Implemented:** Only `text/html` first 4096 bytes inspected for bounded meta charset; UTF-8, Windows-1252 or HTML ISO-8859-1 mapping. Unsupported/conflicting/invalid bytes fail closed, receipts add declared/applied charset and `charset_claim_verified=false`.
