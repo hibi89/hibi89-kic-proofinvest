@@ -66,6 +66,51 @@ class PeerScreenTests(unittest.TestCase):
                 row = screen_peer_candidates(target, [dict(candidate, **{field: value})], research())["candidates"][0]
                 self.assertIn(field, row["reasons"])
 
+    def test_candidate_with_registered_but_uncited_source_is_excluded(self):
+        target, candidate = data()
+        evidence = research()
+        evidence["findings"][0]["source_ids"] = ["S1"]
+        # S2 is still a legitimate Research source, but no surviving
+        # finding actually cites it. A profile may not use it as proof.
+        before = copy.deepcopy((target, candidate, evidence))
+        out = screen_peer_candidates(target, [candidate], evidence)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["candidates"][0]["state"], "excluded")
+        self.assertIn("candidate_evidence_missing", out["candidates"][0]["reasons"])
+        self.assertEqual((target, candidate, evidence), before)
+
+    def test_target_with_registered_but_uncited_source_blocks_screen(self):
+        target, candidate = data()
+        evidence = research()
+        evidence["findings"][0]["source_ids"] = ["S1"]
+        target["source_ids"] = ["S2"]
+        out = screen_peer_candidates(target, [candidate], evidence)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["candidates"], [])
+        self.assertIn("target_evidence_missing", out["warnings"])
+
+    def test_forged_success_without_valid_findings_cannot_select_peers(self):
+        target, candidate = data()
+        for invalid in ([], None, [{"source_ids": ["S1", "S2"]}],
+                        [{"claim": "synthetic", "source_ids": [[]]}]):
+            with self.subTest(invalid=invalid):
+                evidence = research()
+                evidence["findings"] = invalid
+                evidence["status"] = "success"
+                out = screen_peer_candidates(target, [candidate], evidence)
+                self.assertEqual(out["status"], "unavailable")
+                self.assertEqual(out["candidates"], [])
+                self.assertIn("malformed_or_uncited_research_findings", out["warnings"])
+
+    def test_partial_research_with_valid_cited_findings_keeps_peer_review(self):
+        target, candidate = data()
+        evidence = research()
+        evidence["status"] = "partial"
+        evidence["warnings"].append({"code": "invalid_claim", "detail": "other claim removed"})
+        out = screen_peer_candidates(target, [candidate], evidence)
+        self.assertEqual(out["status"], "candidates_for_review")
+        self.assertEqual(out["candidates"][0]["state"], "candidate_for_review")
+
     def test_missing_evidence_fails_closed_even_with_matching_sector(self):
         target, candidate = data()
         candidate["source_ids"] = ["UNKNOWN"]

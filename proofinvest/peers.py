@@ -66,7 +66,25 @@ def screen_peer_candidates(
         out["warnings"].append("invalid_research_source_ids")
         return out
     accepted = set(ids)
-    if not _source_ids(target, accepted):
+    # A registered source is not by itself support for a peer profile.
+    # Only IDs actually cited by surviving Research findings are eligible.
+    # Research output is also caller-supplied: a forged "success" status
+    # must not turn uncited or malformed records into peer evidence.
+    findings = research_result.get("findings")
+    if (not isinstance(findings, list) or not findings or any(
+        not isinstance(finding, Mapping)
+        or not isinstance(finding.get("claim"), str)
+        or not finding["claim"].strip()
+        or not isinstance(finding.get("source_ids"), list)
+        or not finding["source_ids"]
+        or any(not isinstance(sid, str) or sid not in accepted
+               for sid in finding["source_ids"])
+        for finding in findings
+    )):
+        out["warnings"].append("malformed_or_uncited_research_findings")
+        return out
+    cited = {sid for finding in findings for sid in finding["source_ids"]}
+    if not _source_ids(target, cited):
         out["warnings"].append("target_evidence_missing")
         return out
 
@@ -92,7 +110,7 @@ def screen_peer_candidates(
             mismatches.append("missing_comparison_metadata")
         if cid == target["issuer_id"]:
             mismatches.append("same_issuer_as_target")
-        if not _source_ids(candidate, accepted):
+        if not _source_ids(candidate, cited):
             mismatches.append("candidate_evidence_missing")
         if _valid_profile(candidate):
             mismatches.extend(field for field in _CRITERIA if candidate[field] != target[field])
