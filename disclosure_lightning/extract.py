@@ -175,6 +175,51 @@ def from_saved_original(*, db_path, cik: str, accession: str, sha256: str) -> di
     )
 
 
+
+def find_evidence_candidates(receipt: dict, *, term: str,
+                             max_results: int = 20) -> dict:
+    """Literal case-insensitive search of unverified extraction fragments.
+
+    The result is a *candidate* for human/source-document verification,
+    not an asserted financial fact, period, currency or exact byte span.
+    """
+    if (not isinstance(receipt, dict)
+            or receipt.get("schema") != "disclosure-lightning.extracted-text.v1"
+            or not isinstance(receipt.get("blocks"), list)):
+        raise ValueError("INVALID_EXTRACTION_RECEIPT")
+    if (not isinstance(term, str) or not 2 <= len(term) <= 80
+            or CTRL.search(term) is not None or not term.strip()):
+        raise ValueError("SEARCH_TERM_INVALID")
+    if type(max_results) is not int or not 1 <= max_results <= 50:
+        raise ValueError("RESULT_LIMIT_INVALID")
+    key = term.casefold()
+    found = []
+    for block in receipt["blocks"]:
+        if not isinstance(block, dict) or not isinstance(block.get("text"), str):
+            raise ValueError("EXTRACTION_BLOCK_INVALID")
+        if key in block["text"].casefold():
+            found.append({
+                **block, "citation_status": "SOURCE_LINE_HINT_NEEDS_REVIEW",
+                "financial_claim_verified": False,
+            })
+        if len(found) >= max_results:
+            break
+    return {
+        "schema": "disclosure-lightning.evidence-candidates.v1",
+        "issuer_cik": receipt["issuer_cik"],
+        "accession": receipt["accession"],
+        "filing_sha256": receipt["filing_sha256"],
+        "source_uri": receipt["source_uri"],
+        "search_term": term,
+        "max_results": max_results,
+        "returned": len(found),
+        "search_scope_truncated": receipt["truncated"],
+        "source_authenticity_verified": False,
+        "financial_claim_verified": False,
+        "candidates": found,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Offline DL original byte → conservative bounded text receipt"
@@ -185,16 +230,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sha256", required=True, help="Known original-filing digest")
     parser.add_argument("--summary-only", action="store_true",
                         help="Return status and digests, not extracted text blocks")
+    parser.add_argument("--find", help="Search extracted fragments for one literal keyword")
     args = parser.parse_args(argv)
     try:
         result = from_saved_original(
             db_path=args.db, cik=args.cik,
             accession=args.accession, sha256=args.sha256
         )
-        if args.summary_only:
+        truncated = result["truncated"]
+        if args.find is not None:
+            if args.summary_only:
+                raise ValueError("--find cannot be combined with --summary-only")
+            result = find_evidence_candidates(result, term=args.find)
+        elif args.summary_only:
             result.pop("blocks")
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-        return 0 if not result["truncated"] else 2
+        return 0 if not truncated else 2
     except (OSError, ValueError, KeyError, TypeError, RecursionError) as exc:
         print(json.dumps({
             "status": "TEXT_EXTRACTION_UNAVAILABLE",
