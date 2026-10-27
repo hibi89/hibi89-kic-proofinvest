@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from proofinvest.offline_review_batch import review_capture_batch
+from proofinvest.offline_review_batch import review_capture_batch, format_review_queue_csv
 
 
 class BatchReviewTests(unittest.TestCase):
@@ -55,6 +55,14 @@ class BatchReviewTests(unittest.TestCase):
         self.assertEqual(output["ready_for_human_review_count"], 0)
         self.assertEqual(output["action_counts"]["RECHECK_LOCAL_ARCHIVE"], 1)
         self.assertNotIn("SHOULD_NOT_LEAK", str(output))
+
+    def test_csv_queue_exports_only_safe_columns(self):
+        batch = {"review_queue": [
+            {"index": 3, "status": "blocked", "priority": "high",
+             "next_action": "RECHECK_LOCAL_ARCHIVE"}]}
+        csv_text = format_review_queue_csv(batch)
+        self.assertEqual(csv_text,
+                         "index,status,priority,next_action\\n3,blocked,high,RECHECK_LOCAL_ARCHIVE\\n")
 
     def test_batch_limit(self):
         with self.assertRaises(ValueError):
