@@ -186,7 +186,9 @@ def main(argv: list[str] | None = None) -> int:
     identity = git_info(root)
     results: dict[str, dict] = {}
     files = [root / "disclosure_lightning" / name
-             for name in ("core.py", "history.py", "originals.py", "extract.py")]
+             for name in ("__init__.py", "__main__.py", "core.py",
+                          "history.py", "originals.py", "extract.py")]
+    files.extend(sorted((root / "tests").glob("test_disclosure_lightning*.py")))
     files.append(root / "verify_local.py")
     try:
         for path in files:
