@@ -69,7 +69,7 @@ class DisclosureLightningTests(unittest.TestCase):
         with sqlite3.connect(self.db) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
-            self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0][0], self.raw)
+            self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
 
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
