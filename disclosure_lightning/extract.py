@@ -188,7 +188,8 @@ def find_evidence_candidates(receipt: dict, *, term: str,
             or not isinstance(receipt.get("blocks"), list)):
         raise ValueError("INVALID_EXTRACTION_RECEIPT")
     if (not isinstance(term, str) or not 2 <= len(term) <= 80
-            or CTRL.search(term) is not None or not term.strip()):
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in term)
+            or not term.strip()):
         raise ValueError("SEARCH_TERM_INVALID")
     if type(max_results) is not int or not 1 <= max_results <= 50:
         raise ValueError("RESULT_LIMIT_INVALID")
