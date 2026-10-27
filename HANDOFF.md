@@ -1,3 +1,15 @@
+## DL P4 (2026-10-28 KST) — isolated feature branch 10-field continuation
+1. **Goal:** Improve provenance of locally archived UTF-8 text candidate evidence using exact saved raw byte lines, not generic HTML source-line hints.
+2. **Change/decision:** `disclosure_lightning/extract.py` conservatively stores `start_byte`, `end_byte_exclusive` and `raw_span_sha256` for full raw UTF-8 line bytes (BOM-aware). HTML/XML still only hint lines; normalized text is not raw byte-perfect transcription.
+3. **Tests:** Added 3 offline cases to `tests/test_disclosure_lightning_extract.py` for Unicode/BOM/CRLF, candidate propagation and truncated-line offsets. `python -m unittest discover -s tests -v`; new Actions CI **not verified**. Previous P3 390/390 PASS at [run #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
+4. **State:** DL metadata→original byte archive→visible text candidates functional in prior offline tests; new exact plaintext locator code pushed, full new regression pass unconfirmed. SEC live request, original issuer fact authenticity and production unverified.
+5. **Failure/recovery:** Initial regression test literal accidentally doubled escape slashes; fixed before handoff. Git parent SHA preserves source; no force push. No evidence of live failure; do not infer CI green.
+6. **Repo/branch/SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning` code+tests `8253270db5cf309d963cc76d9b1569389a34c8d8`; source paths above, coordination `docs/disclosure-lightning/TO_KIC_LEAD.md`.
+7. **Runtime:** stdlib Python 3.11+, `python -m disclosure_lightning`, `python -m disclosure_lightning.extract`, no DL Production/Vercel URL.
+8. **Original/backup/credentials:** Public repo synthetic fixtures only; immutable prior Git parents and local raw SHA evidence. No private Bid_Owl, user PDF/PPTX, SEC User-Agent secrets or real external original saved to GitHub.
+9. **Next:** Verify exact SHA CI; KIC independently review new raw-span consumer; then HTML encoding and SEC history continuation. Separate approvals for real SEC network contact and final KIC DAKER submission.
+10. **Time/proof:** 2026-10-28 KST; newest code source `8253270db5cf309d963cc76d9b1569389a34c8d8`; GitHub branch/head after docs and CI outcome require recheck. 2026-11-12 10:00 KST PDF preliminary remains independent and frozen.
+
 ## 2026-10-27 — Annual fiscal range validation repair (ten-field handoff)
 1. **Goal:** Do not permit a 10-K/annual-style synthetic/OpenDART report to treat explicit 3-month statement periods as annual solely because their end years match.
 2. **Decision:** `proofinvest/engine.py` reads 1 or 2 explicit date tokens; if two, requires a plausible 330–380 day full year; rejects reversed, invalid or more than two tokens. Preserves historical end-date-only input rather than falsely inventing start dates. No new data/API.
