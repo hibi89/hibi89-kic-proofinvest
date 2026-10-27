@@ -1,3 +1,17 @@
+## DL P8 — 2026-10-28 KST | ten-field continuation
+1. **Goal:** Make amendment history review possible without pretending the SEC submissions index provides an explicit trustworthy amendment target.
+2. **Design/decision:** Read-only `history.review_amendment_candidates` rechecks stored index response SHA256 and matching accession/form/filingDate, uses SEC-shaped `reportDate` and an earlier base form, emits unique unverified candidate only; no guess for missing/ambiguous period, no ledger write or schema changes.
+3. **Tests:** Five regression methods appended to `tests/test_disclosure_lightning.py` (unique, ambiguity, missing period, historical-as-of/corrupt hash, CLI offline/no import). **New exact-source full unittest and Actions CI NOT VERIFIED**. Older KIC 447 PASS applies different branch and source, not P8.
+4. **Actual status:** Source, CLI and tests committed; no direct SEC source authentication, original filing document truth, production or financial/issuer attestation. False-positive caveat remains on unverified period matching.
+5. **Failures/recovery:** Available GitHub connector does not enumerate push-triggered checks from commit queries (empty results is not a pass). Sandbox git clone unable to resolve github.com. No force push; historical Git parents preserve recovery.
+6. **Repo/branch/SHA/paths:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; source `5724fedddd09519cce0e199bcc443903f255e6e5`, CLI `34308fe31368b53986498ba0b1c202b40e9c431a`, scan limit `543796a9494227f53f2bba6199f23b3062e7f13c`, tests `8c05c64f0792ed28dbe150f705d91fa471061daa`. Source: `disclosure_lightning/history.py`, `tests/test_disclosure_lightning.py`, `docs/disclosure-lightning/TO_KIC_LEAD.md`.
+7. **Runtime/deployment:** `python -m disclosure_lightning.history --db ... --cik ... --as-of ... --review-amendments` local read-only JSON; no DL hosted URL.
+8. **Privacy/originals:** Local SHA check is corruption detection not external source authenticity, no private Bid_Owl/user PDF/PPTX or keys, no live SEC, no KIC bridge/main/DAKER changes. No copied restricted original source.
+9. **Next:** Verify full CI against current SHA and repair, then assess whether amendments can be linked only with explicit original source textual declaration; KIC chief review/approval before branch integration. Preserve PDF-only 2026-11-12 prelim.
+10. **KST verification:** 2026-10-28; GitHub source/test writes completed and remote HEAD to verify after docs; full-suite, live-source rights and deployed system unverified.
+
+---
+
 ## DL P7 — 2026-10-28 KST | 10-field integration handoff, feature branch
 1. **Goal:** Extend Disclosure Lightning minimum product to offline processing of multiple SEC historical continuation JSON files from a pinned local manifest. No unapproved SEC network.
 2. **Implementation/decision:** Reuses `core.save_index` (existing SQLite) with complete preflight of all selected local page bytes before sequential save. Default max 4, hard max 8 pages, 8MB/page and total 32MB. Design A incremental/idempotent recoverable saves chosen over design B invasive cross-page DB transaction refactor (larger risk); partial DB writes explicitly reported and replay safe.
