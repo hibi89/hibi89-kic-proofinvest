@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
+import http.client
 import json
 import os
 from pathlib import Path
@@ -136,6 +137,33 @@ class SecHttpAdapterTests(TestCase):
         self.assertEqual(v["bounded_review"]["status"], "blocked")
         self.assertIsNone(v["growth_pct"])
         self.assertEqual(len(calls), 1)
+
+    def test_truncated_http_body_fails_closed_without_metrics(self):
+        response = FakeHTTPResponse()
+        with patch.object(response, "read", side_effect=http.client.IncompleteRead(
+                b'{"partial":', 100)), patch.object(
+                client, "_open_once", return_value=response) as opened:
+            verdict = client.run_sec_annual_revenue(**ARGS)
+        opened.assert_called_once()
+        self.assertEqual(verdict["reason_code"], "SEC_NETWORK_OR_HTTP_ERROR")
+        self.assertEqual(verdict["status"], "unavailable")
+        self.assertTrue(verdict["http_request_attempted"])
+        self.assertIsNone(verdict["growth_pct"])
+        self.assertIsNone(verdict["current_usd"])
+        self.assertIsNone(verdict["prior_usd"])
+        self.assertEqual(verdict["bounded_review"]["reason_code"],
+                         "SEC_EVIDENCE_UNAVAILABLE")
+        self.assertEqual(verdict["bounded_review"]["status"], "blocked")
+
+    def test_malformed_http_status_fails_closed_without_retry(self):
+        with patch.object(client, "_open_once", side_effect=http.client.BadStatusLine(
+                "BAD RESPONSE")) as opened:
+            verdict = client.run_sec_annual_revenue(**ARGS)
+        opened.assert_called_once()
+        self.assertEqual(verdict["reason_code"], "SEC_NETWORK_OR_HTTP_ERROR")
+        self.assertEqual(verdict["status"], "unavailable")
+        self.assertIsNone(verdict["growth_pct"])
+        self.assertEqual(verdict["bounded_review"]["external_tool_calls"], 0)
 
     def test_https_response_redirect_is_rejected(self):
         with patch.object(client, "_open_once", return_value=FakeHTTPResponse(

@@ -7,6 +7,7 @@ Successful HTTPS JSON retrieval is not an independent filing/source-rights audit
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
@@ -109,7 +110,11 @@ def get_sec_concept(
                 if not header_size.isdecimal() or int(header_size) > MAX_RESPONSE_BYTES:
                     return None, "SEC_RESPONSE_SIZE_LIMIT", attempted
             raw = resp.read(MAX_RESPONSE_BYTES + 1)
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError):
+    except (urllib.error.HTTPError, urllib.error.URLError, http.client.HTTPException,
+            TimeoutError, OSError, ValueError):
+        # http.client.IncompleteRead / BadStatusLine inherit HTTPException,
+        # not OSError. A truncated official response must not crash Streamlit
+        # or be mistaken for a complete, verified SEC disclosure.
         return None, "SEC_NETWORK_OR_HTTP_ERROR", attempted
     if len(raw) > MAX_RESPONSE_BYTES:
         return None, "SEC_RESPONSE_SIZE_LIMIT", attempted
