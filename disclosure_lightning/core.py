@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS filing_observations(
 """
 
 
-def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
+def _validate_index_for_save(raw: bytes, indexed: dict, db_path: Path) -> None:
     """Reject caller-edited index metadata that is not supported by raw bytes."""
     digest = hashlib.sha256(raw).hexdigest()
     if (indexed.get("schema_version") != "1.0"
@@ -310,6 +310,19 @@ def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
     n = len(accessions)
     if n > (MAX_HISTORY_RECORDS if history else MAX_RECORDS):
         raise ValueError("Index source row limit exceeded")
+    page_spec = None
+    manifest_first_seen = None
+    if history:
+        from .history import _stored_manifest
+
+        _, authority = _stored_manifest(
+            db_path, target, indexed["history_manifest_sha256"]
+        )
+        page_name = expected_uri.rsplit("/", 1)[-1]
+        page_spec = authority["pages"].get(page_name)
+        if page_spec is None or page_spec["count"] != n:
+            raise ValueError("Historical page is not listed with this row count in pinned manifest")
+        manifest_first_seen = authority["first_seen"]
     forms = _column(recent, "form", n)
     days = _column(recent, "filingDate", n)
     documents = _column(recent, "primaryDocument", n)
@@ -330,6 +343,8 @@ def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
         raise ValueError("Index summary does not match source bytes")
     observed_day = date.fromisoformat(observed[:10])
     observed_instant = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+    if manifest_first_seen is not None and observed_instant < manifest_first_seen:
+        raise ValueError("Historical page observation predates its pinned manifest")
     seen = set()
     for record in records:
         if not isinstance(record, dict):
@@ -341,6 +356,8 @@ def _validate_index_for_save(raw: bytes, indexed: dict) -> None:
         seen.add(accession)
         i = by_accession[accession]
         filed = parse_day(days[i])
+        if page_spec is not None and (filed < page_spec["first"] or filed > page_spec["last"]):
+            raise ValueError("Historical filing is outside pinned manifest date range")
         accepted_at = _accepted(accepted[i]) if accepted is not None else None
         if (record.get("schema_version") != "1.0"
                 or record.get("provider") != PROVIDER
@@ -383,7 +400,7 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
         raise ValueError("Original SEC JSON bytes required")
     if not isinstance(indexed, dict):
         raise ValueError("Index evidence must be an object")
-    _validate_index_for_save(raw, indexed)
+    _validate_index_for_save(raw, indexed, path)
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
     with closing(sqlite3.connect(path)) as conn:

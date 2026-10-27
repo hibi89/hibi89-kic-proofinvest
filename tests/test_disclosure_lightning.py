@@ -476,6 +476,17 @@ class DisclosureLightningTests(unittest.TestCase):
                             for x in result["filings"]))
         self.assertEqual(core.save_index(self.db, raw, result)["new_filings"], 2)
         self.assertEqual(core.save_index(self.db, raw, result)["new_filings"], 0)
+        for field, value in (
+                ("history_manifest_sha256", "0" * 64),
+                ("source_uri", "https://data.sec.gov/submissions/"
+                 "CIK0000320193-submissions-002.json")):
+            candidate = {**result, "filings": [dict(row) for row in result["filings"]]}
+            candidate[field] = value
+            if field == "source_uri":
+                for row in candidate["filings"]:
+                    row["index_source_uri"] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                core.save_index(self.db, raw, candidate)
         with self.assertRaises(ValueError):
             history.index_history_page(**{**params, "manifest_sha256": "0" * 64})
         with self.assertRaises(ValueError):
