@@ -164,6 +164,42 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertNotIn("Revenue", stdout.getvalue())
         self.assertEqual(report["block_count"], 3)
 
+    def test_bounded_keyword_candidates_keep_source_line_and_digest(self):
+        receipt = self.run_from_saved()
+        found = extract.find_evidence_candidates(receipt, term="revenue")
+        self.assertEqual(found["returned"], 1)
+        self.assertEqual(found["filing_sha256"], receipt["filing_sha256"])
+        self.assertEqual(found["candidates"][0]["text"], "2025 Revenue & Expenses")
+        self.assertEqual(found["candidates"][0]["citation_status"],
+                         "SOURCE_LINE_HINT_NEEDS_REVIEW")
+        self.assertFalse(found["candidates"][0]["financial_claim_verified"])
+        self.assertFalse(found["source_authenticity_verified"])
+
+    def test_keyword_search_rejects_invalid_limits_and_empty_terms(self):
+        receipt = self.run_from_saved()
+        for term in ("", " ", "R", "Z" * 81, "Bad\\nX"):
+            with self.subTest(term=term), self.assertRaises(ValueError):
+                extract.find_evidence_candidates(receipt, term=term)
+        for limit in (-1, 0, 51, True):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                extract.find_evidence_candidates(receipt, term="Revenue",
+                                                 max_results=limit)
+
+    def test_cli_find_returns_candidates_without_claim_verification(self):
+        argv = [
+            "--db", str(self.db), "--cik", CIK, "--accession", ACC,
+            "--sha256", self.saved["filing_sha256"], "--find", "revenue"
+        ]
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(extract.main(argv), 0)
+        got = json.loads(stdout.getvalue())
+        self.assertEqual(got["schema"], "disclosure-lightning.evidence-candidates.v1")
+        self.assertEqual(got["returned"], 1)
+        self.assertFalse(got["financial_claim_verified"])
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            self.assertEqual(extract.main(argv + ["--summary-only"]), 2)
+        self.assertIn("cannot be combined", stderr.getvalue())
+
     def test_same_raw_bytes_produce_deterministic_receipts(self):
         a = self.run_from_saved()
         b = self.run_from_saved()
