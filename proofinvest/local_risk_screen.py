@@ -32,6 +32,16 @@ def screen_local_evidence(financial: Any, source_span: Any) -> dict[str, Any]:
     if type(source_span.get("start_byte")) is not int or type(source_span.get("end_byte_exclusive")) is not int or source_span["start_byte"] < 0 or source_span["end_byte_exclusive"] <= source_span["start_byte"]:
         flags.append("SOURCE_SPAN_INVALID")
         return result
+    ixbrl = source_span.get("ixbrl_context")
+    if isinstance(ixbrl, dict) and ixbrl.get("status") == "local_ixbrl_revenue_context_match_unverified":
+        flags.append("LOCAL_IXBRL_CONTEXT_MATCH_UNVERIFIED")
+    else:
+        flags.append("IXBRL_CONTEXT_NOT_CONFIRMED")
+    numeric = source_span.get("numeric_literals")
+    if isinstance(numeric, dict) and numeric.get("status") == "untrusted_numeric_literals_located":
+        flags.append("LOCAL_NUMERIC_TEXT_MATCH_UNVERIFIED")
+    else:
+        flags.append("NUMERIC_TEXT_MATCH_NOT_CONFIRMED")
     flags.append("LOCAL_EVIDENCE_REVIEW_ONLY")
     result["status"] = "reviewed_unverified"
     return result
