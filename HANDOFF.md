@@ -1,3 +1,9 @@
+## 2026-10-28 KIC 개발 속도 개선 + 로컬 SEC ZIP 오프라인 재분석
+- 작업: `AGENTS.md` 개발 프로세스 단순화; `verify_local.ps1`/`scripts.verify_local` 핵심/전체 단일검증, 임시폴더 summary/log; `proofinvest.sec_bundle_replay`로 보존 ZIP의 SHA/수집시각과 회계금액/원문 passage 원본 재계산. 한 기능 커밋/단일 통합 CI. 메타데이터가 주장하는 SEC HTTPS는 **외부 출처 인증이 아님**.
+- 로컬 사용법: `python -m proofinvest.sec_bundle_replay evidence.zip --current-end YYYY-MM-DD --prior-end YYYY-MM-DD --needle UNIQUE_ASCII_PHRASE`. 기존 ZIP 수정·외부 네트워크·원본 HTML 노출 없음. 변경 테스트 `python -m unittest tests.test_sec_bundle_replay -v`; 전체 `python -m unittest discover -s tests -v`; Windows는 `powershell -ExecutionPolicy Bypass -File .\verify_local.ps1 [-Full]`.
+- 차단: 실제 SEC 네트워크+연락처+현지 원본 저장 별도 승인, PDF 후보의 정확한 파일/프로젝트 명칭과 DAKER 별도 업로드·최종확인 승인; DL 소유 `feature/disclosure-lightning` 변경 금지. 역사적 60일 29 DONE/3 BLOCKED/28 NOT_STARTED는 추가 기능에 의해 자동 가산하지 않음.
+- 테스트/SHA/CI: 정확한 내용은 이 항목이 포함된 기능 커밋 SHA에 대한 GitHub Actions 1회 통합 검증 결과를 확인. Windows 실기기 실행은 아직 미검증. 다음 미완료: 소유자 승인 후 실 SEC와 제출용 실제 문서 검증; 승인 전에는 오프라인 경로만 작업.
+
 ## 2026-10-28 KST — local opt-in SEC source ZIP evidence retention; code 52be8656037467252744b6d942ef8205290d1cfa; source CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40549007869 SUCCESS 480/480 (+9 new tests).
 1. Goal: Make captured SEC Submissions, CompanyFacts and primary filing bytes independently rerunnable: prior three-source function discarded them after summary hashes.
 2. Design: proofinvest/sec_capture_bundle.py stores a local-only uncompressed four-entry ZIP manifest.json + submissions.json + companyfacts.json + original_filing.bin. Requires separate retention authorization on top of existing SEC network double opt-in and genuine contact User-Agent. All data paths fixed, hashes checked, strict sizes, new-file-only fsynced staging plus os.link no-clobber.

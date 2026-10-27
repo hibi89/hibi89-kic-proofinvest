@@ -133,7 +133,7 @@ def save_local_capture_bundle(
             tmp.unlink(missing_ok=True)
 
 
-def verify_local_capture_bundle(path: Path) -> dict[str, Any]:
+def _read_checked_capture_bundle(path: Path) -> tuple[dict[str, Any], dict[str, bytes] | None, dict[str, Any] | None]:
     """Offline integrity-only reread; never upgrades the self-reported origin."""
     unavailable = {
         "schema": "proofinvest.sec-capture-bundle-offline-check.v1",
@@ -148,30 +148,30 @@ def verify_local_capture_bundle(path: Path) -> dict[str, Any]:
     }
     p = Path(path)
     if p.is_symlink():
-        return unavailable
+        return unavailable, None, None
     try:
         descriptor = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         with os.fdopen(descriptor, "rb") as file:
             meta = os.fstat(file.fileno())
             if not stat.S_ISREG(meta.st_mode) or not 0 < meta.st_size <= _MAX_ZIP_BYTES:
-                return unavailable
+                return unavailable, None, None
             with zipfile.ZipFile(file, mode="r") as bundle:
                 entries = bundle.infolist()
                 if (len(entries) != len(_NAMES)
                         or set(x.filename for x in entries) != set(_NAMES)
                         or any(x.is_dir() or x.compress_type != zipfile.ZIP_STORED
                                or x.file_size != x.compress_size for x in entries)):
-                    return unavailable
+                    return unavailable, None, None
                 limits = dict((name,limit) for _,name,limit in _PARTS)
                 limits["manifest.json"] = 20_000
                 if any(not 0 < x.file_size <= limits[x.filename] for x in entries):
-                    return unavailable
+                    return unavailable, None, None
                 manifest = _json_object(bundle.read("manifest.json"), limit=20_000)
                 if manifest.get("schema") != "proofinvest.sec-capture-local-bundle.v1":
-                    return unavailable
+                    return unavailable, None, None
                 sections = manifest.get("files")
                 if not isinstance(sections, dict) or set(sections) != set(k for k,_,_ in _PARTS):
-                    return unavailable
+                    return unavailable, None, None
                 raws = {}
                 for key, name, limit in _PARTS:
                     raw = bundle.read(name)
@@ -181,12 +181,12 @@ def verify_local_capture_bundle(path: Path) -> dict[str, Any]:
                             or type(expected.get("size")) is not int
                             or expected["size"] != len(raw)
                             or expected.get("sha256") != hashlib.sha256(raw).hexdigest()):
-                        return unavailable
+                        return unavailable, None, None
                     raws[key] = raw
                 receipt = manifest.get("receipt_self_reported")
                 if not _receipt_ok(receipt, raws):
-                    return unavailable
-                return {
+                    return unavailable, None, None
+                return ({
                     **unavailable,
                     "status": "bundle_integrity_pass_origin_unverified",
                     "reason_code": "LOCAL_DIGESTS_MATCH_NOT_SEC_AUTHENTICATION",
@@ -194,7 +194,13 @@ def verify_local_capture_bundle(path: Path) -> dict[str, Any]:
                     "issuer_cik": receipt["issuer_cik"],
                     "accession": receipt["accession"],
                     "sha256": {key: sections[key]["sha256"] for key,_,_ in _PARTS},
-                }
+                }, raws, receipt)
     except (OSError, ValueError, KeyError, TypeError, UnicodeDecodeError,
             zipfile.BadZipFile, RuntimeError, OverflowError):
-        return unavailable
+        return unavailable, None, None
+
+
+def verify_local_capture_bundle(path: Path) -> dict[str, Any]:
+    """Read-only integrity-only check; returns NO archived raw bytes."""
+    verdict, _, _ = _read_checked_capture_bundle(path)
+    return verdict
