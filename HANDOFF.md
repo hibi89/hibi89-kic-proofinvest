@@ -1,3 +1,17 @@
+## DL P5 (2026-10-28 KST) — ten-field continuation, feature branch only
+1. **Goal/requirements:** Safely decode declared SEC-style archived legacy HTML for unverified evidence search without changing saved original bytes; independent KIC UI/official prelim untouched.
+2. **Implemented:** Only `text/html` first 4096 bytes inspected for bounded meta charset; UTF-8, Windows-1252 or HTML ISO-8859-1 mapping. Unsupported/conflicting/invalid bytes fail closed, receipts add declared/applied charset and `charset_claim_verified=false`.
+3. **Tests:** +3 DL regression methods; standalone copied helper 8/8 pass locally. **Exact-source full GitHub Actions UNVERIFIED**, prior P3 390/390 PASS run #40534506681.
+4. **Progress:** Code pushed, limited charset helper behavior checked. End-to-end imported SEC HTML in actual repository and live SEC unavailable for validation.
+5. **Failure/recovery:** Local Git clone failed `Could not resolve host: github.com`. No repeated blind retries; GitHub authenticated connector writes + static code review; source preserved in Git.
+6. **Repo/branch/SHA/paths:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning` code `8cd8e12d50dc1a9243e167a93d048786965efc8c`; `disclosure_lightning/extract.py`, `tests/test_disclosure_lightning_extract.py`, `docs/disclosure-lightning/TO_KIC_LEAD.md`.
+7. **Deployment/command:** `python -m disclosure_lightning.extract`; offline original archive only. No DL production URL or Vercel SHA.
+8. **Privacy/originals:** Raw SHA receipts unchanged, no private Bid_Owl/user submission PDF/PPTX, public SEC issuer originals or keys committed. Git history rollback available.
+9. **Next/approval:** Verify remote CI, then historical filings continuation + narrow KIC reviewed consumer. Live SEC contact/User-Agent and actual final DAKER upload each require separate owner authorization.
+10. **Date/evidence:** 2026-10-28 KST; 8 helper checks PASS, full suite/live HTTP/production unverified. KIC separate `lead/kic` 408/408 offline UI success as documented; Nov12 PDF prelim frozen.
+
+---
+
 ## DL P4 (2026-10-28 KST) — isolated feature branch 10-field continuation
 1. **Goal:** Improve provenance of locally archived UTF-8 text candidate evidence using exact saved raw byte lines, not generic HTML source-line hints.
 2. **Change/decision:** `disclosure_lightning/extract.py` conservatively stores `start_byte`, `end_byte_exclusive` and `raw_span_sha256` for full raw UTF-8 line bytes (BOM-aware). HTML/XML still only hint lines; normalized text is not raw byte-perfect transcription.
