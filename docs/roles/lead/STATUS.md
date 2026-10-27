@@ -1,3 +1,7 @@
+## 2026-10-27 KST — SEC HTTP protocol failure safe hold
+- Code `594e47206c1a630f5d04283a0b2f132faf29efdd` [CI #40520894615](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40520894615) SUCCESS **327/327**. Handle `http.client.HTTPException` (incomplete SEC body, malformed response line) as `SEC_NETWORK_OR_HTTP_ERROR` with unavailable/null financial metrics, zero retries. Two new mocked tests; no live SEC call.
+- No real SEC/DART filing verification, LLM Agent, Production, account submission, frozen PDF or private Bid Owl modifications. Official ledger 29 DONE/3 BLOCKED/28 NOT_STARTED. Owner exact PDF/title and separate DAKER final upload approval remain next external gates.
+
 ## 2026-10-27 KST — UTC-cutoff evidence verification
 - `proofinvest/research.py` UTC-aware as_of and cited finding boundary bug fixed at source `a4f321c02b3be0a3979a1c5a18669432c8c06dca`, [CI 40519705556](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40519705556) SUCCESS **325/325**, +4 focused tests. No source calls, training, public PDF changes or deployment. Existing UTC-instant collection-order and mixed/date-only behavior preserved.
 - Release status: KIC no live SEC/DART or AI Agent verification, no Production and no DAKER receipt. Private candidate remains owner-review-only, exact-file/title and separately authorized DAKER submission remain P0. Bid Owl/Disclosure Lightning untouched; canonical 29 DONE / 3 BLOCKED / 28 NOT_STARTED.
