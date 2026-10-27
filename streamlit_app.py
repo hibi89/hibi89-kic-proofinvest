@@ -384,6 +384,42 @@ def _render_dl_archive_case(st) -> None:
         "SEC 실조회 0회 · 외부 출처 독립 인증 없음 · 재무 숫자 사실 확인 없음 · "
         "LLM/ML/DL 판정 아님 · 실제 공시 인용 또는 대회 공식 제출 근거로 사용 금지."
     )
+    try:
+        from proofinvest.evidence_report import (
+            build_synthetic_evidence_report, render_report,
+        )
+        report = build_synthetic_evidence_report()
+        if (report.get("mode") != "SYNTHETIC_FIXTURE_OFFLINE_ONLY"
+                or report.get("status") != "local_structural_review_only"
+                or report["issuer"]["cik"] != receipt["issuer_cik"]
+                or report["issuer"]["accession"] != receipt["accession"]
+                or report["source"]["uri"] != receipt["source_uri"]
+                or report["source"]["archived_original_sha256"] != receipt["original_filing_sha256"]
+                or report["source"]["submissions_json_sha256"] != receipt["submissions_sha256"]
+                or report["source"]["source_span"]["start_byte"] != receipt["source_byte_start"]
+                or report["source"]["source_span"]["end_byte_exclusive"] != receipt["source_byte_end"]
+                or any(value is not False for value in report["authenticity"].values())):
+            raise ValueError("Synthetic report trust/identity mismatch")
+        json_report = render_report(report, "json")
+        markdown_report = render_report(report, "markdown")
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
+        st.error("합성 보고서 재검증에 실패하여 다운로드를 차단했습니다.")
+        return
+    st.subheader("합성 근거 보고서 내보내기 — 실제 투자 분석 자료 아님")
+    st.download_button(
+        "합성 보고서 JSON 다운로드",
+        data=json_report,
+        file_name="proofinvest_SYNTHETIC_UNVERIFIED.json",
+        mime="application/json",
+        key="dl_synthetic_json",
+    )
+    st.download_button(
+        "합성 보고서 Markdown 다운로드",
+        data=markdown_report,
+        file_name="proofinvest_SYNTHETIC_UNVERIFIED.md",
+        mime="text/markdown",
+        key="dl_synthetic_markdown",
+    )
 
 
 def render_app(st) -> None:

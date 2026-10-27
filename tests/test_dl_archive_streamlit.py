@@ -91,6 +91,52 @@ class DlArchiveUiContractTests(unittest.TestCase):
         self.assertFalse(at.metric)
         self.assertFalse(at.button)
 
+    def test_good_archive_mode_download_buttons_are_strictly_synthetic(self):
+        from unittest.mock import Mock
+        st = Mock()
+        with patch("proofinvest.kic_dl_original_demo.replay_original",
+                   return_value=copy.deepcopy(self.receipt)):
+            _render_dl_archive_case(st)
+        self.assertEqual(st.download_button.call_count, 2)
+        first, second = st.download_button.call_args_list
+        self.assertIn("SYNTHETIC_UNVERIFIED", first.kwargs["file_name"])
+        self.assertIn("SYNTHETIC_UNVERIFIED", second.kwargs["file_name"])
+        self.assertEqual(first.kwargs["mime"], "application/json")
+        self.assertEqual(second.kwargs["mime"], "text/markdown")
+        import json
+        blob = json.loads(first.kwargs["data"])
+        self.assertEqual(blob["source"]["archived_original_sha256"],
+                         self.receipt["original_filing_sha256"])
+        self.assertTrue(all(value is False for value in blob["authenticity"].values()))
+        self.assertIn("Not a real SEC report", second.kwargs["data"])
+        self.assertNotIn("<script>", second.kwargs["data"])
+        st.error.assert_not_called()
+
+    def test_bad_report_blocks_all_download_buttons(self):
+        from unittest.mock import Mock
+        st = Mock()
+        with patch("proofinvest.kic_dl_original_demo.replay_original",
+                   return_value=copy.deepcopy(self.receipt)):
+            with patch("proofinvest.evidence_report.build_synthetic_evidence_report",
+                       side_effect=ValueError("injected")):
+                _render_dl_archive_case(st)
+        st.error.assert_called_once()
+        st.download_button.assert_not_called()
+
+    def test_mismatched_report_identity_blocks_download(self):
+        from unittest.mock import Mock
+        from proofinvest.evidence_report import build_synthetic_evidence_report
+        altered = build_synthetic_evidence_report()
+        altered["issuer"]["cik"] = "0000000002"
+        st = Mock()
+        with patch("proofinvest.kic_dl_original_demo.replay_original",
+                   return_value=copy.deepcopy(self.receipt)):
+            with patch("proofinvest.evidence_report.build_synthetic_evidence_report",
+                       return_value=altered):
+                _render_dl_archive_case(st)
+        st.error.assert_called_once()
+        st.download_button.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

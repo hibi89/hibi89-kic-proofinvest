@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -246,6 +248,32 @@ def render_report(report: Mapping[str, Any], fmt: str = "json") -> str:
     return "\n".join(lines) + "\n"
 
 
+def _write_new_file_atomically(path: Path, payload: str) -> None:
+    """Publish a fully fsynced temporary file without replacing any path.
+
+    A new destination appears only after its content has been fully written.
+    os.link is an atomic no-clobber name creation on a hard-link-capable local
+    filesystem. Failure or unsupported hard links cause a safe abort rather
+    than falling back to writing a partial destination. The temp is in the
+    same directory; no network call, rename overwrite or automatic retry.
+    """
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="\n",
+            dir=path.parent, prefix=f".{path.name}.", suffix=".part",
+            delete=False,
+        ) as output:
+            temporary = Path(output.name)
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        os.link(temporary, path)  # Atomic no-overwrite publication.
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate an offline SYNTHETIC-ONLY JSON or Markdown evidence report."
@@ -259,9 +287,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.output is None:
             print(payload, end="")
         else:
-            # Explicit exclusive-create only. No implicit network or overwrite.
-            with args.output.open("x", encoding="utf-8", newline="\n") as output:
-                output.write(payload)
+            # Staged, exclusive, atomic new-file publication.
+            _write_new_file_atomically(args.output, payload)
     except (ValueError, OSError) as exc:
         parser.exit(2, f"Report export unavailable: {exc}\n")
     return 0

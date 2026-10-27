@@ -152,6 +152,64 @@ class OfflineEvidenceReportTests(unittest.TestCase):
         b.assert_not_called()
         self.assertFalse(result["authenticity"]["real_sec_network_called"])
 
+    def test_atomic_new_file_publishes_full_payload_with_no_temp_residue(self):
+        from proofinvest.evidence_report import _write_new_file_atomically
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "my-new.json"
+            body = render_report(build_synthetic_evidence_report(), "json")
+            _write_new_file_atomically(path, body)
+            self.assertEqual(path.read_text(encoding="utf-8"), body)
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["my-new.json"])
+
+    def test_atomic_destination_exists_cannot_be_overwritten(self):
+        from proofinvest.evidence_report import _write_new_file_atomically
+        with tempfile.TemporaryDirectory() as folder:
+            dest = Path(folder) / "present.md"
+            dest.write_bytes(b"IMPORTANT ORIGINAL")
+            with self.assertRaises(FileExistsError):
+                _write_new_file_atomically(dest, "new text")
+            self.assertEqual(dest.read_bytes(), b"IMPORTANT ORIGINAL")
+            self.assertEqual(list(Path(folder).iterdir()), [dest])
+
+    def test_atomic_link_failure_does_not_publish_partial_destination(self):
+        from proofinvest.evidence_report import _write_new_file_atomically
+        with tempfile.TemporaryDirectory() as folder:
+            dest = Path(folder) / "failed.md"
+            with patch("proofinvest.evidence_report.os.link",
+                       side_effect=OSError("hard links unsupported")):
+                with self.assertRaisesRegex(OSError, "hard links unsupported"):
+                    _write_new_file_atomically(dest, "safe content")
+            self.assertFalse(dest.exists())
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def test_atomic_fsync_failure_cleans_staged_bytes_before_publish(self):
+        from proofinvest.evidence_report import _write_new_file_atomically
+        with tempfile.TemporaryDirectory() as folder:
+            dest = Path(folder) / "failed.md"
+            with patch("proofinvest.evidence_report.os.fsync",
+                       side_effect=OSError("fsync interrupted")):
+                with self.assertRaisesRegex(OSError, "fsync interrupted"):
+                    _write_new_file_atomically(dest, "safe content")
+            self.assertFalse(dest.exists())
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def test_atomic_symlink_destination_is_not_followed_or_replaced(self):
+        from proofinvest.evidence_report import _write_new_file_atomically
+        with tempfile.TemporaryDirectory() as folder:
+            original = Path(folder) / "original.txt"
+            original.write_bytes(b"DO NOT CHANGE")
+            dest = Path(folder) / "pointer.txt"
+            try:
+                dest.symlink_to(original)
+            except OSError:
+                self.skipTest("local OS does not permit symlink creation")
+            with self.assertRaises(FileExistsError):
+                _write_new_file_atomically(dest, "forged")
+            self.assertTrue(dest.is_symlink())
+            self.assertEqual(original.read_bytes(), b"DO NOT CHANGE")
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
+                             ["original.txt", "pointer.txt"])
+
 
 if __name__ == "__main__":
     unittest.main()
