@@ -30,10 +30,12 @@ class DisclosureLightningTests(unittest.TestCase):
         self.db = self.root / "dl.sqlite3"
         self.raw = FIXTURE.read_bytes()
 
-    def indexed(self, raw=None, *, forms=FORMS, as_of="2026-10-27"):
+    def indexed(self, raw=None, *, forms=FORMS, as_of="2026-10-27",
+                collected_at=None):
         return core.index_submissions(
             self.raw if raw is None else raw, cik=CIK,
-            as_of=as_of, forms=forms, collected_at="2026-10-27T00:00:00Z",
+            as_of=as_of, forms=forms,
+            collected_at=collected_at or "2026-10-27T00:00:00Z",
         )
 
     def test_offline_recent_index_has_correct_source_and_cutoff(self):
@@ -88,7 +90,8 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM filing_observations").fetchone()[0], 6)
 
     def test_as_of_filter_excludes_future_and_historical_limit(self):
-        result = self.indexed(as_of="2025-10-15")
+        result = self.indexed(as_of="2025-10-15",
+                              collected_at="2025-10-15T00:00:00Z")
         self.assertEqual(result["indexed_count"], 1)
         self.assertEqual(result["filings"][0]["form"], "10-K")
 
@@ -164,6 +167,7 @@ class DisclosureLightningTests(unittest.TestCase):
             "--cik", CIK, "--as-of", "2026-10-27",
             "--db", str(self.db), "--input-json", str(FIXTURE),
             "--forms", "10-K,10-K/A,8-K",
+            "--collected-at", "2026-10-27T00:00:00Z",
         ], capture_output=True, text=True, timeout=12,
            cwd=Path(__file__).resolve().parents[1])
         self.assertEqual(completed.returncode, 0, completed.stderr)
@@ -177,6 +181,7 @@ class DisclosureLightningTests(unittest.TestCase):
             "--cik", CIK, "--as-of", "2026-10-27", "--db", str(self.db),
             "--input-json", str(FIXTURE),
             "--forms", "10-K,10-K/A,8-K",
+            "--collected-at", "2026-10-27T00:00:00Z",
         ]
         with contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(core.main(args), 0)
@@ -197,6 +202,70 @@ class DisclosureLightningTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as err:
             self.assertEqual(core.main(args), 2)
         self.assertIn("Choose exactly one", err.getvalue())
+        self.assertFalse(self.db.exists())
+
+    def test_historical_as_of_fails_closed_if_collected_later(self):
+        for t in ("2026-10-28T00:00:00Z", "2026-10-27T23:30:00-12:00"):
+            with self.subTest(collected=t), self.assertRaisesRegex(
+                    ValueError, "COLLECTION_AFTER_AS_OF"):
+                self.indexed(collected_at=t)
+        for t in ("2026-10-27T00:00:00", "not-a-time", ""):
+            with self.subTest(collected=t), self.assertRaisesRegex(
+                    ValueError, "timestamp"):
+                core.index_submissions(
+                    self.raw, cik=CIK, as_of="2026-10-27",
+                    forms=FORMS, collected_at=t or "not-a-time",
+                )
+
+    def test_utc_offset_timestamp_normalized_and_future_filing_filtered(self):
+        record = self.indexed(collected_at="2026-10-27T21:00:00+09:00")
+        self.assertEqual(record["collected_at"], "2026-10-27T12:00:00Z")
+        self.assertEqual(record["indexed_count"], 3)
+        for entry in record["filings"]:
+            self.assertEqual(entry["collected_at"], record["collected_at"])
+        before = self.indexed(
+            collected_at="2025-10-15T08:00:00+09:00",
+            as_of="2026-10-27",
+        )
+        self.assertEqual(before["indexed_count"], 1)
+
+    def test_rejects_index_digest_spoof_before_creating_db(self):
+        indexed = self.indexed()
+        bad = {**indexed, "source_sha256": "0" * 64}
+        with self.assertRaisesRegex(ValueError, "digest"):
+            core.save_index(self.db, self.raw, bad)
+        self.assertFalse(self.db.exists())
+
+    def test_user_agent_placeholders_and_control_characters_rejected_pre_http(self):
+        invalid = (
+            "", "DisclosureLightning contact@example.com",
+            "DisclosureLightning contact@example.org",
+            "DisclosureLightning contact@your-real-domain.tld",
+            "DisclosureLightning contact@placeholder.company",
+            "DisclosureLightning contact@corp.invalid",
+            "DisclosureLightning fake@example.net",
+            "DisclosureLightning a@corp.com\\r\\nX-Evil: injected",
+        )
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            for user_agent in invalid:
+                with self.subTest(ua=user_agent), self.assertRaisesRegex(
+                        ValueError, "User-Agent"):
+                    core.fetch_submissions(
+                        CIK, user_agent=user_agent, allow_network=True
+                    )
+            opener.assert_not_called()
+
+    def test_live_request_rejects_injected_collected_time_without_io(self):
+        with patch("disclosure_lightning.core.fetch_submissions") as fetch:
+            with contextlib.redirect_stderr(io.StringIO()) as error:
+                rc = core.main([
+                    "--cik", CIK, "--as-of", "2026-10-27",
+                    "--db", str(self.db), "--allow-network",
+                    "--collected-at", "2026-10-27T00:00:00Z",
+                ])
+            self.assertEqual(rc, 2)
+            self.assertIn("must be measured", error.getvalue())
+            fetch.assert_not_called()
         self.assertFalse(self.db.exists())
 
     def test_network_requires_explicit_consent_and_contact(self):
