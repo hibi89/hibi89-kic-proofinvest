@@ -88,6 +88,67 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(result["extraction_method"], "utf8-lines")
         self.assertFalse(result["source_authenticity_verified"])
 
+    def test_utf8_plain_text_has_exact_raw_line_byte_spans(self):
+        # UTF-8 BOM, CRLF, multi-byte Hangul, blank lines and clean-text
+        # whitespace normalization must not change the recorded RAW offset.
+        raw = b"\\xef\\xbb\\xbf" + "  매출  2025 \\r\\n\\r\\nRevenue & Expenses\\n".encode("utf-8")
+        receipt = extract.extract_bytes(
+            raw, content_type="text/plain",
+            filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(receipt["source_locator_accuracy"],
+                         "EXACT_RAW_LINE_BYTE_SPANS_UNVERIFIED_SOURCE")
+        self.assertEqual([b["text"] for b in receipt["blocks"]],
+                         ["매출 2025", "Revenue & Expenses"])
+        self.assertEqual([b["source_locator"]["line"] for b in receipt["blocks"]], [1, 3])
+        first, second = receipt["blocks"]
+        self.assertEqual(first["source_locator"]["byte_start"], 3)
+        self.assertEqual(second["source_locator"]["byte_start"],
+                         raw.index(b"Revenue"))
+        for block in receipt["blocks"]:
+            self.assertTrue(block["exact_raw_byte_range_verified"])
+            locator = block["source_locator"]
+            span = raw[locator["byte_start"]:locator["byte_end_exclusive"]]
+            self.assertEqual(block["raw_span_sha256"], hashlib.sha256(span).hexdigest())
+        self.assertTrue(raw[first["source_locator"]["byte_start"]:
+                            first["source_locator"]["byte_end_exclusive"]].endswith(b"\\r\\n"))
+        self.assertFalse(receipt["source_authenticity_verified"])
+        self.assertFalse(receipt["suitable_for_automatic_financial_facts"])
+
+    def test_byte_spans_survive_candidate_search_without_certifying_claims(self):
+        raw = "Revenue 100\\n".encode("utf-8")
+        receipt = extract.extract_bytes(
+            raw, content_type="text/plain",
+            filing_sha256=hashlib.sha256(raw).hexdigest(), issuer_cik=CIK,
+            accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        found = extract.find_evidence_candidates(receipt, term="Revenue")
+        self.assertEqual(found["returned"], 1)
+        candidate = found["candidates"][0]
+        self.assertTrue(candidate["exact_raw_byte_range_verified"])
+        self.assertEqual(candidate["source_locator"]["byte_start"], 0)
+        self.assertEqual(candidate["source_locator"]["byte_end_exclusive"], len(raw))
+        self.assertFalse(candidate["financial_claim_verified"])
+        self.assertFalse(found["source_authenticity_verified"])
+
+    def test_skipped_long_raw_line_keeps_next_line_correct_offset(self):
+        raw = b"X" * 1800 + b"\\nRevenue 200\\n"
+        receipt = extract.extract_bytes(
+            raw, content_type="text/plain",
+            filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertTrue(receipt["truncated"])
+        self.assertEqual(receipt["block_count"], 1)
+        block = receipt["blocks"][0]
+        self.assertEqual(block["source_locator"]["line"], 2)
+        self.assertEqual(block["source_locator"]["byte_start"], 1801)
+        self.assertEqual(block["source_locator"]["byte_end_exclusive"], len(raw))
+
     def test_no_parser_remote_io_or_script_execution(self):
         with patch("urllib.request.urlopen") as req:
             r = self.run_from_saved()
