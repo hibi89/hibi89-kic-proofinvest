@@ -35,6 +35,25 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
     if triage.get("status") not in ("manual_review_required",
                                      "offline_evidence_ready_for_human_review"):
         return summary
+    if (triage.get("financial_values_authenticated") is not False
+            or triage.get("investment_recommendation") is not False
+            or triage.get("external_http_called") is not False
+            or replay.get("financial_values_authenticated") is not False
+            or replay.get("source_rights_verified") is not False
+            or replay.get("official_contest_submission") is not False):
+        summary["reason_codes"] = ["TRUST_BOUNDARY_VIOLATION"]
+        return summary
+    financial_status = financial.get("status")
+    risk_status = risk.get("status")
+    if not isinstance(financial_status, str) or not isinstance(risk_status, str):
+        summary["reason_codes"] = ["INVALID_REVIEW_STATUS"]
+        return summary
+    if (triage.get("priority") == "normal" and
+            (triage.get("status") != "offline_evidence_ready_for_human_review"
+             or financial_status != "calculated_unverified"
+             or risk_status != "reviewed_unverified")):
+        summary["reason_codes"] = ["INCONSISTENT_REVIEW_PRIORITY"]
+        return summary
     summary["status"] = "human_review_required"
     summary["review_priority"] = "high" if triage.get("priority") != "normal" else "normal"
     allowed_financial = {"calculated_unverified", "conflict"}
