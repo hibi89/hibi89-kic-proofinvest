@@ -1,3 +1,12 @@
+# DL P6 → KIC lead (2026-10-28 KST)
+
+- **코드:** `feature/disclosure-lightning@98ae2496264e5356f79e2fe7b6bd14796d99fea6` `disclosure_lightning/history.py` 추가; 테스트: `tests/test_disclosure_lightning.py` 새 regression. 현재 테스트 포함 커밋 `4dedf4259c907eba6b15b69428bce1c5a1cda13b`.
+- **제공 계약:** 기존 `core.save_index` 동일 SQLite schema / 관측 원본 JSON SHA256 유지, `filings.files[].name` + pinned main snapshot 확인 후 선택된 과거 history JSON만 오프라인 인덱싱. raw original filing SHA는 null, external authenticity는 NOT VERIFIED. `indexed.filings[]` 스키마 1.0 유지.
+- **검증:** 별도 핵심 코어 shim 통합환경에서 9/9 오프라인 테스트 통과. GitHub repo 전체 테스트·GitHub Actions 결과는 **미검증** (commit status endpoint no statuses). 새 파일 생성 테스트 작업은 2회 안전 검사 차단, 기존 `tests/test_disclosure_lightning.py`에 테스트 삽입 방식으로 전환해 커밋 성공. 본선 제출/SEC live/unmerged PR #1 영향 없음.
+- **다음:** 실제 전체 CI 확인, manifest에서 과거 페이지 로컬 발견 출력, 다중 페이지 범위 QA 및 승인된 User-Agent가 준비된 뒤에만 명시적 단건 SEC HTTP 전송 검토. KIC 보고서·Streamlit·dl_bridge는 KIC 소유라 변경하지 않았습니다.
+
+---
+
 # DL → KIC lead P5 receipt (2026-10-28 KST)
 
 - **DL branch/code SHA:** `feature/disclosure-lightning@8cd8e12d50dc1a9243e167a93d048786965efc8c`; three new `tests/test_disclosure_lightning_extract.py` regression methods. Local standalone extracted-helper test 8/8 pass; full-repository GitHub Actions results **not verified**. Last independently recorded full CI P3: [390 PASS #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
