@@ -532,5 +532,98 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())["status"], "REUSED_BATCH")
 
 
+    def _amendment_review_fixture(self, *, with_period=True, ambiguous=False):
+        from disclosure_lightning import history
+        accessions = [
+            "0000320193-25-000001", "0000320193-25-000002",
+            "0000320193-25-000003",
+        ]
+        kinds = ["10-K", "10-K/A", "10-Q/A"]
+        filing_dates = ["2025-02-20", "2025-03-04", "2025-08-10"]
+        periods = ["2024-12-31", "2024-12-31", "2025-06-30"]
+        if ambiguous:
+            accessions.append("0000320193-25-000004")
+            kinds.append("10-K")
+            filing_dates.append("2025-02-28")
+            periods.append("2024-12-31")
+        columns = {
+            "accessionNumber": accessions, "form": kinds,
+            "filingDate": filing_dates,
+            "primaryDocument": [f"local-{i}.htm" for i in range(len(kinds))],
+        }
+        if with_period:
+            columns["reportDate"] = periods
+        raw = json.dumps({
+            "cik": 320193, "name": "SYNTHETIC ONLY",
+            "filings": {"recent": columns, "files": []},
+        }).encode("utf-8")
+        indexed = core.index_submissions(
+            raw, cik=CIK, as_of="2026-10-28",
+            forms=core.parse_forms("10-K,10-K/A,10-Q/A"),
+            collected_at="2026-10-28T00:30:00Z",
+        )
+        core.save_index(self.db, raw, indexed)
+        return history
+
+    def test_amendment_review_single_candidate_read_only(self):
+        history = self._amendment_review_fixture()
+        with sqlite3.connect(self.db) as conn:
+            before = conn.execute(
+                "SELECT COUNT(*) FROM observations").fetchone()[0]
+        result = history.review_amendment_candidates(
+            db_path=self.db, cik=CIK, as_of="2026-10-28")
+        self.assertEqual(result["status"], "READ_ONLY_UNVERIFIED_AMENDMENT_REVIEW")
+        amendments = {row["amendment_form"]: row for row in result["amendments"]}
+        self.assertEqual(amendments["10-K/A"]["status"], "UNVERIFIED_PERIOD_MATCH_CANDIDATE")
+        self.assertEqual(
+            amendments["10-K/A"]["candidate_parent_accession"],
+            "0000320193-25-000001")
+        self.assertEqual(amendments["10-Q/A"]["status"], "NO_UNIQUE_BASE_MATCH")
+        self.assertIsNone(amendments["10-Q/A"]["candidate_parent_accession"])
+        self.assertTrue(all(not row["authenticated_amendment_relation"] and
+                            row["authoritative_amends_accession"] is None
+                            for row in amendments.values()))
+        self.assertFalse(result["ledger_mutated"])
+        with sqlite3.connect(self.db) as conn:
+            self.assertEqual(before, conn.execute(
+                "SELECT COUNT(*) FROM observations").fetchone()[0])
+        self.assertTrue(all(item["amends_accession"] is None
+                            for item in core.list_filings(self.db, cik=CIK)))
+
+    def test_amendment_review_ambiguous_and_report_period_missing(self):
+        history = self._amendment_review_fixture(ambiguous=True)
+        result = history.review_amendment_candidates(
+            db_path=self.db, cik=CIK, as_of="2026-10-28")
+        first = next(row for row in result["amendments"]
+                     if row["amendment_form"] == "10-K/A")
+        self.assertEqual(first["status"], "AMBIGUOUS_MULTIPLE_BASE_MATCHES")
+        self.assertEqual(first["candidate_count"], 2)
+        self.assertIsNone(first["candidate_parent_accession"])
+
+    def test_amendment_review_without_report_date_never_infers(self):
+        history = self._amendment_review_fixture(with_period=False)
+        result = history.review_amendment_candidates(
+            db_path=self.db, cik=CIK, as_of="2026-10-28")
+        self.assertEqual(len(result["amendments"]), 2)
+        self.assertTrue(all(
+            row["status"] == "REPORT_PERIOD_MISSING_NO_INFERENCE"
+            and row["candidate_parent_accession"] is None
+            for row in result["amendments"]
+        ))
+
+    def test_amendment_review_as_of_chronology_and_corrupted_raw(self):
+        history = self._amendment_review_fixture()
+        earlier = history.review_amendment_candidates(
+            db_path=self.db, cik=CIK, as_of="2025-12-31")
+        self.assertEqual(earlier["indexed_filings_checked"], 0)
+        self.assertEqual(earlier["amendments"], [])
+        with sqlite3.connect(self.db) as conn:
+            conn.execute("UPDATE observations SET response=?",
+                         (b"CORRUPTED-BY-SYNTHETIC-TEST",))
+        with self.assertRaisesRegex(ValueError, "CORRUPTED"):
+            history.review_amendment_candidates(
+                db_path=self.db, cik=CIK, as_of="2026-10-28")
+
+
 if __name__ == "__main__":
     unittest.main()
