@@ -78,10 +78,10 @@ class ReplayTests(unittest.TestCase):
             opener.assert_not_called()
             self.assertEqual(result["status"], "offline_capture_replayed_unverified")
             self.assertEqual(result["offline_financial_review"]["growth_pct"], "100.00")
+            self.assertEqual(result["risk"]["status"], "reviewed_unverified")
             self.assertEqual(result["human_review_triage"]["status"],
-                             "manual_review_required")
-            self.assertIn("RISK_ASSESSMENT_UNAVAILABLE",
-                          result["human_review_triage"]["reason_codes"])
+                             "offline_evidence_ready_for_human_review")
+            self.assertIn("SOURCE_ORIGIN_UNAUTHENTICATED", result["risk"]["reason_codes"])
             self.assertFalse(result["human_review_triage"]["trade_authorized"])
             self.assertEqual(result["offline_financial_review"]["status"], "calculated_unverified")
             self.assertEqual(result["source_span"]["original_sha256"],
@@ -102,6 +102,8 @@ class ReplayTests(unittest.TestCase):
             opener.assert_not_called()
             self.assertEqual(result["status"], "offline_capture_replayed_unverified")
             self.assertEqual(result["offline_financial_review"]["status"], "conflict")
+            self.assertEqual(result["risk"]["status"], "unavailable")
+            self.assertIn("CLAIMED_GROWTH_CONFLICT", result["risk"]["reason_codes"])
             triage = result["human_review_triage"]
             self.assertEqual(triage["status"], "manual_review_required")
             self.assertEqual(triage["priority"], "high")
