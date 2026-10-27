@@ -1,3 +1,8 @@
+## 2026-10-28 KST — strict KIC original-span ↔ financial metadata crosslink
+- KIC code `lead/kic@9ab91639774e3d85606593c297aa525641221c30`: added `assess_dl_original_handoff` and returns `filing_source_uri` from validated 10-K metadata bridge; `kic_dl_original_demo.py` now executes KIC metadata→original span crosslink.
+- [Exact GitHub CI #40536377124](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40536377124) completed SUCCESS **401/401**, six new offline tests. Strict identifiers/source URI/bounds, fail-closed on metadata inconsistencies or bogus truth claims; excludes all caller-supplied HTML from join output. Crosslink does NOT re-read original bytes or independently authenticate issuer/filing/numeric facts; `anchored_source_span` is the separate hash-checked read step.
+- KIC lead code/test changes only; DL lead owns `feature/disclosure-lightning`. Next KIC UI source-context card must escape untrusted HTML and remain optional, not Nov12 PDF prelim prerequisite.
+
 ## 2026-10-28 — DL original content archiving accepted into KIC lead
 
 - [PR #3](https://github.com/hibi89/hibi89-kic-proofinvest/pull/3) merged canonical PUBLIC DL original-archive module + KIC own read-only anchored source-span bridge into lead/kic at code SHA `74322bbdf787d35d94990c946f3e5ec30ba32fa0`.

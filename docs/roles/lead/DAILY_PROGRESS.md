@@ -1,3 +1,9 @@
+## 2026-10-28 KST — EXTRA KIC/DL crosslink task (independent, not scheduled 60-day gate)
+- **100/100 DONE:** 20/20 original-file/SEC metadata contract review; 40/40 KIC-only CIK/accession/exact URL/digest/source-state/span-bounds validator and synthetic replay integration; 30/30 six tests and exact-source GitHub [CI #40536377124](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40536377124) **401/401 PASS**; 10/10 GitHub source commit and handoff record (docs successor CI still separate).
+- Code SHA `9ab91639774e3d85606593c297aa525641221c30`; three code/test files only; `lead/kic`, no DL branch or main changes, no live SEC, paid tools, deployment, DAKER or user PDF changes.
+- This standalone task's remaining base **0h**, contingency **0h** after source CI; actual engineering time **unmeasured**. Nontechnical owner-approval/real SEC/Production waits are **not** included in 0h. Official 60-day canonical master unchanged **29 DONE / 3 BLOCKED / 28 NOT_STARTED**.
+- Next independent KIC item: source citation card with escaped untrusted text in existing Streamlit (test-gated), without changing prelim freeze. Verify remote docs successor SHA/CI independently.
+
 ## 2026-10-27 KST — EXTRA v3 read-only pre-submission quality review
 - **Separate work (not a scheduled 60-day item):** actual candidate inspected; PDF 10p/493063B; original old PDF 513113B byte hash unchanged; seven official sections, four known hyperlinks, 0 out-of-bounds text, Apple SEC accession/sales values verified. Private review report/JSON manifest created, all authorization bits FALSE.
 - Official existing `kic_submission_preflight.py` intentionally refuses v3 due pinned old file size/hash. DO_NOT_UPLOAD remains correct until owner exact approval. No re-pin/publish/portal click.
