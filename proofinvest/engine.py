@@ -26,17 +26,26 @@ def amount(raw: Any) -> Decimal | None:
     except InvalidOperation:return None
 
 
-def _period_end(raw: Any) -> date | None:
-    """Read the last complete OpenDART date (end of a displayed date range)."""
+def _annual_period_end(raw: Any) -> date | None:
+    """Get an end date, rejecting short, reversed or malformed ranges.
+
+    If only an end date is supplied, the start is unknown and the legacy
+    date-only format remains valid. When TWO dates are given, their length
+    must fit one annual fiscal period. Never silently select the last
+    date from an invalid multi-date range.
+    """
     if not isinstance(raw, str):
         return None
-    dates = re.findall(r"(?<!\d)(\d{4})[.-](\d{2})[.-](\d{2})(?!\d)", raw)
-    if not dates:
+    parts = re.findall(r"(?<!\\d)(\\d{4})[.-](\\d{2})[.-](\\d{2})(?!\\d)", raw)
+    if len(parts) not in (1, 2):
         return None
     try:
-        return date(*(int(part) for part in dates[-1]))
+        dates = [date(*(int(value) for value in part)) for part in parts]
     except ValueError:
         return None
+    if len(dates) == 2 and not 330 <= (dates[1] - dates[0]).days <= 380:
+        return None
+    return dates[-1]
 
 
 def _consistent_annual_period(rows: list[dict], year: int) -> bool:
@@ -63,8 +72,8 @@ def _consistent_annual_period(rows: list[dict], year: int) -> bool:
     if has_dates:
         end_pairs = set()
         for row in rows:
-            current = _period_end(row.get("thstrm_dt"))
-            previous = _period_end(row.get("frmtrm_dt"))
+            current = _annual_period_end(row.get("thstrm_dt"))
+            previous = _annual_period_end(row.get("frmtrm_dt"))
             if current is None or previous is None or previous >= current:
                 return False
             # A valid pair must end in the requested reporting year and the

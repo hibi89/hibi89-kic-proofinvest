@@ -80,6 +80,34 @@ class EngineTests(unittest.TestCase):
         rows[2]["frmtrm_dt"]="2023.12.31"
         self.assertEqual(calculate(rows,2024,"20",True)["checks"][0]["state"],"verified")
 
+    def test_short_explicit_annual_ranges_cannot_disguise_quarters(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.10.01 ~ 2024.12.31",
+                   frmtrm_dt="2023.10.01 ~ 2023.12.31") for r in ROWS]
+        self.assertEqual(parse_accounts(rows,2024),{})
+        report=calculate(rows,2024,"20",True)
+        self.assertEqual(report["checks"][0]["state"],"unavailable")
+        self.assertIsNone(report["risk_signals"][0]["triggered"])
+
+    def test_one_short_range_poisoned_row_blocks_whole_statement(self):
+        rows=[dict(r,bsns_year="2024",reprt_code="11011",
+                   thstrm_dt="2024.01.01 ~ 2024.12.31",
+                   frmtrm_dt="2023.01.01 ~ 2023.12.31") for r in ROWS]
+        rows[2]["thstrm_dt"]="2024.10.01 ~ 2024.12.31"
+        self.assertEqual(parse_accounts(rows,2024),{})
+
+    def test_reversed_invalid_or_multiple_explicit_dates_are_rejected(self):
+        original=[dict(r,bsns_year="2024",reprt_code="11011",
+                       thstrm_dt="2024.01.01 ~ 2024.12.31",
+                       frmtrm_dt="2023.01.01 ~ 2023.12.31") for r in ROWS]
+        for malformed in ("2024.12.31 ~ 2024.01.01",
+                          "2024.01.01 ~ 2024.04.30 ~ 2024.12.31",
+                          "2024.02.30 ~ 2024.12.31"):
+            with self.subTest(period=malformed):
+                rows=[dict(r) for r in original]
+                rows[0]["thstrm_dt"]=malformed
+                self.assertEqual(parse_accounts(rows,2024),{})
+
     def test_mixed_disclosed_period_end_dates_fail_closed(self):
         rows=[dict(r,bsns_year="2024",reprt_code="11011",
                    thstrm_dt="2024.01.01 ~ 2024.12.31",
