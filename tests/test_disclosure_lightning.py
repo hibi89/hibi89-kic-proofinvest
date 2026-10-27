@@ -142,6 +142,36 @@ class DisclosureLightningTests(unittest.TestCase):
             del payload["filings"]["recent"]["primaryDocument"]
             self.indexed(json.dumps(payload).encode())
 
+    def test_sqlite_output_symlink_is_refused_without_mutation(self):
+        original = self.root / "original.sqlite3"
+        indexed = self.indexed()
+        core.save_index(original, self.raw, indexed)
+        before = original.read_bytes()
+        alias = self.root / "db-link.sqlite3"
+        try:
+            alias.symlink_to(original)
+        except (NotImplementedError, OSError):
+            self.skipTest("Symlink creation unavailable")
+        with self.assertRaisesRegex(ValueError, "symbolic link"):
+            core.save_index(alias, self.raw, indexed)
+        self.assertEqual(original.read_bytes(), before)
+
+    def test_module_entrypoint_process_offline_import(self):
+        import subprocess
+        import sys
+        completed = subprocess.run([
+            sys.executable, "-m", "disclosure_lightning",
+            "--cik", CIK, "--as-of", "2026-10-27",
+            "--db", str(self.db), "--input-json", str(FIXTURE),
+            "--forms", "10-K,10-K/A,8-K",
+        ], capture_output=True, text=True, timeout=12,
+           cwd=Path(__file__).resolve().parents[1])
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["status"], "SAVED")
+        self.assertEqual(payload["new_filings"], 3)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 3)
+
     def test_local_cli_import_and_read_only_list(self):
         args = [
             "--cik", CIK, "--as-of", "2026-10-27", "--db", str(self.db),
