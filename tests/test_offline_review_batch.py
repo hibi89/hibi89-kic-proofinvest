@@ -1,9 +1,10 @@
 """Offline batch orchestration tests: no provider HTTP."""
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from proofinvest.offline_review_batch import review_capture_batch, format_review_queue_csv
+from proofinvest.offline_review_batch import review_capture_batch, format_review_queue_csv, discover_capture_files
 
 
 class BatchReviewTests(unittest.TestCase):
@@ -63,6 +64,19 @@ class BatchReviewTests(unittest.TestCase):
         csv_text = format_review_queue_csv(batch)
         self.assertEqual(csv_text,
                          "index,status,priority,next_action\\n3,blocked,high,RECHECK_LOCAL_ARCHIVE\\n")
+
+    def test_directory_discovery_is_bounded_and_sorted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "b.zip").write_bytes(b"test")
+            (root / "a.ZIP").write_bytes(b"test")
+            (root / "notes.txt").write_text("ignore")
+            self.assertEqual([p.name for p in discover_capture_files(root)], ["a.ZIP", "b.zip"])
+
+    def test_directory_discovery_rejects_empty_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(ValueError):
+                discover_capture_files(Path(folder))
 
     def test_batch_limit(self):
         with self.assertRaises(ValueError):
