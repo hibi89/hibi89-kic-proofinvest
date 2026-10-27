@@ -91,7 +91,7 @@ class ExtractedFilingTests(unittest.TestCase):
     def test_utf8_plain_text_has_exact_raw_line_byte_spans(self):
         # UTF-8 BOM, CRLF, multi-byte Hangul, blank lines and clean-text
         # whitespace normalization must not change the recorded RAW offset.
-        raw = b"\\xef\\xbb\\xbf" + "  매출  2025 \\r\\n\\r\\nRevenue & Expenses\\n".encode("utf-8")
+        raw = b"\xef\xbb\xbf" + "  매출  2025 \r\n\r\nRevenue & Expenses\n".encode("utf-8")
         receipt = extract.extract_bytes(
             raw, content_type="text/plain",
             filing_sha256=hashlib.sha256(raw).hexdigest(),
@@ -113,12 +113,12 @@ class ExtractedFilingTests(unittest.TestCase):
             span = raw[locator["byte_start"]:locator["byte_end_exclusive"]]
             self.assertEqual(block["raw_span_sha256"], hashlib.sha256(span).hexdigest())
         self.assertTrue(raw[first["source_locator"]["byte_start"]:
-                            first["source_locator"]["byte_end_exclusive"]].endswith(b"\\r\\n"))
+                            first["source_locator"]["byte_end_exclusive"]].endswith(b"\r\n"))
         self.assertFalse(receipt["source_authenticity_verified"])
         self.assertFalse(receipt["suitable_for_automatic_financial_facts"])
 
     def test_byte_spans_survive_candidate_search_without_certifying_claims(self):
-        raw = "Revenue 100\\n".encode("utf-8")
+        raw = "Revenue 100\n".encode("utf-8")
         receipt = extract.extract_bytes(
             raw, content_type="text/plain",
             filing_sha256=hashlib.sha256(raw).hexdigest(), issuer_cik=CIK,
@@ -135,7 +135,7 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertFalse(found["source_authenticity_verified"])
 
     def test_skipped_long_raw_line_keeps_next_line_correct_offset(self):
-        raw = b"X" * 1800 + b"\\nRevenue 200\\n"
+        raw = b"X" * 1800 + b"\nRevenue 200\n"
         receipt = extract.extract_bytes(
             raw, content_type="text/plain",
             filing_sha256=hashlib.sha256(raw).hexdigest(),
