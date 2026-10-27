@@ -1,3 +1,18 @@
+# DL P10 — as-of same-day unknown acceptance fail-closed (2026-10-28 KST)
+
+1. **Goal:** Prevent look-ahead inclusion of same-UTC-day metadata when an SEC shaped row has no reliable timezone-aware acceptance instant.
+2. **Design:** Narrow conservative skip in existing recent `core.index_submissions` and historical `history.index_history_page`: when `accepted_at is None` and `filed_at == observed_instant.date()`, skip. Known acceptance instant still follows P9 UTC comparison; earlier-day date-only records retain existing behavior. No new provider fetch or schema change.
+3. **Tests:** Two new regressions committed (missing/empty/naive vs known offset and prior-day recent; missing/naive vs valid prior-to-observation history). Prior P6 local core-contract shim 9/9 PASS; copied P10 predicate independent test 6/6 PASS. **Full latest GitHub repo unittest/Actions NOT VERIFIED**, do not claim overall PASS; local shim is not actual source checkout.
+4. **Actual progress:** P10 source/test commits pushed and code reviewed; source-level full integration remains blocked by external GitHub clone DNS and status API returning zero checks.
+5. **Failure/recovery:** Direct `git ls-remote` failed `Could not resolve host github.com`, GitHub Actions links inaccessible via browser tool in this runtime. No overwrite/force push. Parent Git commits provide rollback.
+6. **Repo/branch/source SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; core `2a0b26f21e30398c7afa7471d8fb5cec1ddf12e5`, history `601d3b75cc409fe4cbb131068935537aa8a7fad2`, tests `7652716a869a498ac9aac2d271a16b7795a59e77`. Root handoff/docs latest HEAD check after writes.
+7. **Commands/deployment:** `python -m unittest discover -s tests -v` in actual repo still needed. Offline CLI `python -m disclosure_lightning` and `python -m disclosure_lightning.history`, no DL Production URL.
+8. **Data/security:** No live SEC/User-Agent contact, API tokens, unlicensed original bytes, private Bid_Owl, customer data or KIC confidential PDF/PPTX touched. CIK/source provenance unverified.
+9. **Next:** Verify exact-source Actions job and scoped tests, correct failure, then follow KIC lead feedback; no source truth promotion or unreviewed PR merge.
+10. **KST/outcome:** 2026-10-28; code and tests remote committed, standalone checks as above, whole-repo and real provider/production checks pending.
+
+---
+
 # DL P9 — exact known acceptance timestamp cut-off (2026-10-28 KST)
 
 1. **Goal:** Address a point-in-time defect: same-day accepted-at times beyond the observation instant could be included by date-only filtering.
