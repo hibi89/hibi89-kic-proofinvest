@@ -265,6 +265,17 @@ def import_history_batch(*, pages: dict[str, bytes], db_path: Path,
         "status": "SAVED_BATCH" if new_filings else "REUSED_BATCH",
         "pages_processed": len(completed),
         "page_names": completed,
+        # This describes only selected input vs pinned manifest; not an
+        # authenticated or database-wide claim of SEC-history completeness.
+        "selected_batch_missing_manifest_pages": sorted(
+            item["name"] for item in manifest
+            if item["eligible_by_start_date"] and item["name"] not in pages
+        ),
+        "selected_batch_covers_eligible_manifest": all(
+            not item["eligible_by_start_date"] or item["name"] in pages
+            for item in manifest
+        ),
+        "issuer_history_authenticity_verified": False,
         "new_filings": new_filings,
         "history_manifest_sha256": manifest_sha256,
         "total_input_bytes": total,
