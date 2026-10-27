@@ -1,3 +1,8 @@
+## 2026-10-27 KST — SEC review trust-boundary QA (current)
+- Source `b5b31e8b52923904d479e6af4a2a9d4a7f256b8c`, [exact-source workflow #40515982592](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40515982592) **SUCCESS 318/318**, with mocked HTTP and Streamlit AppTest. Local reviewer now rejects invalid HTTP failure reason codes/attempt flags, residual financial fields and inconsistent calculated/conflict status; malformed list/dict reasons fail closed. Two new test methods and corrected old success mock.
+- Previous CI attempts `8299501` / `fd3338c` failed one outdated mock each; final corrected fixture passes. Real SEC response/source authentication/LLM/Production/DAKER not verified.
+- Canonical 29 DONE / 3 BLOCKED / 28 NOT_STARTED, private exact-PDF SHA/title and separate final DAKER submission consent still required. Source v4.1 private candidate never published; document-only follow-up commit to be CI-verified independently.
+
 ## 2026-10-27 KST — KIC SEC v3 private submission candidate
 - Verified official SEC Apple FY2025 10-K accession 0000320193-25-000079 and official 2025/24 net sales USD millions 416,161/391,035; manually recomputed +6.43%, **not software auto-SEC fetch**. Separate v3 10-page/493,063-byte PDF and PPTX, visual/page/link checks PASS. Older frozen and v2 remain intact.
 - Public [review memo](SEC_V3_PRELIM_QA_20261027.md); private candidate kept OUT of public GitHub, Library persistence and DAKER. No user title/file authorization, no changed pinned-hash preflight, no final receipt or Elo vote.
