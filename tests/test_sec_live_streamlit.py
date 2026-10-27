@@ -69,6 +69,49 @@ class SecLiveStreamlitTests(unittest.TestCase):
             func.assert_called_once()
             self.assertTrue(func.call_args.kwargs["allow_network"])
 
+    def test_conflict_displays_blocked_trace_without_success_metrics(self):
+        verdict = {
+            "schema": "proofinvest.sec-companyfacts-offline.v1",
+            "status": "conflict", "reason_code": "GROWTH_CLAIM_CONFLICT",
+            "source_kind": "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED",
+            "growth_pct": "6.43", "current_usd": "416161000000",
+            "prior_usd": "391035000000", "live_api_called": True,
+            "http_request_attempted": True, "authenticated_external_source": False,
+            "source_rights_verified": False, "ai_agent_executed": False,
+            "official_contest_submission": False, "risk_calculated": False,
+        }
+        verdict["bounded_review"] = review_sec_verdict(verdict)
+        with patch.object(sec_api_client, "run_sec_annual_revenue", return_value=verdict):
+            at = screen()
+            at.button[0].click().run(timeout=15)
+        self.assertFalse(at.exception)
+        self.assertFalse(at.metric)
+        self.assertTrue(any("GROWTH_CLAIM_CONFLICT" in x.value for x in at.error))
+        self.assertTrue(any("REVIEW_DISPUTED_GROWTH_CLAIM" in x.value for x in at.info))
+        self.assertTrue(any("규칙 기반, AI Agent 아님" in x.value for x in at.subheader))
+
+    def test_filing_after_as_of_exposes_review_hold_no_metrics(self):
+        verdict = {
+            "schema": "proofinvest.sec-companyfacts-offline.v1",
+            "status": "unavailable", "reason_code": "FILING_AFTER_AS_OF",
+            "source_kind": "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED",
+            "growth_pct": None, "current_usd": None, "prior_usd": None,
+            "sec_filing_index": None,
+            "live_api_called": True, "http_request_attempted": True,
+            "authenticated_external_source": False, "source_rights_verified": False,
+            "ai_agent_executed": False, "official_contest_submission": False,
+            "risk_calculated": False,
+        }
+        verdict["bounded_review"] = review_sec_verdict(verdict)
+        with patch.object(sec_api_client, "run_sec_annual_revenue", return_value=verdict):
+            at = screen()
+            at.button[0].click().run(timeout=15)
+        self.assertFalse(at.exception)
+        self.assertFalse(at.metric)
+        self.assertTrue(any("FILING_AFTER_AS_OF" in x.value for x in at.error))
+        self.assertTrue(any("REVIEW_FILING_DATE_PERIOD_OR_SOURCE" in x.value
+                            for x in at.info))
+
     def test_success_data_without_confirmed_http_attempt_is_hidden(self):
         verdict = {
             "status": "calculated_unverified", "growth_pct": "6.43",

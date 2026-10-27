@@ -112,6 +112,9 @@ class SecHttpAdapterTests(TestCase):
         with patch.object(client, "_open_once", return_value=FakeHTTPResponse()):
             v = client.run_sec_annual_revenue(**(ARGS | {"as_of": "2025-10-30"}))
         self.assertEqual(v["reason_code"], "FILING_AFTER_AS_OF")
+        self.assertEqual(v["bounded_review"]["reason_code"], "SEC_VERIFICATION_UNAVAILABLE")
+        self.assertEqual(v["bounded_review"]["status"], "blocked")
+        self.assertEqual(v["bounded_review"]["external_tool_calls"], 0)
         self.assertIsNone(v["growth_pct"])
 
     def test_wrong_issuer_accession_fails_before_network(self):
@@ -189,6 +192,8 @@ class SecHttpAdapterTests(TestCase):
         with patch.object(client, "_open_once", return_value=FakeHTTPResponse(body)):
             v = client.run_sec_annual_revenue(**ARGS)
         self.assertEqual(v["reason_code"], "ANNUAL_FACTS_UNAVAILABLE")
+        self.assertEqual(v["bounded_review"]["reason_code"], "SEC_VERIFICATION_UNAVAILABLE")
+        self.assertEqual(v["bounded_review"]["status"], "blocked")
 
     def test_claim_conflict_after_real_shape_fetch(self):
         with patch.object(client, "_open_once", return_value=FakeHTTPResponse()):

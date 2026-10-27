@@ -13,6 +13,18 @@ from typing import Any, Mapping
 _MODE = "RULE_BASED_SEC_VERDICT_REVIEW_NOT_LLM_AGENT"
 _OK_SOURCE = "SEC_HTTPS_CONCEPT_RESPONSE_NOT_INDEPENDENTLY_CERTIFIED"
 _FAIL_SOURCE = "SEC_API_NETWORK_ATTEMPT_NOT_FACT_CERTIFICATION"
+# Only verifier-defined fail-closed outcomes may be explained as unavailable.
+# Unknown/fabricated reason codes continue to fail the verdict contract.
+_VERIFICATION_HOLD_REASONS = frozenset({
+    "INVALID_INPUT", "NONCONSECUTIVE_FISCAL_YEARS", "CIK_MISMATCH",
+    "MISSING_OR_OVERSIZED_REVENUE_RECORDS", "UNSUPPORTED_OR_MIXED_UNITS",
+    "INVALID_FACT_RECORD", "INVALID_ANNUAL_PERIOD_OR_FILING_DATE",
+    "INVALID_FILING_CHRONOLOGY", "INVALID_USD_REVENUE",
+    "FILING_AFTER_AS_OF", "ANNUAL_FACTS_UNAVAILABLE",
+    "AMBIGUOUS_ANNUAL_FACTS", "MIXED_FILING_DATES",
+    "FISCAL_PERIOD_GAP", "ZERO_PRIOR_REVENUE",
+    "ARITHMETIC_UNREPRESENTABLE", "INVALID_GROWTH_CLAIM",
+})
 
 
 def review_sec_verdict(verdict: Any) -> dict[str, Any]:
@@ -43,6 +55,22 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             and verdict.get("growth_pct") is None
         ):
             reason, action = "SEC_EVIDENCE_UNAVAILABLE", "CHECK_SOURCE_OR_REQUEST_HUMAN_REVIEW"
+        elif (
+            flags_ok and attempted is True
+            and verdict.get("schema") == "proofinvest.sec-companyfacts-offline.v1"
+            and verdict.get("source_kind") == _OK_SOURCE
+            and status == "unavailable"
+            and verdict.get("reason_code") in _VERIFICATION_HOLD_REASONS
+            and verdict.get("risk_calculated") is False
+            and verdict.get("growth_pct") is None
+            and verdict.get("current_usd") is None
+            and verdict.get("prior_usd") is None
+            and verdict.get("sec_filing_index") is None
+        ):
+            reason, action = (
+                "SEC_VERIFICATION_UNAVAILABLE",
+                "REVIEW_FILING_DATE_PERIOD_OR_SOURCE",
+            )
         elif (
             flags_ok and attempted is True
             and verdict.get("schema") == "proofinvest.sec-companyfacts-offline.v1"

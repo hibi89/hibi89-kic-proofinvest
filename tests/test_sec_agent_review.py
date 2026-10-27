@@ -33,6 +33,39 @@ class SecPostVerificationTests(unittest.TestCase):
         self.assertEqual(r["status"], "blocked")
         self.assertEqual(r["reason_code"], "SEC_GROWTH_CLAIM_CONFLICT")
 
+    def test_filed_after_as_of_and_missing_annual_facts_are_human_holds(self):
+        for reason in ("FILING_AFTER_AS_OF", "ANNUAL_FACTS_UNAVAILABLE"):
+            with self.subTest(reason=reason):
+                payload = _BASE | {
+                    "status": "unavailable", "reason_code": reason,
+                    "growth_pct": None, "current_usd": None,
+                    "prior_usd": None, "sec_filing_index": None,
+                }
+                verdict = review_sec_verdict(payload)
+                self.assertEqual(verdict["status"], "blocked")
+                self.assertEqual(verdict["reason_code"], "SEC_VERIFICATION_UNAVAILABLE")
+                self.assertEqual(verdict["next_action"], "REVIEW_FILING_DATE_PERIOD_OR_SOURCE")
+                self.assertEqual(verdict["external_tool_calls"], 0)
+
+    def test_verifier_hold_rejects_fabricated_or_residual_numbers(self):
+        base = _BASE | {
+            "status": "unavailable", "reason_code": "FILING_AFTER_AS_OF",
+            "growth_pct": None, "current_usd": None,
+            "prior_usd": None, "sec_filing_index": None,
+        }
+        for invalid in (
+            {"reason_code": "CLAIM_UNVERIFIED_BY_MAGIC"},
+            {"growth_pct": "6.43"}, {"current_usd": "1"},
+            {"sec_filing_index": "https://sec.example/claimed"},
+            {"source_kind": "CALLER_SUPPLIED_SEC_FORMAT_NOT_AUTHENTICATED"},
+            {"http_request_attempted": False},
+            {"authenticated_external_source": True},
+        ):
+            with self.subTest(invalid=invalid):
+                verdict = review_sec_verdict(base | invalid)
+                self.assertEqual(verdict["reason_code"], "UNTRUSTED_VERDICT_CONTRACT")
+                self.assertFalse(verdict["ai_agent_executed"])
+
     def test_http_gate_failure_never_retries(self):
         r = review_sec_verdict({
             "schema": "proofinvest.sec-concept-http-gate.v1",

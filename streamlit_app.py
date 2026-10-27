@@ -190,6 +190,54 @@ def _render_sec_curated_case(st) -> None:
     )
 
 
+def _render_sec_verdict_trace(st, verdict: dict) -> None:
+    """Expose bounded local outcomes for success, conflict and unavailable."""
+    review = verdict.get("bounded_review")
+    expected = {
+        "calculated_unverified": ("needs_authentication", {"SEC_STRUCTURAL_RESULT_ONLY"}),
+        "conflict": ("blocked", {"SEC_GROWTH_CLAIM_CONFLICT"}),
+        "unavailable": (
+            "blocked", {"SEC_EVIDENCE_UNAVAILABLE", "SEC_VERIFICATION_UNAVAILABLE"}
+        ),
+    }.get(verdict.get("status"))
+    steps = ["PLAN", "EVALUATE", "DECIDE", "REPORT"]
+    if (expected is None
+            or not isinstance(review, dict)
+            or review.get("schema") != "proofinvest.sec-verdict-local-review.v1"
+            or review.get("mode") != "RULE_BASED_SEC_VERDICT_REVIEW_NOT_LLM_AGENT"
+            or review.get("status") != expected[0]
+            or review.get("reason_code") not in expected[1]
+            or review.get("ai_agent_executed") is not False
+            or review.get("authenticated_external_source") is not False
+            or review.get("source_rights_verified") is not False
+            or review.get("official_contest_submission") is not False
+            or review.get("external_tool_calls") != 0
+            or review.get("tool_budget") != 0
+            or not isinstance(review.get("trace"), list)
+            or [row.get("step") for row in review["trace"] if isinstance(row, dict)] != steps
+            or len(review["trace"]) != 4
+            or review["trace"][2].get("decision") != review["reason_code"]
+            or review["trace"][3].get("decision") != "HUMAN_REVIEW_REQUIRED"):
+        st.warning("SEC 판단 추적을 검증하지 못해 Agent 흐름을 표시하지 않습니다.")
+        return
+    # Only fixed, internal review action codes can reach UI, not remote text.
+    actions = {
+        "SEC_STRUCTURAL_RESULT_ONLY": "INDEPENDENT_SEC_SOURCE_AND_RIGHTS_REVIEW",
+        "SEC_GROWTH_CLAIM_CONFLICT": "REVIEW_DISPUTED_GROWTH_CLAIM",
+        "SEC_EVIDENCE_UNAVAILABLE": "CHECK_SOURCE_OR_REQUEST_HUMAN_REVIEW",
+        "SEC_VERIFICATION_UNAVAILABLE": "REVIEW_FILING_DATE_PERIOD_OR_SOURCE",
+    }
+    if review.get("next_action") != actions[review["reason_code"]]:
+        st.warning("SEC 판단의 후속 조치가 올바르지 않아 표시를 중단했습니다.")
+        return
+    st.subheader("SEC 검증 후 판단 추적 — 규칙 기반, AI Agent 아님")
+    st.dataframe(
+        [{"단계": row["step"], "결정": row["decision"]} for row in review["trace"]],
+        use_container_width=True, hide_index=True,
+    )
+    st.info("추가 확인: " + actions[review["reason_code"]])
+
+
 def _render_sec_live_case(st) -> None:
     """Explicit-on-click one-issuer SEC HTTP; no automatic background requests."""
     import os
@@ -228,6 +276,7 @@ def _render_sec_live_case(st) -> None:
         return
     if verdict.get("status") != "calculated_unverified":
         st.error("SEC 수집·검산 보류: " + str(verdict.get("reason_code", "UNKNOWN")))
+        _render_sec_verdict_trace(st, verdict)
         return
     if verdict.get("live_api_called") is not True:
         st.error("실제 HTTP 요청 여부를 확인할 수 없어 결과 표시를 차단했습니다.")
@@ -238,22 +287,7 @@ def _render_sec_live_case(st) -> None:
         {"연도": "FY2024", "매출 (백만 USD)": int(verdict["prior_usd"]) // 1_000_000},
     ], use_container_width=True, hide_index=True)
     st.markdown("[SEC 공식 10-K 접수 페이지](" + verdict["sec_filing_index"] + ")")
-    review = verdict.get("bounded_review")
-    if (isinstance(review, dict)
-            and review.get("mode") == "RULE_BASED_SEC_VERDICT_REVIEW_NOT_LLM_AGENT"
-            and review.get("reason_code") == "SEC_STRUCTURAL_RESULT_ONLY"
-            and review.get("ai_agent_executed") is False
-            and review.get("external_tool_calls") == 0
-            and isinstance(review.get("trace"), list)
-            and [item.get("step") for item in review["trace"]] == [
-                "PLAN", "EVALUATE", "DECIDE", "REPORT"]):
-        st.subheader("SEC 검증 후 판단 추적 — 규칙 기반, AI Agent 아님")
-        st.dataframe([{"단계": item["step"], "결정": item["decision"]}
-                      for item in review["trace"]],
-                     use_container_width=True, hide_index=True)
-        st.info("추가 확인: " + review["next_action"])
-    else:
-        st.warning("SEC 판단 추적을 검증하지 못해 Agent 흐름을 표시하지 않습니다.")
+    _render_sec_verdict_trace(st, verdict)
     st.caption(
         "단일 SEC 공식 CompanyConcept HTTPS 응답에 대한 산술 검산입니다. "
         "출처 권리/실제 제출/원문 독립 재인증/LLM·ML·DL 모두 별도 검증 대상입니다."
