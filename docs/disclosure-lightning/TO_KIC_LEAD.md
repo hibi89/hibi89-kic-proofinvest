@@ -1,3 +1,13 @@
+# DL → KIC lead P7 multi-page offline history (2026-10-28 KST)
+
+- **DL feature branch:** `feature/disclosure-lightning`. P7 code commit `f5fd0ac85c1283730d899a7f41cb3d75c0773790`, safe `_read_local` continuation `fc5f875aac0701cd495e5303b7f8f7dc1f78c44a`, tests through `99bf4983d055fbc581ebda394a527c4df7da434c`. Root doc successor SHA separately verified after writing.
+- **Implemented:** `list_manifest_pages`, `import_history_batch`, `import_history_directory` plus `--list-manifest` / `--batch-dir` CLI. Existing `history.py` and `core.save_index` schema unchanged. Max 8 local pages, bounded bytes, all-input preflight, cross-page accession collision detection, idempotent replay with explicit partial-write recovery. No network, no new dependencies, new API credits zero.
+- **Tests:** five new actual repository regression methods added, covering two-page save/replay, rejected malformed second page without writes, directory/cap, partial-write recovery, CLI discovery and rerun. **New repo-wide GitHub CI: UNVERIFIED**; connector returns zero commit-status entries and PR-only workflow lookup is not exhaustive. Not a claim of PASS/FAIL.
+- **Boundary:** SEC URL names and manifest provenance remain unverified local records. No live issuer HTTP, no official original filing byte authentication, no automatic amendment-parent inference or portfolio signals. KIC Streamlit and `proofinvest/dl_bridge.py` untouched; draft PR #1 remains not merged. Prior independent KIC `lead/kic` head advanced beyond prior reports; review current SHA before any integration.
+- **Next KIC decision:** Reconcile draft PR #1 with already-accepted KIC integrations, independently verify P7 full CI and contract. Do not automatically overwrite KIC bridge. Nov12 PDF-only preliminary and DAKER authorization unchanged.
+
+---
+
 # DL P6 → KIC lead (2026-10-28 KST)
 
 - **코드:** `feature/disclosure-lightning@98ae2496264e5356f79e2fe7b6bd14796d99fea6` `disclosure_lightning/history.py` 추가; 테스트: `tests/test_disclosure_lightning.py` 새 regression. 현재 테스트 포함 커밋 `4dedf4259c907eba6b15b69428bce1c5a1cda13b`.
