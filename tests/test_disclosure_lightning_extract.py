@@ -177,7 +177,7 @@ class ExtractedFilingTests(unittest.TestCase):
 
     def test_keyword_search_rejects_invalid_limits_and_empty_terms(self):
         receipt = self.run_from_saved()
-        for term in ("", " ", "R", "Z" * 81, "Bad\\nX"):
+        for term in ("", " ", "R", "Z" * 81, "Bad\nX"):
             with self.subTest(term=term), self.assertRaises(ValueError):
                 extract.find_evidence_candidates(receipt, term=term)
         for limit in (-1, 0, 51, True):
