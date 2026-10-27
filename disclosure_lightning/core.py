@@ -407,6 +407,9 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
         conn.execute("PRAGMA busy_timeout=5000")
         with conn:
             conn.executescript(SCHEMA)
+            # Serialize read-check-write across processes so simultaneous
+            # replays reuse one observation instead of racing its UNIQUE key.
+            conn.execute("BEGIN IMMEDIATE")
             digest = indexed["source_sha256"]
             existing = conn.execute(
                 "SELECT id FROM observations WHERE provider=? AND issuer_cik=? AND sha256=?",

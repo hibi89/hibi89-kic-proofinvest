@@ -86,6 +86,26 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
             self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
 
+    def test_simultaneous_replay_serializes_and_reuses_observation(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+
+        indexed = self.indexed()
+        start = Barrier(2)
+
+        def save_after_start():
+            start.wait(timeout=5)
+            return core.save_index(self.db, self.raw, indexed)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = [future.result(timeout=10) for future in (
+                pool.submit(save_after_start), pool.submit(save_after_start))]
+        self.assertEqual(sorted(item["status"] for item in results), ["REUSED", "SAVED"])
+        self.assertEqual(results[0]["observation_id"], results[1]["observation_id"])
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
+
     def test_read_only_list_supports_uri_reserved_filename_characters(self):
         special_db = self.root / "ledger#archive.sqlite3"
         core.save_index(special_db, self.raw, self.indexed())
