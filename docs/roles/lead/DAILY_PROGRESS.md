@@ -1,3 +1,9 @@
+## 2026-10-28 KST — EXTRA HTML text-node financial-literal locator
+- **100/100 DONE standalone:** reviewed local triad and canonical DL provenance/period contract 20/20; KIC-only bounded HTMLParser locator and integrated subresult 40/40; +10 tests [exact-source GitHub Actions #40543770115](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40543770115) **447/447 PASS** 30/30; source push and handoff 10/10, docs successor CI checked separately.
+- Code `cfb39bbb42b847b7fc6f934f5d29a75f7b186d25`: `proofinvest/numeric_literal_anchor.py`, `proofinvest/local_sec_packet.py`, `tests/test_numeric_literal_anchor.py`. Always `financial_facts_authenticated=False` and `source.span_proves_financial_claim=False`; unique ASCII literal only, not iXBRL accounting unit/context proof. No SEC HTTP or public/private PDF.
+- **Standalone unit remaining 0h base+0h contingency**, real elapsed time unmeasured. Real provider provenance, independent statements, Production, official owner PDF approval, DAKER submit/receipt remain separate uncompleted dependencies.
+- Official master **29 DONE/3 BLOCKED/28 NOT_STARTED** unchanged; no UI cosmetic work prioritized. Next semantic fact grounding or official owner gates.
+
 ## 2026-10-28 KST — EXTRA generic local SEC triad evidence assembly
 - **Independent 100/100 DONE:** 20/20 canonical DL archive/KIC SEC source contract reviewed; 40/40 untrusted local triplet pipeline + fail-closed as-of/byte provenance JSON; 30/30 11 dedicated tests + [source CI #40541869622](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40541869622) **437/437 PASS**; 10/10 source GitHub and 10-field handoff written. No live API, DAKER, private bytes, production or DL branch changes.
 - Code SHA `2480d084e025adaaab067bde55a1dfa80b6deaf7`; new `proofinvest/local_sec_packet.py` + `tests/test_local_sec_packet.py` only. This is the first generic locally supplied 10-K triad route, not source authentication or a new finalist macro feed.
