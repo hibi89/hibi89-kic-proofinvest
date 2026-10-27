@@ -131,6 +131,10 @@ def index_history_page(raw: bytes, *, db_path: Path, cik: str,
         if kind not in forms or day > cutoff or day > observed_instant.date():
             continue
         accepted_at = core._accepted(accepted[i]) if accepted is not None else None
+        if accepted_at is None and day == observed_instant.date():
+            # Date-only same-day history cannot prove prior-to-observation
+            # availability. Do not guess an acceptance instant.
+            continue
         if (accepted_at is not None
                 and datetime.fromisoformat(accepted_at).astimezone(timezone.utc) > observed_instant):
             continue
