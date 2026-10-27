@@ -1,3 +1,17 @@
+## DL P9 — 2026-10-28 KST | 10-field continuation, feature branch only
+1. **Goal:** Fix point-in-time evidence leak in source indexers: filing filed on UTC same day but accepted later than locally recorded observation must not appear.
+2. **Design/change:** Use existing offset-aware `core._accepted`; compare UTC instant to `_observation_time` and exclude known future accepted filings in both `index_submissions` and `index_history_page`. Missing/naive timestamps remain unverifiable, not silently converted; no existing filing receipt rewrite.
+3. **Tests/evidence:** 2 regression methods added; exact-source Python full-suite/CI **NOT VERIFIED**. GitHub branch code patches checked; connector combined status 0 is not success. Cannot reproduce full repo in local runtime due GitHub DNS and only earlier P6 shim.
+4. **Actual progress:** Remote core/history/test commit completed, no live SEC, real issuer accuracy or production proven, no KIC consumer changes.
+5. **Failure and recovery:** CI provider lacks push-run listing; raw.githubusercontent DNS inaccessible in sandbox. No invented pass and no force push. Rollback via Git parent.
+6. **Repo/branch/SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, recent patch `ac68ea911adb59c2c31a2d7cf2921d064037b42b`, history `dedffd7c8e6a7c4f27eb2f91a7c509d3320af90f`, tests `ec39e85516426e82a65f2187825844b8a677dac0`; docs successor SHA to be checked.
+7. **Runtime/deployment:** `python -m disclosure_lightning` / `python -m disclosure_lightning.history` stdlib offline. No hosted DL URL or Vercel deployment.
+8. **Data/privacy/backups:** Existing original local SEC-shape raw JSON digest and immutable SQLite structure unchanged; no customer data, token, source rights escalation, private Bid_Owl, KIC PDF/PPTX.
+9. **Next/permissions:** First verify newest full Actions + scoped regression suite and fix errors. Then source-declared amendment candidate enhancement only on untrusted local original with clear proof labels; KIC chief must approve any bridge merge; no real provider HTTP/DAKER without owner gates.
+10. **Date/verification:** 2026-10-28 KST, code/tests and GitHub handoffs pushed; full CI/live SEC/production remain UNVERIFIED.
+
+---
+
 ## DL P8 — 2026-10-28 KST | ten-field continuation
 1. **Goal:** Make amendment history review possible without pretending the SEC submissions index provides an explicit trustworthy amendment target.
 2. **Design/decision:** Read-only `history.review_amendment_candidates` rechecks stored index response SHA256 and matching accession/form/filingDate, uses SEC-shaped `reportDate` and an earlier base form, emits unique unverified candidate only; no guess for missing/ambiguous period, no ledger write or schema changes.
