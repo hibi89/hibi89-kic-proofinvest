@@ -27,6 +27,7 @@ from proofinvest.dl_bridge import (
 )
 from proofinvest.dl_source_span import anchored_source_span
 from proofinvest.sec_companyfacts import verify_sec_annual_revenue
+from proofinvest.numeric_literal_anchor import find_numeric_literals_in_html_text
 
 _MAX_CLAIM_BYTES = 400
 _MAX_FILE_BYTES = 8_000_000
@@ -164,6 +165,13 @@ def build_local_sec_review_packet(
             or index["source_sha256"] != hashlib.sha256(submissions_json).hexdigest()
             or span.get("source_uri") != link.get("filing_source_uri")):
         raise ValueError("EVIDENCE_INTEGRITY_CHECK_FAILED")
+    numeric_literals = find_numeric_literals_in_html_text(
+        original_filing,
+        prior_amount=verdict["prior_usd"],
+        current_amount=verdict["current_usd"],
+    )
+    # Distinct from arbitrary anchored needle: this checks only two literal
+    # strings within decoded HTML text nodes, NOT accounting semantics or SEC truth.
     return {
         "schema": "proofinvest.offline-local-sec-review.v1",
         "status": "reviewable_untrusted_local_evidence",
@@ -185,6 +193,7 @@ def build_local_sec_review_packet(
             "span_end_byte_exclusive": crosslink["end_byte_exclusive"],
             "literal_occurrences": 1,
             "span_proves_financial_claim": False,
+            "numeric_literal_crosscheck": numeric_literals,
             "link_status": crosslink["status"],
         },
         "financial": {
@@ -213,6 +222,7 @@ def build_local_sec_review_packet(
             "Source URLs are derived from local SEC-shaped metadata, never contacted.",
             "Financial figures are compared within caller-supplied JSON, not independently proved.",
             "The exact archived byte span proves phrase location, not filing semantics or revenue.",
+            "Financial numeric literals inside HTML text nodes do not establish unit, scale, period, or issuer truth.",
             "No SEC transport receipt, redistribution rights, external authentication, or investment recommendation.",
             "Report is an offline review packet, NOT an official KIC submission.",
         ],
