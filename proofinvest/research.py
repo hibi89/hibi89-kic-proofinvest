@@ -40,6 +40,16 @@ def _instant(value: Any) -> datetime | None:
         return None
 
 
+def _known_day(value: Any) -> date | None:
+    """UTC calendar day for offset-aware moments, legacy day otherwise.
+
+    The request's date-only as_of is treated as the end of that UTC day.
+    Avoid mistaking a late -12:00 release for evidence available yesterday.
+    """
+    instant = _instant(value)
+    return instant.date() if instant is not None else _day(value)
+
+
 def _https_url(value: Any) -> bool:
     if not isinstance(value, str) or not value or any(c.isspace() for c in value):
         return False
@@ -146,12 +156,12 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         if collected_too_early:
             warn("invalid_source_date", f"source id {sid!r} has invalid publication/collection chronology")
             continue
-        if published > as_of:
+        if _known_day(source["published_at"]) > as_of:
             warn("future_published", f"source id {sid!r} was published after requested as_of")
             continue
         # A past as_of snapshot cannot rely on evidence collected later.
         # Publication alone does not prove the analyst had acquired it.
-        if collected > as_of:
+        if _known_day(source["collected_at"]) > as_of:
             warn("future_collected", f"source id {sid!r} was collected after requested as_of")
             continue
         # A caller's license label is merely metadata: it is not evidence
@@ -183,7 +193,7 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(finding, dict) or not _text(finding.get("claim")):
             warn("invalid_claim", f"finding[{index}] has no claim")
             continue
-        finding_day = _day(finding.get("as_of"))
+        finding_day = _known_day(finding.get("as_of"))
         if finding_day is None or finding_day > as_of:
             warn("invalid_finding_date", f"finding[{index}] has invalid or future as_of")
             continue
@@ -196,10 +206,10 @@ def normalize_research(payload: Mapping[str, Any]) -> dict[str, Any]:
         if missing:
             warn("unavailable_evidence", f"finding[{index}] references unavailable ids: {missing!r}")
             continue
-        if any(_day(accepted[sid]["published_at"]) > finding_day for sid in deduped):
+        if any(_known_day(accepted[sid]["published_at"]) > finding_day for sid in deduped):
             warn("finding_precedes_source", f"finding[{index}] predates its cited source")
             continue
-        if any(_day(accepted[sid]["collected_at"]) > finding_day for sid in deduped):
+        if any(_known_day(accepted[sid]["collected_at"]) > finding_day for sid in deduped):
             warn("finding_precedes_collection", f"finding[{index}] predates collection of cited evidence")
             continue
         result["findings"].append({

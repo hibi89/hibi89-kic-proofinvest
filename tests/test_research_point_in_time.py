@@ -23,6 +23,43 @@ def fixture():
 
 
 class PointInTimeResearchTests(unittest.TestCase):
+    def test_as_of_blocks_negative_offset_publication_after_utc_cutoff(self):
+        data = fixture()
+        data["sources"][0]["published_at"] = "2026-01-31T23:20:00-12:00"
+        data["sources"][0]["collected_at"] = "2026-01-31T23:30:00-12:00"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["sources"], [])
+        self.assertIn("future_published", [x["code"] for x in out["warnings"]])
+
+    def test_as_of_blocks_negative_offset_collection_after_utc_cutoff(self):
+        data = fixture()
+        data["sources"][0]["published_at"] = "2026-01-31"
+        data["sources"][0]["collected_at"] = "2026-01-31T23:30:00-12:00"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(out["sources"], [])
+        self.assertIn("future_collected", [x["code"] for x in out["warnings"]])
+
+    def test_utc_cutoff_accepts_next_local_day_with_earlier_utc_day(self):
+        data = fixture()
+        data["sources"][0]["published_at"] = "2026-02-01T01:00:00+14:00"
+        data["sources"][0]["collected_at"] = "2026-02-01T01:30:00+14:00"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "success")
+        self.assertEqual([x["id"] for x in out["sources"]], ["S1"])
+
+    def test_finding_cannot_cite_future_utc_source_despite_local_day(self):
+        data = fixture()
+        data["as_of"] = "2026-02-02"
+        data["sources"][0]["published_at"] = "2026-01-31T23:20:00-12:00"
+        data["sources"][0]["collected_at"] = "2026-01-31T23:30:00-12:00"
+        data["findings"][0]["as_of"] = "2026-01-31"
+        out = normalize_research(data)
+        self.assertEqual(out["status"], "unavailable")
+        self.assertEqual(len(out["sources"]), 1)
+        self.assertIn("finding_precedes_source", [x["code"] for x in out["warnings"]])
+
     def test_future_collection_cannot_support_past_as_of(self):
         data = fixture()
         data["sources"][0]["collected_at"] = "2026-02-01"
