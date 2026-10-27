@@ -284,6 +284,19 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertTrue(r["truncated"])
         self.assertEqual(r["blocks"][0]["text"], "VISIBLE")
 
+    def test_excessive_hidden_nesting_is_bounded_and_fails_closed(self):
+        depth = extract.MAX_HIDDEN_NESTING + 1
+        raw = (b"<template>" * depth + b"HIDDEN" + b"</template>" * depth
+               + b"<p>TAIL</p>")
+        r = extract.extract_bytes(
+            raw, content_type="text/html", filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertTrue(r["truncated"])
+        self.assertFalse(r["complete_text_extracted"])
+        self.assertEqual(r["blocks"], [])
+
     def test_missing_or_wrong_saved_digest_fails(self):
         with self.assertRaises(ValueError):
             extract.from_saved_original(

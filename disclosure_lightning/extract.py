@@ -20,6 +20,7 @@ MAX_BLOCKS = 1200
 MAX_CHARS = 250_000
 MAX_FRAGMENT_CHARS = 1200
 MAX_LINE_CHARS = 15_000
+MAX_HIDDEN_NESTING = 256
 SKIP_TAGS = frozenset({
     "script", "style", "head", "template", "svg", "noscript"
 })
@@ -89,12 +90,21 @@ class _SafeVisibleText(HTMLParser):
         self.fragments: list[dict] = []
         self.total_chars = 0
         self.truncated = False
+        self.discard_rest = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        if self.discard_rest:
+            return
         tag = tag.lower()
         if self.skipped:
             if tag in SKIP_TAGS:
-                self.skipped.append(tag)
+                if len(self.skipped) >= MAX_HIDDEN_NESTING:
+                    # We can no longer track matching close tags safely. Hide
+                    # the remainder instead of risking hidden-text exposure.
+                    self.truncated = True
+                    self.discard_rest = True
+                else:
+                    self.skipped.append(tag)
         elif tag in SKIP_TAGS:
             self.skipped.append(tag)
 
@@ -103,11 +113,13 @@ class _SafeVisibleText(HTMLParser):
         return None
 
     def handle_endtag(self, tag: str):
+        if self.discard_rest:
+            return
         if self.skipped and tag.lower() == self.skipped[-1]:
             self.skipped.pop()
 
     def handle_data(self, data: str):
-        if self.skipped:
+        if self.discard_rest or self.skipped:
             return
         chunk = _clean(data)
         if not chunk:
