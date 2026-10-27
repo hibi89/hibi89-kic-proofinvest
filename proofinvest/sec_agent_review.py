@@ -50,9 +50,9 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             and status in ("calculated_unverified", "conflict")
             and verdict.get("risk_calculated") is False
             and isinstance(verdict.get("growth_pct"), str)
-            and re.fullmatch(r"[+-]?\\d{1,6}\\.\\d{2}", verdict["growth_pct"])
+            and re.fullmatch(r"[+-]?\d{1,6}\.\d{2}", verdict["growth_pct"])
             and all(isinstance(verdict.get(k), str)
-                    and re.fullmatch(r"\\d{1,18}", verdict[k])
+                    and re.fullmatch(r"\d{1,18}", verdict[k])
                     for k in ("current_usd", "prior_usd"))
         ):
             if status == "conflict":
