@@ -1,3 +1,9 @@
+## 2026-10-27 KST — out-of-plan v3 private PDF factual SEC source addition
+- Separate private candidate v3: 10 pages/493,063 bytes; SEC Apple CIK0000320193 10-K accession 0000320193-25-000079, 2025/24 USDm 416,161/391,035, manually computed +6.43%. Original frozen & previous candidate unchanged. QA pass for page boundaries/required 7 sections/links, official portal acceptance NOT_TESTED.
+- User approval before selecting/uploading new PDF; pinned original hash guard must not be bypassed. Offline app CI #40491440843 257/257 PASS is historical working-code test, not new actual SEC integration.
+- This extra unit is PRIVATE_REVIEW_READY only. Existing scheduled day score/master counts unchanged 29 DONE / 3 BLOCKED / 28 NOT_STARTED. Actual time unmeasured, account-gated remaining hours unknown.
+- [Source & next approval](SEC_V3_PRELIM_QA_20261027.md).
+
 ## 2026-10-27 KST — EXTRA preliminary candidate QA; 60-day scheduled points unchanged
 - Created separate PRIVATE 10-page PPTX/PDF candidate using existing editable KIC layout, local PDF QA: 10p/493104B, all 7 official sections, 0 page boundary word overflow; original files intact. Candidate PREPARED_FOR_OWNER_REVIEW only, not official submission.
 - Old pinned PDF hash intentionally not replaced, so DAKER upload gate BLOCKED until express participant approval of exact file/title. No public artifact or external upload.
