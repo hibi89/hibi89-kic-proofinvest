@@ -150,6 +150,24 @@ class ReplayTests(unittest.TestCase):
         rec["companyfacts_observed_at_utc"]="2025-10-16T12:00:00"
         self.assertIsNone(_receipt_capture_clock(rec))
 
+    def test_cli_summary_only_excludes_original_and_source_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            proc = subprocess.run(
+                [sys.executable, "-m", "proofinvest.sec_bundle_replay", str(path),
+                 "--current-end", "2025-09-30", "--prior-end", "2024-09-30",
+                 "--needle", PHRASE, "--summary-only"],
+                capture_output=True, text=True, check=False, timeout=25,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            result = json.loads(proc.stdout)
+            self.assertEqual(result["schema"], "proofinvest.offline-review-summary.v1")
+            self.assertEqual(result["status"], "human_review_required")
+            self.assertFalse(result["trade_authorized"])
+            self.assertNotIn("source_span", result)
+            self.assertNotIn("issuer_cik", result)
+            self.assertNotIn("offline_financial_review", result)
+
     def test_cli_outputs_machine_readable_report_without_source_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=self.make(tmp)
