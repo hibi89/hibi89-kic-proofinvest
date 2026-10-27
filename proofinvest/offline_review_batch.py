@@ -40,6 +40,15 @@ def review_capture_batch(
             i["summary"]["status"] == "human_review_required" for i in items
         ),
         "items": items,
+        "action_counts": {
+            action: sum(action in item["summary"]["review_actions"] for item in items)
+            for action in (
+                "RECHECK_LOCAL_ARCHIVE", "VERIFY_PROVIDER_ORIGIN_AND_RIGHTS",
+                "RECONCILE_FINANCIAL_CLAIM", "RECALCULATE_FINANCIAL_EVIDENCE",
+                "REVIEW_LOCAL_RISK_FLAGS", "INSPECT_IXBRL_CONTEXT_AND_UNITS",
+                "LOCATE_ORIGINAL_NUMERIC_TEXT",
+            )
+        },
         "source_authenticated": False,
         "investment_recommendation": False,
         "trade_authorized": False,
