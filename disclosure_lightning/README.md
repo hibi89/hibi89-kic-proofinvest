@@ -5,7 +5,7 @@
 ## 지금 가능한 동작 (offline / synthetic)
 
 ```bash
-python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --db /tmp/dl-demo.sqlite3 --input-json disclosure_lightning/fixtures/sec_submissions_synthetic.json
+python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --collected-at 2026-10-27T00:00:00Z --db /tmp/dl-demo.sqlite3 --input-json disclosure_lightning/fixtures/sec_submissions_synthetic.json
 python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --db /tmp/dl-demo.sqlite3 --list
 python -m unittest tests.test_disclosure_lightning -v
 ```
@@ -28,3 +28,10 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 `RawFilingEnvelopeV1` 항목은 응답 `indexed.filings[]`에 있고, 이 JSON을 KIC ProofInvest의 별도 리더에 전달할 수 있습니다. `issuer_cik`, `accession`, `form`, `filed_at`, `collected_at`, `source_uri`, `index_raw_sha256`, `evidence_status`를 보존하세요. DL은 금융 지표 정규화·재무 판단·투자 권고나 자동매매를 담당하지 않습니다.
 
 **이번 MVP의 명시적 부족 기능:** 원본 HTML/XBRL 원문 수집, 실제 SEC 라이브 호출 실측, SEC recent 이외의 과거 continuation 페이지, 회사명/티커 검색·CIK 매핑, 수정 관계 분석, ETag/429 재시도/스케줄러, 공급기관별 어댑터, API/GUI, 압축·용량정책, 보안·성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
+
+## 2026-10-28 검증 게이트 (KIC 합의)
+
+- 표준 모듈은 **`disclosure_lightning/core.py`** 단일 구현입니다. 중복 실험 버전 `mvp.py` / `cli.py`는 제거됐습니다. 다른 SQLite 저장 형식을 혼용하지 마세요.
+- `--collected-at`은 오프라인 파일의 **실제 확인 가능한 최초 수집 시각**(타임존 필수)을 명시할 때만 사용합니다. 이를 증빙할 수 없으면 과거 시점의 수집증거라고 주장하지 마세요. 인덱스는 UTC로 정규화되며 수집시각이 `--as-of` 다음 날이면 실패합니다. 수집 날짜보다 뒤의 공시도 제외합니다. SEC 실제 요청의 경우 `--collected-at`을 넘길 수 없고 시스템 수집시간을 사용합니다.
+- `DL_SEC_USER_AGENT`는 실존하는 사용자/조직의 연락 이메일이어야 합니다. `example.com`, `placeholder`, `your-real-domain.tld` 등 예시를 통한 요청은 거부합니다. 원문 공시 HTML 다운로드는 아직 **미구현**이며 SEC JSON 해시와 혼동하지 마세요.
+- KIC 검산과 대응하는 합성 단일 공시 테스트 fixture: `disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json`. 이것은 실제 SEC 응답이 아니라 KIC 측 `proofinvest/dl_bridge.py`와 연동할 때 사용할 **정합성 테스트 입력**입니다.
