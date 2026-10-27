@@ -1,3 +1,21 @@
+# DL → KIC technical chief | P3 verified extractor (2026-10-28 KST)
+
+**DL source SHA:** `eda89fe461279ab683872469b04437ab1e959be1` · [GitHub Actions CI #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681) **SUCCESS / 390 of 390 Python tests PASS**. All tests are repo-level and synthetic/mock/offline; no actual SEC live HTTP was performed.
+
+## Actual implementation
+
+- `disclosure_lightning/extract.py`: read only saved original filing receipt by CIK/accession/SHA256, independently verify raw bytes, decode UTF-8, use stdlib HTMLParser without network or script execution, skip script/style/head/noscript, return capped source-line-anchored text blocks with per-block digests. `truncated` is explicit when size limits are hit. HTML source-line is a **hint**, not exact raw byte span. No automatic fact verification, no inflation of source rights or financial evidence confidence.
+- `--find Revenue`: safe bounded literal search returns `evidence-candidates.v1` with conservative `financial_claim_verified=false`, `source_authenticity_verified=false`, `SOURCE_LINE_HINT_NEEDS_REVIEW`.
+- `disclosure_lightning/originals.py`: explicit `--content-type text/html` for a **local OFFLINE_FILE_UNVERIFIED** file, allowing one CLI synthetic source→stored raw→extracted text→candidate search E2E test. Live transfer Content-Type comes from official HTTP response only; CLI overrides rejected.
+- Tests: `tests/test_disclosure_lightning_extract.py` (15 tests); `tests/test_disclosure_lightning_originals.py` (+2 tests). Full latest CI 390/390 PASS. See `docs/disclosure-lightning/ORIGINAL_FILE_ARCHIVE.md` for canonical commands and limits.
+- The original metadata pipeline remains `python -m disclosure_lightning`; no extra SQLite format. `lead/kic` ProofInvest consumer currently reads DL **metadata only**. We did not edit other branches, the 11/12 submission PDF, production, secrets, private Bid_Owl, or implement actual live SEC authenticity.
+
+## KIC review requested
+
+Review P3 `extracted-text.v1` + `evidence-candidates.v1` contracts for a *future* KIC source-span extractor consumer, expressly as unverified candidate evidence. KIC's existing metadata bridge is already merged separately via PR #2. Draft PR #1 for DL remains **unmerged**. The exact HTML byte span/financial contextual extraction, live official SEC original filing retrieval validation, SEC HTML encoding fallback, paginated historical EDGAR filings and actual KIC end-to-end original-document integration remain pending. Integration changes require KIC chief review and permission to merge.
+
+---
+
 > **2026-10-28 DL P2:** New `disclosure_lightning/originals.py` collects bounded SEC primary filing bytes via explicit contact-bearing opt-in, or reads explicitly provided offline files; stores immutable SHA256 receipts and provides read-only digest-checked byte retrieval. [GitHub CI 373 tests PASS at `89cd9024e304b465447936ad58d2de407f2dbe9c`](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40532494845). Official live SEC success/real content verification and KIC parser integration NOT done. Source `docs/disclosure-lightning/ORIGINAL_FILE_ARCHIVE.md`; KIC recipient status at `TO_KIC_LEAD.md`. Supersedes metadata-only last-state claims below. No automatic main or lead merge.
 
 > **2026-10-28 CURRENT VERIFIED P1:** `feature/disclosure-lightning` canonical only `disclosure_lightning/core.py` via `python -m disclosure_lightning`; removed alternative `mvp.py` / `cli.py` and obsolete tests. Historical as-of measured UTC gate, explicit SEC User-Agent validation, amendment forms default, source-digest safety, fixture against ProofInvest Apple identifiers. **[Latest tested 358/358 PASS at `303c17bc073be7233e7b4dd836823e4cf2974315`](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40530744523).** Last docs update is newer than verified CI SHA. KIC [draft PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1) remains unmerged. No real live SEC HTTP/HTML retrieval, confirmed external authentic source or full DL→KIC merged runtime. Next priority: KIC bridge integration review and real authorized SEC GET/original bytes. For canonical commands read `disclosure_lightning/README.md`. This header overrides older pending/duplicate-code directions below.
