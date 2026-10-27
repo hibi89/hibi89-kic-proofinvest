@@ -77,14 +77,20 @@ def main(argv=None) -> int:
         text=testlog.read_text(encoding="utf-8",errors="replace")
         count=re.search(r"Ran ([0-9]+) tests?",text)
         skips=re.search(r"OK \(skipped=([0-9]+)\)",text)
+        executed=int(count.group(1)) if count else None
+        passed=(process.returncode==0 and executed is not None and executed>0)
         details["tests"]={
-            "status":"PASS" if process.returncode==0 else "FAIL",
-            "executed":int(count.group(1)) if count else None,
-            "skipped":int(skips.group(1)) if skips else 0 if process.returncode==0 else None,
-            "failed":0 if process.returncode==0 else "SEE_TEST_LOG",
+            "status":"PASS" if passed else "FAIL",
+            "executed":executed,
+            "skipped":int(skips.group(1)) if skips else 0 if passed else None,
+            "failed":0 if passed else "SEE_TEST_LOG",
             "exit_code":process.returncode,"log":"tests.log",
         }
-    except (OSError,UnicodeError,RuntimeError,SyntaxError,subprocess.TimeoutExpired) as exc:
+    except subprocess.TimeoutExpired:
+        details["tests"]["status"]="FAIL"
+        details["tests"]["reason_code"]="TEST_TIMEOUT"
+        details["tests"]["log"]="tests.log"
+    except (OSError,UnicodeError,RuntimeError,SyntaxError) as exc:
         details["syntax"]["status"]="FAIL"
         details["tests"]["status"]="FAIL"
         details["error_type"]=type(exc).__name__
