@@ -13,6 +13,8 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
         "review_priority": "high",
         "financial_status": "unavailable",
         "risk_status": "unavailable",
+        "ixbrl_context_match": False,
+        "numeric_text_match": False,
         "reason_codes": ["REPLAY_UNAVAILABLE"],
         "source_authenticated": False,
         "investment_recommendation": False,
@@ -76,6 +78,10 @@ def build_offline_review_summary(replay: Any) -> dict[str, Any]:
         summary["financial_status"] = financial["status"]
     if risk.get("status") in allowed_risk:
         summary["risk_status"] = risk["status"]
+    corroboration = risk.get("corroboration")
+    if isinstance(corroboration, dict) and corroboration.get("issuer_authenticated") is False:
+        summary["ixbrl_context_match"] = corroboration.get("ixbrl_context_match") is True
+        summary["numeric_text_match"] = corroboration.get("numeric_text_match") is True
     # Allowlist known internal codes; never surface arbitrary caller-provided text.
     allowed_codes = {
         "EXTERNAL_SOURCE_AUTHENTICITY_UNVERIFIED", "FINANCIAL_CLAIM_CONFLICT",
