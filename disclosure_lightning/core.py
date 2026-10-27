@@ -193,6 +193,10 @@ def index_submissions(
         if filed > cutoff or filed > observation_day:
             continue
         accepted_at = _accepted(accepted[i]) if accepted is not None else None
+        if accepted_at is None and filed == observation_day:
+            # A same-day filing without an offset-aware acceptance instant
+            # cannot be shown to exist at this particular UTC time.
+            continue
         if (accepted_at is not None
                 and datetime.fromisoformat(accepted_at).astimezone(timezone.utc) > observed_instant):
             # A timestamp that occurs after the local observation could not
