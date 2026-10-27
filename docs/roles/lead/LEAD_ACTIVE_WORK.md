@@ -1,3 +1,5 @@
+> **LATEST KIC NEXT / 2026-10-27:** v3 10-page private PDF/PPTX layout 258/258 shape geometry and identities preserved vs frozen editable source; ZIP offline packet integrity+tamper QA passed; [template QA](SEC_V3_TEMPLATE_PARITY_AND_PACKET_20261027.md). Exact PDF/title approval needed before touching original frozen-hash preflight or DAKER submission. 257/257 previous offline CI only. All private bytes remain out of public GitHub. Master 29/3/28 unchanged.
+
 ## 2026-10-27 KST — KIC chief NEXT after private v3 independent PDF QA
 - **DONE (out-of-plan independent quality unit):** inspected actual private v3 PDF and original frozen version; 10 pages, 493063 bytes, all 7 organizer items, four expected external links, 0 cropped text. Official rules rechecked. Full SHA and evidence: [SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md](SEC_V3_OWNER_APPROVAL_PREFLIGHT_20261027.md).
 - **NEXT / OWNER GATE:** owner explicitly accepts exact candidate PDF SHA/title, then revalidates changed submission hash in a separate non-bypassable guard and authorizes DAKER upload/final receipt. Current old-pin preflight must DO_NOT_UPLOAD v3, intentional.
