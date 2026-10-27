@@ -1,3 +1,8 @@
+## 2026-10-28 KST — KIC synthetic source report download + atomic no-clobber output
+- KIC `lead/kic@b6050ac77d7de87b138176f55a2a6886c484b103` makes JSON/Markdown synthetic report downloads available only in existing offline source-review UI and replaces direct-file writing with fsynced staged/hardlink atomic new-file publication; no change in DL `disclosure_lightning/` canonical code or `feature/disclosure-lightning` ownership.
+- [Source CI #40540680235](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40540680235) SUCCESS **426/426 offline tests** (+8). Strict report revalidation prevents source spoofing and any external truth upgrade; no archived HTML copied into output; synthetic SEC-shaped source link not visited.
+- Source link attests local fake input only, *never* real SEC or numeric truth. Official Nov12 PDF remains frozen, DAKER approval separate.
+
 ## 2026-10-28 KST — KIC read-only offline evidence export
 - Code `lead/kic@1c1ab82afce51db73a2111034c313b2f3d9cb8a4` adds KIC-owned `proofinvest.evidence_report`; composes **synthetic** canonical DL stored source lineage and SEC-format numeric proof in deterministic JSON and Markdown. Enforces separate index-vs-original SHA scopes, CIK/accession/source URL, literal byte span, and all negative authentication flags. No direct writes to `disclosure_lightning/` or DL `feature/disclosure-lightning`.
 - [GitHub Actions #40538844121](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40538844121) SUCCESS **418/418 offline tests** (+10). Report explicitly states the artificial literal marker is **not evidence for financial values**, no SEC HTTP or official KIC/DAKER submission.

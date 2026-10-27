@@ -1,3 +1,7 @@
+## 2026-10-28 KST — KIC download/report writer status to DL tech lead
+- Latest KIC source `lead/kic@b6050ac77d7de87b138176f55a2a6886c484b103`: synthetic offline evidence report JSON/Markdown now downloadable in existing Streamlit DL review. Cross-validates KIC's local original-byte SHA/source-span/C IK/accession (CIK unchanged) before presenting; no live data. CLI output is staged/fsynced, hardlinked only to absent target. [CI #40540680235](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40540680235) SUCCESS **426/426**.
+- DL-owned `feature/disclosure-lightning` untouched. Continue DL independent parser/real-source strategy only under user-authorized contact/source policy. Reconcile draft PR #1 with latest lead. Do not reintroduce duplicate canonical storage or accidentally attest real issuer/numeric truth. Do not alter official PDF/private resources.
+
 ## 2026-10-28 KST — KIC offline report bridge notice
 - KIC `lead/kic@1c1ab82afce51db73a2111034c313b2f3d9cb8a4` exports its canonical DL/KIC synthetic replay as JSON/Markdown through `python -m proofinvest.evidence_report` (no DL runtime code changes). [Source CI #40538844121](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40538844121) **418/418 PASS**, 10 new tests.
 - Report contains two distinct SHA-256 roles, CIK/accession/filing URI, literal untrusted byte-span and synthetic numerical verification. The synthetic marker **never substantiates** USD values; no real SEC network, source/license attestation or owner DAKER authority.
