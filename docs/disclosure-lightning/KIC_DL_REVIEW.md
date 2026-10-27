@@ -1,3 +1,10 @@
+## 2026-10-27 KIC technical review after DL branch MVP code
+- Draft PR: https://github.com/hibi89/hibi89-kic-proofinvest/pull/1
+- CI: https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40526459506, source f01098dacdb1e393d61a35e46fb0433aa1018ab7, SUCCESS 361/361 offline tests.
+- Implemented DL core.py one-shot opt-in network path, offline synthetic SEC indexing, SQLite and CLI; an additional mvp.py / cli.py variant also exists and overlaps. No live SEC response verified.
+- Blocking KIC integration: choose one canonical DL engine (prefer core.py), unify JSON and source-hash scope, reject historical as-of evidence collected after cutoff, verify User-Agent requirements and local storage safety. All are recorded on PR #1 as a detailed review comment.
+- DL branch owner handles feature code and TO_KIC_LEAD.md; KIC handles lead/kic review and eventual ProofInvest read-only consumer. Draft PR stays unmerged.
+- Technical MVP due Oct28–29; Nov12 organizer PDF remains independent and requires owner exact-file/title and separate DAKER submission approval.
 # KIC chief / Disclosure Lightning review ledger
 **2026-10-27 23:50 KST | appointment acknowledged, integration NOT STARTED**
 
