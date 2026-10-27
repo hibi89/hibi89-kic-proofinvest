@@ -66,6 +66,9 @@ def smoke(root: Path, log: Path) -> dict:
                 ("ingest", common + ["--input-json", str(fixture),
                                      "--collected-at", "2026-10-27T00:00:00Z"],
                  "SAVED", 3),
+                ("ingest-replay", common + ["--input-json", str(fixture),
+                                            "--collected-at", "2026-10-27T00:00:00Z"],
+                 "REUSED", 0),
                 ("list", common + ["--list"], "READ_ONLY", 3),
                 ("amendments", [sys.executable, "-B", "-m", "disclosure_lightning.history",
                                 "--db", str(db), "--cik", CIK, "--as-of",
@@ -87,7 +90,7 @@ def smoke(root: Path, log: Path) -> dict:
                     if result.get("status") != status:
                         return {"status": "FAIL", "step": name,
                                 "error": "UNEXPECTED_STATUS", "log": str(log)}
-                    if name == "ingest" and result.get("new_filings") != count:
+                    if name in ("ingest", "ingest-replay") and result.get("new_filings") != count:
                         return {"status": "FAIL", "step": name,
                                 "error": "BAD_INGEST_COUNT", "log": str(log)}
                     if name == "list" and len(result.get("filings", [])) != count:
