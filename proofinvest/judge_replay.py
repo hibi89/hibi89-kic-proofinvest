@@ -69,7 +69,7 @@ def main() -> None:
     if args.json:
         print(json.dumps(out, ensure_ascii=False, indent=2, sort_keys=True))
         return
-    print("ProofInvest — 과거 수동검산 자료 3사례 재현 (오프라인, AI Agent 아님)")
+    print("ProofInvest - 과거 수동검산 자료 3사례 재현 (오프라인, AI Agent 아님)")
     for case in out["scenarios"]:
         print(
             f"{case['scenario']}: claim={case['claim_pct'] or 'none'}, "

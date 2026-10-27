@@ -20,6 +20,19 @@ from disclosure_lightning import core, extract, originals
 CIK = "0000320193"
 ACC = "0000320193-25-000079"
 META = Path(__file__).resolve().parents[1] / "disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json"
+
+
+@contextlib.contextmanager
+def _sqlite_connection(path):
+    connection = sqlite3.connect(path)
+    try:
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 RAW = b"""<!doctype html>
 <html>
 <head><title>Hidden title</title><style>.hidden { display:none; }</style></head>
@@ -227,7 +240,7 @@ class ExtractedFilingTests(unittest.TestCase):
             )
 
     def test_sqlite_tamper_detection_before_extract(self):
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             db.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",

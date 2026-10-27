@@ -22,6 +22,19 @@ FIXTURE = (Path(__file__).resolve().parents[1]
 CONTENT = b"<html><head><title>OFFLINE SYNTHETIC</title></head><body>Not a SEC filing</body></html>"
 
 
+@contextlib.contextmanager
+def _sqlite_connection(path):
+    connection = sqlite3.connect(path)
+    try:
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
 class OriginalFilingTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="dl-original-test-")
@@ -59,7 +72,7 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(outcome["filing_sha256"], hashlib.sha256(CONTENT).hexdigest())
         self.assertFalse(outcome["authenticated_external_source"])
         self.assertFalse(outcome["original_filing_retrieved"])
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             self.assertEqual(db.execute(
                 "SELECT file_bytes FROM original_filing_receipts"
             ).fetchone()[0], CONTENT)
@@ -74,7 +87,7 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(originals.list_originals(
             db_path=self.db, cik=C, accession=A
         )[0]["filing_sha256"], first["filing_sha256"])
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
 
@@ -86,7 +99,7 @@ class OriginalFilingTests(unittest.TestCase):
         items = originals.list_originals(db_path=self.db, cik=C, accession=A)
         self.assertEqual({r["filing_sha256"] for r in items},
                          {original["filing_sha256"], updated["filing_sha256"]})
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             raws = {row[0] for row in db.execute(
                 "SELECT file_bytes FROM original_filing_receipts")}
         self.assertEqual(raws, {CONTENT, b"<html>CHANGED SYNTHETIC</html>"})
@@ -239,7 +252,7 @@ class OriginalFilingTests(unittest.TestCase):
 
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
-        with sqlite3.connect(self.db) as conn:
+        with _sqlite_connection(self.db) as conn:
             conn.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",

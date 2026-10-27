@@ -9,6 +9,14 @@ from proofinvest import manual_case_demo as demo
 
 
 class PublishedManualCaseTests(unittest.TestCase):
+    def test_git_blob_pin_is_stable_across_windows_line_endings(self):
+        raw = demo.EVIDENCE_PATH.read_bytes()
+        canonical = raw.replace(b"\r\n", b"\n")
+        windows_checkout = canonical.replace(b"\n", b"\r\n")
+        self.assertEqual(demo._git_blob_sha1(raw), demo.REVIEWED_GIT_BLOB_SHA1)
+        self.assertEqual(demo._git_blob_sha1(windows_checkout),
+                         demo.REVIEWED_GIT_BLOB_SHA1)
+
     def test_offline_issuer_chain_claim_agrees_and_risk_withheld(self):
         r = demo.run_manual_case()
         self.assertEqual(r["research"]["status"], "success")

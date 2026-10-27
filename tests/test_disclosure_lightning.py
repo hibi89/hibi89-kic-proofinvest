@@ -22,6 +22,19 @@ CIK = "0000320193"
 FORMS = core.parse_forms("10-K,10-K/A,10-Q,8-K")
 
 
+@contextlib.contextmanager
+def _sqlite_connection(path):
+    connection = sqlite3.connect(path)
+    try:
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
 class DisclosureLightningTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="dl-kic-test-")
@@ -68,7 +81,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(first["observation_id"], second["observation_id"])
         self.assertEqual(second["status"], "REUSED")
         self.assertEqual(second["new_filings"], 0)
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
             self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
@@ -85,15 +98,23 @@ class DisclosureLightningTests(unittest.TestCase):
         outcome = core.save_index(self.db, raw2, changed)
         self.assertEqual(outcome["new_filings"], 0)
         self.assertEqual(before, {x["accession"]: x for x in core.list_filings(self.db, cik=CIK)})
-        with sqlite3.connect(self.db) as db:
+        with _sqlite_connection(self.db) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 2)
             self.assertEqual(db.execute("SELECT count(*) FROM filing_observations").fetchone()[0], 6)
 
     def test_as_of_filter_excludes_future_and_historical_limit(self):
-        result = self.indexed(as_of="2025-10-15",
-                              collected_at="2025-10-15T00:00:00Z")
-        self.assertEqual(result["indexed_count"], 1)
-        self.assertEqual(result["filings"][0]["form"], "10-K")
+        before_acceptance = self.indexed(
+            as_of="2025-10-15",
+            collected_at="2025-10-15T17:59:59Z",
+        )
+        self.assertEqual(before_acceptance["indexed_count"], 0)
+
+        at_acceptance = self.indexed(
+            as_of="2025-10-15",
+            collected_at="2025-10-15T18:00:00Z",
+        )
+        self.assertEqual(at_acceptance["indexed_count"], 1)
+        self.assertEqual(at_acceptance["filings"][0]["form"], "10-K")
 
     def test_supported_form_filter(self):
         data = self.indexed(forms=core.parse_forms("8-K"))
@@ -223,11 +244,18 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(record["indexed_count"], 3)
         for entry in record["filings"]:
             self.assertEqual(entry["collected_at"], record["collected_at"])
-        before = self.indexed(
-            collected_at="2025-10-15T08:00:00Z",
-            as_of="2026-10-27",
+        before_acceptance = self.indexed(
+            collected_at="2025-10-16T02:59:59+09:00",
+            as_of="2025-10-15",
         )
-        self.assertEqual(before["indexed_count"], 1)
+        self.assertEqual(before_acceptance["indexed_count"], 0)
+        at_acceptance = self.indexed(
+            collected_at="2025-10-16T03:00:00+09:00",
+            as_of="2025-10-15",
+        )
+        self.assertEqual(at_acceptance["indexed_count"], 1)
+        self.assertEqual(at_acceptance["filings"][0]["accepted_at"],
+                         "2025-10-15T18:00:00+00:00")
 
     def test_rejects_index_digest_spoof_before_creating_db(self):
         indexed = self.indexed()
@@ -462,7 +490,7 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             history.import_history_batch(
                 pages={first: pages[first], second: b"not-json"}, **args)
-        with sqlite3.connect(self.db) as connection:
+        with _sqlite_connection(self.db) as connection:
             self.assertEqual(connection.execute(
                 "SELECT COUNT(*) FROM observations").fetchone()[0], 1)
         self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 0)
@@ -567,7 +595,7 @@ class DisclosureLightningTests(unittest.TestCase):
 
     def test_amendment_review_single_candidate_read_only(self):
         history = self._amendment_review_fixture()
-        with sqlite3.connect(self.db) as conn:
+        with _sqlite_connection(self.db) as conn:
             before = conn.execute(
                 "SELECT COUNT(*) FROM observations").fetchone()[0]
         result = history.review_amendment_candidates(
@@ -584,7 +612,7 @@ class DisclosureLightningTests(unittest.TestCase):
                             row["authoritative_amends_accession"] is None
                             for row in amendments.values()))
         self.assertFalse(result["ledger_mutated"])
-        with sqlite3.connect(self.db) as conn:
+        with _sqlite_connection(self.db) as conn:
             self.assertEqual(before, conn.execute(
                 "SELECT COUNT(*) FROM observations").fetchone()[0])
         self.assertTrue(all(item["amends_accession"] is None
@@ -617,7 +645,7 @@ class DisclosureLightningTests(unittest.TestCase):
             db_path=self.db, cik=CIK, as_of="2025-12-31")
         self.assertEqual(earlier["indexed_filings_checked"], 0)
         self.assertEqual(earlier["amendments"], [])
-        with sqlite3.connect(self.db) as conn:
+        with _sqlite_connection(self.db) as conn:
             conn.execute("UPDATE observations SET response=?",
                          (b"CORRUPTED-BY-SYNTHETIC-TEST",))
         with self.assertRaisesRegex(ValueError, "CORRUPTED"):

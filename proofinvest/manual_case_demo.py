@@ -25,11 +25,18 @@ EXPECTED_PDF = ("https://images.samsung.com/is/content/samsung/assets/global/"
 REVIEWED_GIT_BLOB_SHA1 = "5535653a44297cc34022709be264801402688ecf"
 
 
+def _git_blob_sha1(raw: bytes) -> str:
+    # Git's core.autocrlf may expand repository LF bytes in a Windows checkout.
+    # Hash the canonical text bytes so the pin remains stable across platforms.
+    canonical = raw.replace(b"\r\n", b"\n")
+    return hashlib.sha1(
+        b"blob " + str(len(canonical)).encode("ascii") + b"\0" + canonical
+    ).hexdigest()
+
+
 def read_reviewed_evidence() -> dict[str, Any]:
     raw = EVIDENCE_PATH.read_bytes()
-    object_id = hashlib.sha1(
-        b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw
-    ).hexdigest()
+    object_id = _git_blob_sha1(raw)
     if object_id != REVIEWED_GIT_BLOB_SHA1:
         raise ValueError("Previously reviewed evidence bytes changed; re-review before replay")
     data = json.loads(raw.decode("utf-8"))
