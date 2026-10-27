@@ -5,6 +5,8 @@ Each capture is isolated. This command never sends HTTP or exports source bytes.
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 from pathlib import Path
 
@@ -73,6 +75,16 @@ def review_capture_batch(
     }
 
 
+def format_review_queue_csv(batch: dict) -> str:
+    """Produce a spreadsheet-friendly queue from allowlisted, computed fields."""
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(("index", "status", "priority", "next_action"))
+    for item in batch["review_queue"]:
+        writer.writerow((item["index"], item["status"], item["priority"], item["next_action"]))
+    return stream.getvalue()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Offline local ZIP batch review; NO NETWORK")
     parser.add_argument("bundles", nargs="+", type=Path)
@@ -80,6 +92,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prior-end", required=True)
     parser.add_argument("--needle", required=True)
     parser.add_argument("--claimed-growth-pct")
+    parser.add_argument("--format", choices=("json", "csv"), default="json",
+                        help="CSV emits only the safe prioritized review queue")
     args = parser.parse_args(argv)
     try:
         output = review_capture_batch(
@@ -88,7 +102,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         parser.error(str(exc))
-    print(json.dumps(output, sort_keys=True, indent=2))
+    if args.format == "csv":
+        print(format_review_queue_csv(output), end="")
+    else:
+        print(json.dumps(output, sort_keys=True, indent=2))
     return 2 if output["blocked_count"] else 0
 
 
