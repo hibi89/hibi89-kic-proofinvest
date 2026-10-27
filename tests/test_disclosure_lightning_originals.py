@@ -221,6 +221,35 @@ class OriginalFilingTests(unittest.TestCase):
                     receipt=receipt, user_agent="DL Ops admin@actualcorp.org",
                     allow_network=True)
 
+    def test_verified_read_only_original_bytes_for_kic_parser(self):
+        saved = self.save()
+        raw = originals.read_original_bytes(
+            db_path=self.db, cik=C, accession=A,
+            sha256=saved["filing_sha256"],
+        )
+        self.assertEqual(raw, CONTENT)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), saved["filing_sha256"])
+        for invalid in ("", "../secret", "G" * 64, "0" * 63):
+            with self.subTest(sha=invalid), self.assertRaises(ValueError):
+                originals.read_original_bytes(
+                    db_path=self.db, cik=C, accession=A, sha256=invalid)
+        with self.assertRaises(KeyError):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A, sha256="0" * 64)
+
+    def test_corrupted_original_blob_fails_closed_when_read(self):
+        saved = self.save()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute(
+                "UPDATE original_filing_receipts SET file_bytes=? "
+                "WHERE issuer_cik=? AND accession=? AND sha256=?",
+                (b"CORRUPTED", C, A, saved["filing_sha256"]),
+            )
+        with self.assertRaisesRegex(ValueError, "integrity"):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"])
+
     def test_cli_offline_file_roundtrip_and_readonly_list(self):
         source = self.root / "synthetic-filing.html"
         source.write_bytes(CONTENT)
