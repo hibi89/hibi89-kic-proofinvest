@@ -640,5 +640,36 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertIn("READ_ONLY", output.getvalue())
 
 
+    def test_known_acceptance_time_after_local_observation_is_excluded(self):
+        payload = json.loads(self.raw)
+        payload["filings"]["recent"]["filingDate"][0] = "2026-10-28"
+        payload["filings"]["recent"]["acceptanceDateTime"][0] = (
+            "2026-10-28T12:00:00+09:00")
+        source = json.dumps(payload).encode("utf-8")
+        earlier = core.index_submissions(
+            source, cik=CIK, as_of="2026-10-28", forms=FORMS,
+            collected_at="2026-10-28T02:59:59Z")
+        later = core.index_submissions(
+            source, cik=CIK, as_of="2026-10-28", forms=FORMS,
+            collected_at="2026-10-28T03:00:00Z")
+        key = payload["filings"]["recent"]["accessionNumber"][0]
+        self.assertNotIn(key, [entry["accession"] for entry in earlier["filings"]])
+        self.assertIn(key, [entry["accession"] for entry in later["filings"]])
+        self.assertTrue(all(entry["raw_sha256"] is None for entry in later["filings"]))
+
+    def test_history_known_future_acceptance_excluded_before_batch_save(self):
+        history, pages, args = self._history_batch_fixture()
+        chosen = sorted(pages)[0]
+        shaped = json.loads(pages[chosen])
+        shaped["acceptanceDateTime"] = ["2026-10-28T01:06:00Z"]
+        pages[chosen] = json.dumps(shaped).encode("utf-8")
+        indexed = history.index_history_page(
+            raw=pages[chosen], name=chosen, **args)
+        self.assertEqual(indexed["filings"], [])
+        first = history.import_history_batch(pages=pages, **args)
+        self.assertEqual(first["new_filings"], 1)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
