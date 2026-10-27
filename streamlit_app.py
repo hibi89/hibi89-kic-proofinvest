@@ -12,6 +12,7 @@ from proofinvest.snapshot_store import _fixture_digest, read_synthetic_snapshot_
 
 _SOURCE_SYNTHETIC = "합성 데이터 시연"
 _SOURCE_MANUAL = "삼성전자 공개 재무제표 수동검산 (2024/2023)"
+_SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (2025/2024)"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -127,6 +128,67 @@ def _render_offline_agent_trace(st, claim: str) -> None:
     )
 
 
+def _render_sec_curated_case(st) -> None:
+    """Use the SEC-format local data verifier; never imply live SEC connectivity."""
+    st.title("ProofInvest — SEC 10-K 연매출 검산 (오프라인)")
+    st.warning(
+        "MANUALLY_CURATED_SEC_EXCERPT · Apple FY2025 10-K의 공개 수치를 수동 발췌한 기록입니다. "
+        "SEC CompanyFacts API 실시간 조회·원본 자동수집·LLM Agent·투자 권고가 아닙니다."
+    )
+    date_choices = {
+        "2025-11-01 — 공시 공개 후": "2025-11-01",
+        "2025-10-30 — 공시 공개 전": "2025-10-30",
+    }
+    asof_label = st.selectbox("기준일 (as-of)", list(date_choices))
+    growth_choices = {
+        "6.43% — 수동 기록과 일치": "6.43",
+        "30% — 불일치 주장": "30",
+        "주장 없음 — 숫자만 계산": None,
+    }
+    claim_label = st.selectbox("비교할 성장률 주장", list(growth_choices))
+    try:
+        from proofinvest.sec_companyfacts import run_curated_apple_demo
+        verdict = run_curated_apple_demo(
+            as_of=date_choices[asof_label],
+            claimed_growth_pct=growth_choices[claim_label],
+        )
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
+        st.error("SEC 수동 발췌 데이터가 없거나 변경되어 계산을 중단했습니다.")
+        return
+    if (verdict.get("authenticated_external_source") is not False
+            or verdict.get("live_api_called") is not False
+            or verdict.get("ai_agent_executed") is not False):
+        st.error("출처 검증 상태가 비정상입니다. 결과를 표시하지 않습니다.")
+        return
+    st.caption(
+        "공개 자료: Apple Inc. FY2025 10-K · CIK 0000320193 · "
+        "접수번호 0000320193-25-000079 · 공시일 2025-10-31"
+    )
+    st.markdown(
+        "[SEC 공식 접수 페이지](https://www.sec.gov/Archives/edgar/data/"
+        "320193/0000320193-25-000079-index.htm)"
+    )
+    if verdict["status"] == "unavailable":
+        st.warning(
+            "기준일 또는 증거가 검증 요건에 맞지 않아 계산 보류: "
+            + verdict["reason_code"]
+        )
+        return
+    st.metric("연매출 성장률 (오프라인 수치검산)", verdict["growth_pct"] + "%")
+    st.dataframe([
+        {"연도": "2025", "순매출 (백만 USD)": int(verdict["current_usd"]) // 1_000_000},
+        {"연도": "2024", "순매출 (백만 USD)": int(verdict["prior_usd"]) // 1_000_000},
+    ], use_container_width=True, hide_index=True)
+    if verdict["status"] == "conflict":
+        st.error("주장한 성장률과 공시 발췌 수치의 계산이 불일치합니다.")
+    else:
+        st.info("산술 비교만 완료되었습니다. 원본 수집·출처 진위 독립 인증은 미실시입니다.")
+    st.caption(
+        "규칙 기반 Python Decimal 계산 · 동일 10-K 접수번호 확인 · "
+        "기준일 이후 공시 차단 · 실 API/LLM 0회 · 원문 독립 인증 및 Risk 판정 없음"
+    )
+
+
 def render_app(st) -> None:
     st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
     # The public recovery ZIP is synthetic-only: never offer an unavailable
@@ -135,7 +197,13 @@ def render_app(st) -> None:
     available_sources = [_SOURCE_SYNTHETIC]
     if evidence_file.is_file():
         available_sources.append(_SOURCE_MANUAL)
+    sec_excerpt = Path(__file__).resolve().parent / "fixtures/sec_apple_fy2025_curated_companyfacts.json"
+    if sec_excerpt.is_file():
+        available_sources.append(_SOURCE_SEC_CURATED)
     source = st.selectbox("자료 유형", available_sources)
+    if source == _SOURCE_SEC_CURATED:
+        _render_sec_curated_case(st)
+        return
     if source == _SOURCE_MANUAL:
         st.title("ProofInvest — 실제 발행사 수동기록 검산")
         _render_manual_case(st)
