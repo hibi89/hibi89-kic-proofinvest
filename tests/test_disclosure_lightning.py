@@ -625,5 +625,20 @@ class DisclosureLightningTests(unittest.TestCase):
                 db_path=self.db, cik=CIK, as_of="2026-10-28")
 
 
+    def test_amendment_review_cli_read_only_no_manifest(self):
+        from disclosure_lightning import history
+        self._amendment_review_fixture()
+        args = ["--db", str(self.db), "--cik", CIK,
+                "--as-of", "2026-10-28", "--review-amendments"]
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(history.main(args), 0)
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["status"], "READ_ONLY_UNVERIFIED_AMENDMENT_REVIEW")
+        self.assertEqual(len(data["amendments"]), 2)
+        with contextlib.redirect_stderr(io.StringIO()) as output:
+            self.assertEqual(history.main(args + ["--manifest-sha256", "0" * 64]), 2)
+        self.assertIn("READ_ONLY", output.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
