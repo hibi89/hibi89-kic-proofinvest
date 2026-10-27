@@ -113,7 +113,7 @@ def get_sec_concept(
         return None, "SEC_RESPONSE_SIZE_LIMIT", attempted
     try:
         result = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
         return None, "SEC_INVALID_JSON", attempted
     if not isinstance(result, Mapping):
         return None, "SEC_INVALID_RESPONSE", attempted
