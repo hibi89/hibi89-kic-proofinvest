@@ -154,7 +154,7 @@ def run_sec_annual_revenue(
         return _failure("INVALID_PERIOD_OR_AS_OF")
     if claimed_growth_pct is not None and (
             not isinstance(claimed_growth_pct, str)
-            or re.fullmatch(r"[+-]?\\d{1,5}(?:\\.\\d{1,4})?", claimed_growth_pct) is None):
+            or re.fullmatch(r"[+-]?\d{1,5}(?:\.\d{1,4})?", claimed_growth_pct) is None):
         return _failure("INVALID_GROWTH_CLAIM")
     payload, reason, attempted = get_sec_concept(
         cik=cik, user_agent=user_agent, allow_network=allow_network
