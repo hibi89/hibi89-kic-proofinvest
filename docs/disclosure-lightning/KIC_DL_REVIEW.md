@@ -1,3 +1,11 @@
+## 2026-10-28 — DL original content archiving accepted into KIC lead
+
+- [PR #3](https://github.com/hibi89/hibi89-kic-proofinvest/pull/3) merged canonical PUBLIC DL original-archive module + KIC own read-only anchored source-span bridge into lead/kic at code SHA `74322bbdf787d35d94990c946f3e5ec30ba32fa0`.
+- Exact-code [merged GitHub CI #40534418431](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534418431) **SUCCESS 395/395** offline tests; synthetic original file bytes/HTML only, zero authorized SEC live fetch.
+- Reproducible CLI `python -m proofinvest.kic_dl_original_demo` checks SEC-shaped synthetic Submissions JSON -> DL SQLite index -> original-byte digest/persistence/dedup -> digest-checked read -> unique source phrase byte positions + HTML-escaped context -> KIC metadata link.
+- `index_raw_sha256` is Submissions JSON hash; `filing_sha256` is saved (synthetic) original bytes hash. Even `SEC_HTTPS_RESPONSE_UNVERIFIED` does NOT establish independent source authenticity; source span output `untrusted_original_span_for_review` only.
+- DL chief informed via [PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1#issuecomment-6446578134); feature branch must reconcile with existing lead code. No main merge, private Bid_Owl source, private PDF alteration, authenticated DAKER submit or claimed production.
+
 ## 2026-10-28 | KIC accepts offline integrated minimum unit
 
 Merged [PR #2](https://github.com/hibi89/hibi89-kic-proofinvest/pull/2) to `lead/kic` SHA `004aa37b1396adff3b21e39591a201af671e6dc7`; [final branch CI #40530905435](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40530905435) SUCCESS 366/366. Run `python -m proofinvest.kic_dl_demo`. One DL `core.py` implementation only, no `mvp.py`/`cli.py` alternate SQLite. This synthetic offline E2E proves functional wiring and idempotence, NOT actual SEC HTTPS, 10-K original-file bytes/authentication, ML/LLM or production. Future DL owner stays on `feature/disclosure-lightning`, report via [draft PR #1](https://github.com/hibi89/hibi89-kic-proofinvest/pull/1), reconcile base and do not reintroduce secondary schema. KIC preliminary PDF/DAKER remain separately owner-authorized. Supersedes earlier 'KIC integration not started' checkpoint below.
