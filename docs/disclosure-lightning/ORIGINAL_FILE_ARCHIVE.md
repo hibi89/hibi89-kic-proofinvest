@@ -1,3 +1,11 @@
+## P5 — Explicit charset handling in archived HTML (2026-10-28 KST)
+
+`disclosure_lightning.extract.extract_bytes` now reads a bounded first-4096-byte `<meta charset>` or `<meta http-equiv=... charset=...>` declaration **only** for `text/html`. It permits UTF-8, Windows-1252 and the HTML-specific `ISO-8859-1`→Windows-1252 mapping, with strict decoder failures. UTF-8 BOM conflicting with legacy declaration, unknown charset, or undecodable bytes are rejected. XHTML/XML/plain text retain strict UTF-8 (no HTML charset assumption). Parsed receipts expose `decoded_encoding`, `html_meta_declared_charset`, `charset_claim_verified=false`. A declaration contained in untrusted original HTML is NOT an independently verified header or a financial fact; do not infer authenticated issuer/file rights.
+
+New tests: `tests/test_disclosure_lightning_extract.py` (+3 methods; declaration forms, rejection scenarios, false-attestation gates); local independently transcribed charset-helper smoke **8/8 pass**, NOT full repo suite. GitHub code SHA `8cd8e12d50dc1a9243e167a93d048786965efc8c`; exact-source GitHub Actions state unverified at handoff. No SEC HTTP used.
+
+---
+
 # Disclosure Lightning — Original Filing Bytes (P2)
 
 ## Actual stage
