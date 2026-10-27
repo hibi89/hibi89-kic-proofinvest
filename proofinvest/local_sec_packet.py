@@ -28,6 +28,7 @@ from proofinvest.dl_bridge import (
 from proofinvest.dl_source_span import anchored_source_span
 from proofinvest.sec_companyfacts import verify_sec_annual_revenue
 from proofinvest.numeric_literal_anchor import find_numeric_literals_in_html_text
+from proofinvest.ixbrl_revenue_review import review_inline_annual_revenue
 
 _MAX_CLAIM_BYTES = 400
 _MAX_FILE_BYTES = 8_000_000
@@ -170,6 +171,9 @@ def build_local_sec_review_packet(
         prior_amount=verdict["prior_usd"],
         current_amount=verdict["current_usd"],
     )
+    ixbrl_review = review_inline_annual_revenue(
+        original_filing, companyfacts=facts, verdict=verdict, cik=cik,
+    )
     # Distinct from arbitrary anchored needle: this checks only two literal
     # strings within decoded HTML text nodes, NOT accounting semantics or SEC truth.
     return {
@@ -194,6 +198,7 @@ def build_local_sec_review_packet(
             "literal_occurrences": 1,
             "span_proves_financial_claim": False,
             "numeric_literal_crosscheck": numeric_literals,
+            "ixbrl_revenue_context_review": ixbrl_review,
             "link_status": crosslink["status"],
         },
         "financial": {
@@ -223,6 +228,7 @@ def build_local_sec_review_packet(
             "Financial figures are compared within caller-supplied JSON, not independently proved.",
             "The exact archived byte span proves phrase location, not filing semantics or revenue.",
             "Financial numeric literals inside HTML text nodes do not establish unit, scale, period, or issuer truth.",
+            "Offline iXBRL markup context association is not XBRL taxonomy validation or SEC authentication.",
             "No SEC transport receipt, redistribution rights, external authentication, or investment recommendation.",
             "Report is an offline review packet, NOT an official KIC submission.",
         ],
