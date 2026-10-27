@@ -1,3 +1,12 @@
+# DL P9 chronology correction → KIC lead (2026-10-28 KST)
+
+- **Source SHA:** `core.py@ac68ea911adb59c2c31a2d7cf2921d064037b42b`, `history.py@dedffd7c8e6a7c4f27eb2f91a7c509d3320af90f`; tests `tests/test_disclosure_lightning.py@ec39e85516426e82a65f2187825844b8a677dac0`. Successor handoff HEAD verify after all writes.
+- **Bug fixed:** Index now rejects time-aware `acceptanceDateTime` **later than actual UTC observation instant**, even when filingDate equals observation UTC day; included for both recent Submissions and historical continuation. Existing day/as-of filtering and stored byte receipts untouched. No root/SQLite migrations.
+- **Tests authored:** 2 synthetic regression cases (UTC offset boundary 02:59:59 vs 03:00:00, deferred historical acceptance before batch write). **Exact source full unittest CI NOT VERIFIED**. Container only has earlier P6 contract shim, not authenticated full checkout; GitHub combined status/PR workflow API returns no new results. Do not accept `0 statuses` as green.
+- **Integration:** KIC `lead/kic` has separate offline iXBRL work and source contract; no KIC files mutated, no live SEC or private originals, no DAKER/PDF change, PR #1 remains draft/unmerged. Next full CI, then narrow KIC acceptance/time contract review.
+
+---
+
 # DL P8 → KIC lead | 2026-10-28 KST
 
 - **Source SHA:** `feature/disclosure-lightning` amendment review core commit `5724fedddd09519cce0e199bcc443903f255e6e5`, CLI commit `34308fe31368b53986498ba0b1c202b40e9c431a`, source-scan budget `543796a9494227f53f2bba6199f23b3062e7f13c`; 5 new existing-test-module cases through `8c05c64f0792ed28dbe150f705d91fa471061daa`. Docs successor HEAD to verify after writes.
