@@ -58,6 +58,12 @@ class ReviewSummaryTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertIn("INCONSISTENT_REVIEW_PRIORITY", result["reason_codes"])
 
+    def test_failure_reason_allowlist(self):
+        result = build_offline_review_summary({"status": "unavailable", "reason_code": "REPLAY_DIGEST_CONFLICT"})
+        self.assertEqual(result["reason_codes"], ["REPLAY_DIGEST_CONFLICT"])
+        result = build_offline_review_summary({"status": "unavailable", "reason_code": "OTHER"})
+        self.assertEqual(result["reason_codes"], ["REPLAY_UNAVAILABLE"])
+
     def test_unknown_reason_text_never_leaks(self):
         data = receipt()
         data["human_review_triage"]["reason_codes"] = ["secret private text"]
