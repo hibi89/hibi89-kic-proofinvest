@@ -33,6 +33,18 @@ class ReviewSummaryTests(unittest.TestCase):
         self.assertEqual(result["status"], "human_review_required")
         self.assertEqual(result["review_priority"], "normal")
         self.assertFalse(result["investment_recommendation"])
+        self.assertIn("VERIFY_PROVIDER_ORIGIN_AND_RIGHTS", result["review_actions"])
+        self.assertIn("INSPECT_IXBRL_CONTEXT_AND_UNITS", result["review_actions"])
+
+    def test_conflicting_financial_claim_requests_reconciliation(self):
+        data = receipt()
+        data["offline_financial_review"]["status"] = "conflict"
+        data["risk"]["status"] = "unavailable"
+        data["human_review_triage"]["status"] = "manual_review_required"
+        data["human_review_triage"]["priority"] = "high"
+        result = build_offline_review_summary(data)
+        self.assertIn("RECONCILE_FINANCIAL_CLAIM", result["review_actions"])
+        self.assertIn("REVIEW_LOCAL_RISK_FLAGS", result["review_actions"])
 
     def test_forged_attestation_is_blocked(self):
         for section, key in (("human_review_triage", "financial_values_authenticated"),
