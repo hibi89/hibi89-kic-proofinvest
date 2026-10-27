@@ -36,7 +36,7 @@ def _annual_period_end(raw: Any) -> date | None:
     """
     if not isinstance(raw, str):
         return None
-    parts = re.findall(r"(?<!\\d)(\\d{4})[.-](\\d{2})[.-](\\d{2})(?!\\d)", raw)
+    parts = re.findall(r"(?<!\d)(\d{4})[.-](\d{2})[.-](\d{2})(?!\d)", raw)
     if len(parts) not in (1, 2):
         return None
     try:
