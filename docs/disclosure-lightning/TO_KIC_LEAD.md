@@ -1,3 +1,13 @@
+# DL P10 → KIC Lead | 2026-10-28 KST
+
+- **Code SHA:** recent P10 `2a0b26f21e30398c7afa7471d8fb5cec1ddf12e5`; history P10 `601d3b75cc409fe4cbb131068935537aa8a7fad2`; tests `7652716a869a498ac9aac2d271a16b7795a59e77`. Subsequent docs HEAD separately confirmed.
+- **Bug/gate:** When SEC-shaped recent/history filingDate == observation UTC day and parsed timezone-aware accepted_at is **None**, exclude row, not invent time or imply observed-before-acceptance. Existing P9 timestamp comparison remains for known valid offsets. No SQLite schema mutation, no KIC bridge/UI modification.
+- **Actual tests:** Existing independent *prior P6 local contract shim* suite 9/9 PASS, six standalone P10 exact predicate cases PASS; neither proves current remote full repo CI. Two in-repo P10 regression tests written but **NOT independently run on exact source**. GitHub Actions status queries for DL head do not enumerate push runs; GH site direct fetch/container git unavailable (DNS/DisabledError). This is a verification blocker, NOT a successful run.
+- **KIC boundary:** Your independent iXBRL source report and 461/461 previous `lead/kic` CI are separate; do not attribute to DL. PR #1 remains draft/unmerged; do not accept unsignaled KIC changes or original/financial truth claims.
+- **Next:** Independently run full GitHub tests for exact DL source, repair real failures, then narrow diff review/integration. Nov12 PDF-only prelim and DAKER controls untouched.
+
+---
+
 # DL P9 chronology correction → KIC lead (2026-10-28 KST)
 
 - **Source SHA:** `core.py@ac68ea911adb59c2c31a2d7cf2921d064037b42b`, `history.py@dedffd7c8e6a7c4f27eb2f91a7c509d3320af90f`; tests `tests/test_disclosure_lightning.py@ec39e85516426e82a65f2187825844b8a677dac0`. Successor handoff HEAD verify after all writes.
