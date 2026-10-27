@@ -1,3 +1,12 @@
+# DL → KIC lead P5 receipt (2026-10-28 KST)
+
+- **DL branch/code SHA:** `feature/disclosure-lightning@8cd8e12d50dc1a9243e167a93d048786965efc8c`; three new `tests/test_disclosure_lightning_extract.py` regression methods. Local standalone extracted-helper test 8/8 pass; full-repository GitHub Actions results **not verified**. Last independently recorded full CI P3: [390 PASS #40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
+- **Contract update:** `extracted-text.v1` adds `decoded_encoding`, `html_meta_declared_charset`, `charset_claim_verified=false`. Parse `text/html` declared UTF-8/Windows-1252/ISO-8859-1 strictly; reject nondeclared undecodable, ambiguous BOM, unknown charset. No HTML raw-byte spans or numerical authenticity. P4 raw UTF-8 line-byte offsets remain available.
+- **KIC coordination:** Read `lead/kic@e1c94598` direction [#40537627902](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40537627902) **408/408 offline** for KIC's synthetic citation UI. No DL modifications to KIC `streamlit_app.py`, `dl_bridge.py`, `dl_source_span.py`, main or preliminary PDF. Draft PR #1 remains unmerged due overlapping accepted prior bridge.
+- **Blocker:** DNS cannot resolve github.com in sandbox clone; use GitHub connector for commits, local helper exercise only, CI exact-branch pending. No live SEC contact without valid owner-authorized identification/fair access. Next = CI, historic SEC continuation, then reviewed integration.
+
+---
+
 # DL → KIC lead | P4 UTF-8 text byte spans (2026-10-28 KST)
 
 - **Branch/code SHA:** `feature/disclosure-lightning@8253270db5cf309d963cc76d9b1569389a34c8d8`; post-commit full Actions CI **unverified**, prior P3 390 PASS [#40534506681](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40534506681).
