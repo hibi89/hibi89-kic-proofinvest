@@ -306,6 +306,25 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertFalse(r["complete_text_extracted"])
         self.assertEqual(r["blocks"], [])
 
+    def test_html_ignores_self_closing_slash_on_hidden_non_void_tags(self):
+        raw = b"<script/>SECRET</script><p>VISIBLE</p><svg/>SVG-LABEL"
+        html_result = extract.extract_bytes(
+            raw, content_type="text/html", filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual([block["text"] for block in html_result["blocks"]],
+                         ["VISIBLE", "SVG-LABEL"])
+
+        xhtml = b"<script/>VISIBLE</script>"
+        xml_result = extract.extract_bytes(
+            xhtml, content_type="application/xhtml+xml",
+            filing_sha256=hashlib.sha256(xhtml).hexdigest(), issuer_cik=CIK,
+            accession=ACC, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual([block["text"] for block in xml_result["blocks"]], ["VISIBLE"])
+
     def test_missing_or_wrong_saved_digest_fails(self):
         with self.assertRaises(ValueError):
             extract.from_saved_original(

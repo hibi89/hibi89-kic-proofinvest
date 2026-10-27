@@ -84,8 +84,9 @@ def _fragment(text: str, line: int, kind: str) -> dict:
 
 
 class _SafeVisibleText(HTMLParser):
-    def __init__(self):
+    def __init__(self, *, html_mode: bool = False):
         super().__init__(convert_charrefs=True)
+        self.html_mode = html_mode
         self.skipped: list[str] = []
         self.fragments: list[dict] = []
         self.total_chars = 0
@@ -109,7 +110,11 @@ class _SafeVisibleText(HTMLParser):
             self.skipped.append(tag)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]):
-        # A void/self-closing hidden element must not suppress later content.
+        tag = tag.lower()
+        # HTML ignores the self-closing slash on non-void HTML elements.
+        # SVG is foreign content and keeps its self-closing behavior.
+        if self.html_mode and tag in SKIP_TAGS and tag != "svg":
+            self.handle_starttag(tag, attrs)
         return None
 
     def handle_endtag(self, tag: str):
@@ -163,7 +168,7 @@ def extract_bytes(raw: bytes, *, content_type: str,
     fragments: list[dict] = []
     truncated = False
     if content_type in {"text/html", "application/xhtml+xml", "text/xml", "application/xml"}:
-        parser = _SafeVisibleText()
+        parser = _SafeVisibleText(html_mode=content_type == "text/html")
         try:
             parser.feed(content)
             parser.close()
