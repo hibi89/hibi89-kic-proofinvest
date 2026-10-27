@@ -1,3 +1,18 @@
+# DL P9 — exact known acceptance timestamp cut-off (2026-10-28 KST)
+
+1. **Goal:** Address a point-in-time defect: same-day accepted-at times beyond the observation instant could be included by date-only filtering.
+2. **Design:** Preserve canonical `core._accepted` behavior. If parsed timestamp is timezone-aware, compare it in UTC to `_observation_time` and skip future filings; apply identically to recent and historical page indexers. Missing/naive timestamps remain unknown without fabricated UTC defaults. Do not rewrite stored historical records or attest SEC origin.
+3. **Verification:** Added two regression methods in `tests/test_disclosure_lightning.py`, one offset-aware recent boundary (03:00Z), one future accepted historical batch row. Actual full repository GitHub Actions / Python unittest outcome **NOT VERIFIED**: connector returns zero push-job statuses; local `/mnt/data/dl-work` contains only older P6 shim and not faithful full source. No synthetic standalone PASS is misrepresented as source-level testing.
+4. **Status:** Both source edits and tests have been pushed and remote source spans inspected; run CI when accessible to confirm. No API, production, original source authentication or KIC bridge affected.
+5. **Errors/rollback:** GitHub Action job ID not enumerable with available tool, raw GitHub domains DNS inaccessible inside container. Git parent commits retain rollback, no force push.
+6. **Repo/branch/SHA:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, `core.py` `ac68ea911adb59c2c31a2d7cf2921d064037b42b`, `history.py` `dedffd7c8e6a7c4f27eb2f91a7c509d3320af90f`, `tests/test_disclosure_lightning.py` `ec39e85516426e82a65f2187825844b8a677dac0`.
+7. **Runtime:** Standard-library offline CLI `python -m disclosure_lightning` and `python -m disclosure_lightning.history`; no deployed DL service.
+8. **Privacy:** No real SEC GET, contact-bearing User-Agent, API keys, private Bid_Owl, original issuer bytes or KIC private contest files placed on public branch.
+9. **Next:** Obtain real exact-commit Actions job state and run complete test suite, fix failures before new features; consider explicit source-declared amendment target review later. KIC lead owns UI/bridge and must review branch PR; preliminary PDF due Nov12 unaffected.
+10. **Timestamp/outcome:** 2026-10-28 KST, remote code/test commits recorded; CI/live-source verification unproven and **not marked completed**.
+
+---
+
 # DL P8 — Verified index bytes / unverified amendment candidates (2026-10-28 KST)
 
 1. **Goal:** Add useful amendment exploration without falsely turning metadata heuristics into an authenticated original/amendment relationship.
