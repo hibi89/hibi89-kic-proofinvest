@@ -57,6 +57,8 @@ class SecPostVerificationTests(unittest.TestCase):
         }
         for invalid in (
             {"reason_code": "CLAIM_UNVERIFIED_BY_MAGIC"},
+            {"reason_code": []},
+            {"reason_code": {"unsafe": "object"}},
             {"growth_pct": "6.43"}, {"current_usd": "1"},
             {"sec_filing_index": "https://sec.example/claimed"},
             {"source_kind": "CALLER_SUPPLIED_SEC_FORMAT_NOT_AUTHENTICATED"},
@@ -129,6 +131,8 @@ class SecPostVerificationTests(unittest.TestCase):
                          "SEC_EVIDENCE_UNAVAILABLE")
         for change in (
             {"reason_code": "FAKE_OFFICIAL_SUCCESS"},
+            {"reason_code": []},
+            {"reason_code": {"unsafe": "object"}},
             {"reason_code": "NETWORK_OPT_IN_REQUIRED"},
             {"current_usd": "123"},
             {"prior_usd": "456"},

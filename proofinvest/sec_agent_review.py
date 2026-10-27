@@ -64,7 +64,8 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             flags_ok and status == "unavailable"
             and verdict.get("schema") == "proofinvest.sec-concept-http-gate.v1"
             and verdict.get("source_kind") == _FAIL_SOURCE
-            and verdict.get("reason_code") in _HTTP_FAILURES
+            and isinstance(verdict.get("reason_code"), str)
+            and verdict["reason_code"] in _HTTP_FAILURES
             and attempted is (verdict["reason_code"] in _HTTP_ATTEMPT_FAILURES)
             and verdict.get("growth_pct") is None
             and verdict.get("current_usd") is None
@@ -77,7 +78,8 @@ def review_sec_verdict(verdict: Any) -> dict[str, Any]:
             and verdict.get("schema") == "proofinvest.sec-companyfacts-offline.v1"
             and verdict.get("source_kind") == _OK_SOURCE
             and status == "unavailable"
-            and verdict.get("reason_code") in _VERIFICATION_HOLD_REASONS
+            and isinstance(verdict.get("reason_code"), str)
+            and verdict["reason_code"] in _VERIFICATION_HOLD_REASONS
             and verdict.get("risk_calculated") is False
             and verdict.get("growth_pct") is None
             and verdict.get("current_usd") is None
