@@ -324,6 +324,7 @@ class DisclosureLightningTests(unittest.TestCase):
         index = core.index_submissions(
             received, cik=CIK, as_of="2026-10-27", forms=FORMS,
             provenance="SEC_HTTPS_RESPONSE",
+            collected_at="2026-10-27T12:00:00Z",
         )
         self.assertEqual(index["filings"][0]["evidence_status"],
                          "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED")
