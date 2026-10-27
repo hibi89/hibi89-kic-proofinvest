@@ -504,5 +504,33 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 2)
 
 
+    def test_history_batch_cli_listing_and_replay(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        directory = self.root / "saved-history-pages"
+        directory.mkdir()
+        for name, raw in pages.items():
+            (directory / name).write_bytes(raw)
+        shared = [
+            "--db", str(self.db), "--cik", CIK,
+            "--manifest-sha256", args["manifest_sha256"],
+            "--as-of", args["as_of"],
+        ]
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(history.main(shared + ["--list-manifest"]), 0)
+        names = {item["name"] for item in json.loads(output.getvalue())["pages"]}
+        self.assertEqual(names, set(pages))
+        batch_args = shared + [
+            "--batch-dir", str(directory),
+            "--collected-at", args["collected_at"],
+        ]
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(history.main(batch_args), 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "SAVED_BATCH")
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(history.main(batch_args), 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "REUSED_BATCH")
+
+
 if __name__ == "__main__":
     unittest.main()
