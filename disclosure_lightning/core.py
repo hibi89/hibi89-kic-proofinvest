@@ -57,6 +57,43 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _observation_time(raw: str, *, cutoff: date) -> str:
+    """Require a real UTC instant no later than the historical as-of date.
+
+    Caller-supplied offline times are NOT independently authenticated.
+    """
+    if (not isinstance(raw, str) or len(raw) > 50 or
+            "T" not in raw or not raw.isascii()):
+        raise ValueError("UTC observation timestamp with offset required")
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("Invalid observation timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("Observation timestamp must contain a timezone")
+    utc = parsed.astimezone(timezone.utc)
+    if utc.date() > cutoff:
+        raise ValueError("COLLECTION_AFTER_AS_OF: later retrieval is not historical evidence")
+    return utc.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _valid_user_agent(raw: str) -> bool:
+    if (not isinstance(raw, str) or not 12 <= len(raw) <= 160
+            or not raw.isascii() or any(ord(ch) < 32 or ord(ch) == 127 for ch in raw)):
+        return False
+    found = CONTACT_PATTERN.search(raw)
+    if found is None:
+        return False
+    domain = found.group().rsplit("@", 1)[1].lower()
+    labels = domain.split(".")
+    return not (
+        domain in {"example.com", "example.org", "example.net", "test.com",
+                   "test.org", "test.net", "localhost"}
+        or labels[-1] in {"test", "invalid", "local", "example", "tld"}
+        or any(part.startswith(("example", "placeholder", "your-")) for part in labels)
+    )
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
                       allow_nan=False).encode("utf-8")
@@ -137,7 +174,8 @@ def index_submissions(
     accepted = recent.get("acceptanceDateTime")
     if accepted is not None and (not isinstance(accepted, list) or len(accepted) != n):
         raise ValueError("SEC acceptance timestamps have mismatched count")
-    observation_time = collected_at or _timestamp()
+    observation_time = _observation_time(collected_at or _timestamp(), cutoff=cutoff)
+    observation_day = date.fromisoformat(observation_time[:10])
     digest = hashlib.sha256(raw).hexdigest()
     entries = []
     seen = set()
@@ -151,7 +189,7 @@ def index_submissions(
             raise ValueError("Duplicate accession in one SEC submissions response")
         seen.add(accession)
         filed = parse_day(days[i])
-        if filed > cutoff:
+        if filed > cutoff or filed > observation_day:
             continue
         uri = _source_uri(target, accession, docs[i])
         entries.append({
@@ -217,6 +255,12 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     path = candidate.resolve()
     if path.exists() and not path.is_file():
         raise ValueError("DB path must be a regular file")
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_JSON_BYTES:
+        raise ValueError("Original SEC JSON bytes required")
+    if (not isinstance(indexed, dict) or indexed.get("provider") != PROVIDER
+            or indexed.get("source_sha256") != hashlib.sha256(raw).hexdigest()):
+        raise ValueError("Index evidence digest or provider does not match supplied bytes")
+    cik10(indexed.get("issuer_cik"))
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
     with closing(sqlite3.connect(path)) as conn:
@@ -293,10 +337,8 @@ def fetch_submissions(cik: str, *, user_agent: str, allow_network: bool = False)
     if not allow_network:
         raise ValueError("Network disabled unless --allow-network is provided")
     target = cik10(cik)
-    if (not isinstance(user_agent, str) or len(user_agent) > 160 or
-            not user_agent.isascii() or any(ord(c) < 32 for c in user_agent) or
-            CONTACT_PATTERN.search(user_agent) is None):
-        raise ValueError("Real SEC contact-bearing User-Agent required")
+    if not _valid_user_agent(user_agent):
+        raise ValueError("Real non-placeholder SEC contact-bearing User-Agent required")
     url = f"https://data.sec.gov/submissions/CIK{target}.json"
     req = urllib.request.Request(
         url, headers={"User-Agent": user_agent, "Accept": "application/json",
@@ -330,6 +372,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--forms", default="10-K,10-Q,8-K", help="Allowed SEC forms")
     parser.add_argument("--input-json", type=Path, help="Local SEC-style response JSON (offline)")
     parser.add_argument("--allow-network", action="store_true", help="Explicit one GET to data.sec.gov")
+    parser.add_argument("--collected-at", help="Offline record observation time (ISO 8601 with offset). "
+                        "Not accepted with live --allow-network. Do not invent historical receipts.")
     parser.add_argument("--db", type=Path, required=True, help="Local SQLite ledger")
     parser.add_argument("--list", action="store_true", help="List stored filings without ingesting")
     args = parser.parse_args(argv)
@@ -342,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if bool(args.input_json) == bool(args.allow_network):
                 raise ValueError("Choose exactly one --input-json or --allow-network")
+            if args.allow_network and args.collected_at is not None:
+                raise ValueError("Live SEC observation time must be measured, not caller supplied")
             forms = parse_forms(args.forms)
             parse_day(args.as_of)
             if args.input_json:
@@ -356,7 +402,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 provenance = "SEC_HTTPS_RESPONSE"
             indexed = index_submissions(
-                raw, cik=cik, as_of=args.as_of, forms=forms, provenance=provenance
+                raw, cik=cik, as_of=args.as_of, forms=forms, provenance=provenance,
+                collected_at=args.collected_at,
             )
             saved = save_index(args.db, raw, indexed)
             result = {**saved, "indexed": indexed}
