@@ -1,3 +1,8 @@
+## 2026-10-27 KST — KIC cross-offset Research false-rejection QA
+- Source `2f818341db0369d91e9357ac001a1c18cf2e4ffb` on `lead/kic` and [offline workflow #40517950196](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40517950196) **SUCCESS, 321/321**. Publication/collection offsets compared by absolute instants only when both present; mixed date-only input retains conservative date comparison. Three new regression methods; earlier UTC ordering safety kept.
+- No new external connectors/requests, live issuer source attestation, investment recommendation, KIC submission, Production, private document edits or repo sharing. Bid Owl private transformation remains independent and **not started here**.
+- Schedule 29 DONE/3 BLOCKED/28 NOT_STARTED; urgent next user-controlled gate is exact approved private PDF SHA/title then separately consented DAKER upload/final receipt before Nov12 10:00 KST.
+
 ## 2026-10-27 KST — SEC review trust-boundary QA (current)
 - Source `b5b31e8b52923904d479e6af4a2a9d4a7f256b8c`, [exact-source workflow #40515982592](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40515982592) **SUCCESS 318/318**, with mocked HTTP and Streamlit AppTest. Local reviewer now rejects invalid HTTP failure reason codes/attempt flags, residual financial fields and inconsistent calculated/conflict status; malformed list/dict reasons fail closed. Two new test methods and corrected old success mock.
 - Previous CI attempts `8299501` / `fd3338c` failed one outdated mock each; final corrected fixture passes. Real SEC response/source authentication/LLM/Production/DAKER not verified.
