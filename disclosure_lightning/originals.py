@@ -263,11 +263,14 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--input-file", type=Path, help="Offline file input (not SEC-authenticated)")
     group.add_argument("--allow-network", action="store_true", help="One SEC archive HTTPS GET")
+    parser.add_argument("--content-type", choices=tuple(sorted(MIME_TYPES | {"application/octet-stream"})),
+                        default="application/octet-stream",
+                        help="Explicit local file MIME claim (unverified); live MIME is response-derived")
     parser.add_argument("--list", action="store_true", help="Read-only receipt list")
     args = parser.parse_args(argv)
     try:
         if args.list:
-            if args.input_file or args.allow_network:
+            if args.input_file or args.allow_network or args.content_type != "application/octet-stream":
                 raise ValueError("Read-only listing cannot import")
             result = {"status": "READ_ONLY", "receipts": list_originals(
                 db_path=args.db, cik=args.cik, accession=args.accession
@@ -275,10 +278,12 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if not (args.input_file or args.allow_network):
                 raise ValueError("Provide --input-file or --allow-network explicitly")
+            if args.allow_network and args.content_type != "application/octet-stream":
+                raise ValueError("Live content-type comes from HTTP response only")
             receipt = locate_original(args.db, cik=args.cik, accession=args.accession)
             if args.input_file:
                 raw = _read_local(args.input_file)
-                kind, origin = "application/octet-stream", "OFFLINE_FILE_UNVERIFIED"
+                kind, origin = args.content_type, "OFFLINE_FILE_UNVERIFIED"
             else:
                 raw, kind = fetch_original(
                     receipt=receipt, allow_network=True,
