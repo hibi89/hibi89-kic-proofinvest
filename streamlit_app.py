@@ -13,6 +13,7 @@ from proofinvest.snapshot_store import _fixture_digest, read_synthetic_snapshot_
 _SOURCE_SYNTHETIC = "합성 데이터 시연"
 _SOURCE_MANUAL = "삼성전자 공개 재무제표 수동검산 (2024/2023)"
 _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (2025/2024)"
+_SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -189,6 +190,60 @@ def _render_sec_curated_case(st) -> None:
     )
 
 
+def _render_sec_live_case(st) -> None:
+    """Explicit-on-click one-issuer SEC HTTP; no automatic background requests."""
+    import os
+
+    st.title("ProofInvest — SEC 공식 CompanyConcept 조회")
+    st.warning(
+        "NETWORK_OPT_IN · Apple FY2025 수치 확인용 SEC HTTPS 조회(버튼 클릭 시 1회). "
+        "연결된 실 API 결과라도 공시 내용의 독립적인 원문 인증·LLM Agent 분석·"
+        "투자 권고·본선 배포 완료를 뜻하지 않습니다."
+    )
+    st.info(
+        "고정 요청: Apple (CIK 0000320193), FY2025 10-K, 기준일 2025-11-01. "
+        "SEC 공개 API 호출에 식별 가능한 User-Agent가 필요합니다. "
+        "환경변수 PROOFINVEST_SEC_USER_AGENT에 실제 연락처를 설정하세요."
+    )
+    if not st.button("SEC 공식 API 1회 조회 및 연매출 검산"):
+        st.caption("조회 버튼을 누르지 않으면 SEC 네트워크 요청이 발생하지 않습니다.")
+        return
+    try:
+        from proofinvest.sec_api_client import run_sec_annual_revenue
+        verdict = run_sec_annual_revenue(
+            cik="0000320193",
+            accession="0000320193-25-000079",
+            current_end="2025-09-27",
+            prior_end="2024-09-28",
+            as_of="2025-11-01",
+            user_agent=os.environ.get("PROOFINVEST_SEC_USER_AGENT", ""),
+            allow_network=True,
+        )
+        if (verdict.get("authenticated_external_source") is not False
+                or verdict.get("ai_agent_executed") is not False
+                or verdict.get("source_rights_verified") is not False):
+            raise ValueError("Unexpected SEC adapter attestation flags")
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
+        st.error("SEC 응답을 검증하지 못했습니다. 숫자와 인증 상태를 표시하지 않습니다.")
+        return
+    if verdict.get("status") != "calculated_unverified":
+        st.error("SEC 수집·검산 보류: " + str(verdict.get("reason_code", "UNKNOWN")))
+        return
+    if verdict.get("live_api_called") is not True:
+        st.error("실제 HTTP 요청 여부를 확인할 수 없어 결과 표시를 차단했습니다.")
+        return
+    st.metric("SEC JSON 연매출 증감률 (독립 인증 아님)", verdict["growth_pct"] + "%")
+    st.dataframe([
+        {"연도": "FY2025", "매출 (백만 USD)": int(verdict["current_usd"]) // 1_000_000},
+        {"연도": "FY2024", "매출 (백만 USD)": int(verdict["prior_usd"]) // 1_000_000},
+    ], use_container_width=True, hide_index=True)
+    st.markdown("[SEC 공식 10-K 접수 페이지](" + verdict["sec_filing_index"] + ")")
+    st.caption(
+        "단일 SEC 공식 CompanyConcept HTTPS 응답에 대한 산술 검산입니다. "
+        "출처 권리/실제 제출/원문 독립 재인증/LLM·ML·DL 모두 별도 검증 대상입니다."
+    )
+
+
 def render_app(st) -> None:
     st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
     # The public recovery ZIP is synthetic-only: never offer an unavailable
@@ -200,9 +255,13 @@ def render_app(st) -> None:
     sec_excerpt = Path(__file__).resolve().parent / "fixtures/sec_apple_fy2025_curated_companyfacts.json"
     if sec_excerpt.is_file():
         available_sources.append(_SOURCE_SEC_CURATED)
+        available_sources.append(_SOURCE_SEC_LIVE)
     source = st.selectbox("자료 유형", available_sources)
     if source == _SOURCE_SEC_CURATED:
         _render_sec_curated_case(st)
+        return
+    if source == _SOURCE_SEC_LIVE:
+        _render_sec_live_case(st)
         return
     if source == _SOURCE_MANUAL:
         st.title("ProofInvest — 실제 발행사 수동기록 검산")
