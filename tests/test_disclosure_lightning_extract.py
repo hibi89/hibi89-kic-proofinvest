@@ -104,16 +104,16 @@ class ExtractedFilingTests(unittest.TestCase):
                          ["매출 2025", "Revenue & Expenses"])
         self.assertEqual([b["source_locator"]["line"] for b in receipt["blocks"]], [1, 3])
         first, second = receipt["blocks"]
-        self.assertEqual(first["source_locator"]["byte_start"], 3)
-        self.assertEqual(second["source_locator"]["byte_start"],
+        self.assertEqual(first["source_locator"]["start_byte"], 3)
+        self.assertEqual(second["source_locator"]["start_byte"],
                          raw.index(b"Revenue"))
         for block in receipt["blocks"]:
             self.assertTrue(block["exact_raw_byte_range_verified"])
             locator = block["source_locator"]
-            span = raw[locator["byte_start"]:locator["byte_end_exclusive"]]
+            span = raw[locator["start_byte"]:locator["end_byte_exclusive"]]
             self.assertEqual(block["raw_span_sha256"], hashlib.sha256(span).hexdigest())
-        self.assertTrue(raw[first["source_locator"]["byte_start"]:
-                            first["source_locator"]["byte_end_exclusive"]].endswith(b"\r\n"))
+        self.assertTrue(raw[first["source_locator"]["start_byte"]:
+                            first["source_locator"]["end_byte_exclusive"]].endswith(b"\r\n"))
         self.assertFalse(receipt["source_authenticity_verified"])
         self.assertFalse(receipt["suitable_for_automatic_financial_facts"])
 
@@ -129,8 +129,8 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(found["returned"], 1)
         candidate = found["candidates"][0]
         self.assertTrue(candidate["exact_raw_byte_range_verified"])
-        self.assertEqual(candidate["source_locator"]["byte_start"], 0)
-        self.assertEqual(candidate["source_locator"]["byte_end_exclusive"], len(raw))
+        self.assertEqual(candidate["source_locator"]["start_byte"], 0)
+        self.assertEqual(candidate["source_locator"]["end_byte_exclusive"], len(raw))
         self.assertFalse(candidate["financial_claim_verified"])
         self.assertFalse(found["source_authenticity_verified"])
 
@@ -146,8 +146,8 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(receipt["block_count"], 1)
         block = receipt["blocks"][0]
         self.assertEqual(block["source_locator"]["line"], 2)
-        self.assertEqual(block["source_locator"]["byte_start"], 1801)
-        self.assertEqual(block["source_locator"]["byte_end_exclusive"], len(raw))
+        self.assertEqual(block["source_locator"]["start_byte"], 1801)
+        self.assertEqual(block["source_locator"]["end_byte_exclusive"], len(raw))
 
     def test_no_parser_remote_io_or_script_execution(self):
         with patch("urllib.request.urlopen") as req:
