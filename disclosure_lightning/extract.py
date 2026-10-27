@@ -33,7 +33,7 @@ def _clean(value: str) -> str:
 
 # Only locally archived HTML may use explicitly declared, bounded legacy
 # charsets. Never guess an encoding from arbitrary undecodable bytes.
-_HTML_TYPES = frozenset({"text/html", "application/xhtml+xml"})
+_HTML_TYPES = frozenset({"text/html"})
 _META_TAG = re.compile(rb"<meta\b[^>]{0,512}>", re.IGNORECASE)
 _META_CHARSET = re.compile(
     rb"\bcharset\s*=\s*['\"]?\s*([a-zA-Z0-9_-]+)", re.IGNORECASE
