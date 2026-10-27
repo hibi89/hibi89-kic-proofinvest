@@ -1,3 +1,15 @@
+## 2026-10-27 KST — KIC private v4 scoring comparison / ten-field handoff
+1. Goal: maximize proposal Agent specificity and defensibility against official beyond-chatbot criterion without expanding implementation scope.
+2. Work: separate *private* v4 10-page PPTX/PDF alternative from v3; strengthened Planner tool choice, one failure retry then UNKNOWN, date gating and human escalation, three negative-case MVP tests. Prior frozen and v3 unchanged.
+3. Evidence: 23 prose shapes changed, 258/258 original PPTX shape geometries preserved, 10 PDF pages/487237 bytes, 0 out-of-page words, 7 sections, 4 verified links; SHA256 65e47a56bdfcf2f9c7908ed06f8ce97b7f83d730903de5b8a0559831485ee2e4. Verified local ZIP integrity and actual PDF export. Public non-private evidence: docs/roles/lead/KIC_V4_SCORING_COMPARISON_20261027.md.
+4. Status: v4 PRIVATE_COMPARE_ONLY; v3 still prior review candidate; no final PDF selection, authorizations or submission. 60-day 29 DONE/3 BLOCKED/28 NOT_STARTED unchanged.
+5. Risks: v4's new autonomous LLM Planner and SEC Tool remain **finalist-only plan**. Current KIC is offline deterministic/rule-based 257 PASS, not an integrated live SEC/LLM AI Agent. Do not imply evaluation improvement has been measured.
+6. Branch/repo: hibi89/hibi89-kic-proofinvest @ lead/kic; newly created public doc above; current exact SHA and CI must be inspected after writes.
+7. Production: no real KIC deployment, no DAKER URL or final receipt; existing CI only for code suite.
+8. Backup/security: old frozen PDF and v3 PDFs/PPTXs unchanged; no private assets, identities or credentials in public repo. Old submission SHA preflight intentionally rejects v3 and v4.
+9. Next: owner must **explicitly select exact v3 OR v4 PDF and title**. With separate permission, verify exact-file SHA and submit via official authenticated team leader then verify receipt; Elo later. No unprompted account write.
+10. Time: 2026-10-27 KST, actual work hours unmeasured, all new v4 metrics are test-planning not measured facts.
+
 ## 2026-10-27 KST — KIC v3 owner-review ZIP checkpoint
 - Goal: pre-submit independent template equivalence and safe private user handoff; exact organizer-slide layout preserved, **258/258 shapes** geometrically/type/image identical across 10 slides.
 - Candidate PDF SHA bd07d0fa6283b9d2430a223402a443f14506f1ff2d147a98b8c3e10428d2e573, 493063 bytes, 10 pages. Added separate private 5-file ZIP (PDF + PPTX + JSON manifest + verifier + instructions). ZIP byte integrity checks PASS, tampered file FAILS. Original private frozen files unchanged. [Public non-sensitive evidence](docs/roles/lead/SEC_V3_TEMPLATE_PARITY_AND_PACKET_20261027.md).
