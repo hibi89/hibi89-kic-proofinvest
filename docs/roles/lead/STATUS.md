@@ -1,3 +1,9 @@
+## 2026-10-27 KST — KIC SEC v3 private submission candidate
+- Verified official SEC Apple FY2025 10-K accession 0000320193-25-000079 and official 2025/24 net sales USD millions 416,161/391,035; manually recomputed +6.43%, **not software auto-SEC fetch**. Separate v3 10-page/493,063-byte PDF and PPTX, visual/page/link checks PASS. Older frozen and v2 remain intact.
+- Public [review memo](SEC_V3_PRELIM_QA_20261027.md); private candidate kept OUT of public GitHub, Library persistence and DAKER. No user title/file authorization, no changed pinned-hash preflight, no final receipt or Elo vote.
+- Previous program CI #40491440843 `257/257 PASS` offline; real SEC API/LLM/ML/DL/Production remain NOT_VERIFIED. 60-day canonical 29 DONE / 3 BLOCKED / 28 NOT_STARTED unchanged.
+- **NEXT:** owner approves *exact candidate PDF and DAKER title*, then separately authorize verification of new immutable hash before portal upload and final receipt. No source code, user originals, credentials, deployment or external account modified. Actual time unmeasured.
+
 ## 2026-10-27 KST — KIC UI MVP evidence
 - Offline bounded controller trace visible after opt-in in Streamlit manual historical case (no new API/LLM); source `4fa5152fe84fad95ea311af89875aa1362dee949`.
 - [CI #40488983968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40488983968) SUCCESS, **257/257 PASS**, including 3 added AppTest scenarios. Real SEC/DART verification, hosted Production/browser, DAKER upload/receipt NOT_VERIFIED.
