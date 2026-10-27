@@ -14,6 +14,7 @@ _SOURCE_SYNTHETIC = "합성 데이터 시연"
 _SOURCE_MANUAL = "삼성전자 공개 재무제표 수동검산 (2024/2023)"
 _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (2025/2024)"
 _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
+_SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -294,6 +295,97 @@ def _render_sec_live_case(st) -> None:
     )
 
 
+
+def _valid_dl_archive_receipt(receipt: object) -> bool:
+    """Strict presentation-only gate; no third-party bytes treated as trusted."""
+    import re
+
+    if type(receipt) is not dict:
+        return False
+    expected = {
+        "schema": "proofinvest.kic-dl-original-e2e.v1",
+        "status": "offline_original_source_path_pass",
+        "synthetic_only": True,
+        "original_file_receipt_status": "SAVED",
+        "original_replay_receipt_status": "REUSED",
+        "original_bytes_match": True,
+        "source_span_status": "untrusted_original_span_for_review",
+        "kic_metadata_link": "linked_metadata_only",
+        "kic_original_crosslink": "linked_untrusted_original_span_for_review",
+        "original_span_metadata_linked": True,
+        "authenticated_external_source": False,
+        "real_sec_network_called": False,
+        "real_filing_retrieved": False,
+        "official_submission_made": False,
+        "numeric_facts_authenticated": False,
+        "issuer_cik": "0000000001",
+        "accession": "0000000001-25-000001",
+        "source_uri": (
+            "https://www.sec.gov/Archives/edgar/data/1/"
+            "000000000125000001/synthetic10k.htm"
+        ),
+    }
+    if any(receipt.get(key) != value or type(receipt.get(key)) is not type(value)
+           for key, value in expected.items()):
+        return False
+    sha = receipt.get("original_filing_sha256")
+    index_sha = receipt.get("submissions_sha256")
+    if (not isinstance(sha, str) or re.fullmatch(r"[0-9a-f]{64}", sha) is None
+            or not isinstance(index_sha, str)
+            or re.fullmatch(r"[0-9a-f]{64}", index_sha) is None
+            or sha == index_sha):
+        return False
+    start, end = receipt.get("source_byte_start"), receipt.get("source_byte_end")
+    # Literal is a known fixed synthetic marker, not an AI-extracted source fact.
+    if (type(start) is not int or type(end) is not int
+            or not 0 <= start < end <= 4096
+            or end - start != len("TEST_LITERAL_SOURCE_SPAN")):
+        return False
+    context = receipt.get("escaped_context")
+    return (isinstance(context, str) and 0 < len(context) <= 2048
+            and "TEST_LITERAL_SOURCE_SPAN" in context
+            and "<" not in context and ">" not in context)
+
+
+def _render_dl_archive_case(st) -> None:
+    """Run a synthetic archived-byte replay only when the user selects it."""
+    st.title("ProofInvest — DL 원문 근거 추적 (합성 시연)")
+    st.warning(
+        "SYNTHETIC_ONLY · 실제 존재하지 않는 기업/접수번호와 인공 HTML 사용. "
+        "로컬 원문 바이트/해시/위치 연결만 확인하며 SEC 원문 진위·재무 사실을 인증하지 않습니다."
+    )
+    try:
+        from proofinvest.kic_dl_original_demo import replay_original
+        receipt = replay_original()
+    except (ImportError, ValueError, OSError, TypeError, KeyError):
+        st.error("오프라인 원문 근거 재현에 실패했습니다. 출처 카드를 표시하지 않습니다.")
+        return
+    if not _valid_dl_archive_receipt(receipt):
+        st.error("원문 메타데이터 신뢰 경계를 통과하지 못해 출처 카드를 차단했습니다.")
+        return
+
+    st.subheader("수동 검토용 출처 카드 — 인증되지 않은 원문")
+    st.info(
+        "기업 CIK/접수번호/원문 URL은 가상 SEC 형식입니다. "
+        "인용은 로컬 저장본의 정확한 바이트 위치만 뜻하며, 웹페이지로 이동하지 않습니다."
+    )
+    st.dataframe([
+        {"근거 속성": "기업 CIK (가상)", "값": receipt["issuer_cik"]},
+        {"근거 속성": "접수번호 (가상)", "값": receipt["accession"]},
+        {"근거 속성": "자료 URL (가상)", "값": receipt["source_uri"]},
+        {"근거 속성": "원문 SHA-256", "값": receipt["original_filing_sha256"]},
+        {"근거 속성": "인용 바이트 시작", "값": str(receipt["source_byte_start"])},
+        {"근거 속성": "인용 바이트 종료 (미포함)", "값": str(receipt["source_byte_end"])},
+        {"근거 속성": "교차 연결", "값": "메타데이터 일치 · 사실 미인증"},
+    ], use_container_width=True, hide_index=True)
+    st.caption("HTML 렌더링 금지: 엔티티 이스케이프된 인공 원문을 텍스트 코드로만 표시합니다.")
+    st.code(receipt["escaped_context"], language="text")
+    st.warning(
+        "SEC 실조회 0회 · 외부 출처 독립 인증 없음 · 재무 숫자 사실 확인 없음 · "
+        "LLM/ML/DL 판정 아님 · 실제 공시 인용 또는 대회 공식 제출 근거로 사용 금지."
+    )
+
+
 def render_app(st) -> None:
     st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
     # The public recovery ZIP is synthetic-only: never offer an unavailable
@@ -306,7 +398,14 @@ def render_app(st) -> None:
     if sec_excerpt.is_file():
         available_sources.append(_SOURCE_SEC_CURATED)
         available_sources.append(_SOURCE_SEC_LIVE)
+    dl_archive = Path(__file__).resolve().parent / "disclosure_lightning/originals.py"
+    dl_replay = Path(__file__).resolve().parent / "proofinvest/kic_dl_original_demo.py"
+    if dl_archive.is_file() and dl_replay.is_file():
+        available_sources.append(_SOURCE_DL_ARCHIVE)
     source = st.selectbox("자료 유형", available_sources)
+    if source == _SOURCE_DL_ARCHIVE:
+        _render_dl_archive_case(st)
+        return
     if source == _SOURCE_SEC_CURATED:
         _render_sec_curated_case(st)
         return
