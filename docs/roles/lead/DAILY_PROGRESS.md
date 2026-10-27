@@ -1,3 +1,9 @@
+## 2026-10-27 KST — EXTRA preliminary candidate QA; 60-day scheduled points unchanged
+- Created separate PRIVATE 10-page PPTX/PDF candidate using existing editable KIC layout, local PDF QA: 10p/493104B, all 7 official sections, 0 page boundary word overflow; original files intact. Candidate PREPARED_FOR_OWNER_REVIEW only, not official submission.
+- Old pinned PDF hash intentionally not replaced, so DAKER upload gate BLOCKED until express participant approval of exact file/title. No public artifact or external upload.
+- Offline code CI 40489441194 remains `257/257 PASS` for local tested flows, not real SEC/LLM/Production, not participant upload. Actual elapsed hours unmeasured, unapproved upload remaining work cannot be estimated from this offline run.
+- Plan day denominator and official canonical master remain 29 DONE / 3 BLOCKED / 28 NOT_STARTED. Details: [safe QA note](GLOBAL_PRELIM_REVIEW_STATUS_20261027.md).
+
 ## 2026-10-27 KST — EXTRA (NOT one of scheduled 60 gates)
 - **Unit:** expose previously implemented bounded controller in existing Streamlit historical issuer screen; weight 100 points independently of day-by-day plan, **100/100 DONE** after verified [CI 40488983968](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40488983968) `257/257 PASS` (three new UI tests).
 - Implementation `4fa5152fe84fad95ea311af89875aa1362dee949`, no external/network/account action. Actual elapsed: **미계측**; this extra unit remaining base **0h** + contingency **0h** after CI. Design scope: [MVP_DESIGN_DELTA_20261027.md](MVP_DESIGN_DELTA_20261027.md).
