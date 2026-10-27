@@ -124,7 +124,8 @@ def verify_sec_annual_revenue(
         "current_usd": str(current[0]), "prior_usd": str(previous[0]),
         "growth_pct": shown,
         "sec_filing_index": "https://www.sec.gov/Archives/edgar/data/"
-                            f"{int(cik)}/{accession}-index.htm",
+                            f"{int(cik)}/{accession.replace('-', '')}/"
+                            f"{accession}-index.htm",
         "cik": cik, "accession": accession, "as_of": as_of,
         "annual_period_ends": [prior_end, current_end],
         "filing_date": current[2].isoformat(),

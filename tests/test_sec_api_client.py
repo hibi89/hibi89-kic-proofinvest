@@ -88,6 +88,9 @@ class SecHttpAdapterTests(TestCase):
             v = client.run_sec_annual_revenue(**ARGS)
         self.assertEqual(v["growth_pct"], "6.43")
         self.assertEqual(v["status"], "calculated_unverified")
+        self.assertEqual(v["sec_filing_index"],
+                         "https://www.sec.gov/Archives/edgar/data/320193/"
+                         "000032019325000079/0000320193-25-000079-index.htm")
         self.assertTrue(v["live_api_called"])
         self.assertFalse(v["authenticated_external_source"])
         self.assertFalse(v["source_rights_verified"])

@@ -43,7 +43,7 @@ class SecLiveStreamlitTests(unittest.TestCase):
             "status": "calculated_unverified", "growth_pct": "6.43",
             "current_usd": "416161000000", "prior_usd": "391035000000",
             "sec_filing_index": "https://www.sec.gov/Archives/edgar/data/"
-                                "320193/0000320193-25-000079-index.htm",
+                                "320193/000032019325000079/0000320193-25-000079-index.htm",
             "live_api_called": True, "ai_agent_executed": False,
             "authenticated_external_source": False, "source_rights_verified": False,
         }
@@ -53,6 +53,8 @@ class SecLiveStreamlitTests(unittest.TestCase):
             at.button[0].click().run(timeout=15)
             self.assertFalse(at.exception, [str(x.message) for x in at.exception])
             self.assertTrue(any(m.value == "6.43%" for m in at.metric))
+            self.assertTrue(any("000032019325000079/" in x.value
+                                for x in at.markdown))
             self.assertTrue(any("원문 독립 재인증" in x.value for x in at.caption))
             func.assert_called_once()
             self.assertTrue(func.call_args.kwargs["allow_network"])

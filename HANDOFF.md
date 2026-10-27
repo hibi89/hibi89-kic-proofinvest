@@ -1,3 +1,15 @@
+## 2026-10-27 KST — SEC archive citation link integrity (10-field handoff)
+1. **Goal / design:** Correct broken SEC EDGAR filing-detail source link in existing KIC evidence workflow, respecting the preliminary submission freeze. Compared deterministic in-process official URL format against extra runtime lookup: selected deterministic path, zero extra API/cost and lower maintenance.
+2. **Code:** `proofinvest/sec_companyfacts.py` now builds /Archives/edgar/data/{cik_without_padding}/{accession_without_hyphens}/{accession}-index.htm. Updated `streamlit_app.py` curated link and the mocked live UI expectation. Single-request SEC API guard remains unchanged.
+3. **Tests:** Added exact-link expectation to mocked HTTP test and Streamlit markdown link test; updated offline issuer test. New same-SHA CI pending until independently checked. No live SEC traffic.
+4. **Status:** A link formatting correction is not source authentication, LLM-Agent execution, deployed UI or official DAKER submission. Scheduled 60-day ledger 29 DONE / 3 BLOCKED / 28 NOT_STARTED unchanged.
+5. **Error/recovery:** Old path omitted unhyphenated accession directory; SEC official webmaster FAQ documents correct EDGAR filing-detail path. Restore via ordinary commit history, never force push or alter frozen hash locks.
+6. **Repo/branch:** `hibi89/hibi89-kic-proofinvest@lead/kic`; changed `proofinvest/sec_companyfacts.py`, `streamlit_app.py`, `tests/test_sec_companyfacts.py`, `tests/test_sec_api_client.py`, `tests/test_sec_live_streamlit.py`.
+7. **Deployment/runtime:** Local Streamlit only; no Vercel/Production URL. Test `python -m unittest discover -s tests -v`; check exact GitHub Actions SHA.
+8. **Data/security:** Existing commit is backup; fixtures, user private PDF/PPTX and official submission hash guard unchanged. No secret, contact address or private material written to public GitHub.
+9. **Next/approval:** Verify same-SHA CI. Real SEC HTTPS request remains opt-in and needs separate user/provider approval; Nov12 <=10p PDF exact-title/file selection, DAKER upload and receipt separately authorized. Elo follows official dates.
+10. **Timestamp/grounds:** 2026-10-27 KST; https://www.sec.gov/about/webmaster-frequently-asked-questions; work duration not measured; final exact SHA is checked after write.
+
 ## 2026-10-27 KST — KIC private v4 scoring comparison / ten-field handoff
 1. Goal: maximize proposal Agent specificity and defensibility against official beyond-chatbot criterion without expanding implementation scope.
 2. Work: separate *private* v4 10-page PPTX/PDF alternative from v3; strengthened Planner tool choice, one failure retry then UNKNOWN, date gating and human escalation, three negative-case MVP tests. Prior frozen and v3 unchanged.

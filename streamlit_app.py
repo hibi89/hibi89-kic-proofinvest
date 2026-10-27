@@ -167,7 +167,7 @@ def _render_sec_curated_case(st) -> None:
     )
     st.markdown(
         "[SEC 공식 접수 페이지](https://www.sec.gov/Archives/edgar/data/"
-        "320193/0000320193-25-000079-index.htm)"
+        "320193/000032019325000079/0000320193-25-000079-index.htm)"
     )
     if verdict["status"] == "unavailable":
         st.warning(

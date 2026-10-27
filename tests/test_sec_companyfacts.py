@@ -32,7 +32,7 @@ class SecCompanyfactsTests(unittest.TestCase):
                      "source_rights_verified", "risk_calculated", "official_contest_submission"):
             self.assertIs(result[flag], False)
         self.assertEqual(result["sec_filing_index"],
-                         "https://www.sec.gov/Archives/edgar/data/320193/0000320193-25-000079-index.htm")
+                         "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/0000320193-25-000079-index.htm")
 
     def test_future_filing_must_not_leak_back_into_past(self):
         v = self.run_verifier(as_of="2025-10-30")
