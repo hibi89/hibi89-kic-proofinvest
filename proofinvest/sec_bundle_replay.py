@@ -129,12 +129,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--needle", required=True,
                    help="A unique ASCII literal 4-128 characters in the original")
     p.add_argument("--claimed-growth-pct")
+    p.add_argument("--summary-only", action="store_true",
+                   help="Emit a compact, allowlisted human-review summary only")
     args = p.parse_args(argv)
     result = replay_local_capture(
         args.bundle, current_end=args.current_end, prior_end=args.prior_end,
         needle=args.needle, claimed_growth_pct=args.claimed_growth_pct,
     )
-    print(json.dumps(result, sort_keys=True, ensure_ascii=False, indent=2))
+    if args.summary_only:
+        output = (result.get("review_summary") if result["status"] == "offline_capture_replayed_unverified"
+                  else build_offline_review_summary(result))
+    else:
+        output = result
+    print(json.dumps(output, sort_keys=True, ensure_ascii=False, indent=2))
     return 0 if result["status"] == "offline_capture_replayed_unverified" else 2
 
 
