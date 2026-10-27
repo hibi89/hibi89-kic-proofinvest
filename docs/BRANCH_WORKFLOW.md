@@ -1,3 +1,5 @@
+> **LATEST OWNER INSTRUCTION — 2026-10-27 23:50 KST:** Prior Bid Owl chief becomes KIC Disclosure Lightning technical chief, with sole DL code ownership in PUBLIC KIC branch feature/disclosure-lightning. Target 2026-10-28 or 29 minimum working unit (SEC Submissions fixture -> strict metadata checks -> idempotent SQLite -> JSON export and tests), then iterate core and frontend until submission. This OVERRIDES previous ban on independent DL feature-branch work, but the Nov12 <=10-page organizer PDF and exact-file/DAKER approval stay FROZEN. KIC chief owns lead/kic and cross-branch review. No live provider authentication, deployment or automatic agent coordination is asserted.
+
 # KIC ProofInvest — branch/role contract
 
 **중요: 담당 브랜치의 고유 기록은 docs/roles/<role>/HANDOFF.md와 STATUS.md다. KIC 총괄은 새 지시마다 feature/research·feature/verification·feature/risk 브랜치의 최신 TO_KIC_LEAD.md 3개를 조회하고 lead/kic의 MESSAGE_REVIEW.md에 SHA·판단을 기록한다.**

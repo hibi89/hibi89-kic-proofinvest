@@ -1,3 +1,5 @@
+> **2026-10-27 ACTIVE DL LEAD:** [DL -> KIC status](https://github.com/hibi89/hibi89-kic-proofinvest/blob/feature/disclosure-lightning/docs/disclosure-lightning/TO_KIC_LEAD.md) | [KIC -> DL instructions](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/disclosure-lightning/TO_DL_LEAD.md) | [Review ledger](https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/disclosure-lightning/KIC_DL_REVIEW.md). Always fetch DL HEAD/PR; legacy three-only router below is historical. No automatic message broadcast.
+
 # KIC 기능 담당자·총괄 메시지 연결
 
 총괄 브랜치: `lead/kic`. 세 기능 작업자는 각자의 역할 폴더에 최신화한다.
