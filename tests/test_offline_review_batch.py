@@ -21,6 +21,8 @@ class BatchReviewTests(unittest.TestCase):
         self.assertEqual(output["blocked_count"], 2)
         self.assertEqual(output["action_counts"]["RECHECK_LOCAL_ARCHIVE"], 2)
         self.assertEqual([x["index"] for x in output["items"]], [0, 1])
+        self.assertEqual([x["index"] for x in output["review_queue"]], [0, 1])
+        self.assertEqual(output["review_queue"][0]["next_action"], "RECHECK_LOCAL_ARCHIVE")
         self.assertNotIn("one.zip", str(output))
         self.assertFalse(output["external_http_called"])
 
