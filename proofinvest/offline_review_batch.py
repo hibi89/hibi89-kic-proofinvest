@@ -31,8 +31,25 @@ def review_capture_batch(
         except (ValueError, TypeError, OSError, KeyError, RecursionError):
             summary = build_offline_review_summary(None)
         items.append({"index": index, "summary": summary})
+    # Human work queue: blocked first, then high-priority review, then normal.
+    # Preserve original input index as a stable tie-breaker; never expose paths.
+    queue = sorted(
+        items,
+        key=lambda item: (
+            0 if item["summary"]["status"] == "blocked" else
+            1 if item["summary"]["review_priority"] == "high" else 2,
+            item["index"],
+        ),
+    )
     return {
         "schema": "proofinvest.offline-review-batch.v1",
+        "review_queue": [
+            {"index": item["index"],
+             "status": item["summary"]["status"],
+             "priority": item["summary"]["review_priority"],
+             "next_action": item["summary"]["review_actions"][0]}
+            for item in queue
+        ],
         "count": len(items),
         "blocked_count": sum(i["summary"]["status"] == "blocked" for i in items),
         "high_priority_count": sum(i["summary"]["review_priority"] == "high" for i in items),
