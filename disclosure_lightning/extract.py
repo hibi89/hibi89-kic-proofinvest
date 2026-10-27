@@ -126,7 +126,15 @@ def extract_bytes(raw: bytes, *, content_type: str,
         accuracy = "LINE_HINT_ONLY_NO_RAW_BYTE_SPANS"
     else:
         used = 0
-        for line, item in enumerate(content.splitlines(), 1):
+        # UTF-8 decoded text re-encodes byte-for-byte. A UTF-8 BOM is outside
+        # the first decoded line; do not misreport its offset as text evidence.
+        byte_cursor = len(raw) - len(content.encode("utf-8"))
+        for line, item in enumerate(content.splitlines(keepends=True), 1):
+            raw_line = item.encode("utf-8")
+            start_byte, end_byte = byte_cursor, byte_cursor + len(raw_line)
+            if raw[start_byte:end_byte] != raw_line:
+                raise ValueError("RAW_TEXT_SPAN_INTEGRITY_FAILED")
+            byte_cursor = end_byte
             text = _clean(item)
             if not text:
                 continue
@@ -135,9 +143,20 @@ def extract_bytes(raw: bytes, *, content_type: str,
                     or used + len(text) > MAX_CHARS):
                 truncated = True
                 continue
-            fragments.append(_fragment(text, line, "DECODED_TEXT_LINE"))
+            block = _fragment(text, line, "UTF8_RAW_LINE_BYTE_SPAN")
+            block["source_locator"] = {
+                "type": "UTF8_RAW_LINE_BYTE_SPAN", "line": line,
+                "byte_start": start_byte, "byte_end_exclusive": end_byte,
+            }
+            block["raw_span_sha256"] = hashlib.sha256(raw_line).hexdigest()
+            # The exact RAW line span is verified, but cleaned 'text' is
+            # normalized and NO financial or issuer authenticity is verified.
+            block["exact_raw_byte_range_verified"] = True
+            fragments.append(block)
             used += len(text)
-        accuracy = "DECODED_LINE_ONLY_NO_BYTE_SPANS"
+        if byte_cursor != len(raw):
+            raise ValueError("RAW_TEXT_SPAN_INTEGRITY_FAILED")
+        accuracy = "EXACT_RAW_LINE_BYTE_SPANS_UNVERIFIED_SOURCE"
     receipt = {
         "schema": "disclosure-lightning.extracted-text.v1",
         "issuer_cik": issuer_cik,
