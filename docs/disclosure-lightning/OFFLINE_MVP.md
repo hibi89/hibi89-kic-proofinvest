@@ -1,21 +1,18 @@
-# Disclosure Lightning — standalone public KIC feature branch
+# Disclosure Lightning — canonical SEC MVP
 
-**Status:** minimum offline vertical unit; does NOT perform live SEC HTTP, authenticate actual filings or download original HTML.
+**2026-10-28 consolidation:** the parallel experimental `disclosure_lightning/mvp.py` and `disclosure_lightning/cli.py` plus their overlapping tests were RETIRED from this branch. Their history remains in Git, but do not import or execute them. There is now only one supported public SEC ingest and SQLite schema: `disclosure_lightning/core.py` invoked by `python -m disclosure_lightning`.
 
-Source facts: SEC official Submissions API uses 10-digit CIK at https://data.sec.gov/submissions/CIK##########.json. SEC fair access applies. No API key is needed for this public GET, but network code is intentionally NOT implemented in this offline unit.
+See [canonical CLI usage](../../disclosure_lightning/README.md). Offline synthetic example (no network, no secret, no live SEC proof):
 
-## Reproduce with a local SEC-shaped JSON
+```bash
+python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --collected-at 2026-10-27T00:00:00Z --input-json disclosure_lightning/fixtures/sec_submissions_synthetic.json --db /tmp/dl.sqlite3
+python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --db /tmp/dl.sqlite3 --list
+```
 
-    python -m disclosure_lightning.cli --input ./sample.json --database ./dl.sqlite --cik 0000320193 --collected-at 2026-10-27T10:00:00Z --as-of 2026-10-27
+A new source digest covers only the exact original **SEC submissions API JSON** bytes, NOT original 10-K/10-Q/8-K filing bytes. `raw_sha256` remains null until full filing retrieval actually exists. Unknown amendment links stay null. Both original source response and index metadata persist in a local SQLite ledger. The server-side ingestion is idempotent for exactly unchanged API bytes, and later changed snapshots are separately recorded.
 
-Output: JSON result with source payload hash, records, inserted versions/observations, metadata-only envelopes. The input must include official-shaped cik and filings.recent columns accessionNumber, form, filingDate, primaryDocument. No HTTP is made. Initial automated fixture only uses wholly synthetic values.
+Chronology control: `collected_at` is required to be an offset-aware instant which normalizes to UTC and is **not after** `as_of`. If importing old archive data, the caller-provided observed-at timestamp is still UNVERIFIED, not an attestation of historical SEC availability; do not invent this timestamp. For live `--allow-network`, observed-at is derived from actual process time and cannot be replaced with a caller-supplied date.
 
-## Contract
+Opt-in online mode requires a real identifying `DL_SEC_USER_AGENT`, performs one bounded official SEC HTTP GET without redirects, and remains unverified until actual provider response evidence is preserved. No recurrent polling, original filing HTML ingestion, company ticker lookup or PDF/front-end has been implemented.
 
-RawFilingEnvelopeV1 has schema_version 1.0, SEC_EDGAR, issuer_cik, accession, form, filed_at, collected_at, as_of_cutoff, source_uri, submissions_uri, raw_sha256, raw_sha256_scope, filing_content_sha256 (null), original_filing_retrieved (false), evidence_status METADATA_ONLY_UNVERIFIED, amends_accession (unknown), amendment_form.
-
-**IMPORTANT:** raw_sha256 hashes the provided SUBMISSIONS JSON, **not** original issuer filing content. Generated filing URL is a locator from untrusted metadata and remains unverified. No automatic amendment accession association, ownership verification, redistribution clearance, or investment advice. Only 10-K/10-Q/8-K and /A accepted; unmatched forms are skipped. Metadata changes create new immutable versions; repeat source snapshots are idempotent.
-
-## Next implementation
-
-Owner target 2026-10-28/29: add official SEC transport as a separate explicit consent/API-policy gate, confirm official-shaped real inputs, KIC read-only consumer integration, clearer status/controls. After MVP: resilience, resumption, frontend, amendment linking with verified source, Windows/performance. Do not import private Bid_Owl code.
+KIC `lead/kic` already has a **separate** bridge `proofinvest/dl_bridge.py`; its real merged end-to-end integration with this DL producer remains pending KIC review. Do not copy private Bid_Owl source or alter the Nov12 PDF submission.
