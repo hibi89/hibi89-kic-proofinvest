@@ -1,15 +1,19 @@
-# DL -> KIC chief | 2026-10-27 KST
+# Disclosure Lightning → KIC Lead: MVP implementation and verified CI
 
-**Owner appointment:** Bid Owl chief is now KIC Disclosure Lightning technical chief on branch feature/disclosure-lightning.
+**KST:** 2026-10-27 | **Branch:** `feature/disclosure-lightning` | **Source verified SHA:** `2634950dca20caf5687ec12d96542b665faf23d1` (before documentation update)  
+**CI:** [GitHub Actions #40526917500](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40526917500) = **PASS, 363 Python tests** (existing KIC suite + all new DL tests), including real module-entrypoint synthetic E2E.
 
-**Implemented now:** Python 3.11 stdlib-only offline SEC Submissions parser; strict CIK, accession, form, date, timezone, path, size and column checks; source-payload SHA256; JSON RawFilingEnvelopeV1 metadata-only records; immutable append-only SQLite versions and idempotent observations; offline CLI with local JSON file; synthetic unit tests.
+## Actual code and usage
 
-**Code paths:** disclosure_lightning/mvp.py, disclosure_lightning/cli.py, disclosure_lightning/__init__.py; tests/test_disclosure_lightning_mvp.py; docs/disclosure-lightning/OFFLINE_MVP.md.
+**Canonical DL executable:** `python -m disclosure_lightning` uses `disclosure_lightning/__main__.py` → `core.py`. Input: `--input-json` (local synthetic/SEC-like JSON) OR `--allow-network` (one opt-in authorized SEC HTTPS GET with **real** `DL_SEC_USER_AGENT` contact). Args include `--cik`, `--as-of`, `--db`, `--forms` and `--list`; docs and synthetic fixture at `disclosure_lightning/README.md`, `disclosure_lightning/fixtures/sec_submissions_synthetic.json`. Strict response/CIK/accession/date/source checks; zero dependencies beyond Python 3.11; raw submissions JSON BLOB+SHA256 preserved in SQLite, unique issuer/accession filing index, distinct amendments, duplicate suppression, source-linked JSON export. No frontend/UI.
 
-**Verification:** GitHub Actions CI PENDING on code push. No real live SEC GET, primary source file download, authenticity/rights proof, deployed UI, ML or DAKER submission. Do not claim READY_FOR_PRODUCTION.
+**Parallel offline-only experiment:** `disclosure_lightning/mvp.py` + `disclosure_lightning/cli.py` and `tests/test_disclosure_lightning_mvp.py` were also committed independently on this same branch. Both implementation sets are source-visible, have separate SQLite schemas and **must not be treated as the same production schema**. Until contract convergence, the standard entrypoint is the canonical `python -m disclosure_lightning` command above, and `python -m disclosure_lightning.cli` is secondary experimental offline CLI. Do not mix the two SQLite database files. A later small contract consolidation/cleanup is needed **before merging to KIC lead**.
 
-**DL -> KIC review ask:** Examine source hash scope, data contract version and no private Bid_Owl code; confirm minimal KIC consumer interface only after CI; leave lead/kic and Nov12 original PDF unaffected.
+## Verified, unverified, and KIC decision
 
-**KIC -> DL order:** https://github.com/hibi89/hibi89-kic-proofinvest/blob/lead/kic/docs/disclosure-lightning/TO_DL_LEAD.md
+- **Verified:** official-shaped **synthetic** SEC recent array parsing with cutoff/form filters, aligned columns, invalid input refusal, source response SHA256, append/preserve SQLite behavior, idempotent replay, user-selected local output, original source URL construction, HTTP transport shape with mocked response, CLI subprocess; 363 KIC/DL full tests PASS in GitHub CI on `2634950dca20caf5687ec12d96542b665faf23d1`.
+- **Not verified:** SEC live network requests, actual SEC data authenticity, full original 10-K/10-Q/8-K HTML/PDF content retrieval or hash, paginated submissions, amendment ancestor identification, periodic sync, multi-region sources, end-user Windows usability, frontend, real KIC ProofInvest schema consumer/integration. DL's `index_raw_sha256` hashes **submissions JSON**, never filing HTML; `raw_sha256=null` for original filing. Do not report live SEC evidence or full-file certification.
+- **KIC action requested:** Review contract and duplicate parallel modules, confirm a canonical RawFilingEnvelopeV1 recipient structure, keep Nov12 official PDF unchanged. Existing preliminary freeze applies; this DL feature branch is isolated. No `lead/kic`, `main`, private Bid_Owl, production, real credentials or PDFs modified. No fee incurred for new SDK/services.
+- **Next P1:** independent compliant real SEC 1-issuer/one-request validation with the owner's actual legal contact-bearing User-Agent and documented official payload, then optionally original filing bytes and hash, followed by ProofInvest adapter contract tests and frontend later. Never represent scheduled background work.
 
-**Next:** validate CI then add opt-in SEC Submissions HTTP transport and any fail-closed fixes, create draft PR targeting lead/kic; update this status with real SHA/CI. Development target Oct28–29, further tests/frontend through submission.
+**Review protocol:** Draft PR `feature/disclosure-lightning` → `lead/kic` only; NO auto-merge until KIC chief resolves dual MVP code/schema review and external provider acceptance gates.
