@@ -736,5 +736,21 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(parsed["indexed_count"], 1)
 
 
+    def test_history_batch_reports_missing_pages_without_claiming_authenticity(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        first, second = sorted(pages)
+        partial = history.import_history_batch(pages={first: pages[first]}, **args)
+        self.assertEqual(partial["pages_processed"], 1)
+        self.assertEqual(partial["selected_batch_missing_manifest_pages"], [second])
+        self.assertFalse(partial["selected_batch_covers_eligible_manifest"])
+        self.assertFalse(partial["issuer_history_authenticity_verified"])
+        completed = history.import_history_batch(pages=pages, **args)
+        self.assertEqual(completed["selected_batch_missing_manifest_pages"], [])
+        self.assertTrue(completed["selected_batch_covers_eligible_manifest"])
+        self.assertFalse(completed["issuer_history_authenticity_verified"])
+        self.assertEqual(completed["new_filings"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
