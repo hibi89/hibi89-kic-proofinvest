@@ -86,6 +86,11 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
             self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
 
+    def test_read_only_list_supports_uri_reserved_filename_characters(self):
+        special_db = self.root / "ledger#archive.sqlite3"
+        core.save_index(special_db, self.raw, self.indexed())
+        self.assertEqual(len(core.list_filings(special_db, cik=CIK)), 3)
+
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
         core.save_index(self.db, self.raw, baseline)
