@@ -113,6 +113,8 @@ Saved-filing Inline XBRL candidates are available through `python -m disclosure_
 
 The `python -m disclosure_lightning.companyfacts` command stores a bounded raw CompanyFacts JSON response in the local SQLite evidence DB, keyed by issuer CIK and SHA-256. Offline fixture ingestion is available with `--input-json`; the command does not make a network request unless `--allow-network` is explicit and `DL_SEC_USER_AGENT` contains a real contact. Network retrieval supports an ETag-bound conditional request and only reuses a 304 response when the stored bytes, hash, CIK, and canonical source URI validate. `--list` is read-only and `read_companyfacts()` rechecks the response hash and CIK before returning bytes. Historical reads reject collection after the requested as-of date. The response remains raw: this path does not normalize facts, verify financial claims, or independently authenticate offline input. All fixtures and HTTP responses in the local test suite are synthetic mocks; no live SEC request is implied.
 
+CompanyFacts observation and check rows also reject normal SQLite updates/deletes and duplicate observation replacement; a later save recreates missing guards on an existing database. `--list` verifies every matching response hash, CIK, source URI, and indexed metadata before returning summaries and fails closed on corruption. These database guards do not prevent someone with direct schema-editing access from dropping triggers.
+
 ```powershell
 python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --input-json .\fixtures\synthetic-companyfacts.json --collected-at 2026-10-28T00:00:00Z
 python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --list
