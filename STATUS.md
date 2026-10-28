@@ -102,3 +102,6 @@
 2. GitHub CI 확인 및 commit SHA 기록.
 3. Research/Verification/Risk 인터페이스 확정, 각 담당자 별도 채팅 작업 착수.
 4. `lead/kic`에서 통합 설계 검수와 제출물 현황 관리.
+> **2026-10-28 latest Disclosure Lightning checkpoint:** Remote `feature/disclosure-lightning` SHA `d2b241383aba1d74508293f5b70b0f8363738870`. Submissions and original archive ETag caches are implemented with SHA/CIK/URL binding, fail-closed 304 reuse, and explicit provenance. Exact current KIC consumer blobs (`dl_bridge.py@8a1d9db7454b4577b95907e4841152542abd2d6b`, `dl_source_span.py@d1fb052b77b9bac9bee914f838702ef080bdff34`) pass DL CLI→SQLite→citation→span synthetic handoff 2/2. Focused core/original suites 100 PASS/3 SKIP. Full local suite on code SHA `d2b2413`: 447 run, 1 fail, 7 errors, 6 skipped; all are caused by missing local `streamlit` imports/subprocess. `verify_local.py --full`: core/syntax/CLI pass, full suite fail. CI not available. No real SEC access. Next: design offline XBRL/iXBRL evidence preserving period/unit/context without financial attestation. See `HANDOFF.md` and `docs/disclosure-lightning/TO_KIC_LEAD.md`.
+
+\n
