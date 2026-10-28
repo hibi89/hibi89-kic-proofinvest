@@ -330,6 +330,21 @@ class OriginalFilingTests(unittest.TestCase):
                 db_path=self.db, cik=C, accession=A,
                 sha256=saved["filing_sha256"])
 
+    def test_original_listing_rejects_matching_but_tampered_locator_metadata(self):
+        saved = self.save()
+        tampered_uri = "https://www.sec.gov/Archives/edgar/data/320193/000032019325000901/fake.htm"
+        with _sqlite_connection(self.db) as db:
+            record = json.loads(db.execute(
+                "SELECT filing_json FROM filings WHERE accession=?", (A,)
+            ).fetchone()[0])
+            record["source_uri"] = tampered_uri
+            db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                       (json.dumps(record), A))
+            db.execute("UPDATE original_filing_receipts SET source_uri=? WHERE sha256=?",
+                       (tampered_uri, saved["filing_sha256"]))
+        with self.assertRaisesRegex(ValueError, "metadata does not match"):
+            originals.list_originals(db_path=self.db, cik=C, accession=A)
+
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
         with _sqlite_connection(self.db) as conn:

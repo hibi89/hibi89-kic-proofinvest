@@ -281,6 +281,12 @@ def list_originals(*, db_path: Path, cik: str, accession: str,
                 " ORDER BY r.retrieved_at, r.sha256",
                 (c, a, cutoff_day, cutoff_day, cutoff_day, cutoff_day),
             ).fetchall()
+    if rows:
+        location = locate_original(
+            db_path, cik=c, accession=a, as_of=as_of,
+        )
+        if any(uri != location["source_uri"] for _, uri, *_ in rows):
+            raise ValueError("Original receipt source URI does not match the verified index")
     return [
         {"filing_sha256": sha, "source_uri": uri, "retrieved_at": when,
          "input_origin": origin, "content_type": kind, "filing_bytes": length}
