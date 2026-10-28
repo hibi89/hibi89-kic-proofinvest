@@ -1,3 +1,13 @@
+# DL P17 — Original filing receipt immutability (2026-10-28 KST)
+
+- **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; verified source/test SHA `73c4390e93afc32061814c99704e37ea5538c9c6`. Normal push and GitHub branch-head commit listing confirmed this exact SHA. Commit status API returned no checks; CI remains unverified.
+- **Change:** original filing BLOB receipts and HTTP check rows now reject ordinary SQLite UPDATE/DELETE. Existing receipt-key `INSERT OR REPLACE` is blocked; an exact duplicate HTTP check remains idempotent. `persist_original` recreates missing guard triggers transactionally for existing DBs. Validator rows remain mutable because each ETag identifies the latest cached response; receipt rows stay keyed by byte digest.
+- **Tests:** original archive **29 run / 28 PASS / 1 SKIP**; extraction **29/29 PASS**; all DL-related tests **163 run / 160 PASS / 3 SKIP**; `verify_local.py` **PASS** after the source/test edits (syntax, core tests, offline CLI smoke). Existing tamper-detection tests still mutate the SQLite DB only after explicitly removing the guard, then prove reads fail closed. No full-suite rerun for this code delta; last exact full-suite run at `f0963e7` failed **480 run / 1 FAIL / 7 ERROR / 6 SKIP**, with all eight failure/error cases from the missing `streamlit` dependency.
+- **Limits:** SQLite guards deter normal writes through the archive DB; a DB owner can alter the schema. No real SEC request, claim verification, financial normalization, merge or force push. Updated usage note: `docs/disclosure-lightning/ORIGINAL_FILE_ARCHIVE.md`.
+- **Next:** continue synthetic corruption and failure-recovery checks across historical index receipts, then review read-only extracted evidence contract with the KIC consumer boundary. Do not certify source authenticity.
+
+---
+
 # DL P16 — CompanyFacts cache lineage, immutable evidence, and verified listing (2026-10-28 KST)
 
 - **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; verified code SHA `f0963e76c15939c79dad23f915d62fc31ee21eca`. Three normal-pushed feature commits since P15: `c08d01d` (same-hash offline-to-live ETag lineage), `131e0cd` (append-only SQLite guards), `f0963e7` (integrity-checked read-only listing). GitHub's branch commit listing matches the exact code SHA. Commit status API returned an empty status list; CI is unverified.
