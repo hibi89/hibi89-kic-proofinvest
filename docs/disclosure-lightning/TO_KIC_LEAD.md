@@ -1,5 +1,15 @@
 # DL P10 → KIC Lead | 2026-10-28 KST
 
+## Latest implementation checkpoint — conditional SEC response caches
+
+- **Remote code commit:** `540ada4516511d5de7ce8024199c486ca27638dc` on `feature/disclosure-lightning`; GitHub commit lookup confirmed the object is present. Combined status returned no checks yet. No merge or other branch changes.
+- **Submissions JSON cache:** `e17dbdf5eda6814b13f3727c4710de9ac674cd90` adds hash/CIK/source-bound ETag persistence and fail-closed 304 reuse.
+- **Original archive cache:** `540ada4` adds the same conditional behavior for original bytes, keyed to filing/source/digest, with separate HTTP check provenance. A 304 without a verified local representation is rejected. Prior BLOBs remain append-only. Live SEC ETag support remains unverified; no external SEC request was made.
+- **Verification:** focused canonical core + originals suites **99 PASS / 3 SKIP**; `git diff --check` PASS. Full local `python -m unittest discover -s tests`: **446 run, 1 FAIL, 7 ERROR, 6 SKIP**; all 8 failures are the local missing `streamlit` dependency (including the synthetic UI subprocess). `verify_local.py --full` has the same dependency gate. Do not treat that as source-green; CI for `540ada4` was not yet available at handoff.
+- **Next:** replace the manual KIC consumer fixture with a real local DB produced by synthetic DL CLI, and validate `read_original_bytes` + extraction citation fields end-to-end without touching `lead/kic`. Continue with XBRL facts only after that producer-consumer contract remains narrow and provenance-safe. No live SEC or financial certification.
+
+---
+
 - **Code SHA:** recent P10 `2a0b26f21e30398c7afa7471d8fb5cec1ddf12e5`; history P10 `601d3b75cc409fe4cbb131068935537aa8a7fad2`; tests `7652716a869a498ac9aac2d271a16b7795a59e77`. Subsequent docs HEAD separately confirmed.
 - **Bug/gate:** When SEC-shaped recent/history filingDate == observation UTC day and parsed timezone-aware accepted_at is **None**, exclude row, not invent time or imply observed-before-acceptance. Existing P9 timestamp comparison remains for known valid offsets. No SQLite schema mutation, no KIC bridge/UI modification.
 - **Actual tests:** Existing independent *prior P6 local contract shim* suite 9/9 PASS, six standalone P10 exact predicate cases PASS; neither proves current remote full repo CI. Two in-repo P10 regression tests written but **NOT independently run on exact source**. GitHub Actions status queries for DL head do not enumerate push runs; GH site direct fetch/container git unavailable (DNS/DisabledError). This is a verification blocker, NOT a successful run.
