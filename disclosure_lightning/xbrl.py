@@ -21,6 +21,7 @@ INLINE_XBRL_NAMESPACE = "http://www.xbrl.org/2013/inlineXBRL"
 XBRLI_NAMESPACE = "http://www.xbrl.org/2003/instance"
 MAX_CANDIDATES = 10_000
 MAX_TREE_NODES = 20_000
+MAX_ELEMENT_DEPTH = 512
 MAX_LEXICAL_CHARS = 10_000
 HTML_TYPES = frozenset({"text/html", "application/xhtml+xml", "text/xml", "application/xml"})
 HTML_VOID_ELEMENTS = frozenset({
@@ -57,11 +58,18 @@ class _InlineXbrlParser(HTMLParser):
         self.unsupported_fact_count = 0
         self.exclude_depth = 0
         self.truncated = False
+        self.suppressed = False
         self.namespaces: dict[str, str] = {}
         self.namespace_stack: list[tuple[str, dict[str, str]]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
         tag = tag.lower()
+        if self.suppressed:
+            return
+        if tag not in HTML_VOID_ELEMENTS and len(self.namespace_stack) >= MAX_ELEMENT_DEPTH:
+            self.truncated = True
+            self.suppressed = True
+            return
         attr_map = _attrs(attrs)
         previous = self.namespaces
         scoped = dict(previous)
@@ -131,6 +139,8 @@ class _InlineXbrlParser(HTMLParser):
         self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str):
+        if self.suppressed:
+            return
         tag = tag.lower()
         try:
             namespace, local_name = _expanded_name(tag, self.namespaces)
@@ -171,7 +181,7 @@ class _InlineXbrlParser(HTMLParser):
                     break
 
     def handle_data(self, data: str):
-        if self.exclude_depth:
+        if self.suppressed or self.exclude_depth:
             return
         if self.tree_stack:
             node = self.tree_stack[-1]
@@ -269,7 +279,8 @@ def extract_inline_facts(raw: bytes, *, content_type: str, filing_sha256: str,
     parser = _InlineXbrlParser()
     parser.feed(text)
     parser.close()
-    if parser.fact_stack or parser.tree_stack or parser.exclude_depth:
+    if (parser.fact_stack or parser.tree_stack or parser.exclude_depth
+            or parser.suppressed):
         parser.truncated = True
     contexts = _index_by_id(parser.contexts)
     units = _index_by_id(parser.units)

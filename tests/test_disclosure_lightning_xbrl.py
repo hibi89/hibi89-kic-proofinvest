@@ -255,6 +255,23 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         self.assertTrue(limited_trees["truncated"])
         self.assertFalse(limited_trees["complete_candidate_extraction"])
 
+    def test_element_depth_cap_stops_semantic_parsing(self):
+        deep = (b'<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"><body>'
+                + b"<div>" * 5
+                + b'<ix:nonFraction name="us-gaap:Assets" contextRef="ctx-2025">99'
+                + b"</ix:nonFraction>" + b"</div>" * 5 + b"</body></html>")
+        with patch.object(xbrl, "MAX_ELEMENT_DEPTH", 4):
+            result = xbrl.extract_inline_facts(
+                deep, content_type="text/html",
+                filing_sha256=hashlib.sha256(deep).hexdigest(),
+                issuer_cik=CIK, accession=ACCESSION,
+                source_uri=self.receipt["source_uri"],
+                input_origin="OFFLINE_FILE_UNVERIFIED",
+            )
+        self.assertTrue(result["truncated"])
+        self.assertFalse(result["complete_candidate_extraction"])
+        self.assertEqual(result["candidate_count"], 0)
+
     def test_inline_exclude_text_does_not_leak_into_fact_lexical_value(self):
         excluded = INLINE.replace(
             b"123&#52;56",
