@@ -312,6 +312,16 @@ class DisclosureLightningTests(unittest.TestCase):
             del payload["filings"]["recent"]["primaryDocument"]
             self.indexed(json.dumps(payload).encode())
 
+    def test_nonstandard_json_and_duplicate_keys_rejected(self):
+        for raw in (
+            b'{"cik":"320193","cik":"0000320193"}',
+            b'{"cik":"0000320193","filings":{"recent":{"x":NaN}}}',
+            b'{"cik":"0000320193","filings":{"recent":{"x":Infinity}}}',
+        ):
+            with self.subTest(raw=raw), self.assertRaisesRegex(
+                    ValueError, "Invalid UTF-8"):
+                core._validate_raw(raw)
+
     def test_sqlite_output_symlink_is_refused_without_mutation(self):
         original = self.root / "original.sqlite3"
         indexed = self.indexed()

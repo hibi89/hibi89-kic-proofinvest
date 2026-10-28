@@ -100,11 +100,27 @@ def _canonical(value: Any) -> bytes:
                       allow_nan=False).encode("utf-8")
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON object key")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value: str):
+    raise ValueError(f"Non-standard JSON numeric constant: {value}")
+
+
 def _validate_raw(raw: bytes) -> dict:
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_JSON_BYTES:
         raise ValueError("SEC submissions JSON must be 1..8MB")
     try:
-        payload = json.loads(raw.decode("utf-8-sig"))
+        payload = json.loads(
+            raw.decode("utf-8-sig"), object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise ValueError("Invalid UTF-8 SEC submissions JSON") from exc
     if not isinstance(payload, dict):
