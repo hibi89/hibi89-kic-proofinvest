@@ -81,13 +81,39 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(r["filing_sha256"], hashlib.sha256(RAW).hexdigest())
         self.assertFalse(r["source_authenticity_verified"])
         self.assertFalse(r["suitable_for_automatic_financial_facts"])
-        self.assertEqual(r["source_locator_accuracy"], "LINE_HINT_ONLY_NO_RAW_BYTE_SPANS")
-        self.assertTrue(all(not b["exact_raw_byte_range_verified"] for b in r["blocks"]))
+        self.assertEqual(r["source_locator_accuracy"],
+                         "HTML_UTF8_LITERAL_BYTE_SPANS_WITH_LINE_HINT_FALLBACK")
+        self.assertEqual([b["exact_raw_byte_range_verified"] for b in r["blocks"]],
+                         [True, False, True])
         for block in r["blocks"]:
             self.assertGreater(block["source_locator"]["line"], 0)
             self.assertEqual(block["text_sha256"], hashlib.sha256(
                 block["text"].encode()).hexdigest())
         self.assertFalse(any("SCRIPT" in b["text"] or "Hidden" in b["text"] for b in r["blocks"]))
+        for block in (r["blocks"][0], r["blocks"][2]):
+            locator = block["source_locator"]
+            span = RAW[locator["start_byte"]:locator["end_byte_exclusive"]]
+            self.assertEqual(span.decode("utf-8"), block["text"])
+            self.assertEqual(block["raw_span_sha256"], hashlib.sha256(span).hexdigest())
+
+    def test_utf8_html_byte_spans_count_multibyte_and_bom_offsets(self):
+        raw = (b"\xef\xbb\xbf<html>\n<p>" + "  매출  2025 ".encode("utf-8")
+               + b"</p>\n<p>A &amp; B</p></html>")
+        result = extract.extract_bytes(
+            raw, content_type="text/html",
+            filing_sha256=hashlib.sha256(raw).hexdigest(),
+            issuer_cik=CIK, accession=ACC,
+            source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual([b["text"] for b in result["blocks"]], ["매출 2025", "A & B"])
+        first, entity_text = result["blocks"]
+        locator = first["source_locator"]
+        self.assertEqual(locator["type"], "UTF8_HTML_TEXT_NODE_BYTE_SPAN")
+        self.assertEqual(locator["start_byte"], raw.index("  매출".encode("utf-8")))
+        self.assertEqual(raw[locator["start_byte"]:locator["end_byte_exclusive"]],
+                         "  매출  2025 ".encode("utf-8"))
+        self.assertFalse(entity_text["exact_raw_byte_range_verified"])
 
     def test_plain_text_line_numbers_and_no_evidence_upgrade(self):
         raw = b"HEADER\n\nFinancial item 100\nAnother line\n"
@@ -382,6 +408,19 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertEqual(found["candidates"][0]["citation_status"],
                          "SOURCE_LINE_HINT_NEEDS_REVIEW")
         self.assertFalse(found["candidates"][0]["financial_claim_verified"])
+        self.assertFalse(found["source_authenticity_verified"])
+
+    def test_literal_html_candidate_keeps_exact_span_but_still_requires_review(self):
+        receipt = self.run_from_saved()
+        found = extract.find_evidence_candidates(receipt, term="Visible filing section")
+        candidate = found["candidates"][0]
+        self.assertEqual(candidate["citation_status"], "SOURCE_BYTE_SPAN_NEEDS_REVIEW")
+        locator = candidate["source_locator"]
+        self.assertEqual(locator["type"], "UTF8_HTML_TEXT_NODE_BYTE_SPAN")
+        span = RAW[locator["start_byte"]:locator["end_byte_exclusive"]]
+        self.assertEqual(span.decode("utf-8"), candidate["text"])
+        self.assertEqual(candidate["raw_span_sha256"], hashlib.sha256(span).hexdigest())
+        self.assertFalse(candidate["financial_claim_verified"])
         self.assertFalse(found["source_authenticity_verified"])
 
     def test_keyword_search_rejects_invalid_limits_and_empty_terms(self):

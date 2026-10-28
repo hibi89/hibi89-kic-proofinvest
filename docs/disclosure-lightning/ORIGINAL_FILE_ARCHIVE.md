@@ -69,7 +69,7 @@ python -m disclosure_lightning.extract --db ./dl-local.sqlite3 --cik 0000320193 
 
 - `originals --list --as-of` filters the indexed filing and byte receipt to the UTC end of that date. The low-level `locate_original()` and `read_original_bytes()` APIs also accept optional `as_of` for read-only consumer integration.
 - `extract` requires `--as-of`; it filters the filing's indexed `filed_at`/`collected_at` and original byte receipt's `retrieved_at` to the UTC end of that date. A later-added original cannot appear in a historical evidence result.
-- `--find`는 정규식이 아니라 단순 리터럴 대소문자 무시 검색입니다. 결과는 `evidence-candidates.v1`이며 **원본 줄 근사 위치**(`HTML_PARSER_LINE_HINT`), 텍스트 SHA-256과 원문 SHA-256을 연결합니다. 정확한 HTML 원본 바이트 시작/끝 범위는 **아직 계산하지 않으므로 `exact_raw_byte_range_verified=false`**입니다.
+- `--find`는 정규식이 아니라 단순 리터럴 대소문자 무시 검색입니다. UTF-8 HTML에서 원문 문자와 byte sequence가 정확히 일치하는 텍스트 노드만 원본 바이트 시작/끝과 span SHA-256을 제공합니다. 엔티티 변환 등에서 일치하지 않는 조각은 `HTML_PARSER_LINE_HINT`로 남습니다. 두 유형 모두 사람이 검토해야 하며, span은 출처 진위나 금융 주장을 인증하지 않습니다.
 - 텍스트가 250,000자/1,200블록 등 제한을 초과하거나 HTML의 숨김 태그가 닫히지 않으면 `truncated=true`가 되며 CLI는 종료코드 2로 비완료임을 알립니다. 출력한 일부 문장을 전체 공시의 완전한 내용으로 주장하면 안 됩니다.
-- UTF-8 이외 인코딩·비지원 형식(PDF 등)은 명시적으로 거부합니다. 실제 SEC 제출 HTML의 복잡한 렌더링, Inline XBRL 문맥, 재무 주석, 표 구조, 페이지 바이트 구간, 출처 독립 인증은 여전히 **미구현/인간 검토 필수**입니다. HTMLParser는 스크립트·style·head를 추출에서 제외하며 별도 브라우저 렌더링이 없습니다.
+- UTF-8 이외 인코딩·비지원 형식(PDF 등)은 명시적으로 거부합니다. 실제 SEC 제출 HTML의 복잡한 렌더링, Inline XBRL 문맥, 재무 주석, 표 구조·의미 분석, 출처 독립 인증은 여전히 **미구현/인간 검토 필수**입니다. HTMLParser는 스크립트·style·head를 추출에서 제외하며 별도 브라우저 렌더링이 없습니다.
 - KIC의 `proofinvest/dl_bridge.py`는 **현시점 메타데이터 검산용**입니다. 근거 추출 반환물을 실제 금융 사실 검증·RAG에 연결하려면 KIC 총괄이 `source_span` 계약을 승인하고 교차 브랜치 테스트를 수행해야 합니다. `financial_claim_verified=false`, `source_authenticity_verified=false`를 유지해야 합니다.

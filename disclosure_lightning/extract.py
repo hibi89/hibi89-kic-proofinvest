@@ -85,9 +85,23 @@ def _fragment(text: str, line: int, kind: str) -> dict:
 
 
 class _SafeVisibleText(HTMLParser):
-    def __init__(self, *, html_mode: bool = False):
+    def __init__(self, *, html_mode: bool = False,
+                 source_text: str = "", raw_utf8: bytes | None = None,
+                 byte_prefix: int = 0):
         super().__init__(convert_charrefs=True)
         self.html_mode = html_mode
+        self.raw_utf8 = raw_utf8
+        self.byte_prefix = byte_prefix
+        self.source_lines: list[str] = []
+        self.byte_line_starts: list[int] = []
+        if raw_utf8 is not None:
+            self.source_lines = source_text.split("\n")
+            cursor = 0
+            for index, line in enumerate(self.source_lines):
+                self.byte_line_starts.append(cursor)
+                cursor += len(line.encode("utf-8"))
+                if index + 1 < len(self.source_lines):
+                    cursor += 1
         self.skipped: list[str] = []
         self.fragments: list[dict] = []
         self.total_chars = 0
@@ -137,7 +151,28 @@ class _SafeVisibleText(HTMLParser):
                 or self.total_chars + len(chunk) > MAX_CHARS):
             self.truncated = True
             return
-        self.fragments.append(_fragment(chunk, self.getpos()[0], "HTML_PARSER_LINE_HINT"))
+        line, column = self.getpos()
+        block = _fragment(chunk, line, "HTML_PARSER_LINE_HINT")
+        # Keep a byte locator only when the parser's visible text exactly
+        # matches the corresponding source characters; entity-decoded or
+        # otherwise transformed chunks retain their review-only line hint.
+        if (self.raw_utf8 is not None and 1 <= line <= len(self.source_lines)
+                and 0 <= column <= len(self.source_lines[line - 1])):
+            source_line = self.source_lines[line - 1]
+            literal = source_line[column:column + len(data)]
+            if literal == data:
+                start = (self.byte_prefix + self.byte_line_starts[line - 1]
+                         + len(source_line[:column].encode("utf-8")))
+                span = data.encode("utf-8")
+                end = start + len(span)
+                if self.raw_utf8[start:end] == span:
+                    block["source_locator"] = {
+                        "type": "UTF8_HTML_TEXT_NODE_BYTE_SPAN", "line": line,
+                        "start_byte": start, "end_byte_exclusive": end,
+                    }
+                    block["raw_span_sha256"] = hashlib.sha256(span).hexdigest()
+                    block["exact_raw_byte_range_verified"] = True
+        self.fragments.append(block)
         self.total_chars += len(chunk)
 
     def handle_entityref(self, name: str):
@@ -169,7 +204,12 @@ def extract_bytes(raw: bytes, *, content_type: str,
     fragments: list[dict] = []
     truncated = False
     if content_type in {"text/html", "application/xhtml+xml", "text/xml", "application/xml"}:
-        parser = _SafeVisibleText(html_mode=content_type == "text/html")
+        raw_utf8 = raw if content_type == "text/html" and applied_encoding == "utf-8" else None
+        parser = _SafeVisibleText(
+            html_mode=content_type == "text/html", source_text=content,
+            raw_utf8=raw_utf8,
+            byte_prefix=(3 if raw.startswith(b"\xef\xbb\xbf") else 0),
+        )
         try:
             parser.feed(content)
             parser.close()
@@ -180,7 +220,9 @@ def extract_bytes(raw: bytes, *, content_type: str,
             truncated = True
         fragments = parser.fragments
         truncated = truncated or parser.truncated
-        accuracy = "LINE_HINT_ONLY_NO_RAW_BYTE_SPANS"
+        accuracy = ("HTML_UTF8_LITERAL_BYTE_SPANS_WITH_LINE_HINT_FALLBACK"
+                    if raw_utf8 is not None
+                    else "LINE_HINT_ONLY_NO_RAW_BYTE_SPANS")
     else:
         used = 0
         # UTF-8 decoded text re-encodes byte-for-byte. A UTF-8 BOM is outside
@@ -227,7 +269,9 @@ def extract_bytes(raw: bytes, *, content_type: str,
         "decoded_encoding": applied_encoding,
         "html_meta_declared_charset": declared_encoding,
         "charset_claim_verified": False,
-        "extraction_method": "stdlib-htmlparser" if accuracy.startswith("LINE_HINT") else "utf8-lines",
+        "extraction_method": ("stdlib-htmlparser" if content_type in {
+            "text/html", "application/xhtml+xml", "text/xml", "application/xml"
+        } else "utf8-lines"),
         "source_locator_accuracy": accuracy,
         "block_count": len(fragments),
         "truncated": truncated,
@@ -267,7 +311,8 @@ def find_evidence_candidates(receipt: dict, *, term: str,
     """Literal case-insensitive search of unverified extraction fragments.
 
     The result is a *candidate* for human/source-document verification,
-    not an asserted financial fact, period, currency or exact byte span.
+    not an asserted financial fact, period, currency or issuer authenticity.
+    Exact byte ranges are included only for unchanged source-text chunks.
     """
     if (not isinstance(receipt, dict)
             or receipt.get("schema") != "disclosure-lightning.extracted-text.v1"
@@ -286,7 +331,12 @@ def find_evidence_candidates(receipt: dict, *, term: str,
             raise ValueError("EXTRACTION_BLOCK_INVALID")
         if key in block["text"].casefold():
             found.append({
-                **block, "citation_status": "SOURCE_LINE_HINT_NEEDS_REVIEW",
+                **block,
+                "citation_status": (
+                    "SOURCE_BYTE_SPAN_NEEDS_REVIEW"
+                    if block.get("exact_raw_byte_range_verified") is True
+                    else "SOURCE_LINE_HINT_NEEDS_REVIEW"
+                ),
                 "financial_claim_verified": False,
             })
         if len(found) >= max_results:

@@ -294,7 +294,7 @@ def smoke(root: Path, log: Path) -> dict:
                     or evidence.get("source_authenticity_verified") is not False
                     or evidence.get("financial_claim_verified") is not False
                     or candidate.get("text") != "2025 Revenue increased 12 percent."
-                    or candidate.get("citation_status") != "SOURCE_LINE_HINT_NEEDS_REVIEW"
+                    or candidate.get("citation_status") != "SOURCE_BYTE_SPAN_NEEDS_REVIEW"
                     or candidate.get("financial_claim_verified") is not False
                     or candidate.get("raw_span_sha256") != hashlib.sha256(expected_line).hexdigest()
                     or locator.get("type") != "UTF8_RAW_LINE_BYTE_SPAN"
