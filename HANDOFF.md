@@ -537,3 +537,10 @@
 8. **원본·보안**: KIC 공식 PPTX 원본과 작성 중 기획서/PDF는 사용자 대화 파일에서만 관리. GitHub 공개 금지(검토 전). API 키는 환경변수.
 9. **다음 절차·승인**: GitHub SHA·CI 확인 → 브랜치 담당자 배정 → API 데이터 계약 승인 → 오프라인 테스트 → PR 검수. 실제 외부 API 호출은 사용자 승인.
 10. **갱신·범위·기준**: 2026-10-24 KST, GitHub 초기화 시점 문서. 이후 브랜치 최신 HANDOFF/STATUS와 실제 commit/CI를 우선.
+## DL continuation checkpoint — 2026-10-28 08:24 UTC
+
+- **Latest source and remote:** `feature/disclosure-lightning` `aa8162524d0190cf64029a3fbbc646a1828192be`; GitHub Actions run [#40656307134](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40656307134) completed **success** for this exact SHA. GitHub API confirmed run head SHA; direct `git ls-remote` was unavailable because sandbox DNS could not resolve github.com.
+- **Verification:** `python verify_local.py` **PASS** (syntax, focused core tests, offline synthetic CLI smoke, git identity); summary says full tests **SKIP** by design. Earlier focused suite: **120 PASS, 3 SKIP**. Earlier `--full`: **438 tests, 1 failure, 7 errors, 6 skipped**, all failure/errors from absent local `streamlit`. KIC bridge **5 PASS**, original-byte synthetic E2E **PASS**. No package install or live SEC call.
+- **Maintenance:** CI now targets `ubuntu-24.04`, checkout/setup-python/upload-artifact use Node 24 action majors; exact-source workflow run passed. 10k synthetic listing probe remained ~0.098s after SQL batching (baseline ~0.50s); logs and source probes are retained under untracked `work/`.
+- **Scope and preservation:** no new independent source change was justified by the reviewed requirements: live SEC evidence, authoritative amendment links, production KIC integration, broader retry/ETag behavior, and XBRL normalization remain separately gated or future-scope. Keep `work/` and the isolated checkout; logs, consumer fixtures and probes remain untracked and must not be removed. No other branch or original checkout was edited.
+
