@@ -245,13 +245,15 @@ def list_originals(*, db_path: Path, cik: str, accession: str,
                 "SELECT r.sha256,r.source_uri,r.retrieved_at,r.input_origin,r.content_type,length(r.file_bytes)"
                 " FROM original_filing_receipts AS r JOIN filings AS f"
                 " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
+                " JOIN observations AS o ON o.id=f.first_observation_id"
                 " WHERE r.issuer_cik=? AND r.accession=?"
                 " AND julianday(r.retrieved_at)<julianday(?) + 1"
+                " AND julianday(o.seen_at)<julianday(?) + 1"
                 " AND r.source_uri=json_extract(f.filing_json,'$.source_uri')"
                 " AND json_extract(f.filing_json,'$.filed_at')<=?"
                 " AND julianday(json_extract(f.filing_json,'$.collected_at'))<julianday(?) + 1"
                 " ORDER BY r.retrieved_at, r.sha256",
-                (c, a, cutoff_day, cutoff_day, cutoff_day),
+                (c, a, cutoff_day, cutoff_day, cutoff_day, cutoff_day),
             ).fetchall()
     return [
         {"filing_sha256": sha, "source_uri": uri, "retrieved_at": when,

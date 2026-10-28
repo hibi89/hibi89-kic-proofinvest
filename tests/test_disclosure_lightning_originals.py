@@ -273,6 +273,20 @@ class OriginalFilingTests(unittest.TestCase):
             originals.read_original_bytes(
                 db_path=self.db, cik=C, accession=A, sha256="0" * 64)
 
+    def test_as_of_receipt_listing_requires_index_observation_by_cutoff(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "UPDATE observations SET seen_at=? WHERE issuer_cik=?",
+                ("2026-10-28T00:00:00Z", C),
+            )
+            db.execute(
+                "UPDATE original_filing_receipts SET retrieved_at=? WHERE sha256=?",
+                ("2026-10-27T12:00:00Z", saved["filing_sha256"]),
+            )
+        self.assertEqual(originals.list_originals(
+            db_path=self.db, cik=C, accession=A, as_of="2026-10-27"), [])
+
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
         with _sqlite_connection(self.db) as conn:
