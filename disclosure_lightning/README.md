@@ -99,7 +99,7 @@ export DL_SEC_USER_AGENT="DisclosureLightning YourOrganization contact@your-real
 python -m disclosure_lightning --cik 0000320193 --as-of 2026-10-27 --db /tmp/dl-real.sqlite3 --allow-network
 ```
 
-PowerShell의 경우 `$env:DL_SEC_USER_AGENT = "DisclosureLightning YourOrganization contact@your-real-domain.tld"`를 사용합니다. **가짜 이메일(example.com 등)을 넣거나 허락 없는 연락처를 사용하지 마세요.** 위 문자열은 자리표시자이며 실제 식별 가능한 조직·연락처로 바꿔야 합니다. 정상적인 공식 SEC GET 1회만 시도합니다. 자동 반복/크롤링, 유료 API, 인증정보 저장, 숨은 프록시·리다이렉트는 없습니다. SEC 서버가 실패하면 실패로 종료하고 다시 요청하지 않습니다. SEC 허용 정책을 준수해야 합니다. 공식 규정: https://www.sec.gov/about/developer-resources
+PowerShell의 경우 `$env:DL_SEC_USER_AGENT = "DisclosureLightning YourOrganization contact@your-real-domain.tld"`를 사용합니다. **가짜 이메일(example.com 등)을 넣거나 허락 없는 연락처를 사용하지 마세요.** 위 문자열은 자리표시자이며 실제 식별 가능한 조직·연락처로 바꿔야 합니다. 명시적인 한 번의 GET 작업은 408/429/500/502/503/504 또는 일시 전송 오류에서 최대 총 3회 시도합니다. `Retry-After` 초 단위 값과 HTTP 날짜를 존중하고, 30초를 넘는 대기는 재시도하지 않고 실패합니다. 재시도 간격은 최소 0.2초이며, 헤더가 없거나 잘못되면 0.5초·1초 backoff를 적용합니다. 시도별 timeout은 15초입니다. 동시 프로세스 전체의 속도 제한이나 스케줄러는 구현되지 않았습니다. 유료 API, 인증정보 저장, 프록시 우회·리다이렉트는 없습니다. SEC 허용 정책을 준수해야 합니다. 공식 규정: https://www.sec.gov/about/developer-resources
 
 SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인 SEC HTTPS 메타데이터를 받은 사실**만 의미합니다. 실제 10-K/10-Q 문서 바이트·본문 해시 `raw_sha256`는 **아직 수집하지 않으며 null**입니다. `index_raw_sha256`는 JSON 응답 자체의 해시입니다. 별도의 실제 응답/네트워크/공식 발행사 확인 없이 LIVE 검증이나 공시내용 인증을 주장하지 않습니다.
 
@@ -107,11 +107,11 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 
 `RawFilingEnvelopeV1` 항목은 응답 `indexed.filings[]`에 있고, 이 JSON을 KIC ProofInvest의 별도 리더에 전달할 수 있습니다. `issuer_cik`, `accession`, `form`, `filed_at`, `collected_at`, `source_uri`, `index_raw_sha256`, `evidence_status`를 보존하세요. DL은 금융 지표 정규화·재무 판단·투자 권고나 자동매매를 담당하지 않습니다.
 
-**구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 1회 SEC 요청 경로, 저장된 HTML/텍스트의 로컬 추출과 근거 위치 후보. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 사실 추출·정규화, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, ETag/429 재시도·스케줄러, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
+**구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 SEC 요청 경로, 저장된 HTML/텍스트의 로컬 추출과 근거 위치 후보, bounded transient retry. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 사실 추출·정규화, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, ETag/스케줄러와 교차 프로세스 속도 제한, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
 
 ## 2026-10-28 검증 게이트 (KIC 합의)
 
 - 표준 모듈은 **`disclosure_lightning/core.py`** 단일 구현입니다. 중복 실험 버전 `mvp.py` / `cli.py`는 제거됐습니다. 다른 SQLite 저장 형식을 혼용하지 마세요.
 - `--collected-at`은 오프라인 파일의 **실제 확인 가능한 최초 수집 시각**(타임존 필수)을 명시할 때만 사용합니다. 이를 증빙할 수 없으면 과거 시점의 수집증거라고 주장하지 마세요. 인덱스는 UTC로 정규화되며 수집시각이 `--as-of` 다음 날이면 실패합니다. 수집 날짜보다 뒤의 공시도 제외합니다. SEC 실제 요청의 경우 `--collected-at`을 넘길 수 없고 시스템 수집시간을 사용합니다.
-- `DL_SEC_USER_AGENT`는 실존하는 사용자/조직의 연락 이메일이어야 합니다. `example.com`, `placeholder`, `your-real-domain.tld` 등 예시를 통한 요청은 거부합니다. 원문 수집기는 로컬 파일을 기본으로 지원하고, `--allow-network`를 명시하면 SEC archive로 1회 요청할 수 있습니다. 이 세션에서는 실제 SEC 외부 호출을 하지 않았으며, SEC JSON의 `index_raw_sha256`와 원문 파일의 `filing_sha256`를 혼동하지 마세요.
+- `DL_SEC_USER_AGENT`는 실존하는 사용자/조직의 연락 이메일이어야 합니다. `example.com`, `placeholder`, `your-real-domain.tld` 등 예시를 통한 요청은 거부합니다. 원문 수집기는 로컬 파일을 기본으로 지원하고, `--allow-network`를 명시하면 SEC archive GET 작업을 최대 3회까지 시도합니다. 이 세션에서는 실제 SEC 외부 호출을 하지 않았으며, SEC JSON의 `index_raw_sha256`와 원문 파일의 `filing_sha256`를 혼동하지 마세요.
 - KIC 검산과 대응하는 합성 단일 공시 테스트 fixture: `disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json`. 이것은 실제 SEC 응답이 아니라 KIC 측 `proofinvest/dl_bridge.py`와 연동할 때 사용할 **정합성 테스트 입력**입니다.

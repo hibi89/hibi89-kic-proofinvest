@@ -23,7 +23,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import core
-from .core import _NoRedirect, _timestamp, _valid_user_agent, cik10, parse_day
+from .core import (
+    _NoRedirect, _bounded_sec_get, _timestamp, _valid_user_agent, cik10, parse_day,
+)
 
 MAX_FILING_BYTES = 25_000_000
 ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
@@ -166,7 +168,7 @@ def _read_local(path: Path) -> bytes:
 
 def fetch_original(*, receipt: dict, user_agent: str,
                    allow_network: bool = False) -> tuple[bytes, str]:
-    """Exactly one official GET, no redirect, proxy, retries or pagination."""
+    """One explicit official GET operation with bounded transient retries only."""
     if not allow_network:
         raise ValueError("Explicit --allow-network is required")
     if not _valid_user_agent(user_agent):
@@ -190,18 +192,19 @@ def fetch_original(*, receipt: dict, user_agent: str,
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _NoRedirect(),
     )
+    def read_response(response):
+        if response.geturl() != url or response.status != 200:
+            raise ValueError("SEC archive returned redirect or non-200 response")
+        kind = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if kind not in MIME_TYPES:
+            raise ValueError("SEC primary file has unsupported content-type")
+        length = response.headers.get("Content-Length")
+        if length is not None and (not length.isdecimal()
+                                   or not 0 < int(length) <= MAX_FILING_BYTES):
+            raise ValueError("SEC primary file advertised invalid size")
+        return response.read(MAX_FILING_BYTES + 1), kind
     try:
-        with opener.open(req, timeout=15) as response:
-            if response.geturl() != url or response.status != 200:
-                raise ValueError("SEC archive returned redirect or non-200 response")
-            kind = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
-            if kind not in MIME_TYPES:
-                raise ValueError("SEC primary file has unsupported content-type")
-            length = response.headers.get("Content-Length")
-            if length is not None and (not length.isdecimal()
-                                       or not 0 < int(length) <= MAX_FILING_BYTES):
-                raise ValueError("SEC primary file advertised invalid size")
-            content = response.read(MAX_FILING_BYTES + 1)
+        content, kind = _bounded_sec_get(opener, req, read_response)
     except (urllib.error.URLError, http.client.HTTPException, OSError,
             TimeoutError) as exc:
         raise ValueError(f"SEC archive request failed: {type(exc).__name__}") from exc
@@ -408,7 +411,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--as-of", help="Filter read-only receipts by the UTC end of this date")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--input-file", type=Path, help="Offline file input (not SEC-authenticated)")
-    group.add_argument("--allow-network", action="store_true", help="One SEC archive HTTPS GET")
+    group.add_argument("--allow-network", action="store_true",
+                       help="One SEC archive GET operation (at most 3 attempts)")
     parser.add_argument("--content-type", choices=tuple(sorted(MIME_TYPES | {"application/octet-stream"})),
                         default="application/octet-stream",
                         help="Explicit local file MIME claim (unverified); live MIME is response-derived")

@@ -6,6 +6,7 @@ metadata alone is NOT verification of original filing document content.
 from __future__ import annotations
 
 import argparse
+from email.utils import parsedate_to_datetime
 import hashlib
 import http.client
 import json
@@ -14,6 +15,7 @@ import re
 import sqlite3
 import stat
 import sys
+import time
 import urllib.error
 import urllib.request
 from contextlib import closing
@@ -25,6 +27,10 @@ PROVIDER = "SEC_EDGAR"
 MAX_JSON_BYTES = 8_000_000
 MAX_RECORDS = 1000
 MAX_HISTORY_RECORDS = 10_000
+MAX_HTTP_ATTEMPTS = 3
+MAX_RETRY_DELAY_SECONDS = 30
+MIN_RETRY_DELAY_SECONDS = 0.2
+RETRYABLE_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 ALLOWED_FORMS = frozenset({"10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A"})
 CONTACT_PATTERN = re.compile(r"[A-Za-z0-9_.+%-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
 
@@ -57,6 +63,65 @@ def parse_forms(raw: str) -> frozenset[str]:
 
 def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _retry_after_delay(value: str | None, *, attempt: int,
+                       now: datetime | None = None) -> float | None:
+    """Return a bounded Retry-After delay, or None when its wait is excessive."""
+    fallback = 0.5 * (2 ** attempt)
+    if not isinstance(value, str) or not value.strip():
+        return fallback
+    value = value.strip()
+    if value.isascii() and value.isdecimal():
+        normalized = value.lstrip("0") or "0"
+        if len(normalized) > len(str(MAX_RETRY_DELAY_SECONDS)):
+            return None
+        delay = float(int(normalized))
+    else:
+        try:
+            retry_at = parsedate_to_datetime(value)
+            if retry_at.tzinfo is None or retry_at.utcoffset() is None:
+                return fallback
+            reference = now or datetime.now(timezone.utc)
+            if reference.tzinfo is None or reference.utcoffset() is None:
+                return fallback
+            delay = max(0.0, (retry_at.astimezone(timezone.utc)
+                              - reference.astimezone(timezone.utc)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return fallback
+    if delay > MAX_RETRY_DELAY_SECONDS:
+        return None
+    return max(MIN_RETRY_DELAY_SECONDS, delay)
+
+
+def _bounded_sec_get(opener, request, read_response):
+    """Retry only transient, safe SEC GET failures within a fixed time budget."""
+    for attempt in range(MAX_HTTP_ATTEMPTS):
+        try:
+            with opener.open(request, timeout=15) as response:
+                return read_response(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in RETRYABLE_HTTP_STATUSES:
+                exc.close()
+                raise
+            if attempt + 1 >= MAX_HTTP_ATTEMPTS:
+                exc.close()
+                raise ValueError(
+                    f"SEC transient HTTP status {exc.code} after {MAX_HTTP_ATTEMPTS} attempts"
+                ) from exc
+            delay = _retry_after_delay(exc.headers.get("Retry-After"), attempt=attempt)
+            if delay is None:
+                exc.close()
+                raise ValueError(
+                    "SEC Retry-After exceeds the 30-second retry wait budget"
+                ) from exc
+            exc.close()
+            time.sleep(delay)
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError):
+            if attempt + 1 >= MAX_HTTP_ATTEMPTS:
+                raise
+            time.sleep(_retry_after_delay(None, attempt=attempt))
+    raise AssertionError("bounded SEC GET exhausted without a result or exception")
 
 
 def _observation_time(raw: str, *, cutoff: date) -> str:
@@ -861,16 +926,17 @@ def fetch_submissions(cik: str, *, user_agent: str, allow_network: bool = False)
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _NoRedirect()
     )
+    def read_response(resp):
+        if resp.status != 200 or resp.geturl() != url:
+            raise ValueError("Unexpected SEC HTTP status or redirect")
+        if resp.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+            raise ValueError("SEC response is not application/json")
+        size = resp.headers.get("Content-Length")
+        if size is not None and (not size.isdecimal() or int(size) > MAX_JSON_BYTES):
+            raise ValueError("SEC response size rejected")
+        return resp.read(MAX_JSON_BYTES + 1)
     try:
-        with opener.open(req, timeout=15) as resp:
-            if resp.status != 200 or resp.geturl() != url:
-                raise ValueError("Unexpected SEC HTTP status or redirect")
-            if resp.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
-                raise ValueError("SEC response is not application/json")
-            size = resp.headers.get("Content-Length")
-            if size is not None and (not size.isdecimal() or int(size) > MAX_JSON_BYTES):
-                raise ValueError("SEC response size rejected")
-            raw = resp.read(MAX_JSON_BYTES + 1)
+        raw = _bounded_sec_get(opener, req, read_response)
     except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError) as exc:
         raise ValueError(f"SEC request failed: {type(exc).__name__}") from exc
     if len(raw) > MAX_JSON_BYTES:
@@ -885,7 +951,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--as-of", required=True, help="Exclude filings after YYYY-MM-DD")
     parser.add_argument("--forms", default="10-K,10-K/A,10-Q,10-Q/A,8-K,8-K/A", help="Allowed SEC forms; includes amendments by default")
     parser.add_argument("--input-json", type=Path, help="Local SEC-style response JSON (offline)")
-    parser.add_argument("--allow-network", action="store_true", help="Explicit one GET to data.sec.gov")
+    parser.add_argument("--allow-network", action="store_true",
+                        help="Explicit bounded SEC GET (at most 3 attempts)")
     parser.add_argument("--collected-at", help="Offline record observation time (ISO 8601 with offset). "
                         "Not accepted with live --allow-network. Do not invent historical receipts.")
     parser.add_argument("--db", type=Path, required=True, help="Local SQLite ledger")

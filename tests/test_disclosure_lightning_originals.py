@@ -176,6 +176,9 @@ class OriginalFilingTests(unittest.TestCase):
             opener.assert_not_called()
 
     def test_mocked_sec_archive_download_saves_bytes_but_not_certification(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
         index = core.index_submissions(
             self.index_raw, cik=C, as_of="2026-10-27",
             forms=core.parse_forms("10-K"), provenance="SEC_HTTPS_RESPONSE",
@@ -198,14 +201,20 @@ class OriginalFilingTests(unittest.TestCase):
                 return None
 
         with patch("disclosure_lightning.originals.urllib.request.build_opener") as opener:
-            opener.return_value.open.return_value = Response()
-            got, mime = originals.fetch_original(
-                receipt=receipt, user_agent="DL Ops admin@actualcorp.org",
-                allow_network=True,
-            )
+            opener.return_value.open.side_effect = [
+                HTTPError(receipt["source_uri"], 503, "Service Unavailable",
+                         Message(), io.BytesIO(b"")),
+                Response(),
+            ]
+            with patch("disclosure_lightning.core.time.sleep") as sleep:
+                got, mime = originals.fetch_original(
+                    receipt=receipt, user_agent="DL Ops admin@actualcorp.org",
+                    allow_network=True,
+                )
             self.assertEqual(got, CONTENT)
             self.assertEqual(mime, "text/html")
-            opener.return_value.open.assert_called_once()
+            self.assertEqual(opener.return_value.open.call_count, 2)
+            sleep.assert_called_once_with(0.5)
         result = originals.persist_original(
             db_path=other_db, receipt=receipt, raw=got,
             kind=mime, origin="SEC_HTTPS_RESPONSE_UNVERIFIED",

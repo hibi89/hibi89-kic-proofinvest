@@ -621,6 +621,136 @@ class DisclosureLightningTests(unittest.TestCase):
                          "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED")
         self.assertIsNone(index["filings"][0]["raw_sha256"])
 
+    def test_transient_sec_get_retries_honor_retry_after_and_stay_bounded(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        self_fixture = self.raw
+        class FakeResponse:
+            status = 200
+            headers = {"Content-Type": "application/json"}
+            def geturl(self):
+                return "https://data.sec.gov/submissions/CIK0000320193.json"
+            def read(self, size):
+                return self_fixture
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return None
+
+        first_headers = Message()
+        first_headers["Retry-After"] = "2"
+        transient_429 = HTTPError(
+            "https://data.sec.gov/submissions/CIK0000320193.json",
+            429, "Too Many Requests", first_headers, io.BytesIO(b""))
+        transient_503 = HTTPError(
+            "https://data.sec.gov/submissions/CIK0000320193.json",
+            503, "Service Unavailable", Message(), io.BytesIO(b""))
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = [
+                transient_429, transient_503, FakeResponse(),
+            ]
+            with patch("disclosure_lightning.core.time.sleep") as sleep:
+                received = core.fetch_submissions(
+                    CIK, user_agent="DisclosureLightning lab team@real-company.org",
+                    allow_network=True,
+                )
+        self.assertEqual(received, self.raw)
+        self.assertEqual(opener.return_value.open.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2.0, 1.0])
+
+    def test_sec_retry_after_date_and_wait_budget(self):
+        from datetime import datetime, timedelta, timezone
+        from email.utils import format_datetime
+
+        now = datetime(2026, 10, 28, 8, 0, tzinfo=timezone.utc)
+        retry_at = now + timedelta(seconds=5)
+        self.assertEqual(core._retry_after_delay(
+            format_datetime(retry_at, usegmt=True), attempt=0, now=now), 5.0)
+        self.assertEqual(core._retry_after_delay("not-a-date", attempt=1), 1.0)
+        self.assertEqual(core._retry_after_delay("0", attempt=0), 0.2)
+        self.assertIsNone(core._retry_after_delay("31", attempt=0))
+        self.assertEqual(core._retry_after_delay("0000000002", attempt=0), 2.0)
+        self.assertIsNone(core._retry_after_delay("9" * 1000, attempt=0))
+
+    def test_transient_body_read_timeout_retries_and_http_failures_stop_at_three(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        url = "https://data.sec.gov/submissions/CIK0000320193.json"
+        self_fixture = self.raw
+
+        class TimedOutResponse:
+            status = 200
+            headers = {"Content-Type": "application/json"}
+            def geturl(self):
+                return url
+            def read(self, size):
+                raise TimeoutError("SYNTHETIC_READ_TIMEOUT")
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return None
+
+        class GoodResponse:
+            status = 200
+            headers = {"Content-Type": "application/json"}
+            def geturl(self):
+                return url
+            def read(self, size):
+                return self_fixture
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return None
+
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = [TimedOutResponse(), GoodResponse()]
+            with patch("disclosure_lightning.core.time.sleep") as sleep:
+                self.assertEqual(core.fetch_submissions(
+                    CIK, user_agent="DisclosureLightning lab team@real-company.org",
+                    allow_network=True), self.raw)
+            self.assertEqual(opener.return_value.open.call_count, 2)
+            sleep.assert_called_once_with(0.5)
+
+        errors = [HTTPError(url, 503, "Service Unavailable", Message(), io.BytesIO(b""))
+                  for _ in range(core.MAX_HTTP_ATTEMPTS)]
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = errors
+            with patch("disclosure_lightning.core.time.sleep") as sleep:
+                with self.assertRaisesRegex(ValueError, "after 3 attempts"):
+                    core.fetch_submissions(
+                        CIK, user_agent="DisclosureLightning lab team@real-company.org",
+                        allow_network=True,
+                    )
+            self.assertEqual(opener.return_value.open.call_count, 3)
+            self.assertEqual(sleep.call_count, 2)
+
+    def test_sec_retry_refuses_excessive_wait_and_does_not_retry_forbidden(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        url = "https://data.sec.gov/submissions/CIK0000320193.json"
+        too_long = Message()
+        too_long["Retry-After"] = "31"
+        for error, expected, attempts in (
+            (HTTPError(url, 429, "Too Many Requests", too_long, io.BytesIO(b"")),
+             "retry wait budget", 1),
+            (HTTPError(url, 403, "Forbidden", Message(), io.BytesIO(b"")),
+             "HTTPError", 1),
+        ):
+            with self.subTest(status=error.code), \
+                    patch("disclosure_lightning.core.urllib.request.build_opener") as opener, \
+                    patch("disclosure_lightning.core.time.sleep") as sleep:
+                opener.return_value.open.side_effect = error
+                with self.assertRaisesRegex(ValueError, expected):
+                    core.fetch_submissions(
+                        CIK, user_agent="DisclosureLightning lab team@real-company.org",
+                        allow_network=True,
+                    )
+                self.assertEqual(opener.return_value.open.call_count, attempts)
+                sleep.assert_not_called()
+
 
     def test_history_continuation_pinned_offline_dedup(self):
         from disclosure_lightning import history
