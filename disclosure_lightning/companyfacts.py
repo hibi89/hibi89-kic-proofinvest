@@ -240,16 +240,18 @@ def _load_cache(db_path: Path, cik: str) -> dict | None:
         if table is None:
             return None
         row = db.execute(
-            "SELECT v.etag,v.sha256,o.response,o.source_uri FROM companyfacts_validators v "
+            "SELECT v.etag,v.sha256,o.response,o.source_uri,o.provenance "
+            "FROM companyfacts_validators v "
             "JOIN companyfacts_observations o ON o.issuer_cik=v.issuer_cik AND o.sha256=v.sha256 "
             "WHERE v.issuer_cik=? AND v.source_uri=?",
             (cik10(cik), uri),
         ).fetchone()
     if row is None:
         return None
-    etag, digest, raw, stored_uri = row
+    etag, digest, raw, stored_uri, provenance = row
     if (not _valid_etag(etag) or not isinstance(raw, bytes)
-            or hashlib.sha256(raw).hexdigest() != digest or stored_uri != uri):
+            or hashlib.sha256(raw).hexdigest() != digest or stored_uri != uri
+            or provenance != "SEC_HTTPS_RESPONSE"):
         raise ValueError("Stored CompanyFacts cache failed integrity validation")
     _validate_payload(raw, cik)
     return {"etag": etag, "sha256": digest, "raw": raw, "source_uri": uri}

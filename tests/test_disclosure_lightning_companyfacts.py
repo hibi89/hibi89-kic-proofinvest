@@ -126,6 +126,14 @@ class CompanyFactsTests(unittest.TestCase):
             RAW, cik=CIK, as_of=AS_OF, collected_at=COLLECTED,
             provenance="SEC_HTTPS_RESPONSE",
         )["financial_claim_verified"])
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute(
+                "UPDATE companyfacts_observations SET provenance=? WHERE issuer_cik=? AND sha256=?",
+                ("OFFLINE_UNVERIFIED", CIK, cache["sha256"]),
+            )
+            db.commit()
+        with self.assertRaisesRegex(ValueError, "integrity"):
+            companyfacts._load_cache(self.db, CIK)
 
     def test_mocked_live_200_requires_json_and_returns_validated_etag(self):
         class Response:
