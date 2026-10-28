@@ -208,6 +208,34 @@ def smoke(root: Path, log: Path) -> dict:
                         "error": "UNEXPECTED_ORIGINAL_PROVENANCE", "log": str(log)}
 
             evidence_as_of = datetime.now(timezone.utc).date().isoformat()
+            receipt_listing = [
+                sys.executable, "-B", "-m", "disclosure_lightning.originals",
+                "--db", str(db), "--cik", CIK,
+                "--accession", "0000320193-25-000901",
+                "--list", "--as-of", evidence_as_of,
+            ]
+            proc = subprocess.run(
+                receipt_listing, cwd=root, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=30, check=False,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            with log.open("a", encoding="utf-8") as handle:
+                handle.write("STEP original-receipt-as-of-list exit=" +
+                             str(proc.returncode) + "\n")
+                handle.write((proc.stdout + proc.stderr)[:12000] + "\n")
+            if proc.returncode != 0:
+                return {"status": "FAIL", "step": "original-receipt-as-of-list",
+                        "log": str(log)}
+            listed = json.loads(proc.stdout)
+            receipts = listed.get("receipts")
+            if (listed.get("status") != "READ_ONLY"
+                    or listed.get("as_of") != evidence_as_of
+                    or not isinstance(receipts, list) or len(receipts) != 1
+                    or not isinstance(receipts[0], dict)
+                    or receipts[0].get("filing_sha256") != original_receipt.get("filing_sha256")):
+                return {"status": "FAIL", "step": "original-receipt-as-of-list",
+                        "error": "UNEXPECTED_AS_OF_RECEIPT", "log": str(log)}
+
             extraction = [
                 sys.executable, "-B", "-m", "disclosure_lightning.extract",
                 "--db", str(db), "--cik", CIK,
@@ -249,7 +277,7 @@ def smoke(root: Path, log: Path) -> dict:
                     or locator.get("end_byte_exclusive") != expected_start + len(expected_line)):
                 return {"status": "FAIL", "step": "extracted-evidence",
                         "error": "UNEXPECTED_EVIDENCE_CONTRACT", "log": str(log)}
-            return {"status": "PASS", "steps": len(steps) + 5,
+            return {"status": "PASS", "steps": len(steps) + 6,
                     "log": str(log)}
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
         return {"status": "FAIL", "error": type(exc).__name__, "log": str(log)}
