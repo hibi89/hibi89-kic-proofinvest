@@ -107,7 +107,9 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 
 `RawFilingEnvelopeV1` 항목은 응답 `indexed.filings[]`에 있고, 이 JSON을 KIC ProofInvest의 별도 리더에 전달할 수 있습니다. `issuer_cik`, `accession`, `form`, `filed_at`, `collected_at`, `source_uri`, `index_raw_sha256`, `evidence_status`를 보존하세요. DL은 금융 지표 정규화·재무 판단·투자 권고나 자동매매를 담당하지 않습니다.
 
-**구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 SEC 요청 경로, 저장된 HTML/텍스트의 로컬 추출과 근거 위치 후보, bounded transient retry, submissions ETag/304 캐시 처리. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 사실 추출·정규화, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, archive 원문 conditional cache, 스케줄러와 교차 프로세스 속도 제한, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
+Saved-filing Inline XBRL candidates are available through `python -m disclosure_lightning.xbrl --db ... --cik ... --accession ... --sha256 ... --as-of ...`. This read-only path preserves lexical text, QName, raw context/unit trees, period fields, scale/sign/format attributes, and source line hints. It does not normalize values or certify facts; unknown references remain UNKNOWN, continuations are not followed, and unsupported elements prevent a complete-extraction claim.
+
+**구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 SEC 요청 경로, 저장된 HTML/텍스트와 일부 Inline XBRL의 로컬 후보 추출, bounded transient retry, submissions/archive ETag/304 캐시 처리. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 숫자·taxonomy 정규화와 전체 context/continuation 처리, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, 스케줄러와 교차 프로세스 속도 제한, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
 
 ## 2026-10-28 검증 게이트 (KIC 합의)
 
