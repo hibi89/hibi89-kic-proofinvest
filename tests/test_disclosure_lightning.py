@@ -231,6 +231,17 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "index response integrity"):
             core.list_filings(self.db, cik=CIK)
 
+    def test_oversized_stored_index_blob_is_rejected_by_read_only_list(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
+            db.execute(
+                "UPDATE observations SET response=zeroblob(?) WHERE issuer_cik=?",
+                (core.MAX_JSON_BYTES + 1, CIK),
+            )
+        with self.assertRaisesRegex(ValueError, "Stored index response integrity"):
+            core.list_filings(self.db, cik=CIK)
+
     def test_read_only_list_refuses_tampered_filing_metadata(self):
         core.save_index(self.db, self.raw, self.indexed())
         with _sqlite_connection(self.db) as db:
@@ -1535,6 +1546,24 @@ class DisclosureLightningTests(unittest.TestCase):
             history.audit_manifest_pages(
                 db_path=self.db, cik=CIK,
                 manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+
+    def test_oversized_history_page_blob_fails_closed_in_audit(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        page_name = sorted(pages)[0]
+        history.import_history_batch(pages={page_name: pages[page_name]}, **args)
+        digest = hashlib.sha256(pages[page_name]).hexdigest()
+        with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
+            db.execute(
+                "UPDATE observations SET response=zeroblob(?) WHERE sha256=?",
+                (core.MAX_JSON_BYTES + 1, digest),
+            )
+        with self.assertRaisesRegex(ValueError, "HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED"):
+            history.audit_manifest_pages(
+                db_path=self.db, cik=CIK,
+                manifest_sha256=args["manifest_sha256"], as_of=args["as_of"],
+            )
 
     def test_history_page_audit_requires_indexed_filing_associations(self):
         from disclosure_lightning import history

@@ -520,6 +520,32 @@ class OriginalFilingTests(unittest.TestCase):
                 db_path=self.db, cik=C, accession=A,
                 sha256=saved["filing_sha256"])
 
+    def test_oversized_index_blob_is_rejected_by_original_locator(self):
+        self.save()
+        with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
+            db.execute(
+                "UPDATE observations SET response=zeroblob(?) WHERE issuer_cik=?",
+                (core.MAX_JSON_BYTES + 1, C),
+            )
+        with self.assertRaisesRegex(ValueError, "index source integrity"):
+            originals.locate_original(self.db, cik=C, accession=A)
+
+    def test_oversized_saved_filing_blob_is_rejected_by_read(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
+            db.execute(
+                "UPDATE original_filing_receipts SET file_bytes=zeroblob(?) "
+                "WHERE issuer_cik=? AND accession=? AND sha256=?",
+                (originals.MAX_FILING_BYTES + 1, C, A, saved["filing_sha256"]),
+            )
+        with self.assertRaisesRegex(ValueError, "Saved original filing content integrity"):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"],
+            )
+
     def test_persist_rechecks_index_under_write_reservation(self):
         locator = originals.locate_original
         calls = 0
