@@ -101,6 +101,55 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         self.assertEqual(result["unsupported_inline_xbrl_element_count"], 3)
         self.assertFalse(result["complete_candidate_extraction"])
 
+    def test_multiple_periods_and_units_remain_attached_to_each_fact(self):
+        multi = INLINE.replace(
+            b"</xbrli:context>",
+            b"</xbrli:context><xbrli:context id=\"ctx-prior\"><xbrli:period>"
+            b"<xbrli:instant>2024-09-28</xbrli:instant></xbrli:period></xbrli:context>",
+            1,
+        ).replace(
+            b"</xbrli:unit>",
+            b"</xbrli:unit><xbrli:unit id=\"shares\"><xbrli:measure>"
+            b"xbrli:shares</xbrli:measure></xbrli:unit>",
+            1,
+        ).replace(
+            b"</body>",
+            b'<ix:nonFraction name="us-gaap:WeightedAverageNumberOfSharesOutstandingBasic" '
+            b'contextRef="ctx-prior" unitRef="shares" decimals="0">1000</ix:nonFraction>'
+            b"</body>",
+        )
+        result = xbrl.extract_inline_facts(
+            multi, content_type="text/html",
+            filing_sha256=hashlib.sha256(multi).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        fact = result["facts"][-1]
+        self.assertEqual(fact["lexical_value"], "1000")
+        self.assertEqual(fact["context_period_fields"], {"instant": "2024-09-28"})
+        self.assertEqual(fact["unit_source"]["children"][0]["text"], "xbrli:shares")
+        self.assertEqual(fact["unit_ref_status"], "RESOLVED_UNVERIFIED")
+
+    def test_malformed_context_is_truncated_and_unit_reference_unknown(self):
+        broken_context = INLINE.replace(b"</xbrli:context>", b"", 1)
+        broken = xbrl.extract_inline_facts(
+            broken_context, content_type="text/html",
+            filing_sha256=hashlib.sha256(broken_context).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertTrue(broken["truncated"])
+        self.assertFalse(broken["complete_candidate_extraction"])
+
+        unknown_unit = INLINE.replace(b'unitRef="usd"', b'unitRef="missing-unit"', 1)
+        result = xbrl.extract_inline_facts(
+            unknown_unit, content_type="text/html",
+            filing_sha256=hashlib.sha256(unknown_unit).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["facts"][0]["unit_ref_status"], "UNKNOWN_OR_AMBIGUOUS")
+
     def test_duplicate_context_reference_is_ambiguous(self):
         duplicated = INLINE.replace(
             b"</xbrli:context>",
