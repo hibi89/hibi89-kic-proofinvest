@@ -256,6 +256,15 @@ CREATE TABLE IF NOT EXISTS filing_observations(
     observation_id INTEGER NOT NULL REFERENCES observations(id),
     PRIMARY KEY(filing_cik,accession,observation_id)
 );
+CREATE TABLE IF NOT EXISTS history_page_receipts(
+    issuer_cik TEXT NOT NULL,
+    manifest_sha256 TEXT NOT NULL,
+    page_name TEXT NOT NULL,
+    page_sha256 TEXT NOT NULL,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    record_count INTEGER NOT NULL,
+    PRIMARY KEY(issuer_cik,manifest_sha256,page_name)
+);
 """
 
 
@@ -401,6 +410,13 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     if not isinstance(indexed, dict):
         raise ValueError("Index evidence must be an object")
     _validate_index_for_save(raw, indexed, path)
+    history_record_count = None
+    if "history_manifest_sha256" in indexed:
+        source = _validate_raw(raw)
+        ids = source.get("accessionNumber")
+        if not isinstance(ids, list):
+            raise ValueError("HISTORY_PAGE_RECEIPT_ACCESSIONS_MISSING")
+        history_record_count = len(ids)
     path.parent.mkdir(parents=True, exist_ok=True)
     inserted = 0
     with closing(sqlite3.connect(path)) as conn:
@@ -448,6 +464,24 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
                     "INSERT OR IGNORE INTO filing_observations(filing_cik,accession,observation_id)"
                     " VALUES(?,?,?)", (indexed["issuer_cik"], filing["accession"], obs_id)
                 )
+            if "history_manifest_sha256" in indexed:
+                page_name = indexed["source_uri"].rsplit("/", 1)[-1]
+                receipt_key = (indexed["issuer_cik"], indexed["history_manifest_sha256"],
+                               page_name)
+                existing_page = conn.execute(
+                    "SELECT page_sha256,observation_id,record_count FROM history_page_receipts "
+                    "WHERE issuer_cik=? AND manifest_sha256=? AND page_name=?",
+                    receipt_key,
+                ).fetchone()
+                page_receipt = (digest, obs_id, history_record_count)
+                if existing_page is not None and existing_page != page_receipt:
+                    raise ValueError("HISTORY_PAGE_RECEIPT_CONFLICT")
+                if existing_page is None:
+                    conn.execute(
+                        "INSERT INTO history_page_receipts"
+                        "(issuer_cik,manifest_sha256,page_name,page_sha256,observation_id,record_count)"
+                        " VALUES(?,?,?,?,?,?)", (*receipt_key, *page_receipt),
+                    )
             total = conn.execute(
                 "SELECT COUNT(*) FROM filings WHERE provider=? AND issuer_cik=?",
                 (PROVIDER, indexed["issuer_cik"]),

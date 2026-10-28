@@ -178,6 +178,31 @@ def smoke(root: Path, log: Path) -> dict:
                             "error": "UNEXPECTED_HISTORY_COMPLETENESS_FLAGS",
                             "log": str(log)}
 
+            history_audit = [
+                sys.executable, "-B", "-m", "disclosure_lightning.history",
+                "--db", str(history_db), "--cik", CIK,
+                "--manifest-sha256", hashlib.sha256(raw_manifest).hexdigest(),
+                "--as-of", "2026-10-27", "--audit-manifest",
+            ]
+            proc = subprocess.run(
+                history_audit, cwd=root, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=30, check=False,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            with log.open("a", encoding="utf-8") as handle:
+                handle.write("STEP history-audit exit=" + str(proc.returncode) + "\n")
+                handle.write((proc.stdout + proc.stderr)[:12000] + "\n")
+            if proc.returncode != 0:
+                return {"status": "FAIL", "step": "history-audit", "log": str(log)}
+            audit = json.loads(proc.stdout)
+            if (audit.get("status") != "READ_ONLY_UNVERIFIED_HISTORY_COVERAGE"
+                    or audit.get("missing_eligible_pages") != []
+                    or audit.get("complete_for_pinned_manifest") is not True
+                    or audit.get("source_authenticity_verified") is not False
+                    or audit.get("ledger_mutated") is not False):
+                return {"status": "FAIL", "step": "history-audit",
+                        "error": "UNEXPECTED_AUDIT_RESULT", "log": str(log)}
+
             # Continue the same disposable synthetic ledger through original
             # byte preservation and provenance-linked local text evidence.
             original_path = Path(temp) / "synthetic-primary-filing.txt"

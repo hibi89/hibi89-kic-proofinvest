@@ -193,6 +193,92 @@ def list_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
     ]
 
 
+def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
+                         as_of: str) -> dict:
+    """Compare eligible pinned history pages with integrity-checked local receipts."""
+    target = core.cik10(cik)
+    cutoff = core.parse_day(as_of)
+    pages = list_manifest_pages(
+        db_path=db_path, cik=target, manifest_sha256=manifest_sha256,
+        as_of=as_of,
+    )
+    eligible = [page for page in pages if page["eligible_by_start_date"]]
+    candidate = Path(db_path).expanduser()
+    if candidate.is_symlink() or not candidate.is_file():
+        raise ValueError("EXISTING_REGULAR_DL_DB_REQUIRED")
+    uri = candidate.resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True)) as conn:
+        conn.execute("PRAGMA query_only=ON")
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='history_page_receipts'"
+        ).fetchone()
+        receipts = {}
+        if exists and eligible:
+            names = [page["name"] for page in eligible]
+            placeholders = ",".join("?" for _ in names)
+            rows = conn.execute(
+                "SELECT page_name,page_sha256,observation_id,record_count "
+                "FROM history_page_receipts WHERE issuer_cik=? AND manifest_sha256=? "
+                f"AND page_name IN ({placeholders})",
+                (target, manifest_sha256, *names),
+            ).fetchall()
+            for name, digest, observation_id, count in rows:
+                observation = conn.execute(
+                    "SELECT response,seen_at,provenance,sha256 FROM observations WHERE id=?",
+                    (observation_id,),
+                ).fetchone()
+                receipts[name] = (digest, count, observation)
+    audited = []
+    for page in pages:
+        name = page["name"]
+        receipt = receipts.get(name) if page["eligible_by_start_date"] else None
+        state = "MISSING"
+        if receipt is not None:
+            digest, count, observation = receipt
+            if (observation is None or not isinstance(observation[0], bytes)
+                    or observation[2] != "OFFLINE_UNVERIFIED"
+                    or observation[3] != digest
+                    or hashlib.sha256(observation[0]).hexdigest() != digest):
+                raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
+            if count != page["filing_count"]:
+                raise ValueError("HISTORY_PAGE_RECEIPT_COUNT_MISMATCH")
+            try:
+                observed = datetime.fromisoformat(observation[1].replace("Z", "+00:00"))
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise ValueError("HISTORY_PAGE_RECEIPT_TIME_INVALID") from exc
+            if observed.tzinfo is None or observed.utcoffset() is None:
+                raise ValueError("HISTORY_PAGE_RECEIPT_TIME_INVALID")
+            if observed.astimezone(timezone.utc).date() > cutoff:
+                audited.append({**page, "status": "MISSING"})
+                continue
+            try:
+                indexed = index_history_page(
+                    observation[0], db_path=db_path, cik=target,
+                    manifest_sha256=manifest_sha256, name=name, as_of=as_of,
+                    collected_at=observation[1], forms=core.ALLOWED_FORMS,
+                )
+            except (OSError, sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+                raise ValueError("HISTORY_PAGE_RECEIPT_SOURCE_INVALID") from exc
+            if indexed["source_sha256"] != digest:
+                raise ValueError("HISTORY_PAGE_RECEIPT_SOURCE_MISMATCH")
+            state = "IMPORTED"
+        audited.append({**page, "status": state})
+    missing = [item["name"] for item in audited if item["status"] == "MISSING"]
+    return {
+        "status": "READ_ONLY_UNVERIFIED_HISTORY_COVERAGE",
+        "issuer_cik": target,
+        "as_of_cutoff": cutoff.isoformat(),
+        "history_manifest_sha256": manifest_sha256,
+        "pages": audited,
+        "eligible_page_count": len(eligible),
+        "imported_page_count": len(eligible) - len(missing),
+        "missing_eligible_pages": missing,
+        "complete_for_pinned_manifest": not missing,
+        "source_authenticity_verified": False,
+        "ledger_mutated": False,
+    }
+
+
 def import_history_batch(*, pages: dict[str, bytes], db_path: Path,
                          cik: str, manifest_sha256: str, as_of: str,
                          collected_at: str, forms: frozenset[str],
@@ -485,6 +571,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--input-json", type=Path)
     parser.add_argument("--batch-dir", type=Path)
     parser.add_argument("--list-manifest", action="store_true")
+    parser.add_argument("--audit-manifest", action="store_true")
     parser.add_argument("--review-amendments", action="store_true")
     parser.add_argument("--max-pages", type=int, default=4)
     parser.add_argument("--as-of", required=True)
@@ -494,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         options = [bool(args.input_json), bool(args.batch_dir),
-                   args.list_manifest, args.review_amendments]
+                   args.list_manifest, args.audit_manifest, args.review_amendments]
         if sum(options) != 1:
             raise ValueError("SELECT_ONE_SINGLE_BATCH_MANIFEST_OR_REVIEW_MODE")
         if args.review_amendments:
@@ -509,6 +596,12 @@ def main(argv: list[str] | None = None) -> int:
                       list_manifest_pages(db_path=args.db, cik=args.cik,
                                           manifest_sha256=args.manifest_sha256,
                                           as_of=args.as_of)}
+        elif args.audit_manifest:
+            if not args.manifest_sha256 or args.name or args.collected_at:
+                raise ValueError("MANIFEST_AUDIT_REQUIRES_PIN_ONLY")
+            result = audit_manifest_pages(
+                db_path=args.db, cik=args.cik,
+                manifest_sha256=args.manifest_sha256, as_of=args.as_of)
         else:
             if not args.manifest_sha256 or args.collected_at is None:
                 raise ValueError("MANIFEST_PIN_AND_COLLECTION_TIMESTAMP_REQUIRED")

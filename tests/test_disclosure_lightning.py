@@ -589,7 +589,7 @@ class DisclosureLightningTests(unittest.TestCase):
         original = json.dumps(manifest).encode("utf-8")
         base = core.index_submissions(
             original, cik=CIK, as_of="2026-10-28",
-            collected_at="2026-10-28T01:00:00Z",
+            collected_at="2026-10-26T01:00:00Z",
             forms=core.parse_forms("10-K,8-K"),
         )
         core.save_index(self.db, original, base)
@@ -617,7 +617,7 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "NOT_AVAILABLE_BY_AS_OF"):
             history.list_manifest_pages(
                 db_path=self.db, cik=CIK,
-                manifest_sha256=args["manifest_sha256"], as_of="2026-10-27")
+                manifest_sha256=args["manifest_sha256"], as_of="2026-10-25")
         result = history.import_history_batch(pages=pages, **args)
         self.assertEqual(result["pages_processed"], 2)
         self.assertEqual(result["new_filings"], 2)
@@ -919,16 +919,37 @@ class DisclosureLightningTests(unittest.TestCase):
         from disclosure_lightning import history
         history, pages, args = self._history_batch_fixture()
         first, second = sorted(pages)
+        database_before_audit = self.db.read_bytes()
+        initial_audit = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+        self.assertEqual(initial_audit["missing_eligible_pages"], [first, second])
+        self.assertFalse(initial_audit["complete_for_pinned_manifest"])
+        self.assertEqual(self.db.read_bytes(), database_before_audit)
         partial = history.import_history_batch(pages={first: pages[first]}, **args)
         self.assertEqual(partial["pages_processed"], 1)
         self.assertEqual(partial["selected_batch_missing_manifest_pages"], [second])
         self.assertFalse(partial["selected_batch_covers_eligible_manifest"])
         self.assertFalse(partial["issuer_history_authenticity_verified"])
+        partial_audit = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+        self.assertEqual(partial_audit["missing_eligible_pages"], [second])
         completed = history.import_history_batch(pages=pages, **args)
         self.assertEqual(completed["selected_batch_missing_manifest_pages"], [])
         self.assertTrue(completed["selected_batch_covers_eligible_manifest"])
         self.assertFalse(completed["issuer_history_authenticity_verified"])
         self.assertEqual(completed["new_filings"], 1)
+        final_audit = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+        self.assertTrue(final_audit["complete_for_pinned_manifest"])
+        self.assertEqual(final_audit["imported_page_count"], 2)
+        self.assertFalse(final_audit["source_authenticity_verified"])
+        older_audit = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of="2026-10-27")
+        self.assertEqual(older_audit["missing_eligible_pages"], [first, second])
 
 
 if __name__ == "__main__":
