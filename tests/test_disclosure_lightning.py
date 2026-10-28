@@ -1111,6 +1111,23 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "page URI"):
             core.list_filings(self.db, cik=CIK)
 
+    def test_original_locator_binds_history_uri_to_page_receipt(self):
+        from disclosure_lightning import history, originals
+        history, pages, args = self._history_batch_fixture()
+        first = sorted(pages)[0]
+        history.import_history_batch(pages={first: pages[first]}, **args)
+        accession = json.loads(pages[first])["accessionNumber"][0]
+        with _sqlite_connection(self.db) as db:
+            record = json.loads(db.execute(
+                "SELECT filing_json FROM filings WHERE accession=?", (accession,)
+            ).fetchone()[0])
+            record["index_source_uri"] = (
+                f"https://data.sec.gov/submissions/CIK{CIK}-submissions-002.json")
+            db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                       (json.dumps(record), accession))
+        with self.assertRaisesRegex(ValueError, "Historical page URI"):
+            originals.locate_original(self.db, cik=CIK, accession=accession)
+
     def test_history_page_revisions_are_preserved_and_audited_as_of(self):
         from disclosure_lightning import history
         history, pages, args = self._history_batch_fixture()

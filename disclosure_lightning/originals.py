@@ -61,7 +61,7 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
     with closing(_read_conn(db_path)) as conn:
         if as_of is None:
             row = conn.execute(
-                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at "
+                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id "
                 "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
                 "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=?",
                 (cik, accession),
@@ -69,7 +69,7 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
         else:
             cutoff_day = parse_day(as_of).isoformat()
             row = conn.execute(
-                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at "
+                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id "
                 "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
                 "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
                 "AND json_extract(f.filing_json,'$.filed_at')<=? "
@@ -81,16 +81,18 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
         if as_of is not None:
             raise ValueError("SEC filing was not available by as-of date")
         raise ValueError("SEC filing ID not found in the indexed SQLite evidence")
-    filing_json, index_raw, index_digest, provenance, first_seen = row
+    filing_json, index_raw, index_digest, provenance, first_seen, observation_id = row
     receipt = json.loads(filing_json)
     _verify_indexed_locator(
         receipt, index_raw, index_digest, provenance, first_seen, cik,
+        db_path=db_path, observation_id=observation_id,
     )
     return _validate_locator_receipt(receipt, cik, accession)
 
 
 def _verify_indexed_locator(receipt: dict, raw: bytes, digest: str,
-                            provenance: str, first_seen: str, cik: str) -> None:
+                            provenance: str, first_seen: str, cik: str,
+                            *, db_path: Path, observation_id: int) -> None:
     if (not isinstance(raw, bytes) or not isinstance(digest, str)
             or hashlib.sha256(raw).hexdigest() != digest
             or first_seen != receipt.get("collected_at")
@@ -101,6 +103,29 @@ def _verify_indexed_locator(receipt: dict, raw: bytes, digest: str,
         receipt, payload=payload, observation_sha256=digest,
         provenance=provenance, cik=cik,
     )
+    if "cik" in payload:
+        return
+    with closing(_read_conn(db_path)) as conn:
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name IN ('history_page_receipts','history_page_receipt_versions')"
+        )}
+        linked_pages = []
+        if "history_page_receipts" in tables:
+            linked_pages.extend(conn.execute(
+                "SELECT page_name,page_sha256 FROM history_page_receipts "
+                "WHERE issuer_cik=? AND observation_id=?", (cik, observation_id),
+            ).fetchall())
+        if "history_page_receipt_versions" in tables:
+            linked_pages.extend(conn.execute(
+                "SELECT page_name,page_sha256 FROM history_page_receipt_versions "
+                "WHERE issuer_cik=? AND observation_id=?", (cik, observation_id),
+            ).fetchall())
+    if linked_pages:
+        expected_name = receipt.get("index_source_uri", "").rsplit("/", 1)[-1]
+        if (expected_name, digest) not in {
+                (page_name, page_sha256) for page_name, page_sha256 in linked_pages}:
+            raise ValueError("Historical page URI does not match its pinned receipt")
 
 
 def _validate_locator_receipt(receipt: dict, cik: str, accession: str) -> dict:
@@ -328,7 +353,7 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
         if has_receipts is None:
             raise KeyError("Original filing receipt not found")
         row = db.execute(
-            "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at, "
+            "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id, "
             "r.file_bytes,r.source_uri,r.retrieved_at "
             "FROM filings AS f "
             "JOIN observations AS o ON o.id=f.first_observation_id "
@@ -340,10 +365,13 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
         ).fetchone()
     if row is None:
         raise KeyError("Original filing receipt not found")
-    (filing_json, index_raw, index_digest, provenance, first_seen,
+    (filing_json, index_raw, index_digest, provenance, first_seen, observation_id,
      raw, source_uri, retrieved_at) = row
     location = json.loads(filing_json)
-    _verify_indexed_locator(location, index_raw, index_digest, provenance, first_seen, c)
+    _verify_indexed_locator(
+        location, index_raw, index_digest, provenance, first_seen, c,
+        db_path=db_path, observation_id=observation_id,
+    )
     location = _validate_locator_receipt(location, c, a)
     if source_uri != location["source_uri"]:
         raise ValueError("Saved original source URI no longer matches indexed locator")
