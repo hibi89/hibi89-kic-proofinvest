@@ -64,6 +64,24 @@ class CompanyFactsTests(unittest.TestCase):
             count = db.execute("SELECT count(*) FROM companyfacts_observations").fetchone()[0]
         self.assertEqual(count, 1)
 
+    def test_historical_list_ignores_corrupt_future_observation(self):
+        _, current = self.save()
+        future_raw = RAW.replace(b'"val":100', b'"val":101')
+        future = companyfacts.index_companyfacts(
+            future_raw, cik=CIK, as_of="2026-10-29",
+            collected_at="2026-10-29T00:00:00Z",
+        )
+        companyfacts.save_companyfacts(self.db, future_raw, future)
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
+            db.execute(
+                "UPDATE companyfacts_observations SET response=? WHERE issuer_cik=? AND sha256=?",
+                (b"corrupted future bytes", CIK, future["source_sha256"]),
+            )
+            db.commit()
+        visible = companyfacts.list_companyfacts(self.db, cik=CIK, as_of=AS_OF)
+        self.assertEqual([row["sha256"] for row in visible], [current["source_sha256"]])
+
     def test_cik_payload_and_future_collection_are_rejected(self):
         wrong = RAW.replace(b'"cik":320193', b'"cik":1')
         with self.assertRaisesRegex(ValueError, "CIK"):

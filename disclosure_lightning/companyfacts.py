@@ -359,8 +359,9 @@ def list_companyfacts(db_path: Path, *, cik: str, as_of: str) -> list[dict]:
         rows = db.execute(
             "SELECT sha256,source_uri,entity_name,collected_at,as_of_cutoff,provenance,"
             "CASE WHEN length(response) BETWEEN 1 AND ? THEN response END "
-            "FROM companyfacts_observations WHERE issuer_cik=? ORDER BY collected_at,sha256",
-            (MAX_COMPANYFACTS_BYTES, target),
+            "FROM companyfacts_observations WHERE issuer_cik=? AND as_of_cutoff<=? "
+            "AND date(collected_at)<=? ORDER BY collected_at,sha256",
+            (MAX_COMPANYFACTS_BYTES, target, cutoff, cutoff),
         )
         observations = []
         for sha, uri, name, collected, indexed_asof, provenance, raw in rows:
