@@ -207,13 +207,15 @@ def smoke(root: Path, log: Path) -> dict:
             # byte preservation and provenance-linked local text evidence.
             original_path = Path(temp) / "synthetic-primary-filing.txt"
             original_path.write_bytes(
-                b"SYNTHETIC FIXTURE ONLY\n2025 Revenue increased 12 percent.\n"
+                b"<html><body><p>SYNTHETIC FIXTURE ONLY</p>"
+                b"<p>2025 Revenue increased 12 percent.</p>"
+                b"<p>Synthetic &amp; untrusted note</p></body></html>"
             )
             original_import = [
                 sys.executable, "-B", "-m", "disclosure_lightning.originals",
                 "--db", str(db), "--cik", CIK,
                 "--accession", "0000320193-25-000901",
-                "--input-file", str(original_path), "--content-type", "text/plain",
+                "--input-file", str(original_path), "--content-type", "text/html",
             ]
             proc = subprocess.run(
                 original_import, cwd=root, capture_output=True, text=True,
@@ -284,8 +286,8 @@ def smoke(root: Path, log: Path) -> dict:
             candidate = (candidates[0] if isinstance(candidates, list)
                          and candidates and isinstance(candidates[0], dict) else {})
             locator = candidate.get("source_locator") or {}
-            expected_line = b"2025 Revenue increased 12 percent.\n"
-            expected_start = len(b"SYNTHETIC FIXTURE ONLY\n")
+            expected_line = b"2025 Revenue increased 12 percent."
+            expected_start = original_path.read_bytes().index(expected_line)
             if (evidence.get("schema") != "disclosure-lightning.evidence-candidates.v1"
                     or evidence.get("returned") != 1
                     or evidence.get("as_of") != evidence_as_of
@@ -297,7 +299,7 @@ def smoke(root: Path, log: Path) -> dict:
                     or candidate.get("citation_status") != "SOURCE_BYTE_SPAN_NEEDS_REVIEW"
                     or candidate.get("financial_claim_verified") is not False
                     or candidate.get("raw_span_sha256") != hashlib.sha256(expected_line).hexdigest()
-                    or locator.get("type") != "UTF8_RAW_LINE_BYTE_SPAN"
+                    or locator.get("type") != "UTF8_HTML_TEXT_NODE_BYTE_SPAN"
                     or locator.get("start_byte") != expected_start
                     or locator.get("end_byte_exclusive") != expected_start + len(expected_line)):
                 return {"status": "FAIL", "step": "extracted-evidence",
