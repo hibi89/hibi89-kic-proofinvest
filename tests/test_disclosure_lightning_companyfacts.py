@@ -86,6 +86,7 @@ class CompanyFactsTests(unittest.TestCase):
     def test_response_hash_corruption_is_detected_on_read(self):
         _, meta = self.save()
         with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
             db.execute("UPDATE companyfacts_observations SET response=? WHERE sha256=?",
                        (b"{}", meta["source_sha256"]))
             db.commit()
@@ -96,6 +97,7 @@ class CompanyFactsTests(unittest.TestCase):
     def test_metadata_tampering_is_detected_by_read_only_envelope(self):
         _, meta = self.save()
         with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
             db.execute(
                 "UPDATE companyfacts_observations SET entity_name=? WHERE issuer_cik=? AND sha256=?",
                 ("Different Issuer", CIK, meta["source_sha256"]),
@@ -150,6 +152,8 @@ class CompanyFactsTests(unittest.TestCase):
             provenance="SEC_HTTPS_RESPONSE",
         )["financial_claim_verified"])
         with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
+            db.execute("DROP TRIGGER companyfacts_checks_no_delete")
             db.execute(
                 "UPDATE companyfacts_observations SET provenance=? WHERE issuer_cik=? AND sha256=?",
                 ("OFFLINE_UNVERIFIED", CIK, cache["sha256"]),
@@ -175,6 +179,65 @@ class CompanyFactsTests(unittest.TestCase):
         self.assertEqual(cached["raw"], RAW)
         self.assertEqual(cached["etag"], '"synthetic-v2"')
         self.assertEqual(cached["sha256"], live_meta["source_sha256"])
+
+    def test_observations_and_checks_reject_ordinary_update_and_delete(self):
+        _, meta = self.save(provenance="SEC_HTTPS_RESPONSE", etag='"append-only"')
+        digest = meta["source_sha256"]
+        statements = (
+            ("UPDATE companyfacts_observations SET entity_name='changed' "
+             "WHERE issuer_cik=? AND sha256=?", (CIK, digest)),
+            ("DELETE FROM companyfacts_observations WHERE issuer_cik=? AND sha256=?",
+             (CIK, digest)),
+            ("INSERT OR REPLACE INTO companyfacts_observations VALUES(?,?,?,?,?,?,?,?)",
+             (CIK, digest, companyfacts.source_uri(CIK), RAW, "changed", COLLECTED,
+              AS_OF, "SEC_HTTPS_RESPONSE")),
+            ("UPDATE companyfacts_checks SET provenance='OFFLINE_UNVERIFIED' "
+             "WHERE issuer_cik=? AND sha256=?", (CIK, digest)),
+            ("DELETE FROM companyfacts_checks WHERE issuer_cik=? AND sha256=?",
+             (CIK, digest)),
+        )
+        for sql, parameters in statements:
+            with self.subTest(sql=sql.split()[0:3]):
+                with closing(sqlite3.connect(self.db)) as db:
+                    with self.assertRaisesRegex(sqlite3.IntegrityError, "append-only"):
+                        db.execute(sql, parameters)
+                    db.rollback()
+        self.assertEqual(companyfacts.read_companyfacts(
+            self.db, cik=CIK, sha256=digest, as_of=AS_OF,
+        ), RAW)
+        self.assertIsNotNone(companyfacts._load_cache(self.db, CIK))
+        with closing(sqlite3.connect(self.db)) as db:
+            before = db.execute(
+                "SELECT count(*) FROM companyfacts_checks WHERE issuer_cik=? AND sha256=?",
+                (CIK, digest),
+            ).fetchone()[0]
+            check = db.execute(
+                "SELECT issuer_cik,sha256,checked_at,provenance FROM companyfacts_checks "
+                "WHERE issuer_cik=? AND sha256=?", (CIK, digest),
+            ).fetchone()
+            db.execute("INSERT OR REPLACE INTO companyfacts_checks VALUES(?,?,?,?)", check)
+            after = db.execute(
+                "SELECT count(*) FROM companyfacts_checks WHERE issuer_cik=? AND sha256=?",
+                (CIK, digest),
+            ).fetchone()[0]
+        self.assertEqual(after, before)
+
+    def test_existing_archive_reinstalls_missing_append_only_guards(self):
+        _, meta = self.save()
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
+            db.execute("DROP TRIGGER companyfacts_checks_no_update")
+            db.commit()
+        reused, _ = self.save()
+        self.assertEqual(reused["status"], "REUSED")
+        with closing(sqlite3.connect(self.db)) as db:
+            with self.assertRaisesRegex(sqlite3.IntegrityError, "append-only"):
+                db.execute(
+                    "UPDATE companyfacts_observations SET entity_name='changed' "
+                    "WHERE issuer_cik=? AND sha256=?",
+                    (CIK, meta["source_sha256"]),
+                )
+                db.rollback()
 
     def test_mocked_live_200_requires_json_and_returns_validated_etag(self):
         class Response:

@@ -58,6 +58,29 @@ CREATE TABLE IF NOT EXISTS companyfacts_validators(
     FOREIGN KEY(issuer_cik,sha256)
       REFERENCES companyfacts_observations(issuer_cik,sha256)
 );
+CREATE TRIGGER IF NOT EXISTS companyfacts_observations_no_update
+BEFORE UPDATE ON companyfacts_observations
+BEGIN SELECT RAISE(ABORT, 'CompanyFacts observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS companyfacts_observations_no_delete
+BEFORE DELETE ON companyfacts_observations
+BEGIN SELECT RAISE(ABORT, 'CompanyFacts observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS companyfacts_checks_no_update
+BEFORE UPDATE ON companyfacts_checks
+BEGIN SELECT RAISE(ABORT, 'CompanyFacts checks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS companyfacts_checks_no_delete
+BEFORE DELETE ON companyfacts_checks
+BEGIN SELECT RAISE(ABORT, 'CompanyFacts checks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS companyfacts_observations_no_replace
+BEFORE INSERT ON companyfacts_observations
+WHEN EXISTS(SELECT 1 FROM companyfacts_observations old
+            WHERE old.issuer_cik=NEW.issuer_cik AND old.sha256=NEW.sha256)
+BEGIN SELECT RAISE(ABORT, 'CompanyFacts observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS companyfacts_checks_keep_duplicate
+BEFORE INSERT ON companyfacts_checks
+WHEN EXISTS(SELECT 1 FROM companyfacts_checks old
+            WHERE old.issuer_cik=NEW.issuer_cik AND old.sha256=NEW.sha256
+              AND old.checked_at=NEW.checked_at AND old.provenance=NEW.provenance)
+BEGIN SELECT RAISE(IGNORE); END;
 """
 
 
