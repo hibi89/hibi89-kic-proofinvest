@@ -341,6 +341,12 @@ def list_companyfacts(db_path: Path, *, cik: str, as_of: str) -> list[dict]:
 
 def read_companyfacts(db_path: Path, *, cik: str, sha256: str,
                       as_of: str | None = None) -> bytes:
+    raw, _ = _read_companyfacts_record(db_path, cik=cik, sha256=sha256, as_of=as_of)
+    return raw
+
+
+def _read_companyfacts_record(db_path: Path, *, cik: str, sha256: str,
+                              as_of: str | None) -> tuple[bytes, dict]:
     target = cik10(cik)
     if not isinstance(sha256, str) or re.fullmatch(r"[0-9a-f]{64}", sha256) is None:
         raise ValueError("Invalid CompanyFacts SHA-256")
@@ -350,21 +356,46 @@ def read_companyfacts(db_path: Path, *, cik: str, sha256: str,
     with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
         db.execute("PRAGMA query_only=ON")
         row = db.execute(
-            "SELECT response,source_uri,collected_at,as_of_cutoff FROM companyfacts_observations "
+            "SELECT response,source_uri,collected_at,as_of_cutoff,entity_name,provenance "
+            "FROM companyfacts_observations "
             "WHERE issuer_cik=? AND sha256=?", (target, sha256),
         ).fetchone()
     if row is None:
         raise KeyError("CompanyFacts observation not found")
-    raw, uri, collected, stored_cutoff = row
-    if (uri != source_uri(target) or hashlib.sha256(raw).hexdigest() != sha256
+    raw, uri, collected, stored_cutoff, entity_name, provenance = row
+    if (not isinstance(raw, bytes) or uri != source_uri(target)
+            or hashlib.sha256(raw).hexdigest() != sha256
             or parse_day(stored_cutoff).isoformat() != stored_cutoff):
         raise ValueError("CompanyFacts source integrity failed")
+    indexed = index_companyfacts(
+        raw, cik=target, as_of=stored_cutoff, collected_at=collected,
+        provenance=provenance,
+    )
+    if (indexed["source_uri"] != uri or indexed["entity_name"] != entity_name
+            or indexed["source_sha256"] != sha256):
+        raise ValueError("CompanyFacts metadata integrity failed")
     if as_of is not None:
         day = parse_day(as_of).isoformat()
         if stored_cutoff > day or collected[:10] > day:
             raise ValueError("CompanyFacts response was not available by as-of date")
-    _validate_payload(raw, target)
-    return raw
+    payload, _, _ = _validate_payload(raw, target)
+    return raw, {"indexed": indexed, "companyfacts": payload}
+
+
+def read_companyfacts_envelope(db_path: Path, *, cik: str, sha256: str,
+                               as_of: str) -> dict[str, Any]:
+    """Build a versioned read-only JSON handoff from one integrity-checked DB row."""
+    raw, record = _read_companyfacts_record(
+        db_path, cik=cik, sha256=sha256, as_of=as_of,
+    )
+    return {
+        "schema": "disclosure-lightning.companyfacts-envelope.v1",
+        **record["indexed"],
+        "companyfacts": record["companyfacts"],
+        "response_bytes": len(raw),
+        "financial_claim_verified": False,
+        "source_authenticity_verified": False,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -375,15 +406,23 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--input-json", type=Path)
     group.add_argument("--allow-network", action="store_true")
+    group.add_argument("--read-sha256")
     parser.add_argument("--collected-at")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.list:
-            if args.input_json or args.allow_network or args.collected_at:
+            if args.input_json or args.allow_network or args.read_sha256 or args.collected_at:
                 raise ValueError("Read-only listing cannot import or fetch")
             result = {"status": "READ_ONLY", "as_of": parse_day(args.as_of).isoformat(),
                       "observations": list_companyfacts(args.db, cik=args.cik, as_of=args.as_of)}
+        elif args.read_sha256:
+            if args.collected_at is not None:
+                raise ValueError("Read-only retrieval does not accept a collection timestamp")
+            result = read_companyfacts_envelope(
+                args.db, cik=args.cik, sha256=args.read_sha256, as_of=args.as_of,
+            )
+            result["status"] = "READ_ONLY"
         else:
             if bool(args.input_json) == bool(args.allow_network):
                 raise ValueError("Provide exactly one of --input-json or --allow-network")

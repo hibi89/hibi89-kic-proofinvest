@@ -218,6 +218,17 @@ class CompanyFactsTests(unittest.TestCase):
         listed = json.loads(output.getvalue())
         self.assertEqual(listed["status"], "READ_ONLY")
         self.assertEqual(len(listed["observations"]), 1)
+        output = StringIO()
+        with redirect_stdout(output), redirect_stderr(StringIO()):
+            self.assertEqual(companyfacts.main(argv + [
+                "--read-sha256", saved["source_sha256"],
+            ]), 0)
+        envelope = json.loads(output.getvalue())
+        self.assertEqual(envelope["schema"],
+                         "disclosure-lightning.companyfacts-envelope.v1")
+        self.assertEqual(envelope["companyfacts"], json.loads(RAW))
+        self.assertFalse(envelope["financial_claim_verified"])
+        self.assertFalse(envelope["source_authenticity_verified"])
 
     def test_saved_companyfacts_bytes_feed_current_kic_read_only_consumer(self):
         accession = "0000320193-25-000079"
@@ -238,11 +249,11 @@ class CompanyFactsTests(unittest.TestCase):
             raw, cik=CIK, as_of=cutoff, collected_at="2025-11-02T00:00:00Z",
         )
         companyfacts.save_companyfacts(self.db, raw, indexed)
-        archived = companyfacts.read_companyfacts(
+        handoff = companyfacts.read_companyfacts_envelope(
             self.db, cik=CIK, sha256=indexed["source_sha256"], as_of=cutoff,
         )
         verdict = verify_sec_annual_revenue(
-            json.loads(archived), cik=CIK, accession=accession,
+            handoff["companyfacts"], cik=CIK, accession=accession,
             current_end="2025-09-27", prior_end="2024-09-28", as_of=cutoff,
         )
         self.assertEqual(verdict["status"], "calculated_unverified")

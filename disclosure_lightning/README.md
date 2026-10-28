@@ -116,7 +116,10 @@ The `python -m disclosure_lightning.companyfacts` command stores a bounded raw C
 ```powershell
 python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --input-json .\fixtures\synthetic-companyfacts.json --collected-at 2026-10-28T00:00:00Z
 python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --list
+python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --read-sha256 <listed-sha256>
 ```
+
+`--read-sha256` writes one `disclosure-lightning.companyfacts-envelope.v1` JSON record to stdout. It includes the original parsed CompanyFacts object plus the original-response SHA-256, source URI, retrieval/as-of timestamps, and unverified provenance flags. This is a read-only handoff suitable for a separately reviewed KIC consumer; financial verification remains with KIC and source authenticity remains false.
 
 **구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 SEC 요청 경로, 저장된 HTML/텍스트와 일부 Inline XBRL의 로컬 후보 추출, bounded transient retry, submissions/archive ETag/304 캐시 처리. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 숫자·taxonomy 정규화와 전체 context/continuation 처리, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, 스케줄러와 교차 프로세스 속도 제한, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
 
