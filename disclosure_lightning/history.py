@@ -273,15 +273,16 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                     "SELECT response,seen_at,provenance,sha256,provider,issuer_cik "
                     "FROM observations WHERE id=?", (observation_id,),
                 ).fetchone()
-            if (observation is None or not isinstance(observation[0], bytes)
-                    or observation[2] != "OFFLINE_UNVERIFIED"
+            if observation is None or not isinstance(observation[0], bytes):
+                raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
+            if len(observation[0]) > core.MAX_JSON_BYTES:
+                raise ValueError("HISTORY_PAGE_RECEIPT_SIZE_LIMIT_EXCEEDED")
+            if (observation[2] != "OFFLINE_UNVERIFIED"
                     or observation[3] != digest
                     or observation[4] != core.PROVIDER
                     or observation[5] != target
                     or hashlib.sha256(observation[0]).hexdigest() != digest):
                 raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
-            if len(observation[0]) > core.MAX_JSON_BYTES:
-                raise ValueError("HISTORY_PAGE_RECEIPT_SIZE_LIMIT_EXCEEDED")
             audited_bytes += len(observation[0])
             if audited_bytes > MAX_HISTORY_AUDIT_BYTES:
                 raise ValueError("HISTORY_AUDIT_BYTE_BUDGET_EXCEEDED")
