@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from disclosure_lightning import core, originals, xbrl
 
@@ -180,6 +181,68 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         self.assertEqual(result["candidate_count"], 3)
         self.assertEqual(result["facts"][0]["context_ref_status"], "RESOLVED_UNVERIFIED")
         self.assertEqual(result["facts"][0]["unit_ref_status"], "RESOLVED_UNVERIFIED")
+
+    def test_nested_namespace_redefinition_is_scoped_and_restored(self):
+        scoped = INLINE.replace(
+            b"</body>",
+            b'<div xmlns:ix="urn:synthetic-decoy">'
+            b'<ix:nonFraction name="synthetic:NotAnInlineFact" contextRef="ctx-2025">'
+            b'999</ix:nonFraction></div>'
+            b'<ix:nonNumeric name="dei:AfterScope" contextRef="ctx-2025">restored</ix:nonNumeric>'
+            b"</body>",
+        )
+        result = xbrl.extract_inline_facts(
+            scoped, content_type="text/html",
+            filing_sha256=hashlib.sha256(scoped).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["candidate_count"], 4)
+        self.assertNotIn("synthetic:NotAnInlineFact",
+                         {fact["name"] for fact in result["facts"]})
+        self.assertEqual(result["facts"][-1]["name"], "dei:AfterScope")
+        self.assertEqual(result["facts"][-1]["lexical_value"], "restored")
+
+    def test_candidate_and_root_tree_limits_are_fail_closed(self):
+        with patch.object(xbrl, "MAX_CANDIDATES", 1):
+            limited_facts = xbrl.extract_inline_facts(
+                INLINE, content_type="text/html",
+                filing_sha256=hashlib.sha256(INLINE).hexdigest(),
+                issuer_cik=CIK, accession=ACCESSION,
+                source_uri=self.receipt["source_uri"],
+                input_origin="OFFLINE_FILE_UNVERIFIED",
+            )
+        self.assertEqual(limited_facts["candidate_count"], 1)
+        self.assertTrue(limited_facts["truncated"])
+        self.assertFalse(limited_facts["complete_candidate_extraction"])
+
+        roots = (b'<html xmlns:xbrli="http://www.xbrl.org/2003/instance"><body>'
+                 b'<xbrli:context id="ctx"></xbrli:context>'
+                 b'<xbrli:unit id="unit"></xbrli:unit></body></html>')
+        with patch.object(xbrl, "MAX_TREE_NODES", 1):
+            limited_trees = xbrl.extract_inline_facts(
+                roots, content_type="text/html",
+                filing_sha256=hashlib.sha256(roots).hexdigest(),
+                issuer_cik=CIK, accession=ACCESSION,
+                source_uri=self.receipt["source_uri"],
+                input_origin="OFFLINE_FILE_UNVERIFIED",
+            )
+        self.assertTrue(limited_trees["truncated"])
+        self.assertFalse(limited_trees["complete_candidate_extraction"])
+
+    def test_inline_exclude_text_does_not_leak_into_fact_lexical_value(self):
+        excluded = INLINE.replace(
+            b"123&#52;56",
+            b"12<ix:exclude><span>not-a-fact-value</span></ix:exclude>34",
+        )
+        result = xbrl.extract_inline_facts(
+            excluded, content_type="text/html",
+            filing_sha256=hashlib.sha256(excluded).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["facts"][0]["lexical_value"], "1234")
+        self.assertNotIn("not-a-fact-value", result["facts"][0]["lexical_value"])
 
     def test_incomplete_fact_is_reported_as_truncated_not_complete(self):
         partial = (b'<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL">'

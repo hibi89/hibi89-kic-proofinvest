@@ -23,6 +23,10 @@ MAX_CANDIDATES = 10_000
 MAX_TREE_NODES = 20_000
 MAX_LEXICAL_CHARS = 10_000
 HTML_TYPES = frozenset({"text/html", "application/xhtml+xml", "text/xml", "application/xml"})
+HTML_VOID_ELEMENTS = frozenset({
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
+    "meta", "param", "source", "track", "wbr",
+})
 
 
 def _local(tag: str) -> str:
@@ -49,53 +53,76 @@ class _InlineXbrlParser(HTMLParser):
         self.tree_stack: list[dict] = []
         self.tree_roots: list[dict] = []
         self.tree_nodes = 0
+        self.fact_starts = 0
         self.unsupported_fact_count = 0
+        self.exclude_depth = 0
         self.truncated = False
         self.namespaces: dict[str, str] = {}
+        self.namespace_stack: list[tuple[str, dict[str, str]]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
         tag = tag.lower()
         attr_map = _attrs(attrs)
+        previous = self.namespaces
+        scoped = dict(previous)
         for key, value in attr_map.items():
             if isinstance(value, str):
                 if key == "xmlns":
-                    self.namespaces[""] = value
+                    scoped[""] = value
                 elif key.startswith("xmlns:"):
-                    self.namespaces[key[6:]] = value
-        namespace, local_name = _expanded_name(tag, self.namespaces)
+                    scoped[key[6:]] = value
+        self.namespaces = scoped
+        if tag not in HTML_VOID_ELEMENTS:
+            self.namespace_stack.append((tag, scoped))
         line, _ = self.getpos()
 
-        if (namespace == XBRLI_NAMESPACE and local_name in {"context", "unit"}):
-            self.tree_nodes += 1
-            node = {"tag": tag, "attributes": attr_map, "text": "", "children": [],
-                    "source_line": line}
-            self.tree_roots.append(node)
-            self.tree_stack.append(node)
-            return
-        if self.tree_stack:
-            self.tree_nodes += 1
-            if self.tree_nodes > MAX_TREE_NODES:
-                self.truncated = True
+        try:
+            namespace, local_name = _expanded_name(tag, scoped)
+            if self.exclude_depth:
+                if namespace == INLINE_XBRL_NAMESPACE and local_name == "exclude":
+                    self.exclude_depth += 1
                 return
-            node = {"tag": tag, "attributes": attr_map, "text": "", "children": [],
-                    "source_line": line}
-            self.tree_stack[-1]["children"].append(node)
-            self.tree_stack.append(node)
-            return
-        if namespace == INLINE_XBRL_NAMESPACE and local_name in SUPPORTED_FACT_NAMES:
-            if len(self.facts) >= MAX_CANDIDATES:
-                self.truncated = True
+            if namespace == INLINE_XBRL_NAMESPACE and local_name == "exclude":
+                self.exclude_depth = 1
                 return
-            self.fact_stack.append({
-                "tag": tag,
-                "attributes": attr_map,
-                "text": "",
-                "source_start_line": line,
-                "source_end_line": line,
-            })
-        elif namespace == INLINE_XBRL_NAMESPACE and local_name not in {
-                "header", "references", "resources", "exclude"}:
-            self.unsupported_fact_count += 1
+            if (namespace == XBRLI_NAMESPACE and local_name in {"context", "unit"}):
+                self.tree_nodes += 1
+                if self.tree_nodes > MAX_TREE_NODES:
+                    self.truncated = True
+                    return
+                node = {"tag": tag, "attributes": attr_map, "text": "", "children": [],
+                        "source_line": line}
+                self.tree_roots.append(node)
+                self.tree_stack.append(node)
+                return
+            if self.tree_stack:
+                self.tree_nodes += 1
+                if self.tree_nodes > MAX_TREE_NODES:
+                    self.truncated = True
+                    return
+                node = {"tag": tag, "attributes": attr_map, "text": "", "children": [],
+                        "source_line": line}
+                self.tree_stack[-1]["children"].append(node)
+                self.tree_stack.append(node)
+                return
+            if namespace == INLINE_XBRL_NAMESPACE and local_name in SUPPORTED_FACT_NAMES:
+                if self.fact_starts >= MAX_CANDIDATES:
+                    self.truncated = True
+                    return
+                self.fact_starts += 1
+                self.fact_stack.append({
+                    "tag": tag,
+                    "attributes": attr_map,
+                    "text": "",
+                    "source_start_line": line,
+                    "source_end_line": line,
+                })
+            elif namespace == INLINE_XBRL_NAMESPACE and local_name not in {
+                    "header", "references", "resources", "exclude"}:
+                self.unsupported_fact_count += 1
+        finally:
+            if tag in HTML_VOID_ELEMENTS:
+                self.namespaces = previous
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]):
         self.handle_starttag(tag, attrs)
@@ -103,25 +130,41 @@ class _InlineXbrlParser(HTMLParser):
 
     def handle_endtag(self, tag: str):
         tag = tag.lower()
-        if self.tree_stack:
-            for index in range(len(self.tree_stack) - 1, -1, -1):
-                if self.tree_stack[index]["tag"] == tag:
-                    del self.tree_stack[index:]
+        try:
+            namespace, local_name = _expanded_name(tag, self.namespaces)
+            if self.exclude_depth:
+                if namespace == INLINE_XBRL_NAMESPACE and local_name == "exclude":
+                    self.exclude_depth -= 1
+                return
+            if self.tree_stack:
+                for index in range(len(self.tree_stack) - 1, -1, -1):
+                    if self.tree_stack[index]["tag"] == tag:
+                        del self.tree_stack[index:]
+                        break
+                if not self.tree_stack and self.tree_roots:
+                    root = self.tree_roots[-1]
+                    root_namespace, root_name = _expanded_name(root["tag"], self.namespaces)
+                    if root_namespace == XBRLI_NAMESPACE and root_name == "context":
+                        self.contexts.append(root)
+                    elif root_namespace == XBRLI_NAMESPACE and root_name == "unit":
+                        self.units.append(root)
+                return
+            if self.fact_stack and self.fact_stack[-1]["tag"] == tag:
+                fact = self.fact_stack.pop()
+                fact["source_end_line"] = self.getpos()[0]
+                self.facts.append(fact)
+        finally:
+            for index in range(len(self.namespace_stack) - 1, -1, -1):
+                if self.namespace_stack[index][0] == tag:
+                    del self.namespace_stack[index:]
+                    self.namespaces = (
+                        self.namespace_stack[-1][1] if self.namespace_stack else {}
+                    )
                     break
-            if not self.tree_stack and self.tree_roots:
-                root = self.tree_roots[-1]
-                root_namespace, root_name = _expanded_name(root["tag"], self.namespaces)
-                if root_namespace == XBRLI_NAMESPACE and root_name == "context":
-                    self.contexts.append(root)
-                elif root_namespace == XBRLI_NAMESPACE and root_name == "unit":
-                    self.units.append(root)
-            return
-        if self.fact_stack and self.fact_stack[-1]["tag"] == tag:
-            fact = self.fact_stack.pop()
-            fact["source_end_line"] = self.getpos()[0]
-            self.facts.append(fact)
 
     def handle_data(self, data: str):
+        if self.exclude_depth:
+            return
         if self.tree_stack:
             node = self.tree_stack[-1]
             remaining = MAX_LEXICAL_CHARS - len(node["text"])
@@ -218,7 +261,7 @@ def extract_inline_facts(raw: bytes, *, content_type: str, filing_sha256: str,
     parser = _InlineXbrlParser()
     parser.feed(text)
     parser.close()
-    if parser.fact_stack or parser.tree_stack:
+    if parser.fact_stack or parser.tree_stack or parser.exclude_depth:
         parser.truncated = True
     contexts = _index_by_id(parser.contexts)
     units = _index_by_id(parser.units)
