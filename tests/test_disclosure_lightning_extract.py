@@ -97,7 +97,8 @@ class ExtractedFilingTests(unittest.TestCase):
             self.assertEqual(block["raw_span_sha256"], hashlib.sha256(span).hexdigest())
 
     def test_utf8_html_byte_spans_count_multibyte_and_bom_offsets(self):
-        raw = (b"\xef\xbb\xbf<html>\n<p>" + "  매출  2025 ".encode("utf-8")
+        raw = (b"\xef\xbb\xbf<html>\n<p title=\"" + "한글".encode("utf-8")
+               + b"\">" + "  매출  2025 ".encode("utf-8")
                + b"</p>\n<p>A &amp; B</p></html>")
         result = extract.extract_bytes(
             raw, content_type="text/html",
