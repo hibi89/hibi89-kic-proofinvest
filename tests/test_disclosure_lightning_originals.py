@@ -35,6 +35,11 @@ def _sqlite_connection(path):
         connection.close()
 
 
+def _drop_observation_guards(db):
+    for trigger in ("observations_no_update", "observations_no_delete"):
+        db.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+
+
 class OriginalFilingTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="dl-original-test-")
@@ -433,6 +438,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_as_of_receipt_listing_requires_index_observation_by_cutoff(self):
         saved = self.save()
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute(
                 "UPDATE observations SET seen_at=? WHERE issuer_cik=?",
@@ -481,6 +487,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_original_locator_rechecks_saved_index_bytes_and_metadata(self):
         saved = self.save()
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             db.execute("UPDATE observations SET response=? WHERE issuer_cik=?",
                        (b"{}", C))
         with self.assertRaisesRegex(ValueError, "index source integrity"):
@@ -500,6 +507,7 @@ class OriginalFilingTests(unittest.TestCase):
             calls += 1
             if calls == 1:
                 with _sqlite_connection(self.db) as db:
+                    _drop_observation_guards(db)
                     db.execute("UPDATE observations SET response=? WHERE issuer_cik=?",
                                (b"{}", C))
             return result

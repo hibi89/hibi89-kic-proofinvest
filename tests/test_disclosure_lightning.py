@@ -35,6 +35,12 @@ def _sqlite_connection(path):
         connection.close()
 
 
+def _drop_observation_guards(db):
+    for trigger in ("observations_no_update", "observations_no_delete",
+                    "observation_checks_no_update", "observation_checks_no_delete"):
+        db.execute(f"DROP TRIGGER IF EXISTS {trigger}")
+
+
 class DisclosureLightningTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="dl-kic-test-")
@@ -106,9 +112,46 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
 
+    def test_source_observations_and_checks_are_append_only(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            observation = db.execute(
+                "SELECT id,provider,issuer_cik,sha256,response,seen_at,provenance "
+                "FROM observations"
+            ).fetchone()
+            check = db.execute(
+                "SELECT observation_id,checked_at,provenance FROM observation_checks"
+            ).fetchone()
+        digest = observation[3]
+        mutations = (
+            ("UPDATE observations SET provenance='CHANGED' WHERE id=?", (observation[0],)),
+            ("DELETE FROM observations WHERE id=?", (observation[0],)),
+            ("INSERT OR REPLACE INTO observations"
+             "(provider,issuer_cik,sha256,response,seen_at,provenance) VALUES(?,?,?,?,?,?)",
+             observation[1:]),
+            ("UPDATE observation_checks SET provenance='CHANGED' WHERE observation_id=?",
+             (observation[0],)),
+            ("DELETE FROM observation_checks WHERE observation_id=?", (observation[0],)),
+        )
+        for sql, parameters in mutations:
+            with self.subTest(sql=sql.split()[0:3]):
+                with _sqlite_connection(self.db) as db, self.assertRaisesRegex(
+                        sqlite3.IntegrityError, "append-only"):
+                    db.execute(sql, parameters)
+        with _sqlite_connection(self.db) as db:
+            db.execute("INSERT OR REPLACE INTO observation_checks VALUES(?,?,?)", check)
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM observation_checks WHERE observation_id=?",
+                (observation[0],),
+            ).fetchone()[0], 1)
+            self.assertEqual(db.execute(
+                "SELECT response FROM observations WHERE sha256=?", (digest,),
+            ).fetchone()[0], self.raw)
+
     def test_read_only_list_refuses_tampered_original_response(self):
         core.save_index(self.db, self.raw, self.indexed())
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             db.execute("UPDATE observations SET response=response || ?", (b" ",))
         with self.assertRaisesRegex(ValueError, "index response integrity"):
             core.list_filings(self.db, cik=CIK)
@@ -249,6 +292,7 @@ class DisclosureLightningTests(unittest.TestCase):
         altered = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         digest = hashlib.sha256(altered).hexdigest()
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             db.execute("UPDATE observations SET response=?,sha256=?",
                        (altered, digest))
             for accession, filing_json in db.execute(
@@ -684,6 +728,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertTrue(all("SEC_HTTPS_304_NOT_MODIFIED" in row["last_checked_provenances"]
                             for row in listed))
         with _sqlite_connection(self.db) as conn:
+            _drop_observation_guards(conn)
             conn.execute("UPDATE observations SET response=? WHERE issuer_cik=?", (b"{}", CIK))
         with self.assertRaisesRegex(ValueError, "cache failed integrity"):
             core._load_submission_cache(self.db, CIK)
@@ -1246,6 +1291,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(earlier["indexed_filings_checked"], 0)
         self.assertEqual(earlier["amendments"], [])
         with _sqlite_connection(self.db) as conn:
+            _drop_observation_guards(conn)
             conn.execute("UPDATE observations SET response=?",
                          (b"CORRUPTED-BY-SYNTHETIC-TEST",))
         with self.assertRaisesRegex(ValueError, "CORRUPTED"):
@@ -1405,6 +1451,7 @@ class DisclosureLightningTests(unittest.TestCase):
                     db_path=self.db, cik=CIK,
                     manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             db.execute("UPDATE observations SET response=response || ? WHERE sha256=?",
                        (b" ", hashlib.sha256(pages[first]).hexdigest()))
         with self.assertRaisesRegex(ValueError, "INTEGRITY_FAILED"):

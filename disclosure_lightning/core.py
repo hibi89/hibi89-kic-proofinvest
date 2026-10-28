@@ -403,6 +403,30 @@ CREATE TABLE IF NOT EXISTS history_page_receipt_versions(
     record_count INTEGER NOT NULL,
     PRIMARY KEY(issuer_cik,manifest_sha256,page_name,page_sha256)
 );
+CREATE TRIGGER IF NOT EXISTS observations_no_update
+BEFORE UPDATE ON observations
+BEGIN SELECT RAISE(ABORT, 'SEC observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observations_no_delete
+BEFORE DELETE ON observations
+BEGIN SELECT RAISE(ABORT, 'SEC observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observations_no_replace
+BEFORE INSERT ON observations
+WHEN EXISTS(SELECT 1 FROM observations old
+            WHERE old.provider=NEW.provider AND old.issuer_cik=NEW.issuer_cik
+              AND old.sha256=NEW.sha256)
+BEGIN SELECT RAISE(ABORT, 'SEC observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observation_checks_no_update
+BEFORE UPDATE ON observation_checks
+BEGIN SELECT RAISE(ABORT, 'SEC observation checks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observation_checks_no_delete
+BEFORE DELETE ON observation_checks
+BEGIN SELECT RAISE(ABORT, 'SEC observation checks are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observation_checks_keep_duplicate
+BEFORE INSERT ON observation_checks
+WHEN EXISTS(SELECT 1 FROM observation_checks old
+            WHERE old.observation_id=NEW.observation_id
+              AND old.checked_at=NEW.checked_at AND old.provenance=NEW.provenance)
+BEGIN SELECT RAISE(IGNORE); END;
 """
 
 
