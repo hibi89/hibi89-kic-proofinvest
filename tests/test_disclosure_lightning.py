@@ -537,7 +537,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(result["indexed"]["indexed_count"], 3)
 
     def test_live_request_rejects_injected_collected_time_without_io(self):
-        with patch("disclosure_lightning.core.fetch_submissions") as fetch:
+        with patch("disclosure_lightning.core.fetch_submissions_with_cache") as fetch:
             with contextlib.redirect_stderr(io.StringIO()) as error:
                 rc = core.main([
                     "--cik", CIK, "--as-of", "2026-10-27",
@@ -620,6 +620,163 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(index["filings"][0]["evidence_status"],
                          "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED")
         self.assertIsNone(index["filings"][0]["raw_sha256"])
+
+    def test_submissions_etag_304_reuses_only_hash_checked_sqlite_bytes(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        url = f"https://data.sec.gov/submissions/CIK{CIK}.json"
+        etag = 'W/"synthetic-v1"'
+        class SuccessResponse:
+            status = 200
+            headers = {"Content-Type": "application/json", "ETag": etag}
+            def geturl(self):
+                return url
+            def read(self, size):
+                return self_fixture
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return None
+
+        self_fixture = self.raw
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.return_value = SuccessResponse()
+            raw, received_etag, not_modified = core.fetch_submissions_with_cache(
+                self.db, CIK, user_agent="DisclosureLightning lab team@real-company.org")
+            request = opener.return_value.open.call_args.args[0]
+            self.assertIsNone(request.get_header("If-none-match"))
+        self.assertEqual((raw, received_etag, not_modified), (self.raw, etag, False))
+
+        collected = core._timestamp()
+        indexed = core.index_submissions(
+            raw, cik=CIK, as_of="2099-12-31", forms=FORMS,
+            provenance="SEC_HTTPS_RESPONSE", collected_at=collected,
+        )
+        core.save_index(
+            self.db, raw, indexed, store_http_validator=True, etag=received_etag,
+        )
+        cached = core._load_submission_cache(self.db, CIK)
+        self.assertEqual(cached["raw"], self.raw)
+        self.assertEqual(cached["etag"], etag)
+
+        not_modified_headers = Message()
+        not_modified_headers["ETag"] = etag
+        unchanged = HTTPError(url, 304, "Not Modified", not_modified_headers, io.BytesIO(b""))
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = unchanged
+            returned, cached_etag, not_modified = core.fetch_submissions_with_cache(
+                self.db, CIK, user_agent="DisclosureLightning lab team@real-company.org")
+            request = opener.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header("If-none-match"), etag)
+        self.assertEqual((returned, cached_etag, not_modified), (self.raw, etag, True))
+
+        checked_at = core._timestamp()
+        checked_index = core.index_submissions(
+            returned, cik=CIK, as_of="2099-12-31", forms=FORMS,
+            provenance="SEC_HTTPS_RESPONSE", collected_at=checked_at,
+        )
+        core.save_index(
+            self.db, returned, checked_index, store_http_validator=True,
+            etag=cached_etag, check_provenance="SEC_HTTPS_304_NOT_MODIFIED",
+        )
+        listed = core.list_filings(self.db, cik=CIK, as_of="2099-12-31")
+        self.assertTrue(all("SEC_HTTPS_304_NOT_MODIFIED" in row["last_checked_provenances"]
+                            for row in listed))
+        with _sqlite_connection(self.db) as conn:
+            conn.execute("UPDATE observations SET response=? WHERE issuer_cik=?", (b"{}", CIK))
+        with self.assertRaisesRegex(ValueError, "cache failed integrity"):
+            core._load_submission_cache(self.db, CIK)
+
+    def test_submissions_304_without_cache_fails_closed(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        url = f"https://data.sec.gov/submissions/CIK{CIK}.json"
+        unchanged = HTTPError(url, 304, "Not Modified", Message(), io.BytesIO(b""))
+        with patch("disclosure_lightning.core.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = unchanged
+            with self.assertRaisesRegex(ValueError, "without a hash-verified cached representation"):
+                core.fetch_submissions_with_cache(
+                    self.db, CIK, user_agent="DisclosureLightning lab team@real-company.org")
+            opener.return_value.open.assert_called_once()
+
+    def test_live_cli_uses_saved_etag_and_reports_304_read_only_reuse(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+        import os
+        from unittest.mock import Mock
+
+        url = f"https://data.sec.gov/submissions/CIK{CIK}.json"
+        etag = '"synthetic-cli-v1"'
+
+        class SuccessResponse:
+            status = 200
+            headers = {"Content-Type": "application/json", "ETag": etag}
+            def geturl(self):
+                return url
+            def read(self, size):
+                return self_fixture
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return None
+
+        self_fixture = self.raw
+        first_opener = Mock()
+        first_opener.open.return_value = SuccessResponse()
+        not_modified_headers = Message()
+        not_modified_headers["ETag"] = etag
+        second_opener = Mock()
+        second_opener.open.side_effect = HTTPError(
+            url, 304, "Not Modified", not_modified_headers, io.BytesIO(b""))
+        changed_payload = json.loads(self.raw)
+        changed_payload["name"] = "SYNTHETIC UPDATED ISSUER NAME"
+        changed_raw = json.dumps(changed_payload).encode("utf-8")
+        changed_etag = '"synthetic-cli-v2"'
+
+        class ChangedResponse(SuccessResponse):
+            headers = {"Content-Type": "application/json", "ETag": changed_etag}
+            def read(self, size):
+                return changed_raw
+
+        third_opener = Mock()
+        third_opener.open.return_value = ChangedResponse()
+        args = ["--cik", CIK, "--as-of", "2099-12-31", "--db", str(self.db),
+                "--allow-network"]
+        with patch("disclosure_lightning.core.urllib.request.build_opener",
+                   side_effect=[first_opener, second_opener, third_opener]), \
+                patch.dict(os.environ, {"DL_SEC_USER_AGENT":
+                                        "DisclosureLightning lab team@real-company.org"}):
+            with contextlib.redirect_stdout(io.StringIO()) as first_output:
+                self.assertEqual(core.main(args), 0)
+            with contextlib.redirect_stdout(io.StringIO()) as second_output:
+                self.assertEqual(core.main(args), 0)
+            with contextlib.redirect_stdout(io.StringIO()) as third_output:
+                self.assertEqual(core.main(args), 0)
+        first_result = json.loads(first_output.getvalue())
+        second_result = json.loads(second_output.getvalue())
+        third_result = json.loads(third_output.getvalue())
+        self.assertFalse(first_result["http_cache"]["response_not_modified"])
+        self.assertTrue(second_result["http_cache"]["response_not_modified"])
+        self.assertFalse(third_result["http_cache"]["response_not_modified"])
+        self.assertTrue(third_result["http_cache"]["etag_stored"])
+        self.assertEqual(
+            second_opener.open.call_args.args[0].get_header("If-none-match"), etag)
+        self.assertEqual(
+            third_opener.open.call_args.args[0].get_header("If-none-match"), etag)
+        with _sqlite_connection(self.db) as conn:
+            self.assertEqual(conn.execute(
+                "SELECT count(*) FROM observations WHERE issuer_cik=?", (CIK,)
+            ).fetchone()[0], 2)
+            self.assertEqual(conn.execute(
+                "SELECT count(*) FROM observation_checks WHERE provenance=?",
+                ("SEC_HTTPS_304_NOT_MODIFIED",),
+            ).fetchone()[0], 1)
+            self.assertEqual(conn.execute(
+                "SELECT etag,response_sha256 FROM http_validators WHERE issuer_cik=?",
+                (CIK,),
+            ).fetchone(), (changed_etag, hashlib.sha256(changed_raw).hexdigest()))
 
     def test_transient_sec_get_retries_honor_retry_after_and_stay_bounded(self):
         from email.message import Message

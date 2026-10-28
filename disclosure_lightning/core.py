@@ -31,6 +31,7 @@ MAX_HTTP_ATTEMPTS = 3
 MAX_RETRY_DELAY_SECONDS = 30
 MIN_RETRY_DELAY_SECONDS = 0.2
 RETRYABLE_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+ETAG_PATTERN = re.compile(r'(?:W/)?"[\x21\x23-\x7e]*"\Z', re.ASCII)
 ALLOWED_FORMS = frozenset({"10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A"})
 CONTACT_PATTERN = re.compile(r"[A-Za-z0-9_.+%-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
 
@@ -65,6 +66,11 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _valid_etag(value: Any) -> bool:
+    return (isinstance(value, str) and len(value) <= 512
+            and ETAG_PATTERN.fullmatch(value) is not None)
+
+
 def _retry_after_delay(value: str | None, *, attempt: int,
                        now: datetime | None = None) -> float | None:
     """Return a bounded Retry-After delay, or None when its wait is excessive."""
@@ -94,13 +100,18 @@ def _retry_after_delay(value: str | None, *, attempt: int,
     return max(MIN_RETRY_DELAY_SECONDS, delay)
 
 
-def _bounded_sec_get(opener, request, read_response):
+def _bounded_sec_get(opener, request, read_response, *, read_not_modified=None):
     """Retry only transient, safe SEC GET failures within a fixed time budget."""
     for attempt in range(MAX_HTTP_ATTEMPTS):
         try:
             with opener.open(request, timeout=15) as response:
                 return read_response(response)
         except urllib.error.HTTPError as exc:
+            if exc.code == 304 and read_not_modified is not None:
+                try:
+                    return read_not_modified(exc)
+                finally:
+                    exc.close()
             if exc.code not in RETRYABLE_HTTP_STATUSES:
                 exc.close()
                 raise
@@ -346,6 +357,17 @@ CREATE TABLE IF NOT EXISTS observation_checks(
     provenance TEXT NOT NULL,
     PRIMARY KEY(observation_id,checked_at,provenance)
 );
+CREATE TABLE IF NOT EXISTS http_validators(
+    provider TEXT NOT NULL,
+    issuer_cik TEXT NOT NULL,
+    source_uri TEXT NOT NULL,
+    etag TEXT NOT NULL,
+    response_sha256 TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(provider,issuer_cik,source_uri),
+    FOREIGN KEY(provider,issuer_cik,response_sha256)
+      REFERENCES observations(provider,issuer_cik,sha256)
+);
 CREATE TABLE IF NOT EXISTS filings(
     provider TEXT NOT NULL,
     issuer_cik TEXT NOT NULL,
@@ -510,7 +532,9 @@ def _validate_index_for_save(raw: bytes, indexed: dict, db_path: Path) -> None:
             raise ValueError("Indexed filing acceptance follows its observation time")
 
 
-def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
+def save_index(db_path: Path, raw: bytes, indexed: dict, *,
+               store_http_validator: bool = False, etag: str | None = None,
+               check_provenance: str | None = None) -> dict:
     """Atomic, repeatable ingestion with original response bytes preserved."""
     candidate = Path(db_path).expanduser()
     if candidate.is_symlink():
@@ -522,6 +546,23 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
         raise ValueError("Original SEC JSON bytes required")
     if not isinstance(indexed, dict):
         raise ValueError("Index evidence must be an object")
+    source_provenance = indexed.get("provenance")
+    checked_as = source_provenance if check_provenance is None else check_provenance
+    if type(store_http_validator) is not bool:
+        raise ValueError("HTTP validator persistence flag must be boolean")
+    if checked_as not in (
+            "OFFLINE_UNVERIFIED", "SEC_HTTPS_RESPONSE", "SEC_HTTPS_304_NOT_MODIFIED"):
+        raise ValueError("Invalid observation-check provenance")
+    if (checked_as == "SEC_HTTPS_304_NOT_MODIFIED"
+            and source_provenance != "SEC_HTTPS_RESPONSE"):
+        raise ValueError("304 checks require an originally indexed SEC HTTPS response")
+    if (checked_as == "SEC_HTTPS_304_NOT_MODIFIED"
+            and not store_http_validator):
+        raise ValueError("304 checks require conditional validator persistence")
+    if store_http_validator and source_provenance != "SEC_HTTPS_RESPONSE":
+        raise ValueError("HTTP validators may only be stored for SEC HTTPS responses")
+    if store_http_validator and etag is not None and not _valid_etag(etag):
+        raise ValueError("Invalid SEC ETag validator")
     _validate_index_for_save(raw, indexed, path)
     history_record_count = None
     if "history_manifest_sha256" in indexed:
@@ -564,8 +605,24 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
                 raise ValueError("OBSERVATION_CHECK_PRECEDES_FIRST_SEEN")
             conn.execute(
                 "INSERT OR IGNORE INTO observation_checks(observation_id,checked_at,provenance)"
-                " VALUES(?,?,?)", (obs_id, indexed["collected_at"], indexed["provenance"]),
+                " VALUES(?,?,?)", (obs_id, indexed["collected_at"], checked_as),
             )
+            if store_http_validator:
+                if etag is None:
+                    conn.execute(
+                        "DELETE FROM http_validators WHERE provider=? AND issuer_cik=? AND source_uri=?",
+                        (PROVIDER, indexed["issuer_cik"], indexed["source_uri"]),
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO http_validators"
+                        "(provider,issuer_cik,source_uri,etag,response_sha256,updated_at)"
+                        " VALUES(?,?,?,?,?,?) ON CONFLICT(provider,issuer_cik,source_uri)"
+                        " DO UPDATE SET etag=excluded.etag,response_sha256=excluded.response_sha256,"
+                        "updated_at=excluded.updated_at",
+                        (PROVIDER, indexed["issuer_cik"], indexed["source_uri"], etag,
+                         digest, indexed["collected_at"]),
+                    )
             for filing in indexed["filings"]:
                 key = (PROVIDER, indexed["issuer_cik"], filing["accession"])
                 old = conn.execute(
@@ -912,20 +969,75 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def fetch_submissions(cik: str, *, user_agent: str, allow_network: bool = False) -> bytes:
-    if not allow_network:
-        raise ValueError("Network disabled unless --allow-network is provided")
+def _load_submission_cache(db_path: Path, cik: str) -> dict | None:
+    """Read a hash-checked SEC representation and ETag from the local ledger."""
+    candidate = Path(db_path).expanduser()
+    if candidate.is_symlink():
+        raise ValueError("DB path cannot be a symbolic link")
+    if not candidate.is_file():
+        return None
+    target = cik10(cik)
+    source_uri = f"https://data.sec.gov/submissions/CIK{target}.json"
+    uri = candidate.resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True)) as conn:
+        conn.execute("PRAGMA query_only=ON")
+        table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='http_validators'"
+        ).fetchone()
+        if table is None:
+            return None
+        row = conn.execute(
+            "SELECT v.etag,v.response_sha256,o.sha256,o.response "
+            "FROM http_validators AS v JOIN observations AS o "
+            "ON o.provider=v.provider AND o.issuer_cik=v.issuer_cik "
+            "AND o.sha256=v.response_sha256 "
+            "WHERE v.provider=? AND v.issuer_cik=? AND v.source_uri=?",
+            (PROVIDER, target, source_uri),
+        ).fetchone()
+    if row is None:
+        return None
+    etag, digest, stored_digest, raw = row
+    if (not _valid_etag(etag) or not isinstance(digest, str)
+            or digest != stored_digest or not isinstance(raw, bytes)
+            or hashlib.sha256(raw).hexdigest() != digest):
+        raise ValueError("Stored SEC conditional cache failed integrity validation")
+    payload = _validate_raw(raw)
+    observed = payload.get("cik")
+    if (type(observed) not in (int, str) or not str(observed).isascii()
+            or not str(observed).isdecimal() or not int(str(observed))
+            or cik10(str(observed)) != target):
+        raise ValueError("Stored SEC conditional cache issuer mismatch")
+    return {"raw": raw, "etag": etag, "sha256": digest, "source_uri": source_uri}
+
+
+def _fetch_submissions_http(cik: str, *, user_agent: str,
+                            cached: dict | None = None) -> tuple[bytes, str | None, bool]:
     target = cik10(cik)
     if not _valid_user_agent(user_agent):
         raise ValueError("Real non-placeholder SEC contact-bearing User-Agent required")
     url = f"https://data.sec.gov/submissions/CIK{target}.json"
-    req = urllib.request.Request(
-        url, headers={"User-Agent": user_agent, "Accept": "application/json",
-                      "Accept-Encoding": "identity"}, method="GET"
-    )
+    headers = {"User-Agent": user_agent, "Accept": "application/json",
+               "Accept-Encoding": "identity"}
+    if cached is not None:
+        raw_cache, etag, cache_sha = (
+            cached.get("raw"), cached.get("etag"), cached.get("sha256")
+        )
+        if (cached.get("source_uri") != url or not isinstance(raw_cache, bytes)
+                or not _valid_etag(etag) or not isinstance(cache_sha, str)
+                or hashlib.sha256(raw_cache).hexdigest() != cache_sha):
+            raise ValueError("SEC conditional cache failed integrity validation")
+        cached_payload = _validate_raw(raw_cache)
+        cached_cik = cached_payload.get("cik")
+        if (type(cached_cik) not in (int, str) or not str(cached_cik).isascii()
+                or not str(cached_cik).isdecimal() or not int(str(cached_cik))
+                or cik10(str(cached_cik)) != target):
+            raise ValueError("SEC conditional cache issuer mismatch")
+        headers["If-None-Match"] = etag
+    req = urllib.request.Request(url, headers=headers, method="GET")
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _NoRedirect()
     )
+
     def read_response(resp):
         if resp.status != 200 or resp.geturl() != url:
             raise ValueError("Unexpected SEC HTTP status or redirect")
@@ -934,15 +1046,50 @@ def fetch_submissions(cik: str, *, user_agent: str, allow_network: bool = False)
         size = resp.headers.get("Content-Length")
         if size is not None and (not size.isdecimal() or int(size) > MAX_JSON_BYTES):
             raise ValueError("SEC response size rejected")
-        return resp.read(MAX_JSON_BYTES + 1)
+        raw = resp.read(MAX_JSON_BYTES + 1)
+        return raw, (resp.headers.get("ETag") if _valid_etag(resp.headers.get("ETag")) else None), False
+
+    def read_not_modified(error):
+        if cached is None:
+            raise ValueError("SEC returned 304 without a hash-verified cached representation")
+        if error.geturl() != url:
+            raise ValueError("SEC 304 response URL mismatch")
+        response_etag = error.headers.get("ETag")
+        etag = response_etag if _valid_etag(response_etag) else (
+            cached["etag"] if response_etag is None else None
+        )
+        return cached["raw"], etag, True
+
     try:
-        raw = _bounded_sec_get(opener, req, read_response)
+        raw, etag, not_modified = _bounded_sec_get(
+            opener, req, read_response, read_not_modified=read_not_modified,
+        )
     except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError) as exc:
         raise ValueError(f"SEC request failed: {type(exc).__name__}") from exc
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError("SEC response exceeded 8MB")
-    _validate_raw(raw)
+    payload = _validate_raw(raw)
+    observed = payload.get("cik")
+    if (type(observed) not in (int, str) or not str(observed).isascii()
+            or not str(observed).isdecimal() or not int(str(observed))
+            or cik10(str(observed)) != target):
+        raise ValueError("SEC response issuer CIK differs from requested CIK")
+    return raw, etag, not_modified
+
+
+def fetch_submissions(cik: str, *, user_agent: str,
+                      allow_network: bool = False) -> bytes:
+    if not allow_network:
+        raise ValueError("Network disabled unless --allow-network is provided")
+    raw, _, _ = _fetch_submissions_http(cik, user_agent=user_agent)
     return raw
+
+
+def fetch_submissions_with_cache(db_path: Path, cik: str, *,
+                                 user_agent: str) -> tuple[bytes, str | None, bool]:
+    """Explicit network path with an optional hash-verified conditional cache."""
+    cached = _load_submission_cache(db_path, cik)
+    return _fetch_submissions_http(cik, user_agent=user_agent, cached=cached)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -975,17 +1122,31 @@ def main(argv: list[str] | None = None) -> int:
             if args.input_json:
                 raw = _read_local_json(args.input_json)
                 provenance = "OFFLINE_UNVERIFIED"
+                etag = None
+                not_modified = False
             else:
-                raw = fetch_submissions(
-                    cik, user_agent=os.environ.get("DL_SEC_USER_AGENT", ""), allow_network=True
+                raw, etag, not_modified = fetch_submissions_with_cache(
+                    args.db, cik, user_agent=os.environ.get("DL_SEC_USER_AGENT", "")
                 )
                 provenance = "SEC_HTTPS_RESPONSE"
             indexed = index_submissions(
                 raw, cik=cik, as_of=args.as_of, forms=forms, provenance=provenance,
                 collected_at=args.collected_at,
             )
-            saved = save_index(args.db, raw, indexed)
+            if args.input_json:
+                saved = save_index(args.db, raw, indexed)
+            else:
+                saved = save_index(
+                    args.db, raw, indexed, store_http_validator=True, etag=etag,
+                    check_provenance=("SEC_HTTPS_304_NOT_MODIFIED" if not_modified else None),
+                )
             result = {**saved, "indexed": indexed}
+            if not args.input_json:
+                result["http_cache"] = {
+                    "response_not_modified": not_modified,
+                    "etag_stored": etag is not None,
+                    "source_authenticity_verified": False,
+                }
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (OSError, sqlite3.Error, ValueError, TypeError, KeyError) as exc:
