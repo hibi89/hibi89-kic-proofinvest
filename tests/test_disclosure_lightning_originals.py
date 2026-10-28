@@ -91,6 +91,26 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
 
+    def test_simultaneous_original_replay_saves_one_receipt(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+
+        start = Barrier(2)
+
+        def save_after_start():
+            start.wait(timeout=5)
+            return self.save()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = [future.result(timeout=10) for future in (
+                pool.submit(save_after_start), pool.submit(save_after_start))]
+        self.assertEqual(sorted(item["status"] for item in results), ["REUSED", "SAVED"])
+        self.assertEqual({item["filing_sha256"] for item in results},
+                         {hashlib.sha256(CONTENT).hexdigest()})
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
+
     def test_changed_document_never_overwrites_prior_bytes(self):
         original = self.save()
         updated = self.save(b"<html>CHANGED SYNTHETIC</html>")
