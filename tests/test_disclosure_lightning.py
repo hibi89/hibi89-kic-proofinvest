@@ -232,6 +232,15 @@ class DisclosureLightningTests(unittest.TestCase):
         latest = core.list_filings(self.db, cik=CIK, limit=1)
         self.assertEqual(latest[0]["filed_at"], "2025-10-18")
 
+    def test_list_prepares_validated_source_arrays_once_per_observation(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with patch.object(
+                core, "_prepare_stored_index_source",
+                wraps=core._prepare_stored_index_source) as prepare:
+            result = core.list_filings(self.db, cik=CIK)
+        self.assertEqual(len(result), 3)
+        prepare.assert_called_once()
+
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
         core.save_index(self.db, self.raw, baseline)
