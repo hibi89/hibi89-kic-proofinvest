@@ -978,6 +978,44 @@ class DisclosureLightningTests(unittest.TestCase):
                 db_path=self.db, cik=CIK,
                 manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
 
+    def test_history_page_revisions_are_preserved_and_audited_as_of(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        first = sorted(pages)[0]
+        early = args | {
+            "as_of": "2026-10-27",
+            "collected_at": "2026-10-27T01:05:00Z",
+        }
+        history.import_history_batch(pages={first: pages[first]}, **early)
+        before_revision = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of="2026-10-27")
+        old_receipt = next(item for item in before_revision["pages"]
+                           if item["name"] == first)
+        self.assertEqual(old_receipt["page_sha256"], hashlib.sha256(pages[first]).hexdigest())
+        self.assertEqual(before_revision["missing_eligible_pages"], [sorted(pages)[1]])
+
+        revised_payload = json.loads(pages[first])
+        revised_payload["primaryDocument"][0] = "revised-synthetic-2014.htm"
+        revised_bytes = json.dumps(revised_payload).encode("utf-8")
+        revised_args = args | {"collected_at": "2026-10-28T02:05:00Z"}
+        first_save = history.import_history_batch(pages={first: revised_bytes}, **revised_args)
+        replay = history.import_history_batch(pages={first: revised_bytes}, **revised_args)
+        self.assertEqual(first_save["new_filings"], 0)
+        self.assertEqual(replay["new_filings"], 0)
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM history_page_receipt_versions WHERE page_name=?",
+                (first,),
+            ).fetchone()[0], 1)
+        current = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of="2026-10-28")
+        current_receipt = next(item for item in current["pages"] if item["name"] == first)
+        self.assertEqual(current_receipt["page_sha256"], hashlib.sha256(revised_bytes).hexdigest())
+        self.assertTrue(current["complete_for_pinned_manifest"] is False)
+        self.assertEqual(old_receipt["page_sha256"], hashlib.sha256(pages[first]).hexdigest())
+
 
 if __name__ == "__main__":
     unittest.main()

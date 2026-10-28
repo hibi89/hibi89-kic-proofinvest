@@ -210,29 +210,63 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
     uri = candidate.resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:
         conn.execute("PRAGMA query_only=ON")
-        exists = conn.execute(
+        base_exists = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='history_page_receipts'"
         ).fetchone()
+        versions_exist = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='history_page_receipt_versions'"
+        ).fetchone()
         receipts = {}
-        if exists and eligible:
+        if (base_exists or versions_exist) and eligible:
             names = [page["name"] for page in eligible]
             placeholders = ",".join("?" for _ in names)
-            rows = conn.execute(
-                "SELECT page_name,page_sha256,observation_id,record_count "
-                "FROM history_page_receipts WHERE issuer_cik=? AND manifest_sha256=? "
-                f"AND page_name IN ({placeholders})",
-                (target, manifest_sha256, *names),
-            ).fetchall()
-            for name, digest, observation_id, count in rows:
-                receipts[name] = (digest, count, observation_id)
+            query_suffix = (
+                "LEFT JOIN observations AS o ON o.id=r.observation_id "
+                "WHERE r.issuer_cik=? AND r.manifest_sha256=? "
+                f"AND r.page_name IN ({placeholders})"
+            )
+            tables = []
+            if base_exists:
+                tables.append("SELECT r.page_name,r.page_sha256,r.observation_id,"
+                              "r.record_count,o.seen_at FROM history_page_receipts AS r "
+                              + query_suffix)
+            if versions_exist:
+                tables.append("SELECT r.page_name,r.page_sha256,r.observation_id,"
+                              "r.record_count,o.seen_at FROM history_page_receipt_versions AS r "
+                              + query_suffix)
+            for query in tables:
+                rows = conn.execute(query, (target, manifest_sha256, *names)).fetchall()
+                for name, digest, observation_id, count, seen_at in rows:
+                    receipts.setdefault(name, []).append(
+                        (digest, count, observation_id, seen_at))
     audited = []
     audited_bytes = 0
     for page in pages:
         name = page["name"]
-        receipt = receipts.get(name) if page["eligible_by_start_date"] else None
+        candidates = receipts.get(name, []) if page["eligible_by_start_date"] else []
+        available = []
+        for candidate_receipt in candidates:
+            try:
+                moment = datetime.fromisoformat(
+                    candidate_receipt[3].replace("Z", "+00:00"))
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise ValueError("HISTORY_PAGE_RECEIPT_TIME_INVALID") from exc
+            if moment.tzinfo is None or moment.utcoffset() is None:
+                raise ValueError("HISTORY_PAGE_RECEIPT_TIME_INVALID")
+            moment = moment.astimezone(timezone.utc)
+            if moment.date() <= cutoff:
+                available.append((moment, candidate_receipt))
+        receipt = None
+        if available:
+            latest_time = max(item[0] for item in available)
+            latest = [item[1] for item in available if item[0] == latest_time]
+            if len({item[0] for item in latest}) > 1:
+                raise ValueError("HISTORY_PAGE_RECEIPT_CHRONOLOGY_AMBIGUOUS")
+            receipt = latest[0]
         state = "MISSING"
         if receipt is not None:
-            digest, count, observation_id = receipt
+            digest, count, observation_id, _ = receipt
             with closing(sqlite3.connect(uri, uri=True)) as conn:
                 conn.execute("PRAGMA query_only=ON")
                 observation = conn.execute(
@@ -285,7 +319,8 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                 if linked != set(expected_accessions):
                     raise ValueError("HISTORY_PAGE_RECEIPT_INDEX_LINK_MISSING")
             state = "IMPORTED"
-        audited.append({**page, "status": state})
+        audited.append({**page, "status": state,
+                        **({"page_sha256": digest} if state == "IMPORTED" else {})})
     missing = [item["name"] for item in audited if item["status"] == "MISSING"]
     return {
         "status": "READ_ONLY_UNVERIFIED_HISTORY_COVERAGE",

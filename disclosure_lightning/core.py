@@ -265,6 +265,15 @@ CREATE TABLE IF NOT EXISTS history_page_receipts(
     record_count INTEGER NOT NULL,
     PRIMARY KEY(issuer_cik,manifest_sha256,page_name)
 );
+CREATE TABLE IF NOT EXISTS history_page_receipt_versions(
+    issuer_cik TEXT NOT NULL,
+    manifest_sha256 TEXT NOT NULL,
+    page_name TEXT NOT NULL,
+    page_sha256 TEXT NOT NULL,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    record_count INTEGER NOT NULL,
+    PRIMARY KEY(issuer_cik,manifest_sha256,page_name,page_sha256)
+);
 """
 
 
@@ -474,14 +483,27 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
                     receipt_key,
                 ).fetchone()
                 page_receipt = (digest, obs_id, history_record_count)
-                if existing_page is not None and existing_page != page_receipt:
-                    raise ValueError("HISTORY_PAGE_RECEIPT_CONFLICT")
                 if existing_page is None:
                     conn.execute(
                         "INSERT INTO history_page_receipts"
                         "(issuer_cik,manifest_sha256,page_name,page_sha256,observation_id,record_count)"
                         " VALUES(?,?,?,?,?,?)", (*receipt_key, *page_receipt),
                     )
+                elif existing_page != page_receipt:
+                    version = conn.execute(
+                        "SELECT observation_id,record_count FROM history_page_receipt_versions "
+                        "WHERE issuer_cik=? AND manifest_sha256=? AND page_name=? AND page_sha256=?",
+                        (*receipt_key, digest),
+                    ).fetchone()
+                    if version is not None and version != (obs_id, history_record_count):
+                        raise ValueError("HISTORY_PAGE_RECEIPT_VERSION_CONFLICT")
+                    if version is None:
+                        conn.execute(
+                            "INSERT INTO history_page_receipt_versions"
+                            "(issuer_cik,manifest_sha256,page_name,page_sha256,observation_id,record_count)"
+                            " VALUES(?,?,?,?,?,?)",
+                            (*receipt_key, digest, obs_id, history_record_count),
+                        )
             total = conn.execute(
                 "SELECT COUNT(*) FROM filings WHERE provider=? AND issuer_cik=?",
                 (PROVIDER, indexed["issuer_cik"]),
