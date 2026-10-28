@@ -1,3 +1,13 @@
+# DL P11 — Raw CompanyFacts archive and cached conditional retrieval (2026-10-28 KST)
+
+- **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, latest confirmed source SHA `c906e531bd3d6807bcc13ffdb536d3defef8a0b9`; GitHub branch HEAD matched after a normal push. Parent `4528ec19a0e706b67ee0814a7d72383b91560a46`.
+- **Implementation:** New `disclosure_lightning.companyfacts` accepts bounded SEC CompanyFacts-shaped JSON, validates issuer CIK/structure, stores exact raw bytes with SHA-256 and provenance in SQLite, records checks and ETag validators transactionally, deduplicates identical response bytes, and exposes read-only listing/hash-checked retrieval with as-of gates. Explicit `--allow-network` is required for GET; no actual SEC request was made. Offline input remains `OFFLINE_UNVERIFIED`; all financial/authenticity flags remain false. `verify_local.py` now syntax-checks both `companyfacts.py` and `xbrl.py`.
+- **Verification:** CompanyFacts synthetic tests **9/9 PASS**; DL-only discovery **148 run / 145 PASS / 3 SKIP**; `python -B verify_local.py` **PASS** (syntax, focused core suite, offline CLI smoke). Full suite **464 run / 1 FAIL / 7 ERROR / 6 SKIP**; every failure/error traces to missing `streamlit` in this Python environment, so no dependency was installed or test weakened. Preserved log: `work/logs/full-companyfacts-20261028.log`; focused log: `work/logs/dl-focused-companyfacts-c906e53-20261028.log`.
+- **Remote/checks:** normal push succeeded and GitHub branch HEAD is exact. Commit status API returned no status checks; CI is not asserted green. No work on `lead/kic`, `main`, or `Bid_Owl`; no merge or force push.
+- **Next independent work:** inspect actual consumer contract requirements for a bounded read-only CompanyFacts envelope; add synthetic integration coverage only on the DL branch. Continue XBRL completeness boundary work after the CompanyFacts contract is stable. Full suite remains blocked on environment-only `streamlit` availability.
+
+---
+
 # DL P10 — as-of same-day unknown acceptance fail-closed (2026-10-28 KST)
 
 1. **Goal:** Prevent look-ahead inclusion of same-UTC-day metadata when an SEC shaped row has no reliable timezone-aware acceptance instant.
