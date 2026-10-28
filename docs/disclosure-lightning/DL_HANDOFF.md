@@ -1,3 +1,12 @@
+# DL P12 — Inline XBRL namespace, exclusion, and bound handling (2026-10-28 KST)
+
+- **Source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, implementation SHA `2ef9cf7612affc704058d0b445ef432295044963`; normal push completed. The parser resolves namespace declarations by element scope and restores parent bindings, omits `ix:exclude` subtree text from fact lexical candidates, and bounds context/unit roots as well as total fact starts. Source bytes remain unchanged and hash-pinned.
+- **Tests:** focused DL suite **152 run / 149 PASS / 3 SKIP**; XBRL-specific **13/13 PASS**. `verify_local.py --full`: **FAIL** at exact implementation SHA; syntax, core, and offline CLI smoke PASS. Full suite **470 run / 1 FAIL / 7 ERROR / 6 SKIP**, all failure/error cases caused by absent `streamlit.testing.v1` in this environment. No install and no test weakening. Logs: `work/logs/dl-focused-xbrl-safety-20261028.log`, `work/logs/full-xbrl-safety-2ef9cf7-20261028.log`.
+- **Limits:** this remains a conservative lexical candidate parser, not standards-complete Inline XBRL or a financial verifier. Continuations/fractions and other unsupported constructs still prevent completeness. CI status checks are not yet returned for the pushed commit.
+- **Next independent work:** review and harden malformed markup/namespace edge cases, then continue read-only KIC contract coverage; do not normalize or certify financial values in DL.
+
+---
+
 # DL P11 — Raw CompanyFacts archive and KIC read-only consumer check (2026-10-28 KST)
 
 - **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, latest confirmed remote SHA `76df68741406493ff919479455bd49ccae31f539`; CompanyFacts implementation `c906e531bd3d6807bcc13ffdb536d3defef8a0b9`; checkpoint docs `772822f314b2968e63d6dac88fc5b38a7bffc294`. GitHub branch HEAD matched after normal pushes. Implementation parent `4528ec19a0e706b67ee0814a7d72383b91560a46`.

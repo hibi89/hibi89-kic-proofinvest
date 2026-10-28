@@ -107,7 +107,7 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 
 `RawFilingEnvelopeV1` 항목은 응답 `indexed.filings[]`에 있고, 이 JSON을 KIC ProofInvest의 별도 리더에 전달할 수 있습니다. `issuer_cik`, `accession`, `form`, `filed_at`, `collected_at`, `source_uri`, `index_raw_sha256`, `evidence_status`를 보존하세요. DL은 금융 지표 정규화·재무 판단·투자 권고나 자동매매를 담당하지 않습니다.
 
-Saved-filing Inline XBRL candidates are available through `python -m disclosure_lightning.xbrl --db ... --cik ... --accession ... --sha256 ... --as-of ...`. This read-only path preserves lexical text, QName, raw context/unit trees, period fields, scale/sign/format attributes, and source line hints. It does not normalize values or certify facts; unknown references remain UNKNOWN, continuations are not followed, and unsupported elements prevent a complete-extraction claim.
+Saved-filing Inline XBRL candidates are available through `python -m disclosure_lightning.xbrl --db ... --cik ... --accession ... --sha256 ... --as-of ...`. This read-only path preserves lexical text, namespace-scoped QName recognition, raw context/unit trees, period fields, scale/sign/format attributes, and source line hints; text in `ix:exclude` is omitted from lexical fact candidates. It does not normalize values or certify facts; unknown references remain UNKNOWN, continuations are not followed, and unsupported elements or parser caps prevent a complete-extraction claim.
 
 ## CompanyFacts raw response archive
 
