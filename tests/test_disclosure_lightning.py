@@ -679,6 +679,26 @@ class DisclosureLightningTests(unittest.TestCase):
             history.index_history_page(**{**params, "manifest_sha256": "0" * 64})
         with self.assertRaises(ValueError):
             history.index_history_page(**{**params, "collected_at": "2026-10-27T23:59:00Z"})
+        for malformed in (["2015-10-30T10:00:00Z"], "2015-10-30T10:00:00Z"):
+            broken = json.loads(raw)
+            broken["acceptanceDateTime"] = malformed
+            with self.subTest(acceptanceDateTime=malformed), self.assertRaisesRegex(
+                    ValueError, "HISTORY_ACCEPTANCE_TIMESTAMPS_MISALIGNED"):
+                history.index_history_page(
+                    **{**params, "raw": json.dumps(broken).encode("utf-8")})
+        malformed_file = self.root / "misaligned-history.json"
+        broken = json.loads(raw)
+        broken["acceptanceDateTime"] = ["2015-10-30T10:00:00Z"]
+        malformed_file.write_text(json.dumps(broken), encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()) as error:
+            exit_code = history.main([
+                "--db", str(self.db), "--cik", CIK,
+                "--manifest-sha256", pin, "--name", name,
+                "--input-json", str(malformed_file), "--as-of", "2026-10-28",
+                "--collected-at", "2026-10-28T00:05:00Z",
+            ])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("HISTORY_ACCEPTANCE_TIMESTAMPS_MISALIGNED", error.getvalue())
         wrong = json.loads(raw)
         wrong["filingDate"][0] = "2014-11-01"
         with self.assertRaisesRegex(ValueError, "OUTSIDE"):

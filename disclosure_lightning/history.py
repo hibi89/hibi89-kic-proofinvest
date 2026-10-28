@@ -107,12 +107,16 @@ def index_history_page(raw: bytes, *, db_path: Path, cik: str,
         raise ValueError("HISTORY_RECORD_COUNT_MISMATCH")
     n = len(accessions)
     for key, value in body.items():
+        if key == "acceptanceDateTime":
+            continue
         if not isinstance(value, list) or len(value) != n:
             raise ValueError(f"HISTORY_COLUMN_MISALIGNED:{key}")
     kinds = core._column(body, "form", n)
     dates = core._column(body, "filingDate", n)
     documents = core._column(body, "primaryDocument", n)
     accepted = body.get("acceptanceDateTime")
+    if accepted is not None and (not isinstance(accepted, list) or len(accepted) != n):
+        raise ValueError("HISTORY_ACCEPTANCE_TIMESTAMPS_MISALIGNED")
     digest = hashlib.sha256(raw).hexdigest()
     source_uri = f"https://data.sec.gov/submissions/{name}"
     seen = set()
