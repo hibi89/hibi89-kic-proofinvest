@@ -224,6 +224,86 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertTrue(result["original_filing_retrieved"])
         self.assertFalse(result["authenticated_external_source"])
 
+    def test_archive_etag_304_reuses_only_integrity_checked_original_blob(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        index = core.index_submissions(
+            self.index_raw, cik=C, as_of="2026-10-27",
+            forms=core.parse_forms("10-K"), provenance="SEC_HTTPS_RESPONSE",
+            collected_at="2026-10-27T00:00:00Z",
+        )
+        self.db = self.root / "archive-official.db"
+        core.save_index(self.db, self.index_raw, index)
+        receipt = originals.locate_original(self.db, cik=C, accession=A)
+        etag = 'W/"synthetic-archive-v1"'
+        empty_304 = HTTPError(
+            receipt["source_uri"], 304, "Not Modified", Message(), io.BytesIO(b""))
+        with patch("disclosure_lightning.originals.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = empty_304
+            with self.assertRaisesRegex(ValueError, "without a hash-verified cached original"):
+                originals.fetch_original_with_cache(
+                    db_path=self.db, receipt=receipt,
+                    user_agent="DL Ops admin@actualcorp.org", allow_network=True,
+                )
+
+        class Response:
+            status = 200
+            headers = {"Content-Type": "text/html", "Content-Length": str(len(CONTENT)),
+                       "ETag": etag}
+            def geturl(self):
+                return receipt["source_uri"]
+            def read(self, size):
+                return CONTENT
+            def __enter__(self):
+                return self
+            def __exit__(self, *exc):
+                return None
+
+        with patch("disclosure_lightning.originals.urllib.request.build_opener") as opener:
+            opener.return_value.open.return_value = Response()
+            raw, kind, saved_etag, unchanged = originals.fetch_original_with_cache(
+                db_path=self.db, receipt=receipt,
+                user_agent="DL Ops admin@actualcorp.org", allow_network=True,
+            )
+            request = opener.return_value.open.call_args.args[0]
+            self.assertIsNone(request.get_header("If-none-match"))
+        self.assertEqual((raw, kind, saved_etag, unchanged),
+                         (CONTENT, "text/html", etag, False))
+        originals.persist_original(
+            db_path=self.db, receipt=receipt, raw=raw, kind=kind,
+            origin="SEC_HTTPS_RESPONSE_UNVERIFIED", etag=saved_etag,
+        )
+
+        headers = Message()
+        headers["ETag"] = etag
+        not_modified = HTTPError(
+            receipt["source_uri"], 304, "Not Modified", headers, io.BytesIO(b""))
+        with patch("disclosure_lightning.originals.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = not_modified
+            reused, reused_kind, reused_etag, unchanged = originals.fetch_original_with_cache(
+                db_path=self.db, receipt=receipt,
+                user_agent="DL Ops admin@actualcorp.org", allow_network=True,
+            )
+            request = opener.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header("If-none-match"), etag)
+        self.assertEqual((reused, reused_kind, reused_etag, unchanged),
+                         (CONTENT, "text/html", etag, True))
+        persisted = originals.persist_original(
+            db_path=self.db, receipt=receipt, raw=reused, kind=reused_kind,
+            origin="SEC_HTTPS_RESPONSE_UNVERIFIED", etag=reused_etag,
+            http_not_modified=unchanged,
+        )
+        self.assertTrue(persisted["http_cache_response_not_modified"])
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute(
+                "SELECT provenance FROM original_http_checks ORDER BY checked_at DESC LIMIT 1"
+            ).fetchone()[0], "SEC_HTTPS_304_NOT_MODIFIED")
+            db.execute("UPDATE original_filing_receipts SET file_bytes=? WHERE sha256=?",
+                       (b"tampered", hashlib.sha256(CONTENT).hexdigest()))
+        with self.assertRaisesRegex(ValueError, "integrity validation"):
+            originals._load_original_http_cache(self.db, receipt)
+
     def test_mock_sec_wrong_media_type_redirect_and_size_refused(self):
         receipt = {**self.receipt,
                    "evidence_status": "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED"}

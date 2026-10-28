@@ -113,5 +113,5 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 
 - 표준 모듈은 **`disclosure_lightning/core.py`** 단일 구현입니다. 중복 실험 버전 `mvp.py` / `cli.py`는 제거됐습니다. 다른 SQLite 저장 형식을 혼용하지 마세요.
 - `--collected-at`은 오프라인 파일의 **실제 확인 가능한 최초 수집 시각**(타임존 필수)을 명시할 때만 사용합니다. 이를 증빙할 수 없으면 과거 시점의 수집증거라고 주장하지 마세요. 인덱스는 UTC로 정규화되며 수집시각이 `--as-of` 다음 날이면 실패합니다. 수집 날짜보다 뒤의 공시도 제외합니다. SEC 실제 요청의 경우 `--collected-at`을 넘길 수 없고 시스템 수집시간을 사용합니다.
-- `DL_SEC_USER_AGENT`는 실존하는 사용자/조직의 연락 이메일이어야 합니다. `example.com`, `placeholder`, `your-real-domain.tld` 등 예시를 통한 요청은 거부합니다. 원문 수집기는 로컬 파일을 기본으로 지원하고, `--allow-network`를 명시하면 SEC archive GET 작업을 최대 3회까지 시도합니다. 이 세션에서는 실제 SEC 외부 호출을 하지 않았으며, SEC JSON의 `index_raw_sha256`와 원문 파일의 `filing_sha256`를 혼동하지 마세요.
+- `DL_SEC_USER_AGENT`는 실존하는 사용자/조직의 연락 이메일이어야 합니다. `example.com`, `placeholder`, `your-real-domain.tld` 등 예시를 통한 요청은 거부합니다. 원문 수집기는 로컬 파일을 기본으로 지원하고, `--allow-network`를 명시하면 SEC archive GET 작업을 최대 3회까지 시도합니다. 저장된 archive ETag를 검증한 경우 조건부 요청을 보내며, 304 응답은 SHA-256·source URI·MIME이 일치하는 기존 BLOB만 재사용하고 별도 확인 provenance로 기록합니다. 실제 SEC ETag 제공 여부는 미검증입니다. 이 세션에서는 실제 SEC 외부 호출을 하지 않았으며, SEC JSON의 `index_raw_sha256`와 원문 파일의 `filing_sha256`를 혼동하지 마세요.
 - KIC 검산과 대응하는 합성 단일 공시 테스트 fixture: `disclosure_lightning/fixtures/kic_apple_handoff_synthetic.json`. 이것은 실제 SEC 응답이 아니라 KIC 측 `proofinvest/dl_bridge.py`와 연동할 때 사용할 **정합성 테스트 입력**입니다.
