@@ -388,6 +388,23 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertIn("Choose exactly one", err.getvalue())
         self.assertFalse(self.db.exists())
 
+    def test_local_cli_refuses_symlinked_json_before_writing(self):
+        source = self.root / "source.json"
+        source.write_bytes(self.raw)
+        alias = self.root / "alias.json"
+        try:
+            alias.symlink_to(source)
+        except (NotImplementedError, OSError):
+            self.skipTest("Symlink creation unavailable")
+        with contextlib.redirect_stderr(io.StringIO()) as error:
+            result = core.main([
+                "--cik", CIK, "--as-of", "2026-10-27", "--db", str(self.db),
+                "--input-json", str(alias), "--collected-at", "2026-10-27T00:00:00Z",
+            ])
+        self.assertEqual(result, 2)
+        self.assertIn("symlink", error.getvalue())
+        self.assertFalse(self.db.exists())
+
     def test_historical_as_of_fails_closed_if_collected_later(self):
         for t in ("2026-10-28T00:00:00Z", "2026-10-27T23:30:00-12:00"):
             with self.subTest(collected=t), self.assertRaisesRegex(

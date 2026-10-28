@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sqlite3
+import stat
 import sys
 import urllib.error
 import urllib.request
@@ -126,6 +127,22 @@ def _validate_raw(raw: bytes) -> dict:
     if not isinstance(payload, dict):
         raise ValueError("Submissions root must be a JSON object")
     return payload
+
+
+def _read_local_json(path: Path) -> bytes:
+    """Read one bounded regular offline input without following symlinks."""
+    source = Path(path).expanduser()
+    if source.is_symlink():
+        raise ValueError("Offline JSON symlink input is forbidden")
+    fd = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(fd, "rb") as handle:
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= MAX_JSON_BYTES:
+            raise ValueError("Offline JSON must be a bounded regular file")
+        raw = handle.read(MAX_JSON_BYTES + 1)
+    if not 0 < len(raw) <= MAX_JSON_BYTES:
+        raise ValueError("Offline JSON must be 1..8MB")
+    return raw
 
 
 def _column(recent: dict, key: str, n: int) -> list:
@@ -833,10 +850,7 @@ def main(argv: list[str] | None = None) -> int:
             forms = parse_forms(args.forms)
             parse_day(args.as_of)
             if args.input_json:
-                path = args.input_json
-                if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_JSON_BYTES:
-                    raise ValueError("Offline JSON must be a regular bounded file")
-                raw = path.read_bytes()
+                raw = _read_local_json(args.input_json)
                 provenance = "OFFLINE_UNVERIFIED"
             else:
                 raw = fetch_submissions(
