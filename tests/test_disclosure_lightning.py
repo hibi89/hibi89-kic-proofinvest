@@ -950,6 +950,13 @@ class DisclosureLightningTests(unittest.TestCase):
             db_path=self.db, cik=CIK,
             manifest_sha256=args["manifest_sha256"], as_of="2026-10-27")
         self.assertEqual(older_audit["missing_eligible_pages"], [first, second])
+        with _sqlite_connection(self.db) as db:
+            db.execute("UPDATE observations SET response=response || ? WHERE sha256=?",
+                       (b" ", hashlib.sha256(pages[first]).hexdigest()))
+        with self.assertRaisesRegex(ValueError, "INTEGRITY_FAILED"):
+            history.audit_manifest_pages(
+                db_path=self.db, cik=CIK,
+                manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
 
 
 if __name__ == "__main__":
