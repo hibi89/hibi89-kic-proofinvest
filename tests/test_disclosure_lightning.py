@@ -241,6 +241,25 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(len(result), 3)
         prepare.assert_called_once()
 
+    def test_read_only_list_rejects_duplicated_target_in_rehashed_source(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        payload = json.loads(self.raw)
+        accessions = payload["filings"]["recent"]["accessionNumber"]
+        accessions[1] = accessions[0]
+        altered = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        digest = hashlib.sha256(altered).hexdigest()
+        with _sqlite_connection(self.db) as db:
+            db.execute("UPDATE observations SET response=?,sha256=?",
+                       (altered, digest))
+            for accession, filing_json in db.execute(
+                    "SELECT accession,filing_json FROM filings").fetchall():
+                record = json.loads(filing_json)
+                record["index_raw_sha256"] = digest
+                db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                           (json.dumps(record, sort_keys=True), accession))
+        with self.assertRaisesRegex(ValueError, "absent or duplicated"):
+            core.list_filings(self.db, cik=CIK)
+
     def test_changed_payload_creates_observation_not_revision_overwrite(self):
         baseline = self.indexed()
         core.save_index(self.db, self.raw, baseline)
