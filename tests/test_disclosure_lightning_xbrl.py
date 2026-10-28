@@ -19,7 +19,8 @@ AS_OF = "2099-12-31"
 FIXTURE = (Path(__file__).resolve().parents[1]
            / "disclosure_lightning/fixtures/sec_submissions_synthetic.json")
 INLINE = b'''<html xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"
- xmlns:xbrli="http://www.xbrl.org/2003/instance">
+ xmlns:xbrli="http://www.xbrl.org/2003/instance"
+ xmlns:us-gaap="urn:synthetic:us-gaap" xmlns:dei="urn:synthetic:dei">
 <head><ix:header><xbrli:context id="ctx-2025">
 <xbrli:entity><xbrli:identifier scheme="urn:synthetic">320193</xbrli:identifier></xbrli:entity>
 <xbrli:period><xbrli:startDate>2024-09-29</xbrli:startDate>
@@ -68,6 +69,10 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         revenue, name, continued = result["facts"]
         self.assertEqual(revenue["name"],
                          "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax")
+        self.assertEqual(revenue["name_qname_status"], "RESOLVED_UNVERIFIED")
+        self.assertEqual(revenue["name_namespace_uri"], "urn:synthetic:us-gaap")
+        self.assertEqual(revenue["name_local_name"],
+                         "RevenueFromContractWithCustomerExcludingAssessedTax")
         self.assertEqual(revenue["lexical_value"], "123456")
         self.assertEqual(revenue["scale"], "6")
         self.assertEqual(revenue["sign"], "-")
@@ -227,6 +232,27 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
                          {fact["name"] for fact in result["facts"]})
         self.assertEqual(result["facts"][-1]["name"], "dei:AfterScope")
         self.assertEqual(result["facts"][-1]["lexical_value"], "restored")
+
+    def test_fact_name_qname_uses_local_namespace_scope(self):
+        scoped = INLINE.replace(
+            b"</body>",
+            b'<div xmlns:us-gaap="urn:synthetic:alternate">'
+            b'<ix:nonFraction name="us-gaap:Assets" contextRef="ctx-2025" '
+            b'unitRef="usd">7</ix:nonFraction></div>'
+            b'<ix:nonFraction name="us-gaap:Assets" contextRef="ctx-2025" '
+            b'unitRef="usd">8</ix:nonFraction></body>',
+        )
+        result = xbrl.extract_inline_facts(
+            scoped, content_type="text/html",
+            filing_sha256=hashlib.sha256(scoped).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["facts"][3]["name_namespace_uri"],
+                         "urn:synthetic:alternate")
+        self.assertEqual(result["facts"][4]["name_namespace_uri"],
+                         "urn:synthetic:us-gaap")
+        self.assertFalse(result["facts"][3]["source_authenticity_verified"])
 
     def test_candidate_and_root_tree_limits_are_fail_closed(self):
         with patch.object(xbrl, "MAX_CANDIDATES", 1):

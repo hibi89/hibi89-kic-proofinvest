@@ -44,6 +44,31 @@ def _expanded_name(tag: str, namespaces: dict[str, str]) -> tuple[str, str]:
     return namespace, local
 
 
+def _resolve_qname(value: Any, namespaces: dict[str, str]) -> dict[str, Any]:
+    """Resolve a bounded lexical QName without asserting its taxonomy truth."""
+    if not isinstance(value, str) or value.count(":") > 1:
+        return {"status": "UNKNOWN_OR_INVALID", "namespace_uri": None, "local_name": None}
+    if ":" in value:
+        prefix, local = value.split(":", 1)
+        if (not prefix or not local
+                or any(ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+                       for ch in prefix + local)
+                or not (prefix[0].isalpha() or prefix[0] == "_")
+                or not (local[0].isalpha() or local[0] == "_")
+                or prefix not in namespaces):
+            return {"status": "UNKNOWN_OR_INVALID", "namespace_uri": None, "local_name": None}
+        namespace = namespaces[prefix]
+    else:
+        local = value
+        if (not local or any(ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+                             for ch in local)
+                or not (local[0].isalpha() or local[0] == "_")):
+            return {"status": "UNKNOWN_OR_INVALID", "namespace_uri": None, "local_name": None}
+        namespace = namespaces.get("", "")
+    return {"status": "RESOLVED_UNVERIFIED", "namespace_uri": namespace,
+            "local_name": local}
+
+
 class _InlineXbrlParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -120,9 +145,13 @@ class _InlineXbrlParser(HTMLParser):
                     self.truncated = True
                     return
                 self.fact_starts += 1
+                concept_name = _resolve_qname(attr_map.get("name"), scoped)
                 self.fact_stack.append({
                     "tag": tag,
                     "attributes": attr_map,
+                    "name_qname_status": concept_name["status"],
+                    "name_namespace_uri": concept_name["namespace_uri"],
+                    "name_local_name": concept_name["local_name"],
                     "text": "",
                     "source_start_line": line,
                     "source_end_line": line,
@@ -233,6 +262,9 @@ def _fact_record(fact: dict, contexts: dict[str, list[dict]],
     value = fact["text"]
     return {
         "name": attrs.get("name"),
+        "name_qname_status": fact["name_qname_status"],
+        "name_namespace_uri": fact["name_namespace_uri"],
+        "name_local_name": fact["name_local_name"],
         "fact_kind": _local(fact["tag"]),
         "lexical_value": value,
         "value_truncated": len(value) >= MAX_LEXICAL_CHARS,
