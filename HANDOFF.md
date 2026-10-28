@@ -1,3 +1,9 @@
+## DL reliability checkpoint — 2026-10-28 KST
+
+- **Code:** `d04ec5b202b6a8ceb9ae1adf2ae81d41c104af87` adds shared bounded retries for both SEC submissions and original-filing GET operations. Retryable: 408/429/500/502/503/504 and transient transport/read errors; maximum 3 attempts; obeys delta/date `Retry-After`, fails closed above a 30-second wait, otherwise backoff 0.5s/1s with 0.2s minimum interval; 15-second per-attempt timeout. Non-retryable responses and redirects still fail closed. This is not a global cross-process limiter.
+- **Verification:** focused DL suites **124 PASS / 3 SKIP**; `python verify_local.py` **PASS** (syntax, focused core tests, synthetic CLI smoke, git identity). All retry tests use HTTP stubs and mocked sleep; no SEC request was made. `--full` remains locally constrained by missing `streamlit` as recorded below.
+- **Boundary:** no SQLite schema change, no KIC/main/other-branch edits, no actual SEC evidence claim. GitHub API confirms branch HEAD `8aae1788f1ec2d1ebd6680c1dbdd9e6326be832c`; Actions run [#40657900744](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40657900744) for that exact HEAD was in progress at this checkpoint. Direct sandbox `git ls-remote` can still fail on DNS.
+
 ## DL continuation checkpoint — 2026-10-28 KST
 
 - **Exact-source CI:** Actions [#40655029917](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40655029917) for `2623207` was **queued** at checkpoint; it is not a dependency for independent local work. Prior exact-source Actions [#40653781246](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40653781246) for `803bb0a` **success**.
@@ -543,9 +549,3 @@
 - **Verification:** `python verify_local.py` **PASS** (syntax, focused core tests, offline synthetic CLI smoke, git identity); summary says full tests **SKIP** by design. Earlier focused suite: **120 PASS, 3 SKIP**. Earlier `--full`: **438 tests, 1 failure, 7 errors, 6 skipped**, all failure/errors from absent local `streamlit`. KIC bridge **5 PASS**, original-byte synthetic E2E **PASS**. No package install or live SEC call.
 - **Maintenance:** CI now targets `ubuntu-24.04`, checkout/setup-python/upload-artifact use Node 24 action majors; exact-source workflow run passed. 10k synthetic listing probe remained ~0.098s after SQL batching (baseline ~0.50s); logs and source probes are retained under untracked `work/`.
 - **Scope and preservation:** no new independent source change was justified by the reviewed requirements: live SEC evidence, authoritative amendment links, production KIC integration, broader retry/ETag behavior, and XBRL normalization remain separately gated or future-scope. Keep `work/` and the isolated checkout; logs, consumer fixtures and probes remain untracked and must not be removed. No other branch or original checkout was edited.
-## DL reliability checkpoint — 2026-10-28 KST
-
-- **Code:** `d04ec5b202b6a8ceb9ae1adf2ae81d41c104af87` adds shared bounded retries for both SEC submissions and original-filing GET operations. Retryable: 408/429/500/502/503/504 and transient transport/read errors; maximum 3 attempts; obeys delta/date `Retry-After`, fails closed above a 30-second wait, otherwise backoff 0.5s/1s with 0.2s minimum interval; 15-second per-attempt timeout. Non-retryable responses and redirects still fail closed. This is not a global cross-process limiter.
-- **Verification:** focused DL suites **124 PASS / 3 SKIP**; `python verify_local.py` **PASS** (syntax, focused core tests, synthetic CLI smoke, git identity). All retry tests use HTTP stubs and mocked sleep; no SEC request was made. `--full` remains locally constrained by missing `streamlit` as recorded below.
-- **Boundary:** no SQLite schema change, no KIC/main/other-branch edits, no actual SEC evidence claim. Exact-source GitHub Actions and remote HEAD for this new code SHA are pending opportunistic confirmation; direct sandbox git networking may fail on DNS.
-
