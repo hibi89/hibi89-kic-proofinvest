@@ -82,6 +82,24 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         self.assertFalse(name["financial_claim_verified"])
         self.assertEqual(continued["continued_at"], "fact-cont")
         self.assertFalse(continued["continued_text_complete"])
+        self.assertFalse(result["complete_candidate_extraction"])
+
+    def test_unsupported_fraction_prevents_complete_extraction_claim(self):
+        fraction = INLINE.replace(
+            b"</body>",
+            b'<ix:fraction name="us-gaap:Ratio" contextRef="ctx-2025" '
+            b'unitRef="usd"><ix:numerator>1</ix:numerator>'
+            b'<ix:denominator>2</ix:denominator></ix:fraction></body>',
+        )
+        result = xbrl.extract_inline_facts(
+            fraction, content_type="text/html",
+            filing_sha256=hashlib.sha256(fraction).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["candidate_count"], 3)
+        self.assertEqual(result["unsupported_inline_xbrl_element_count"], 3)
+        self.assertFalse(result["complete_candidate_extraction"])
 
     def test_duplicate_context_reference_is_ambiguous(self):
         duplicated = INLINE.replace(

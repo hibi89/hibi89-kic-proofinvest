@@ -237,6 +237,7 @@ def extract_inline_facts(raw: bytes, *, content_type: str, filing_sha256: str,
         "truncated": parser.truncated,
         "complete_candidate_extraction": (
             not parser.truncated and parser.unsupported_fact_count == 0
+            and all(fact["continued_text_complete"] for fact in facts)
         ),
         "normalization_performed": False,
         "financial_claim_verified": False,
