@@ -614,6 +614,10 @@ class DisclosureLightningTests(unittest.TestCase):
 
     def test_history_multi_page_preflight_and_idempotent_replay(self):
         history, pages, args = self._history_batch_fixture()
+        with self.assertRaisesRegex(ValueError, "NOT_AVAILABLE_BY_AS_OF"):
+            history.list_manifest_pages(
+                db_path=self.db, cik=CIK,
+                manifest_sha256=args["manifest_sha256"], as_of="2026-10-27")
         result = history.import_history_batch(pages=pages, **args)
         self.assertEqual(result["pages_processed"], 2)
         self.assertEqual(result["new_filings"], 2)

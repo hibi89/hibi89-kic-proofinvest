@@ -182,6 +182,8 @@ def list_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
     """List the allowed historical files without requesting or reading them."""
     cutoff = core.parse_day(as_of)
     _, authority = _stored_manifest(db_path, cik, manifest_sha256)
+    if authority["first_seen"].date() > cutoff:
+        raise ValueError("HISTORY_MANIFEST_NOT_AVAILABLE_BY_AS_OF")
     return [
         {"name": name, "filing_from": spec["first"].isoformat(),
          "filing_to": spec["last"].isoformat(),
