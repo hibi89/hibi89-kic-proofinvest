@@ -1,3 +1,14 @@
+# DL P19 — Transaction recovery and bounded database byte reads (2026-10-28 KST)
+
+- **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; code/test SHA `14ca3360a60977c37d03b91108ec4a0e4345882b`, normal push complete and remote branch head confirmed. GitHub status API returned no CI checks.
+- **Recovery coverage:** synthetic injected insert failures now prove that `save_index` rolls back a newly inserted observation/check when its filing-observation link fails, and `persist_original` leaves prior receipts intact when a new receipt insert fails. Removing each injected blocker permits a clean retry. CompanyFacts already has equivalent write-rollback coverage.
+- **Read bound:** SQLite CompanyFacts, submissions/history, and original-filing read paths now use a SQL `length()` gate before returning stored BLOBs to Python. An oversized CompanyFacts row created via `zeroblob()` is refused by both hash retrieval and `--list` without returning the BLOB to the application layer.
+- **Verification:** CompanyFacts **18/18 PASS**; DL-focused discovery **168 run / 165 PASS / 3 SKIP**; `python -B verify_local.py` **PASS** (syntax, core tests, offline CLI smoke). Focused log: `work/logs/dl-focused-bounded-database-reads-20261028.log`. Latest full repository run at prior checkpoint `f7d5df8`: **483 run / 1 FAIL / 7 ERROR / 6 SKIP**, all eight existing failures/errors caused by absent `streamlit`; full suite not rerun for this delta.
+- **Boundaries:** no live SEC request or authentic-source/financial claim; no customer data or secret use. No KIC source, restricted branch, merge, or force push. Working checkout/logs retained under `work/`.
+- **Next:** extend bounded-BLOB rejection tests to original-file/history paths, and continue failure recovery around multi-page history batches without changing their explicitly partial, replayable semantics.
+
+---
+
 # DL P18 — Submissions/history source evidence immutability (2026-10-28 KST)
 
 - **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; code/test SHA `e56663a00bc3d517f9ee519007c0ad5fbc98ce43`, normal push completed and exact remote branch head confirmed. Commit status API returned no status checks; CI is unverified.
