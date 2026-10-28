@@ -227,13 +227,24 @@ def smoke(root: Path, log: Path) -> dict:
             if proc.returncode != 0:
                 return {"status": "FAIL", "step": "extracted-evidence", "log": str(log)}
             evidence = json.loads(proc.stdout)
+            candidate = (evidence.get("candidates") or [{}])[0]
+            locator = candidate.get("source_locator") or {}
+            expected_line = b"2025 Revenue increased 12 percent.\n"
+            expected_start = len(b"SYNTHETIC FIXTURE ONLY\n")
             if (evidence.get("schema") != "disclosure-lightning.evidence-candidates.v1"
                     or evidence.get("returned") != 1
                     or evidence.get("as_of") != evidence_as_of
+                    or evidence.get("filing_sha256") != original_receipt.get("filing_sha256")
+                    or evidence.get("source_uri") != original_receipt.get("source_uri")
                     or evidence.get("source_authenticity_verified") is not False
                     or evidence.get("financial_claim_verified") is not False
-                    or evidence["candidates"][0].get("citation_status")
-                    != "SOURCE_LINE_HINT_NEEDS_REVIEW"):
+                    or candidate.get("text") != "2025 Revenue increased 12 percent."
+                    or candidate.get("citation_status") != "SOURCE_LINE_HINT_NEEDS_REVIEW"
+                    or candidate.get("financial_claim_verified") is not False
+                    or candidate.get("raw_span_sha256") != hashlib.sha256(expected_line).hexdigest()
+                    or locator.get("type") != "UTF8_RAW_LINE_BYTE_SPAN"
+                    or locator.get("start_byte") != expected_start
+                    or locator.get("end_byte_exclusive") != expected_start + len(expected_line)):
                 return {"status": "FAIL", "step": "extracted-evidence",
                         "error": "UNEXPECTED_EVIDENCE_CONTRACT", "log": str(log)}
             return {"status": "PASS", "steps": len(steps) + 5,
