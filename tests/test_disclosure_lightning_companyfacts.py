@@ -15,6 +15,7 @@ import urllib.error
 from unittest.mock import patch
 
 from disclosure_lightning import companyfacts
+from proofinvest.sec_companyfacts import verify_sec_annual_revenue
 
 
 CIK = "0000320193"
@@ -217,6 +218,37 @@ class CompanyFactsTests(unittest.TestCase):
         listed = json.loads(output.getvalue())
         self.assertEqual(listed["status"], "READ_ONLY")
         self.assertEqual(len(listed["observations"]), 1)
+
+    def test_saved_companyfacts_bytes_feed_current_kic_read_only_consumer(self):
+        accession = "0000320193-25-000079"
+        current = {"accn": accession, "form": "10-K", "start": "2024-09-29",
+                   "end": "2025-09-27", "filed": "2025-11-01", "val": 125}
+        prior = {"accn": accession, "form": "10-K", "start": "2023-10-01",
+                 "end": "2024-09-28", "filed": "2025-11-01", "val": 100}
+        raw = json.dumps({
+            "cik": 320193, "entityName": "Synthetic Issuer",
+            "facts": {"us-gaap": {
+                "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                    "units": {"USD": [prior, current]},
+                },
+            }},
+        }, separators=(",", ":")).encode()
+        cutoff = "2025-11-02"
+        indexed = companyfacts.index_companyfacts(
+            raw, cik=CIK, as_of=cutoff, collected_at="2025-11-02T00:00:00Z",
+        )
+        companyfacts.save_companyfacts(self.db, raw, indexed)
+        archived = companyfacts.read_companyfacts(
+            self.db, cik=CIK, sha256=indexed["source_sha256"], as_of=cutoff,
+        )
+        verdict = verify_sec_annual_revenue(
+            json.loads(archived), cik=CIK, accession=accession,
+            current_end="2025-09-27", prior_end="2024-09-28", as_of=cutoff,
+        )
+        self.assertEqual(verdict["status"], "calculated_unverified")
+        self.assertEqual(verdict["current_usd"], "125")
+        self.assertFalse(verdict["authenticated_external_source"])
+        self.assertFalse(verdict["live_api_called"])
 
 
 if __name__ == "__main__":
