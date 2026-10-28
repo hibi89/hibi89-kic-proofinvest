@@ -362,6 +362,43 @@ def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
                       REFERENCES original_filing_receipts(issuer_cik, accession, sha256)
                 )
             """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_update
+                BEFORE UPDATE ON original_filing_receipts
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_delete
+                BEFORE DELETE ON original_filing_receipts
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_no_update
+                BEFORE UPDATE ON original_http_checks
+                BEGIN SELECT RAISE(ABORT, 'Original HTTP checks are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_no_delete
+                BEFORE DELETE ON original_http_checks
+                BEGIN SELECT RAISE(ABORT, 'Original HTTP checks are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_replace
+                BEFORE INSERT ON original_filing_receipts
+                WHEN EXISTS(SELECT 1 FROM original_filing_receipts old
+                    WHERE old.issuer_cik=NEW.issuer_cik
+                      AND old.accession=NEW.accession AND old.sha256=NEW.sha256)
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_keep_duplicate
+                BEFORE INSERT ON original_http_checks
+                WHEN EXISTS(SELECT 1 FROM original_http_checks old
+                    WHERE old.issuer_cik=NEW.issuer_cik AND old.accession=NEW.accession
+                      AND old.source_uri=NEW.source_uri AND old.checked_at=NEW.checked_at
+                      AND old.provenance=NEW.provenance)
+                BEGIN SELECT RAISE(IGNORE); END
+            """)
             # The preflight above can race with an external local DB writer.
             # Recheck the indexed source under the write reservation so this
             # transaction cannot persist bytes against a stale locator.

@@ -277,6 +277,7 @@ class ExtractedFilingTests(unittest.TestCase):
 
     def test_sqlite_tamper_detection_before_extract(self):
         with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",
@@ -372,6 +373,7 @@ class ExtractedFilingTests(unittest.TestCase):
 
     def test_as_of_extraction_excludes_original_bytes_added_after_cutoff(self):
         with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute(
                 "UPDATE original_filing_receipts SET retrieved_at=? WHERE issuer_cik=? AND accession=?",
                 ("2025-11-02T00:00:00Z", CIK, ACC),

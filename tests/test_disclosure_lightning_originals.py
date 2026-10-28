@@ -91,6 +91,39 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
 
+    def test_original_receipts_and_http_checks_are_append_only(self):
+        saved = self.save()
+        digest = saved["filing_sha256"]
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "INSERT INTO original_http_checks VALUES(?,?,?,?,?,?)",
+                (C, A, self.receipt["source_uri"], digest,
+                 "2026-10-27T01:00:00Z", "SYNTHETIC_CHECK"),
+            )
+        mutations = (
+            ("UPDATE original_filing_receipts SET retrieved_at='changed' WHERE sha256=?", (digest,)),
+            ("DELETE FROM original_filing_receipts WHERE sha256=?", (digest,)),
+            ("INSERT OR REPLACE INTO original_filing_receipts VALUES(?,?,?,?,?,?,?,?)",
+             (C, A, digest, self.receipt["source_uri"], "changed",
+              "OFFLINE_FILE_UNVERIFIED", "application/octet-stream", CONTENT)),
+            ("UPDATE original_http_checks SET provenance='CHANGED' WHERE sha256=?", (digest,)),
+            ("DELETE FROM original_http_checks WHERE sha256=?", (digest,)),
+        )
+        for sql, parameters in mutations:
+            with self.subTest(sql=sql.split()[0:3]):
+                with _sqlite_connection(self.db) as db, self.assertRaisesRegex(
+                        sqlite3.IntegrityError, "append-only"):
+                    db.execute(sql, parameters)
+        with _sqlite_connection(self.db) as db:
+            check = db.execute(
+                "SELECT issuer_cik,accession,source_uri,sha256,checked_at,provenance "
+                "FROM original_http_checks WHERE sha256=?", (digest,),
+            ).fetchone()
+            db.execute("INSERT OR REPLACE INTO original_http_checks VALUES(?,?,?,?,?,?)", check)
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM original_http_checks WHERE sha256=?", (digest,),
+            ).fetchone()[0], 1)
+
     def test_simultaneous_original_replay_saves_one_receipt(self):
         from concurrent.futures import ThreadPoolExecutor
         from threading import Barrier
@@ -312,6 +345,7 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT provenance FROM original_http_checks ORDER BY checked_at DESC LIMIT 1"
             ).fetchone()[0], "SEC_HTTPS_304_NOT_MODIFIED")
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute("UPDATE original_filing_receipts SET file_bytes=? WHERE sha256=?",
                        (b"tampered", hashlib.sha256(CONTENT).hexdigest()))
         with self.assertRaisesRegex(ValueError, "integrity validation"):
@@ -380,6 +414,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_as_of_receipt_lookup_includes_fractional_second_before_day_end(self):
         saved = self.save()
         with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute("UPDATE original_filing_receipts SET retrieved_at=?",
                        ("2026-10-27T23:59:59.500000Z",))
         self.assertEqual(len(originals.list_originals(
@@ -398,6 +433,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_as_of_receipt_listing_requires_index_observation_by_cutoff(self):
         saved = self.save()
         with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute(
                 "UPDATE observations SET seen_at=? WHERE issuer_cik=?",
                 ("2026-10-28T00:00:00Z", C),
@@ -412,6 +448,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_as_of_byte_read_uses_one_sqlite_snapshot(self):
         saved = self.save()
         with _sqlite_connection(self.db) as db:
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute(
                 "UPDATE original_filing_receipts SET retrieved_at=? WHERE sha256=?",
                 ("2026-10-27T12:00:00Z", saved["filing_sha256"]),
@@ -421,6 +458,7 @@ class OriginalFilingTests(unittest.TestCase):
         def change_receipt_after_preflight(receipt, cik, accession):
             location = validator(receipt, cik, accession)
             with _sqlite_connection(self.db) as db:
+                db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
                 db.execute(
                     "UPDATE original_filing_receipts SET retrieved_at=? WHERE sha256=?",
                     ("2026-10-28T00:00:00Z", saved["filing_sha256"]),
@@ -485,6 +523,7 @@ class OriginalFilingTests(unittest.TestCase):
             record["source_uri"] = tampered_uri
             db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
                        (json.dumps(record), A))
+            db.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             db.execute("UPDATE original_filing_receipts SET source_uri=? WHERE sha256=?",
                        (tampered_uri, saved["filing_sha256"]))
         with self.assertRaisesRegex(ValueError, "metadata does not match"):
@@ -493,6 +532,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
         with _sqlite_connection(self.db) as conn:
+            conn.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             conn.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",
@@ -506,6 +546,7 @@ class OriginalFilingTests(unittest.TestCase):
     def test_original_receipt_must_remain_linked_to_indexed_source_uri(self):
         saved = self.save()
         with _sqlite_connection(self.db) as conn:
+            conn.execute("DROP TRIGGER IF EXISTS original_receipts_no_update")
             conn.execute(
                 "UPDATE original_filing_receipts SET source_uri=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",
