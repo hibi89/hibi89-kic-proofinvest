@@ -154,9 +154,27 @@ class CompanyFactsTests(unittest.TestCase):
                 "UPDATE companyfacts_observations SET provenance=? WHERE issuer_cik=? AND sha256=?",
                 ("OFFLINE_UNVERIFIED", CIK, cache["sha256"]),
             )
+            db.execute(
+                "DELETE FROM companyfacts_checks WHERE issuer_cik=? AND sha256=?",
+                (CIK, cache["sha256"]),
+            )
             db.commit()
         with self.assertRaisesRegex(ValueError, "integrity"):
             companyfacts._load_cache(self.db, CIK)
+
+    def test_offline_first_bytes_can_be_reused_after_live_same_hash_check(self):
+        self.save()
+        live_meta = companyfacts.index_companyfacts(
+            RAW, cik=CIK, as_of=AS_OF, collected_at=COLLECTED,
+            provenance="SEC_HTTPS_RESPONSE",
+        )
+        companyfacts.save_companyfacts(
+            self.db, RAW, live_meta, etag='"synthetic-v2"',
+        )
+        cached = companyfacts._load_cache(self.db, CIK)
+        self.assertEqual(cached["raw"], RAW)
+        self.assertEqual(cached["etag"], '"synthetic-v2"')
+        self.assertEqual(cached["sha256"], live_meta["source_sha256"])
 
     def test_mocked_live_200_requires_json_and_returns_validated_etag(self):
         class Response:
