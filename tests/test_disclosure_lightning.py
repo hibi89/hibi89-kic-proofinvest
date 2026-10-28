@@ -1016,6 +1016,20 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertTrue(current["complete_for_pinned_manifest"] is False)
         self.assertEqual(old_receipt["page_sha256"], hashlib.sha256(pages[first]).hexdigest())
 
+    def test_history_page_revision_tie_at_same_observation_time_fails_closed(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        first = sorted(pages)[0]
+        history.import_history_batch(pages={first: pages[first]}, **args)
+        revised_payload = json.loads(pages[first])
+        revised_payload["primaryDocument"][0] = "same-time-revision.htm"
+        revised_bytes = json.dumps(revised_payload).encode("utf-8")
+        history.import_history_batch(pages={first: revised_bytes}, **args)
+        with self.assertRaisesRegex(ValueError, "CHRONOLOGY_AMBIGUOUS"):
+            history.audit_manifest_pages(
+                db_path=self.db, cik=CIK,
+                manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+
 
 if __name__ == "__main__":
     unittest.main()
