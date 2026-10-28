@@ -96,6 +96,32 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
             self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
 
+    def test_failed_index_link_write_rolls_back_observation_and_recovers(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        payload = json.loads(self.raw)
+        payload["name"] = "SYNTHETIC RETRY AFTER FAILURE"
+        changed_raw = json.dumps(payload, separators=(",", ":")).encode()
+        changed_index = self.indexed(changed_raw)
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "CREATE TRIGGER reject_filing_observation BEFORE INSERT ON filing_observations "
+                "BEGIN SELECT RAISE(ABORT, 'synthetic link failure'); END",
+            )
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "synthetic link failure"):
+            core.save_index(self.db, changed_raw, changed_index)
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT count(*) FROM observation_checks").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT count(*) FROM filing_observations").fetchone()[0], 3)
+            self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
+            db.execute("DROP TRIGGER reject_filing_observation")
+        saved = core.save_index(self.db, changed_raw, changed_index)
+        self.assertEqual(saved["status"], "SAVED")
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 2)
+            self.assertEqual(db.execute("SELECT count(*) FROM observation_checks").fetchone()[0], 2)
+            self.assertEqual(db.execute("SELECT count(*) FROM filing_observations").fetchone()[0], 6)
+
     def test_simultaneous_replay_serializes_and_reuses_observation(self):
         from concurrent.futures import ThreadPoolExecutor
         from threading import Barrier

@@ -150,6 +150,28 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
 
+    def test_failed_original_receipt_write_rolls_back_and_recovers(self):
+        self.save()
+        changed = b"<html>SECOND SYNTHETIC RECEIPT</html>"
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "CREATE TRIGGER reject_original_receipt BEFORE INSERT ON original_filing_receipts "
+                "BEGIN SELECT RAISE(ABORT, 'synthetic receipt failure'); END",
+            )
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "synthetic receipt failure"):
+            self.save(changed)
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM original_filing_receipts",
+            ).fetchone()[0], 1)
+            db.execute("DROP TRIGGER reject_original_receipt")
+        retried = self.save(changed)
+        self.assertEqual(retried["status"], "SAVED")
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM original_filing_receipts",
+            ).fetchone()[0], 2)
+
     def test_changed_document_never_overwrites_prior_bytes(self):
         original = self.save()
         updated = self.save(b"<html>CHANGED SYNTHETIC</html>")
