@@ -287,6 +287,49 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(originals.list_originals(
             db_path=self.db, cik=C, accession=A, as_of="2026-10-27"), [])
 
+    def test_as_of_byte_read_uses_one_sqlite_snapshot(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "UPDATE original_filing_receipts SET retrieved_at=? WHERE sha256=?",
+                ("2026-10-27T12:00:00Z", saved["filing_sha256"]),
+            )
+        validator = originals._validate_locator_receipt
+
+        def change_receipt_after_preflight(receipt, cik, accession):
+            location = validator(receipt, cik, accession)
+            with _sqlite_connection(self.db) as db:
+                db.execute(
+                    "UPDATE original_filing_receipts SET retrieved_at=? WHERE sha256=?",
+                    ("2026-10-28T00:00:00Z", saved["filing_sha256"]),
+                )
+            return location
+
+        with patch.object(originals, "_validate_locator_receipt",
+                          side_effect=change_receipt_after_preflight):
+            self.assertEqual(originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"], as_of="2026-10-27"), CONTENT)
+
+    def test_original_read_without_receipt_table_is_a_missing_receipt(self):
+        blank = self.root / "blank.db"
+        sqlite3.connect(blank).close()
+        with self.assertRaisesRegex(KeyError, "receipt not found"):
+            originals.read_original_bytes(
+                db_path=blank, cik=C, accession=A, sha256="0" * 64)
+
+    def test_original_locator_rechecks_saved_index_bytes_and_metadata(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as db:
+            db.execute("UPDATE observations SET response=? WHERE issuer_cik=?",
+                       (b"{}", C))
+        with self.assertRaisesRegex(ValueError, "index source integrity"):
+            originals.locate_original(self.db, cik=C, accession=A)
+        with self.assertRaisesRegex(ValueError, "index source integrity"):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"])
+
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
         with _sqlite_connection(self.db) as conn:

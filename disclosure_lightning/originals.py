@@ -19,8 +19,10 @@ import sys
 import urllib.error
 import urllib.request
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
+from . import core
 from .core import _NoRedirect, _timestamp, _valid_user_agent, cik10, parse_day
 
 MAX_FILING_BYTES = 25_000_000
@@ -59,14 +61,16 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
     with closing(_read_conn(db_path)) as conn:
         if as_of is None:
             row = conn.execute(
-                "SELECT filing_json FROM filings WHERE provider='SEC_EDGAR'"
-                " AND issuer_cik=? AND accession=?", (cik, accession)
+                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at "
+                "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
+                "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=?",
+                (cik, accession),
             ).fetchone()
         else:
             cutoff_day = parse_day(as_of).isoformat()
             row = conn.execute(
-                "SELECT f.filing_json FROM filings AS f "
-                "JOIN observations AS o ON o.id=f.first_observation_id "
+                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at "
+                "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
                 "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
                 "AND json_extract(f.filing_json,'$.filed_at')<=? "
                 "AND julianday(json_extract(f.filing_json,'$.collected_at'))<julianday(?) + 1 "
@@ -77,7 +81,29 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
         if as_of is not None:
             raise ValueError("SEC filing was not available by as-of date")
         raise ValueError("SEC filing ID not found in the indexed SQLite evidence")
-    receipt = json.loads(row[0])
+    filing_json, index_raw, index_digest, provenance, first_seen = row
+    receipt = json.loads(filing_json)
+    _verify_indexed_locator(
+        receipt, index_raw, index_digest, provenance, first_seen, cik,
+    )
+    return _validate_locator_receipt(receipt, cik, accession)
+
+
+def _verify_indexed_locator(receipt: dict, raw: bytes, digest: str,
+                            provenance: str, first_seen: str, cik: str) -> None:
+    if (not isinstance(raw, bytes) or not isinstance(digest, str)
+            or hashlib.sha256(raw).hexdigest() != digest
+            or first_seen != receipt.get("collected_at")
+            or digest != receipt.get("index_raw_sha256")):
+        raise ValueError("SEC index source integrity failed")
+    payload = core._validate_raw(raw)
+    core._verify_stored_filing(
+        receipt, payload=payload, observation_sha256=digest,
+        provenance=provenance, cik=cik,
+    )
+
+
+def _validate_locator_receipt(receipt: dict, cik: str, accession: str) -> dict:
     prefix = ("https://www.sec.gov/Archives/edgar/data/"
               f"{int(cik)}/{accession.replace('-', '')}/")
     url = receipt.get("source_uri")
@@ -274,28 +300,59 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
     if not isinstance(sha256, str) or re.fullmatch(
             r"[0-9a-f]{64}", sha256, re.ASCII) is None:
         raise ValueError("Invalid original filing SHA-256")
-    location = locate_original(db_path, cik=c, accession=a, as_of=as_of)
-    if as_of is not None:
-        eligible = list_originals(
-            db_path=db_path, cik=c, accession=a, as_of=as_of
-        )
-        if not any(item["filing_sha256"] == sha256 for item in eligible):
-            raise ValueError("Original filing bytes were not available by as-of date")
+    cutoff_day = parse_day(as_of).isoformat() if as_of is not None else None
     with closing(_read_conn(db_path)) as db:
+        # Keep filing metadata, receipt chronology, and original bytes in one
+        # SQLite read snapshot so a concurrent update cannot cross the as-of
+        # preflight and change which bytes the caller receives.
+        db.execute("BEGIN")
+        has_receipts = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='original_filing_receipts'"
+        ).fetchone()
+        if has_receipts is None:
+            raise KeyError("Original filing receipt not found")
         row = db.execute(
-            "SELECT file_bytes,source_uri FROM original_filing_receipts "
-            "WHERE issuer_cik=? AND accession=? AND sha256=?",
+            "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at, "
+            "r.file_bytes,r.source_uri,r.retrieved_at "
+            "FROM filings AS f "
+            "JOIN observations AS o ON o.id=f.first_observation_id "
+            "JOIN original_filing_receipts AS r "
+            "ON r.issuer_cik=f.issuer_cik AND r.accession=f.accession "
+            "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
+            "AND r.sha256=?",
             (c, a, sha256),
         ).fetchone()
     if row is None:
         raise KeyError("Original filing receipt not found")
-    raw, source_uri = row
+    (filing_json, index_raw, index_digest, provenance, first_seen,
+     raw, source_uri, retrieved_at) = row
+    location = json.loads(filing_json)
+    _verify_indexed_locator(location, index_raw, index_digest, provenance, first_seen, c)
+    location = _validate_locator_receipt(location, c, a)
     if source_uri != location["source_uri"]:
         raise ValueError("Saved original source URI no longer matches indexed locator")
+    if cutoff_day is not None:
+        if (not isinstance(location.get("filed_at"), str)
+                or location["filed_at"] > cutoff_day
+                or not _at_or_before_day(location.get("collected_at"), cutoff_day)
+                or not _at_or_before_day(first_seen, cutoff_day)
+                or not _at_or_before_day(retrieved_at, cutoff_day)):
+            raise ValueError("Original filing bytes were not available by as-of date")
     if (not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILING_BYTES
             or hashlib.sha256(raw).hexdigest() != sha256):
         raise ValueError("Saved original filing content integrity failed")
     return raw
+
+
+def _at_or_before_day(timestamp: str, cutoff_day: str) -> bool:
+    try:
+        moment = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        if moment.tzinfo is None or moment.utcoffset() is None:
+            return False
+        return moment.astimezone(timezone.utc).date() <= parse_day(cutoff_day)
+    except (AttributeError, TypeError, ValueError):
+        return False
 
 
 def main(argv: list[str] | None = None) -> int:
