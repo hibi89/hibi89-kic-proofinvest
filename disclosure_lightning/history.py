@@ -266,7 +266,7 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             receipt = latest[0]
         state = "MISSING"
         if receipt is not None:
-            digest, count, observation_id, _ = receipt
+            digest, count, observation_id, receipt_seen_at = receipt
             with closing(sqlite3.connect(uri, uri=True)) as conn:
                 conn.execute("PRAGMA query_only=ON")
                 observation = conn.execute(
@@ -279,6 +279,7 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                 raise ValueError("HISTORY_PAGE_RECEIPT_SIZE_LIMIT_EXCEEDED")
             if (observation[2] != "OFFLINE_UNVERIFIED"
                     or observation[3] != digest
+                    or observation[1] != receipt_seen_at
                     or observation[4] != core.PROVIDER
                     or observation[5] != target
                     or hashlib.sha256(observation[0]).hexdigest() != digest):
