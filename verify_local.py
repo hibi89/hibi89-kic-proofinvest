@@ -227,7 +227,9 @@ def smoke(root: Path, log: Path) -> dict:
             if proc.returncode != 0:
                 return {"status": "FAIL", "step": "extracted-evidence", "log": str(log)}
             evidence = json.loads(proc.stdout)
-            candidate = (evidence.get("candidates") or [{}])[0]
+            candidates = evidence.get("candidates")
+            candidate = (candidates[0] if isinstance(candidates, list)
+                         and candidates and isinstance(candidates[0], dict) else {})
             locator = candidate.get("source_locator") or {}
             expected_line = b"2025 Revenue increased 12 percent.\n"
             expected_start = len(b"SYNTHETIC FIXTURE ONLY\n")
