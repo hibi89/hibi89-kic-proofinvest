@@ -1,3 +1,13 @@
+# DL P18 — Submissions/history source evidence immutability (2026-10-28 KST)
+
+- **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; code/test SHA `e56663a00bc3d517f9ee519007c0ad5fbc98ce43`, normal push completed and exact remote branch head confirmed. Commit status API returned no status checks; CI is unverified.
+- **Change:** the shared DL SQLite schema now guards source observations, observation-check history, first-seen filing index records, filing-to-observation links, and history page receipts/version rows against ordinary UPDATE/DELETE. Replacement of an existing observation, filing, or page receipt/version is rejected; duplicate check/link inserts preserve idempotent replay. `save_index` recreates missing guards through its schema step for existing DBs. Conditional HTTP validator state remains mutable by design.
+- **Tests:** full DL-focused discovery **165 run / 162 PASS / 3 SKIP**; `python -B verify_local.py` **PASS** at the exact source contents (syntax/core/offline CLI smoke). Regression tests attempt all blocked write shapes and continue to verify tampered bytes/metadata by explicitly disabling test-database triggers. Full repository run last occurred at `f0963e7`: **480 run / 1 FAIL / 7 ERROR / 6 SKIP**, all eight failure/error cases from missing `streamlit`; not rerun for this delta. Latest focused log: `work/logs/dl-focused-core-full-append-only-20261028.log`.
+- **Limits:** direct schema-editing access can remove SQLite triggers. No real SEC traffic, source certification, financial normalization, cross-branch edits, merge, or force push.
+- **Next:** continue recovery tests for malformed/partial history pages and source-to-filing association repair; consider KIC envelope consumption only as an explicitly read-only, independently reviewed contract.
+
+---
+
 # DL P17 — Original filing receipt immutability (2026-10-28 KST)
 
 - **Branch/source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; verified source/test SHA `73c4390e93afc32061814c99704e37ea5538c9c6`. Normal push and GitHub branch-head commit listing confirmed this exact SHA. Commit status API returned no checks; CI remains unverified.
