@@ -330,6 +330,29 @@ class OriginalFilingTests(unittest.TestCase):
                 db_path=self.db, cik=C, accession=A,
                 sha256=saved["filing_sha256"])
 
+    def test_persist_rechecks_index_under_write_reservation(self):
+        locator = originals.locate_original
+        calls = 0
+
+        def mutate_after_preflight(*args, **kwargs):
+            nonlocal calls
+            result = locator(*args, **kwargs)
+            calls += 1
+            if calls == 1:
+                with _sqlite_connection(self.db) as db:
+                    db.execute("UPDATE observations SET response=? WHERE issuer_cik=?",
+                               (b"{}", C))
+            return result
+
+        with patch.object(originals, "locate_original", side_effect=mutate_after_preflight):
+            with self.assertRaisesRegex(ValueError, "index source integrity"):
+                self.save()
+        with _sqlite_connection(self.db) as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='original_filing_receipts'"
+            ).fetchone())
+
     def test_original_listing_rejects_matching_but_tampered_locator_metadata(self):
         saved = self.save()
         tampered_uri = "https://www.sec.gov/Archives/edgar/data/320193/000032019325000901/fake.htm"

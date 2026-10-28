@@ -206,6 +206,7 @@ def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
     with closing(sqlite3.connect(db_path)) as db:
         db.execute("PRAGMA busy_timeout=5000")
         with db:
+            db.execute("BEGIN IMMEDIATE")
             db.execute("""
                 CREATE TABLE IF NOT EXISTS original_filing_receipts (
                     issuer_cik TEXT NOT NULL,
@@ -219,6 +220,14 @@ def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
                     PRIMARY KEY (issuer_cik, accession, sha256)
                 )
             """)
+            # The preflight above can race with an external local DB writer.
+            # Recheck the indexed source under the write reservation so this
+            # transaction cannot persist bytes against a stale locator.
+            current_location = locate_original(
+                db_path, cik=location["issuer_cik"], accession=location["accession"]
+            )
+            if current_location != receipt:
+                raise ValueError("Original filing locator changed before persistence")
             existing = db.execute(
                 "SELECT file_bytes FROM original_filing_receipts "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",
