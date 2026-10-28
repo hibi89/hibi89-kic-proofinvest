@@ -86,6 +86,8 @@ class _InlineXbrlParser(HTMLParser):
                 self.exclude_depth = 1
                 return
             if (namespace == XBRLI_NAMESPACE and local_name in {"context", "unit"}):
+                if self.tree_stack:
+                    self.truncated = True
                 self.tree_nodes += 1
                 if self.tree_nodes > MAX_TREE_NODES:
                     self.truncated = True
@@ -137,10 +139,16 @@ class _InlineXbrlParser(HTMLParser):
                     self.exclude_depth -= 1
                 return
             if self.tree_stack:
+                matched = False
                 for index in range(len(self.tree_stack) - 1, -1, -1):
                     if self.tree_stack[index]["tag"] == tag:
+                        if index != len(self.tree_stack) - 1:
+                            self.truncated = True
                         del self.tree_stack[index:]
+                        matched = True
                         break
+                if not matched:
+                    self.truncated = True
                 if not self.tree_stack and self.tree_roots:
                     root = self.tree_roots[-1]
                     root_namespace, root_name = _expanded_name(root["tag"], self.namespaces)

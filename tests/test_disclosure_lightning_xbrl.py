@@ -151,6 +151,31 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         )
         self.assertEqual(result["facts"][0]["unit_ref_status"], "UNKNOWN_OR_AMBIGUOUS")
 
+    def test_nested_or_mismatched_context_tree_cannot_claim_complete_extraction(self):
+        nested = INLINE.replace(
+            b"</xbrli:entity>",
+            b'<xbrli:context id="nested"><xbrli:period>'
+            b"<xbrli:instant>2025-09-27</xbrli:instant>"
+            b"</xbrli:period></xbrli:context></xbrli:entity>",
+            1,
+        )
+        malformed_close = INLINE.replace(
+            b"</xbrli:scenario>\n</xbrli:context>",
+            b"</xbrli:context>\n</xbrli:scenario>",
+            1,
+        )
+        for raw in (nested, malformed_close):
+            with self.subTest(raw=raw[:80]):
+                result = xbrl.extract_inline_facts(
+                    raw, content_type="text/html",
+                    filing_sha256=hashlib.sha256(raw).hexdigest(),
+                    issuer_cik=CIK, accession=ACCESSION,
+                    source_uri=self.receipt["source_uri"],
+                    input_origin="OFFLINE_FILE_UNVERIFIED",
+                )
+                self.assertTrue(result["truncated"])
+                self.assertFalse(result["complete_candidate_extraction"])
+
     def test_duplicate_context_reference_is_ambiguous(self):
         duplicated = INLINE.replace(
             b"</xbrli:context>",
