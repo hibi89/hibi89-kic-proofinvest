@@ -205,19 +205,22 @@ def _validate_raw(raw: bytes) -> dict:
     return payload
 
 
-def _read_local_json(path: Path) -> bytes:
+def _read_local_json(path: Path, *, max_bytes: int = MAX_JSON_BYTES) -> bytes:
     """Read one bounded regular offline input without following symlinks."""
+    if type(max_bytes) is not int or max_bytes <= 0:
+        raise ValueError("Offline JSON size limit must be a positive integer")
     source = Path(path).expanduser()
     if source.is_symlink():
         raise ValueError("Offline JSON symlink input is forbidden")
     fd = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     with os.fdopen(fd, "rb") as handle:
         metadata = os.fstat(handle.fileno())
-        if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= MAX_JSON_BYTES:
+        if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= max_bytes:
             raise ValueError("Offline JSON must be a bounded regular file")
-        raw = handle.read(MAX_JSON_BYTES + 1)
-    if not 0 < len(raw) <= MAX_JSON_BYTES:
-        raise ValueError("Offline JSON must be 1..8MB")
+        raw = handle.read(max_bytes + 1)
+    if not 0 < len(raw) <= max_bytes:
+        limit_label = f"{max_bytes // 1_000_000}MB" if max_bytes % 1_000_000 == 0 else str(max_bytes)
+        raise ValueError(f"Offline JSON must be 1..{limit_label}")
     return raw
 
 

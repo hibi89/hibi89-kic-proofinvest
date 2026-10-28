@@ -14,7 +14,7 @@ from pathlib import Path
 import urllib.error
 from unittest.mock import patch
 
-from disclosure_lightning import companyfacts
+from disclosure_lightning import companyfacts, core
 from proofinvest.sec_companyfacts import verify_sec_annual_revenue
 
 
@@ -82,6 +82,21 @@ class CompanyFactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "integrity"):
             companyfacts.read_companyfacts(self.db, cik=CIK,
                                             sha256=meta["source_sha256"])
+
+    def test_offline_companyfacts_input_uses_its_larger_explicit_bound(self):
+        padded = RAW[:-1] + b',"padding":"' + b"x" * 8_000_001 + b'"}'
+        source = Path(self.temp.name) / "large-companyfacts.json"
+        source.write_bytes(padded)
+        with self.assertRaisesRegex(ValueError, "bounded regular file"):
+            core._read_local_json(source)
+        loaded = core._read_local_json(
+            source, max_bytes=companyfacts.MAX_COMPANYFACTS_BYTES,
+        )
+        self.assertEqual(len(loaded), len(padded))
+        indexed = companyfacts.index_companyfacts(
+            loaded, cik=CIK, as_of=AS_OF, collected_at=COLLECTED,
+        )
+        self.assertEqual(indexed["source_bytes"], len(padded))
 
     def test_failed_check_write_rolls_back_new_observation(self):
         self.save()

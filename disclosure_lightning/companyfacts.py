@@ -429,7 +429,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.allow_network and args.collected_at is not None:
                 raise ValueError("Live retrieval timestamp is derived from actual process time")
             if args.input_json:
-                raw = core._read_local_json(args.input_json)
+                raw = core._read_local_json(
+                    args.input_json, max_bytes=MAX_COMPANYFACTS_BYTES,
+                )
                 etag, unchanged, provenance = None, False, "OFFLINE_UNVERIFIED"
             else:
                 raw, etag, unchanged = fetch_companyfacts_with_cache(
