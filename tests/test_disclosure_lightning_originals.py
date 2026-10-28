@@ -242,6 +242,13 @@ class OriginalFilingTests(unittest.TestCase):
         )
         self.assertEqual(raw, CONTENT)
         self.assertEqual(hashlib.sha256(raw).hexdigest(), saved["filing_sha256"])
+        with self.assertRaisesRegex(ValueError, "not available by as-of"):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"], as_of="2000-01-01")
+        self.assertEqual(originals.read_original_bytes(
+            db_path=self.db, cik=C, accession=A,
+            sha256=saved["filing_sha256"], as_of="2099-12-31"), CONTENT)
         for invalid in ("", "../secret", "G" * 64, "0" * 63):
             with self.subTest(sha=invalid), self.assertRaises(ValueError):
                 originals.read_original_bytes(

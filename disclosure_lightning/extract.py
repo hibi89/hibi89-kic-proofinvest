@@ -248,7 +248,8 @@ def from_saved_original(*, db_path, cik: str, accession: str, sha256: str,
         raise ValueError("SAVED_ORIGINAL_RECEIPT_NOT_FOUND_OR_AMBIGUOUS")
     meta = matched[0]
     raw = read_original_bytes(
-        db_path=db_path, cik=cik, accession=accession, sha256=sha256
+        db_path=db_path, cik=cik, accession=accession, sha256=sha256,
+        as_of=as_of,
     )
     result = extract_bytes(
         raw, content_type=meta["content_type"], filing_sha256=sha256,

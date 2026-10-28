@@ -246,7 +246,7 @@ def list_originals(*, db_path: Path, cik: str, accession: str,
 
 
 def read_original_bytes(*, db_path: Path, cik: str, accession: str,
-                        sha256: str) -> bytes:
+                        sha256: str, as_of: str | None = None) -> bytes:
     """Read exactly one persisted raw primary document; verify digest on read.
 
     This returns untrusted original bytes, NOT normalized finance claims.
@@ -257,6 +257,12 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
             r"[0-9a-f]{64}", sha256, re.ASCII) is None:
         raise ValueError("Invalid original filing SHA-256")
     location = locate_original(db_path, cik=c, accession=a)
+    if as_of is not None:
+        eligible = list_originals(
+            db_path=db_path, cik=c, accession=a, as_of=as_of
+        )
+        if not any(item["filing_sha256"] == sha256 for item in eligible):
+            raise ValueError("Original filing bytes were not available by as-of date")
     with closing(_read_conn(db_path)) as db:
         row = db.execute(
             "SELECT file_bytes,source_uri FROM original_filing_receipts "
