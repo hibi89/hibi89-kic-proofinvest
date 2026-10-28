@@ -197,6 +197,16 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM observation_checks").fetchone()[0], 1)
 
+    def test_read_only_listing_uses_first_observation_for_legacy_check_schema(self):
+        core.save_index(self.db, self.raw, self.indexed(
+            collected_at="2026-10-27T01:00:00Z"))
+        with _sqlite_connection(self.db) as db:
+            db.execute("DROP TABLE observation_checks")
+        result = core.list_filings(self.db, cik=CIK, as_of="2026-10-27")[0]
+        self.assertEqual(result["first_seen_at"], "2026-10-27T01:00:00Z")
+        self.assertEqual(result["last_checked_at"], "2026-10-27T01:00:00Z")
+        self.assertEqual(result["last_checked_provenances"], ["OFFLINE_UNVERIFIED"])
+
     def test_list_limit_requires_an_integer_not_bool_or_fraction(self):
         core.save_index(self.db, self.raw, self.indexed())
         for limit in (True, False, 1.5, "2"):
