@@ -125,6 +125,18 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "metadata does not match"):
             core.list_filings(self.db, cik=CIK)
 
+    def test_read_only_list_refuses_uncontracted_metadata_fields(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            record = json.loads(db.execute(
+                "SELECT filing_json FROM filings LIMIT 1"
+            ).fetchone()[0])
+            record["financial_claim_verified"] = True
+            db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                       (json.dumps(record), record["accession"]))
+        with self.assertRaisesRegex(ValueError, "metadata does not match"):
+            core.list_filings(self.db, cik=CIK)
+
     def test_read_only_as_of_listing_does_not_change_sqlite_bytes(self):
         core.save_index(self.db, self.raw, self.indexed())
         before = self.db.read_bytes()
@@ -996,6 +1008,25 @@ class DisclosureLightningTests(unittest.TestCase):
             history.audit_manifest_pages(
                 db_path=self.db, cik=CIK,
                 manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+
+    def test_read_only_list_binds_historical_source_uri_to_page_receipt(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        first = sorted(pages)[0]
+        history.import_history_batch(pages={first: pages[first]}, **args)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 1)
+        with _sqlite_connection(self.db) as db:
+            encoded = db.execute(
+                "SELECT filing_json FROM filings WHERE accession=?",
+                ("0000320193-14-000001",),
+            ).fetchone()[0]
+            record = json.loads(encoded)
+            record["index_source_uri"] = (
+                "https://data.sec.gov/submissions/CIK0000320193-submissions-002.json")
+            db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                       (json.dumps(record), record["accession"]))
+        with self.assertRaisesRegex(ValueError, "page URI"):
+            core.list_filings(self.db, cik=CIK)
 
     def test_history_page_revisions_are_preserved_and_audited_as_of(self):
         from disclosure_lightning import history

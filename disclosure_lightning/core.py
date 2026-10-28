@@ -606,6 +606,19 @@ def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: st
             or (accepted_at is not None and datetime.fromisoformat(
                 accepted_at).astimezone(timezone.utc) > observed_instant)):
         raise ValueError("Stored filing metadata does not match original index response")
+    expected_record = {
+        "schema_version": "1.0", "provider": PROVIDER,
+        "issuer_cik": cik, "accession": accession, "form": forms[i],
+        "filed_at": filed.isoformat(), "accepted_at": accepted_at,
+        "collected_at": collected_at,
+        "source_uri": _source_uri(cik, accession, documents[i]),
+        "index_source_uri": expected_index_uri,
+        "index_raw_sha256": observation_sha256, "raw_sha256": None,
+        "as_of_cutoff": cutoff.isoformat(), "amends_accession": None,
+        "evidence_status": expected_status,
+    }
+    if record != expected_record:
+        raise ValueError("Stored filing metadata does not match original index response")
 
 
 def _last_checked_metadata(conn, *, cik: str, accession: str,
@@ -679,6 +692,12 @@ def list_filings(
         has_check_table = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='observation_checks'"
         ).fetchone() is not None
+        history_receipt_tables = {
+            row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name IN ('history_page_receipts','history_page_receipt_versions')"
+            )
+        }
         for observation_id, indices in groups.items():
             source = conn.execute(
                 "SELECT sha256,response,provenance FROM observations WHERE id=?",
@@ -691,12 +710,32 @@ def list_filings(
                     or hashlib.sha256(raw).hexdigest() != source_sha256):
                 raise ValueError("Stored index response integrity failed")
             payload = _validate_raw(raw)
+            historical_source = "cik" not in payload
             for index in indices:
                 record, _, expected_sha256, provenance, first_seen = rows[index]
                 if expected_sha256 != source_sha256 or provenance != source_provenance:
                     raise ValueError("Stored index observation metadata is inconsistent")
                 if first_seen != record.get("collected_at"):
                     raise ValueError("Stored first-seen time does not match the indexed receipt")
+                if historical_source and history_receipt_tables:
+                    linked_pages = []
+                    if "history_page_receipts" in history_receipt_tables:
+                        linked_pages.extend(conn.execute(
+                            "SELECT page_name,page_sha256 FROM history_page_receipts "
+                            "WHERE issuer_cik=? AND observation_id=?",
+                            (target, observation_id),
+                        ).fetchall())
+                    if "history_page_receipt_versions" in history_receipt_tables:
+                        linked_pages.extend(conn.execute(
+                            "SELECT page_name,page_sha256 FROM history_page_receipt_versions "
+                            "WHERE issuer_cik=? AND observation_id=?",
+                            (target, observation_id),
+                        ).fetchall())
+                    if linked_pages:
+                        expected_name = record.get("index_source_uri", "").rsplit("/", 1)[-1]
+                        if (expected_sha256, expected_name) not in {
+                                (page_sha, page_name) for page_name, page_sha in linked_pages}:
+                            raise ValueError("Stored historical page URI does not match its receipt")
                 _verify_stored_filing(
                     record, payload=payload, observation_sha256=source_sha256,
                     provenance=provenance, cik=target,
