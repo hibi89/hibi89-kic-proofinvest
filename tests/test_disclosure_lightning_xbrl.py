@@ -127,6 +127,22 @@ class InlineXbrlEvidenceTests(unittest.TestCase):
         self.assertFalse(result["complete_candidate_extraction"])
         self.assertEqual(result["candidate_count"], 0)
 
+    def test_self_closing_nil_fact_is_kept_as_empty_candidate(self):
+        nil_document = INLINE.replace(
+            b"</body>",
+            b'<ix:nonFraction name="us-gaap:Cash" contextRef="ctx-2025" '
+            b'unitRef="usd" xsi:nil="true"/></body>',
+        )
+        result = xbrl.extract_inline_facts(
+            nil_document, content_type="text/html",
+            filing_sha256=hashlib.sha256(nil_document).hexdigest(),
+            issuer_cik=CIK, accession=ACCESSION, source_uri=self.receipt["source_uri"],
+            input_origin="OFFLINE_FILE_UNVERIFIED",
+        )
+        self.assertEqual(result["candidate_count"], 4)
+        self.assertEqual(result["facts"][-1]["lexical_value"], "")
+        self.assertEqual(result["facts"][-1]["nil"], "true")
+
     def test_read_only_cli_returns_saved_xbrl_candidates(self):
         saved = originals.persist_original(
             db_path=self.db, receipt=self.receipt, raw=INLINE,

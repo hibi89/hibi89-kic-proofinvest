@@ -98,11 +98,8 @@ class _InlineXbrlParser(HTMLParser):
             self.unsupported_fact_count += 1
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]):
-        # A self-closing context or unit is retained as an empty evidence node.
-        namespace, local_name = _expanded_name(tag.lower(), self.namespaces)
-        if namespace == XBRLI_NAMESPACE and local_name in {"context", "unit"}:
-            self.handle_starttag(tag, attrs)
-            self.handle_endtag(tag)
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str):
         tag = tag.lower()
