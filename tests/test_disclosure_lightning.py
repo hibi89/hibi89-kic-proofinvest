@@ -155,6 +155,25 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(len(core.list_filings(self.db, cik=CIK, as_of="2026-10-27")), 3)
         self.assertEqual(len(core.list_filings(self.db, cik=CIK, as_of="2026-10-28")), 3)
 
+    def test_identical_snapshot_tracks_last_check_without_rewriting_source(self):
+        first = self.indexed(collected_at="2026-10-27T23:00:00Z")
+        core.save_index(self.db, self.raw, first)
+        later = self.indexed(as_of="2026-10-28", collected_at="2026-10-28T00:00:00Z")
+        core.save_index(self.db, self.raw, later)
+        core.save_index(self.db, self.raw, later)
+        with _sqlite_connection(self.db) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT count(*) FROM observation_checks").fetchone()[0], 2)
+        before_read = self.db.read_bytes()
+        as_of_27 = core.list_filings(self.db, cik=CIK, as_of="2026-10-27")[0]
+        as_of_28 = core.list_filings(self.db, cik=CIK, as_of="2026-10-28")[0]
+        self.assertEqual(as_of_27["first_seen_at"], "2026-10-27T23:00:00Z")
+        self.assertEqual(as_of_27["last_checked_at"], "2026-10-27T23:00:00Z")
+        self.assertEqual(as_of_28["first_seen_at"], "2026-10-27T23:00:00Z")
+        self.assertEqual(as_of_28["last_checked_at"], "2026-10-28T00:00:00Z")
+        self.assertEqual(as_of_28["last_checked_provenances"], ["OFFLINE_UNVERIFIED"])
+        self.assertEqual(self.db.read_bytes(), before_read)
+
     def test_list_limit_requires_an_integer_not_bool_or_fraction(self):
         core.save_index(self.db, self.raw, self.indexed())
         for limit in (True, False, 1.5, "2"):

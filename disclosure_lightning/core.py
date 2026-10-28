@@ -242,6 +242,12 @@ CREATE TABLE IF NOT EXISTS observations(
     provenance TEXT NOT NULL,
     UNIQUE(provider,issuer_cik,sha256)
 );
+CREATE TABLE IF NOT EXISTS observation_checks(
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    checked_at TEXT NOT NULL,
+    provenance TEXT NOT NULL,
+    PRIMARY KEY(observation_id,checked_at,provenance)
+);
 CREATE TABLE IF NOT EXISTS filings(
     provider TEXT NOT NULL,
     issuer_cik TEXT NOT NULL,
@@ -453,6 +459,15 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
                      indexed["provenance"]),
                 )
                 obs_id = cursor.lastrowid
+            first_seen = conn.execute(
+                "SELECT seen_at FROM observations WHERE id=?", (obs_id,),
+            ).fetchone()[0]
+            if indexed["collected_at"] < first_seen:
+                raise ValueError("OBSERVATION_CHECK_PRECEDES_FIRST_SEEN")
+            conn.execute(
+                "INSERT OR IGNORE INTO observation_checks(observation_id,checked_at,provenance)"
+                " VALUES(?,?,?)", (obs_id, indexed["collected_at"], indexed["provenance"]),
+            )
             for filing in indexed["filings"]:
                 key = (PROVIDER, indexed["issuer_cik"], filing["accession"])
                 old = conn.execute(
@@ -593,6 +608,39 @@ def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: st
         raise ValueError("Stored filing metadata does not match original index response")
 
 
+def _last_checked_metadata(conn, *, cik: str, accession: str,
+                           as_of: date | None, has_check_table: bool) -> tuple[str, list[str]]:
+    queries = [
+        "SELECT o.seen_at,o.provenance FROM filing_observations AS fo "
+        "JOIN observations AS o ON o.id=fo.observation_id "
+        "WHERE fo.filing_cik=? AND fo.accession=?"
+    ]
+    if has_check_table:
+        queries.append(
+            "SELECT c.checked_at,c.provenance FROM filing_observations AS fo "
+            "JOIN observation_checks AS c ON c.observation_id=fo.observation_id "
+            "WHERE fo.filing_cik=? AND fo.accession=?"
+        )
+    moments = []
+    for query in queries:
+        for timestamp, provenance in conn.execute(query, (cik, accession)):
+            try:
+                instant = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise ValueError("Stored observation check timestamp is invalid") from exc
+            if instant.tzinfo is None or instant.utcoffset() is None:
+                raise ValueError("Stored observation check timestamp lacks timezone")
+            instant = instant.astimezone(timezone.utc)
+            if as_of is None or instant.date() <= as_of:
+                moments.append((instant, provenance))
+    if not moments:
+        raise ValueError("Stored filing has no available observation timestamp")
+    last = max(moment for moment, _ in moments)
+    normalized = last.isoformat().replace("+00:00", "Z")
+    provenance_values = sorted({provenance for moment, provenance in moments if moment == last})
+    return normalized, provenance_values
+
+
 def list_filings(
     db_path: Path, *, cik: str, limit: int = 50, as_of: str | None = None,
 ) -> list[dict]:
@@ -602,7 +650,7 @@ def list_filings(
     params: tuple[Any, ...]
     if as_of is None:
         query = (
-            "SELECT f.filing_json,o.id,o.sha256,o.provenance FROM filings AS f "
+            "SELECT f.filing_json,o.id,o.sha256,o.provenance,o.seen_at FROM filings AS f "
             "JOIN observations AS o ON o.id=f.first_observation_id "
             "WHERE f.provider=? AND f.issuer_cik=? "
             "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
@@ -611,7 +659,7 @@ def list_filings(
     else:
         cutoff_day = parse_day(as_of).isoformat()
         query = (
-            "SELECT f.filing_json,o.id,o.sha256,o.provenance FROM filings AS f "
+            "SELECT f.filing_json,o.id,o.sha256,o.provenance,o.seen_at FROM filings AS f "
             "JOIN observations AS o ON o.id=f.first_observation_id "
             "WHERE f.provider=? AND f.issuer_cik=? "
             "AND json_extract(f.filing_json, '$.filed_at') <= ? "
@@ -622,12 +670,15 @@ def list_filings(
         params = (PROVIDER, target, as_of, cutoff_day, cutoff_day, limit)
     uri = Path(db_path).expanduser().resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:
-        rows = [(json.loads(filing_json), observation_id, digest, provenance)
-                for filing_json, observation_id, digest, provenance
+        rows = [(json.loads(filing_json), observation_id, digest, provenance, first_seen)
+                for filing_json, observation_id, digest, provenance, first_seen
                 in conn.execute(query, params)]
         groups: dict[int, list[int]] = {}
-        for index, (_, observation_id, _, _) in enumerate(rows):
+        for index, (_, observation_id, _, _, _) in enumerate(rows):
             groups.setdefault(observation_id, []).append(index)
+        has_check_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='observation_checks'"
+        ).fetchone() is not None
         for observation_id, indices in groups.items():
             source = conn.execute(
                 "SELECT sha256,response,provenance FROM observations WHERE id=?",
@@ -641,14 +692,26 @@ def list_filings(
                 raise ValueError("Stored index response integrity failed")
             payload = _validate_raw(raw)
             for index in indices:
-                record, _, expected_sha256, provenance = rows[index]
+                record, _, expected_sha256, provenance, first_seen = rows[index]
                 if expected_sha256 != source_sha256 or provenance != source_provenance:
                     raise ValueError("Stored index observation metadata is inconsistent")
+                if first_seen != record.get("collected_at"):
+                    raise ValueError("Stored first-seen time does not match the indexed receipt")
                 _verify_stored_filing(
                     record, payload=payload, observation_sha256=source_sha256,
                     provenance=provenance, cik=target,
                 )
-        return [record for record, _, _, _ in rows]
+        cutoff = parse_day(as_of) if as_of is not None else None
+        output = []
+        for record, _, _, _, first_seen in rows:
+            last_checked, provenances = _last_checked_metadata(
+                conn, cik=target, accession=record["accession"],
+                as_of=cutoff, has_check_table=has_check_table,
+            )
+            output.append({**record, "first_seen_at": first_seen,
+                           "last_checked_at": last_checked,
+                           "last_checked_provenances": provenances})
+        return output
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

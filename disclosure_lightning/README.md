@@ -90,6 +90,8 @@ Windows에서는 `/tmp/dl-demo.sqlite3` 대신 본인이 선택한 작업용 로
 
 `--list`는 필수 `--as-of` 기준일의 UTC 종료 시점까지 SQLite 관측 이력에 나타난 공시만 읽습니다. 기준일 이후 처음 저장된 오래된 공시는 과거 조회에 섞이지 않습니다. 라이브러리에서 `list_filings()`를 `as_of` 없이 호출하면 기존처럼 최신 저장 목록을 반환합니다.
 
+목록 항목은 `first_seen_at`, `last_checked_at`, `last_checked_provenances`를 별도 표시합니다. 같은 원본 JSON을 다시 저장해도 `observations`의 원본 바이트·해시는 중복 생성하지 않고, 실행별 점검시각만 추가 기록합니다. `as_of` 조회에서는 그 날짜까지 알려진 마지막 점검만 보입니다. 오프라인 입력의 점검시각과 출처 표시는 호출자가 제공한 값이며 독립적인 SEC 인증이 아닙니다.
+
 ## 실제 SEC 데이터 1회 조회 (explicit opt-in)
 
 ```bash
