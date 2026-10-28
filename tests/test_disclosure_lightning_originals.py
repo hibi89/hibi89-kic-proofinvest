@@ -254,6 +254,17 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(originals.read_original_bytes(
             db_path=self.db, cik=C, accession=A,
             sha256=saved["filing_sha256"], as_of="2099-12-31"), CONTENT)
+
+    def test_as_of_receipt_lookup_includes_fractional_second_before_day_end(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as db:
+            db.execute("UPDATE original_filing_receipts SET retrieved_at=?",
+                       ("2026-10-27T23:59:59.500000Z",))
+        self.assertEqual(len(originals.list_originals(
+            db_path=self.db, cik=C, accession=A, as_of="2026-10-27")), 1)
+        self.assertEqual(originals.read_original_bytes(
+            db_path=self.db, cik=C, accession=A,
+            sha256=saved["filing_sha256"], as_of="2026-10-27"), CONTENT)
         for invalid in ("", "../secret", "G" * 64, "0" * 63):
             with self.subTest(sha=invalid), self.assertRaises(ValueError):
                 originals.read_original_bytes(

@@ -553,17 +553,17 @@ def list_filings(
         )
         params = (PROVIDER, target, limit)
     else:
-        cutoff = parse_day(as_of).isoformat() + "T23:59:59Z"
+        cutoff_day = parse_day(as_of).isoformat()
         query = (
             "SELECT f.filing_json,o.id,o.sha256,o.provenance FROM filings AS f "
             "JOIN observations AS o ON o.id=f.first_observation_id "
             "WHERE f.provider=? AND f.issuer_cik=? "
             "AND json_extract(f.filing_json, '$.filed_at') <= ? "
-            "AND json_extract(f.filing_json, '$.collected_at') <= ? "
-            "AND o.seen_at <= ? "
+            "AND julianday(json_extract(f.filing_json, '$.collected_at')) < julianday(?) + 1 "
+            "AND julianday(o.seen_at) < julianday(?) + 1 "
             "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
         )
-        params = (PROVIDER, target, as_of, cutoff, cutoff, limit)
+        params = (PROVIDER, target, as_of, cutoff_day, cutoff_day, limit)
     uri = Path(db_path).expanduser().resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:
         rows = [(json.loads(filing_json), observation_id, digest, provenance)
