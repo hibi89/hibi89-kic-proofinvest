@@ -70,6 +70,10 @@ def smoke(root: Path, log: Path) -> dict:
                                             "--collected-at", "2026-10-27T00:00:00Z"],
                  "REUSED", 0),
                 ("list", common + ["--list"], "READ_ONLY", 3),
+                ("list-historical", [sys.executable, "-B", "-m", "disclosure_lightning",
+                                     "--db", str(db), "--cik", CIK,
+                                     "--as-of", "2026-10-26", "--list"],
+                 "READ_ONLY", 0),
                 ("amendments", [sys.executable, "-B", "-m", "disclosure_lightning.history",
                                 "--db", str(db), "--cik", CIK, "--as-of",
                                 "2026-10-27", "--review-amendments"],
@@ -93,7 +97,7 @@ def smoke(root: Path, log: Path) -> dict:
                     if name in ("ingest", "ingest-replay") and result.get("new_filings") != count:
                         return {"status": "FAIL", "step": name,
                                 "error": "BAD_INGEST_COUNT", "log": str(log)}
-                    if name == "list" and len(result.get("filings", [])) != count:
+                    if name.startswith("list") and len(result.get("filings", [])) != count:
                         return {"status": "FAIL", "step": name,
                                 "error": "BAD_LIST_COUNT", "log": str(log)}
             # P11 integration: real CLI calls against a disposable historical
@@ -173,7 +177,62 @@ def smoke(root: Path, log: Path) -> dict:
                     return {"status": "FAIL", "step": label,
                             "error": "UNEXPECTED_HISTORY_COMPLETENESS_FLAGS",
                             "log": str(log)}
-            return {"status": "PASS", "steps": len(steps) + 3,
+
+            # Continue the same disposable synthetic ledger through original
+            # byte preservation and provenance-linked local text evidence.
+            original_path = Path(temp) / "synthetic-primary-filing.txt"
+            original_path.write_bytes(
+                b"SYNTHETIC FIXTURE ONLY\n2025 Revenue increased 12 percent.\n"
+            )
+            original_import = [
+                sys.executable, "-B", "-m", "disclosure_lightning.originals",
+                "--db", str(db), "--cik", CIK,
+                "--accession", "0000320193-25-000901",
+                "--input-file", str(original_path), "--content-type", "text/plain",
+            ]
+            proc = subprocess.run(
+                original_import, cwd=root, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=30, check=False,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            with log.open("a", encoding="utf-8") as handle:
+                handle.write("STEP original-bytes exit=" + str(proc.returncode) + "\n")
+                handle.write((proc.stdout + proc.stderr)[:12000] + "\n")
+            if proc.returncode != 0:
+                return {"status": "FAIL", "step": "original-bytes", "log": str(log)}
+            original_receipt = json.loads(proc.stdout)
+            if (original_receipt.get("status") != "SAVED"
+                    or original_receipt.get("original_filing_retrieved") is not False
+                    or original_receipt.get("authenticated_external_source") is not False):
+                return {"status": "FAIL", "step": "original-bytes",
+                        "error": "UNEXPECTED_ORIGINAL_PROVENANCE", "log": str(log)}
+
+            extraction = [
+                sys.executable, "-B", "-m", "disclosure_lightning.extract",
+                "--db", str(db), "--cik", CIK,
+                "--accession", "0000320193-25-000901",
+                "--sha256", original_receipt["filing_sha256"], "--find", "revenue",
+            ]
+            proc = subprocess.run(
+                extraction, cwd=root, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL, timeout=30, check=False,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            with log.open("a", encoding="utf-8") as handle:
+                handle.write("STEP extracted-evidence exit=" + str(proc.returncode) + "\n")
+                handle.write((proc.stdout + proc.stderr)[:12000] + "\n")
+            if proc.returncode != 0:
+                return {"status": "FAIL", "step": "extracted-evidence", "log": str(log)}
+            evidence = json.loads(proc.stdout)
+            if (evidence.get("schema") != "disclosure-lightning.evidence-candidates.v1"
+                    or evidence.get("returned") != 1
+                    or evidence.get("source_authenticity_verified") is not False
+                    or evidence.get("financial_claim_verified") is not False
+                    or evidence["candidates"][0].get("citation_status")
+                    != "SOURCE_LINE_HINT_NEEDS_REVIEW"):
+                return {"status": "FAIL", "step": "extracted-evidence",
+                        "error": "UNEXPECTED_EVIDENCE_CONTRACT", "log": str(log)}
+            return {"status": "PASS", "steps": len(steps) + 5,
                     "log": str(log)}
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
         return {"status": "FAIL", "error": type(exc).__name__, "log": str(log)}
