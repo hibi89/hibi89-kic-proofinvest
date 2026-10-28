@@ -355,16 +355,31 @@ def list_companyfacts(db_path: Path, *, cik: str, as_of: str) -> list[dict]:
         if exists is None:
             return []
         rows = db.execute(
-            "SELECT sha256,source_uri,entity_name,collected_at,as_of_cutoff,provenance,length(response) "
-            "FROM companyfacts_observations WHERE issuer_cik=? AND as_of_cutoff<=? "
-            "AND date(collected_at)<=? ORDER BY collected_at,sha256",
-            (target, cutoff, cutoff),
-        ).fetchall()
-    return [{"sha256": sha, "source_uri": uri, "entity_name": name,
-             "collected_at": collected, "as_of_cutoff": indexed_asof,
-             "provenance": provenance, "response_bytes": size,
-             "financial_claim_verified": False, "source_authenticity_verified": False}
-            for sha, uri, name, collected, indexed_asof, provenance, size in rows]
+            "SELECT sha256,source_uri,entity_name,collected_at,as_of_cutoff,provenance,response "
+            "FROM companyfacts_observations WHERE issuer_cik=? ORDER BY collected_at,sha256",
+            (target,),
+        )
+        observations = []
+        for sha, uri, name, collected, indexed_asof, provenance, raw in rows:
+            if (not isinstance(raw, bytes) or not isinstance(sha, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", sha) is None
+                    or hashlib.sha256(raw).hexdigest() != sha or uri != source_uri(target)):
+                raise ValueError("CompanyFacts list source integrity failed")
+            indexed = index_companyfacts(
+                raw, cik=target, as_of=indexed_asof, collected_at=collected,
+                provenance=provenance,
+            )
+            if indexed["entity_name"] != name or indexed["as_of_cutoff"] != indexed_asof:
+                raise ValueError("CompanyFacts list metadata integrity failed")
+            if indexed_asof <= cutoff and collected[:10] <= cutoff:
+                observations.append({
+                    "sha256": sha, "source_uri": uri, "entity_name": name,
+                    "collected_at": collected, "as_of_cutoff": indexed_asof,
+                    "provenance": provenance, "response_bytes": len(raw),
+                    "financial_claim_verified": False,
+                    "source_authenticity_verified": False,
+                })
+    return observations
 
 
 def read_companyfacts(db_path: Path, *, cik: str, sha256: str,

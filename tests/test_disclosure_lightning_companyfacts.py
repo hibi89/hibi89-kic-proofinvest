@@ -94,6 +94,16 @@ class CompanyFactsTests(unittest.TestCase):
             companyfacts.read_companyfacts(self.db, cik=CIK,
                                             sha256=meta["source_sha256"])
 
+    def test_read_only_list_rejects_corrupted_observation_bytes(self):
+        self.save()
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
+            db.execute("UPDATE companyfacts_observations SET response=? WHERE issuer_cik=?",
+                       (b"{}", CIK))
+            db.commit()
+        with self.assertRaisesRegex(ValueError, "list source integrity"):
+            companyfacts.list_companyfacts(self.db, cik=CIK, as_of=AS_OF)
+
     def test_metadata_tampering_is_detected_by_read_only_envelope(self):
         _, meta = self.save()
         with closing(sqlite3.connect(self.db)) as db:
