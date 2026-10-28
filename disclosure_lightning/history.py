@@ -325,6 +325,9 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                         **({"page_sha256": digest} if state == "IMPORTED" else {})})
     missing = [item["name"] for item in audited
                if item["eligible_by_start_date"] and item["status"] == "MISSING"]
+    not_yet_eligible = [item["name"] for item in audited
+                        if not item["eligible_by_start_date"]]
+    eligible_complete = not missing
     return {
         "status": "READ_ONLY_UNVERIFIED_HISTORY_COVERAGE",
         "issuer_cik": target,
@@ -334,7 +337,9 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
         "eligible_page_count": len(eligible),
         "imported_page_count": len(eligible) - len(missing),
         "missing_eligible_pages": missing,
-        "complete_for_pinned_manifest": not missing,
+        "not_yet_eligible_pages": not_yet_eligible,
+        "complete_for_eligible_manifest_pages": eligible_complete,
+        "complete_for_pinned_manifest": eligible_complete and not not_yet_eligible,
         "source_bytes_rechecked": audited_bytes,
         "source_authenticity_verified": False,
         "ledger_mutated": False,

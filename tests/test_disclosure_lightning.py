@@ -710,8 +710,10 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(audit["eligible_page_count"], 1)
         self.assertEqual(audit["imported_page_count"], 1)
         self.assertEqual(audit["missing_eligible_pages"], [])
-        self.assertTrue(audit["complete_for_pinned_manifest"])
+        self.assertTrue(audit["complete_for_eligible_manifest_pages"])
+        self.assertFalse(audit["complete_for_pinned_manifest"])
         later = next(page for page in audit["pages"] if page["name"] != first)
+        self.assertEqual(audit["not_yet_eligible_pages"], [later["name"]])
         self.assertEqual(later["status"], "NOT_YET_ELIGIBLE")
 
     def test_history_multi_page_preflight_and_idempotent_replay(self):
