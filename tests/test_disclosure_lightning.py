@@ -647,7 +647,9 @@ class DisclosureLightningTests(unittest.TestCase):
             history.index_history_page(**{**params, "raw": json.dumps(wrong).encode("utf-8")})
 
 
-    def _history_batch_fixture(self):
+    def _history_batch_fixture(self, *, as_of="2026-10-28",
+                               manifest_collected_at="2026-10-26T01:00:00Z",
+                               pages_collected_at="2026-10-28T01:05:00Z"):
         from disclosure_lightning import history
         pages = [
             {"name": "CIK0000320193-submissions-001.json",
@@ -667,8 +669,8 @@ class DisclosureLightningTests(unittest.TestCase):
         }
         original = json.dumps(manifest).encode("utf-8")
         base = core.index_submissions(
-            original, cik=CIK, as_of="2026-10-28",
-            collected_at="2026-10-26T01:00:00Z",
+            original, cik=CIK, as_of=as_of,
+            collected_at=manifest_collected_at,
             forms=core.parse_forms("10-K,8-K"),
         )
         core.save_index(self.db, original, base)
@@ -685,11 +687,32 @@ class DisclosureLightningTests(unittest.TestCase):
         args = {
             "db_path": self.db, "cik": CIK,
             "manifest_sha256": hashlib.sha256(original).hexdigest(),
-            "as_of": "2026-10-28",
-            "collected_at": "2026-10-28T01:05:00Z",
+            "as_of": as_of,
+            "collected_at": pages_collected_at,
             "forms": core.parse_forms("10-K,8-K"),
         }
         return history, source, args
+
+    def test_history_audit_ignores_manifest_pages_not_yet_eligible(self):
+        from disclosure_lightning import history
+        cutoff = "2014-12-31"
+        history, pages, args = self._history_batch_fixture(
+            as_of=cutoff,
+            manifest_collected_at="2014-01-01T01:00:00Z",
+            pages_collected_at="2014-12-31T01:05:00Z",
+        )
+        first = sorted(pages)[0]
+        history.import_history_batch(pages={first: pages[first]}, **args)
+        audit = history.audit_manifest_pages(
+            db_path=self.db, cik=CIK,
+            manifest_sha256=args["manifest_sha256"], as_of=cutoff,
+        )
+        self.assertEqual(audit["eligible_page_count"], 1)
+        self.assertEqual(audit["imported_page_count"], 1)
+        self.assertEqual(audit["missing_eligible_pages"], [])
+        self.assertTrue(audit["complete_for_pinned_manifest"])
+        later = next(page for page in audit["pages"] if page["name"] != first)
+        self.assertEqual(later["status"], "NOT_YET_ELIGIBLE")
 
     def test_history_multi_page_preflight_and_idempotent_replay(self):
         history, pages, args = self._history_batch_fixture()

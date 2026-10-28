@@ -264,7 +264,7 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             if len({item[0] for item in latest}) > 1:
                 raise ValueError("HISTORY_PAGE_RECEIPT_CHRONOLOGY_AMBIGUOUS")
             receipt = latest[0]
-        state = "MISSING"
+        state = "MISSING" if page["eligible_by_start_date"] else "NOT_YET_ELIGIBLE"
         if receipt is not None:
             digest, count, observation_id, receipt_seen_at = receipt
             with closing(sqlite3.connect(uri, uri=True)) as conn:
@@ -323,7 +323,8 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             state = "IMPORTED"
         audited.append({**page, "status": state,
                         **({"page_sha256": digest} if state == "IMPORTED" else {})})
-    missing = [item["name"] for item in audited if item["status"] == "MISSING"]
+    missing = [item["name"] for item in audited
+               if item["eligible_by_start_date"] and item["status"] == "MISSING"]
     return {
         "status": "READ_ONLY_UNVERIFIED_HISTORY_COVERAGE",
         "issuer_cik": target,
