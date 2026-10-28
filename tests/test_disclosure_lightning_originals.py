@@ -36,7 +36,8 @@ def _sqlite_connection(path):
 
 
 def _drop_observation_guards(db):
-    for trigger in ("observations_no_update", "observations_no_delete"):
+    for trigger in ("observations_no_update", "observations_no_delete",
+                    "filings_no_update", "filings_no_delete"):
         db.execute(f"DROP TRIGGER IF EXISTS {trigger}")
 
 
@@ -525,6 +526,7 @@ class OriginalFilingTests(unittest.TestCase):
         saved = self.save()
         tampered_uri = "https://www.sec.gov/Archives/edgar/data/320193/000032019325000901/fake.htm"
         with _sqlite_connection(self.db) as db:
+            _drop_observation_guards(db)
             record = json.loads(db.execute(
                 "SELECT filing_json FROM filings WHERE accession=?", (A,)
             ).fetchone()[0])

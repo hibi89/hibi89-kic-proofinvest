@@ -35,9 +35,13 @@ def _sqlite_connection(path):
         connection.close()
 
 
-def _drop_observation_guards(db):
+def _drop_index_source_guards(db):
     for trigger in ("observations_no_update", "observations_no_delete",
-                    "observation_checks_no_update", "observation_checks_no_delete"):
+                    "observation_checks_no_update", "observation_checks_no_delete",
+                    "filings_no_update", "filings_no_delete",
+                    "filing_observations_no_update", "filing_observations_no_delete",
+                    "history_page_receipts_no_update", "history_page_receipts_no_delete",
+                    "history_page_versions_no_update", "history_page_versions_no_delete"):
         db.execute(f"DROP TRIGGER IF EXISTS {trigger}")
 
 
@@ -148,10 +152,55 @@ class DisclosureLightningTests(unittest.TestCase):
                 "SELECT response FROM observations WHERE sha256=?", (digest,),
             ).fetchone()[0], self.raw)
 
+    def test_indexed_filing_and_history_receipts_are_append_only(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            observation_id, digest = db.execute(
+                "SELECT id,sha256 FROM observations"
+            ).fetchone()
+            filing = db.execute(
+                "SELECT provider,issuer_cik,accession,filing_json,first_observation_id "
+                "FROM filings LIMIT 1"
+            ).fetchone()
+            link = db.execute(
+                "SELECT filing_cik,accession,observation_id FROM filing_observations LIMIT 1"
+            ).fetchone()
+            manifest, page = "a" * 64, "synthetic-page.json"
+            db.execute("INSERT INTO history_page_receipts VALUES(?,?,?,?,?,?)",
+                       (CIK, manifest, page, digest, observation_id, 3))
+            db.execute("INSERT INTO history_page_receipt_versions VALUES(?,?,?,?,?,?)",
+                       (CIK, manifest, page, digest, observation_id, 3))
+        mutations = (
+            ("UPDATE filings SET filing_json='{}' WHERE accession=?", (filing[2],)),
+            ("DELETE FROM filings WHERE accession=?", (filing[2],)),
+            ("INSERT OR REPLACE INTO filings VALUES(?,?,?,?,?)", filing),
+            ("UPDATE filing_observations SET observation_id=-1 WHERE accession=?", (link[1],)),
+            ("DELETE FROM filing_observations WHERE accession=?", (link[1],)),
+            ("UPDATE history_page_receipts SET record_count=-1 WHERE page_name=?", (page,)),
+            ("DELETE FROM history_page_receipts WHERE page_name=?", (page,)),
+            ("INSERT OR REPLACE INTO history_page_receipts VALUES(?,?,?,?,?,?)",
+             (CIK, manifest, page, digest, observation_id, 99)),
+            ("UPDATE history_page_receipt_versions SET record_count=-1 WHERE page_name=?", (page,)),
+            ("DELETE FROM history_page_receipt_versions WHERE page_name=?", (page,)),
+            ("INSERT OR REPLACE INTO history_page_receipt_versions VALUES(?,?,?,?,?,?)",
+             (CIK, manifest, page, digest, observation_id, 99)),
+        )
+        for sql, parameters in mutations:
+            with self.subTest(sql=sql.split()[0:3]):
+                with _sqlite_connection(self.db) as db, self.assertRaisesRegex(
+                        sqlite3.IntegrityError, "append-only"):
+                    db.execute(sql, parameters)
+        with _sqlite_connection(self.db) as db:
+            db.execute("INSERT OR REPLACE INTO filing_observations VALUES(?,?,?)", link)
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM filing_observations WHERE filing_cik=? AND accession=?",
+                (link[0], link[1]),
+            ).fetchone()[0], 1)
+
     def test_read_only_list_refuses_tampered_original_response(self):
         core.save_index(self.db, self.raw, self.indexed())
         with _sqlite_connection(self.db) as db:
-            _drop_observation_guards(db)
+            _drop_index_source_guards(db)
             db.execute("UPDATE observations SET response=response || ?", (b" ",))
         with self.assertRaisesRegex(ValueError, "index response integrity"):
             core.list_filings(self.db, cik=CIK)
@@ -159,6 +208,7 @@ class DisclosureLightningTests(unittest.TestCase):
     def test_read_only_list_refuses_tampered_filing_metadata(self):
         core.save_index(self.db, self.raw, self.indexed())
         with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
             record = json.loads(db.execute(
                 "SELECT filing_json FROM filings LIMIT 1"
             ).fetchone()[0])
@@ -171,6 +221,7 @@ class DisclosureLightningTests(unittest.TestCase):
     def test_read_only_list_refuses_uncontracted_metadata_fields(self):
         core.save_index(self.db, self.raw, self.indexed())
         with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
             record = json.loads(db.execute(
                 "SELECT filing_json FROM filings LIMIT 1"
             ).fetchone()[0])
@@ -292,7 +343,7 @@ class DisclosureLightningTests(unittest.TestCase):
         altered = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         digest = hashlib.sha256(altered).hexdigest()
         with _sqlite_connection(self.db) as db:
-            _drop_observation_guards(db)
+            _drop_index_source_guards(db)
             db.execute("UPDATE observations SET response=?,sha256=?",
                        (altered, digest))
             for accession, filing_json in db.execute(
@@ -728,7 +779,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertTrue(all("SEC_HTTPS_304_NOT_MODIFIED" in row["last_checked_provenances"]
                             for row in listed))
         with _sqlite_connection(self.db) as conn:
-            _drop_observation_guards(conn)
+            _drop_index_source_guards(conn)
             conn.execute("UPDATE observations SET response=? WHERE issuer_cik=?", (b"{}", CIK))
         with self.assertRaisesRegex(ValueError, "cache failed integrity"):
             core._load_submission_cache(self.db, CIK)
@@ -1291,7 +1342,7 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(earlier["indexed_filings_checked"], 0)
         self.assertEqual(earlier["amendments"], [])
         with _sqlite_connection(self.db) as conn:
-            _drop_observation_guards(conn)
+            _drop_index_source_guards(conn)
             conn.execute("UPDATE observations SET response=?",
                          (b"CORRUPTED-BY-SYNTHETIC-TEST",))
         with self.assertRaisesRegex(ValueError, "CORRUPTED"):
@@ -1451,7 +1502,7 @@ class DisclosureLightningTests(unittest.TestCase):
                     db_path=self.db, cik=CIK,
                     manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
         with _sqlite_connection(self.db) as db:
-            _drop_observation_guards(db)
+            _drop_index_source_guards(db)
             db.execute("UPDATE observations SET response=response || ? WHERE sha256=?",
                        (b" ", hashlib.sha256(pages[first]).hexdigest()))
         with self.assertRaisesRegex(ValueError, "INTEGRITY_FAILED"):
@@ -1465,6 +1516,7 @@ class DisclosureLightningTests(unittest.TestCase):
         first = sorted(pages)[0]
         history.import_history_batch(pages={first: pages[first]}, **args)
         with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
             db.execute(
                 "DELETE FROM filing_observations WHERE filing_cik=? AND accession=?",
                 (CIK, "0000320193-14-000001"),
@@ -1481,6 +1533,7 @@ class DisclosureLightningTests(unittest.TestCase):
         history.import_history_batch(pages={first: pages[first]}, **args)
         self.assertEqual(len(core.list_filings(self.db, cik=CIK)), 1)
         with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
             encoded = db.execute(
                 "SELECT filing_json FROM filings WHERE accession=?",
                 ("0000320193-14-000001",),
@@ -1500,6 +1553,7 @@ class DisclosureLightningTests(unittest.TestCase):
         history.import_history_batch(pages={first: pages[first]}, **args)
         accession = json.loads(pages[first])["accessionNumber"][0]
         with _sqlite_connection(self.db) as db:
+            _drop_index_source_guards(db)
             record = json.loads(db.execute(
                 "SELECT filing_json FROM filings WHERE accession=?", (accession,)
             ).fetchone()[0])

@@ -427,6 +427,54 @@ WHEN EXISTS(SELECT 1 FROM observation_checks old
             WHERE old.observation_id=NEW.observation_id
               AND old.checked_at=NEW.checked_at AND old.provenance=NEW.provenance)
 BEGIN SELECT RAISE(IGNORE); END;
+CREATE TRIGGER IF NOT EXISTS filings_no_update
+BEFORE UPDATE ON filings
+BEGIN SELECT RAISE(ABORT, 'SEC filing index records are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS filings_no_delete
+BEFORE DELETE ON filings
+BEGIN SELECT RAISE(ABORT, 'SEC filing index records are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS filings_no_replace
+BEFORE INSERT ON filings
+WHEN EXISTS(SELECT 1 FROM filings old
+            WHERE old.provider=NEW.provider AND old.issuer_cik=NEW.issuer_cik
+              AND old.accession=NEW.accession)
+BEGIN SELECT RAISE(ABORT, 'SEC filing index records are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS filing_observations_no_update
+BEFORE UPDATE ON filing_observations
+BEGIN SELECT RAISE(ABORT, 'SEC filing observation links are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS filing_observations_no_delete
+BEFORE DELETE ON filing_observations
+BEGIN SELECT RAISE(ABORT, 'SEC filing observation links are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS filing_observations_keep_duplicate
+BEFORE INSERT ON filing_observations
+WHEN EXISTS(SELECT 1 FROM filing_observations old
+            WHERE old.filing_cik=NEW.filing_cik AND old.accession=NEW.accession
+              AND old.observation_id=NEW.observation_id)
+BEGIN SELECT RAISE(IGNORE); END;
+CREATE TRIGGER IF NOT EXISTS history_page_receipts_no_update
+BEFORE UPDATE ON history_page_receipts
+BEGIN SELECT RAISE(ABORT, 'SEC history page receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS history_page_receipts_no_delete
+BEFORE DELETE ON history_page_receipts
+BEGIN SELECT RAISE(ABORT, 'SEC history page receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS history_page_receipts_no_replace
+BEFORE INSERT ON history_page_receipts
+WHEN EXISTS(SELECT 1 FROM history_page_receipts old
+            WHERE old.issuer_cik=NEW.issuer_cik AND old.manifest_sha256=NEW.manifest_sha256
+              AND old.page_name=NEW.page_name)
+BEGIN SELECT RAISE(ABORT, 'SEC history page receipts are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS history_page_versions_no_update
+BEFORE UPDATE ON history_page_receipt_versions
+BEGIN SELECT RAISE(ABORT, 'SEC history page versions are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS history_page_versions_no_delete
+BEFORE DELETE ON history_page_receipt_versions
+BEGIN SELECT RAISE(ABORT, 'SEC history page versions are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS history_page_versions_no_replace
+BEFORE INSERT ON history_page_receipt_versions
+WHEN EXISTS(SELECT 1 FROM history_page_receipt_versions old
+            WHERE old.issuer_cik=NEW.issuer_cik AND old.manifest_sha256=NEW.manifest_sha256
+              AND old.page_name=NEW.page_name AND old.page_sha256=NEW.page_sha256)
+BEGIN SELECT RAISE(ABORT, 'SEC history page versions are append-only'); END;
 """
 
 
