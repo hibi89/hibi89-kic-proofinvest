@@ -106,6 +106,25 @@ class DisclosureLightningTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
 
+    def test_read_only_list_refuses_tampered_original_response(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            db.execute("UPDATE observations SET response=response || ?", (b" ",))
+        with self.assertRaisesRegex(ValueError, "index response integrity"):
+            core.list_filings(self.db, cik=CIK)
+
+    def test_read_only_list_refuses_tampered_filing_metadata(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        with _sqlite_connection(self.db) as db:
+            record = json.loads(db.execute(
+                "SELECT filing_json FROM filings LIMIT 1"
+            ).fetchone()[0])
+            record["source_uri"] = "https://attacker.invalid/filing.htm"
+            db.execute("UPDATE filings SET filing_json=? WHERE accession=?",
+                       (json.dumps(record), record["accession"]))
+        with self.assertRaisesRegex(ValueError, "metadata does not match"):
+            core.list_filings(self.db, cik=CIK)
+
     def test_read_only_list_supports_uri_reserved_filename_characters(self):
         special_db = self.root / "ledger#archive.sqlite3"
         core.save_index(special_db, self.raw, self.indexed())

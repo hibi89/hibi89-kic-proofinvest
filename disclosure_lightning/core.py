@@ -460,6 +460,83 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     }
 
 
+def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: str,
+                         provenance: str, cik: str) -> None:
+    """Recheck a stored read-only row against its preserved source response."""
+    if (not isinstance(record, dict)
+            or record.get("index_raw_sha256") != observation_sha256):
+        raise ValueError("Stored index response integrity failed")
+    accession = record.get("accession")
+    if (not isinstance(accession, str) or re.fullmatch(
+            r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession, flags=re.ASCII) is None):
+        raise ValueError("Stored accession format is invalid")
+    if "cik" in payload:
+        source_cik = payload.get("cik")
+        if (type(source_cik) not in (int, str) or not str(source_cik).isascii()
+                or not str(source_cik).isdecimal() or not int(str(source_cik))
+                or cik10(str(int(str(source_cik)))) != cik):
+            raise ValueError("Stored filing issuer does not match original index")
+        recent = payload.get("filings")
+        recent = recent.get("recent") if isinstance(recent, dict) else None
+        expected_index_uri = f"https://data.sec.gov/submissions/CIK{cik}.json"
+        history = False
+    else:
+        recent = payload
+        expected_index_uri = record.get("index_source_uri")
+        if (not isinstance(expected_index_uri, str) or re.fullmatch(
+                rf"https://data\.sec\.gov/submissions/CIK{cik}-submissions-[0-9]{{3}}\.json",
+                expected_index_uri, flags=re.ASCII) is None
+                or provenance != "OFFLINE_UNVERIFIED"):
+            raise ValueError("Stored historical index source is invalid")
+        history = True
+    if not isinstance(recent, dict):
+        raise ValueError("Stored index filing arrays are missing")
+    accessions = recent.get("accessionNumber")
+    if not isinstance(accessions, list) or len(accessions) > (
+            MAX_HISTORY_RECORDS if history else MAX_RECORDS):
+        raise ValueError("Stored index accession array is invalid")
+    matches = [i for i, value in enumerate(accessions)
+               if value == record.get("accession")]
+    if len(matches) != 1:
+        raise ValueError("Stored accession is absent or duplicated in original index")
+    i = matches[0]
+    forms = _column(recent, "form", len(accessions))
+    days = _column(recent, "filingDate", len(accessions))
+    documents = _column(recent, "primaryDocument", len(accessions))
+    accepted = recent.get("acceptanceDateTime")
+    if accepted is not None and (not isinstance(accepted, list)
+                                 or len(accepted) != len(accessions)):
+        raise ValueError("Stored index acceptance timestamps are misaligned")
+    accepted_at = _accepted(accepted[i]) if accepted is not None else None
+    filed = parse_day(days[i])
+    cutoff = parse_day(record.get("as_of_cutoff"))
+    collected_at = _observation_time(record.get("collected_at"), cutoff=cutoff)
+    observed_instant = datetime.fromisoformat(collected_at.replace("Z", "+00:00"))
+    expected_status = (
+        "OFFLINE_SOURCE_UNVERIFIED" if history or provenance == "OFFLINE_UNVERIFIED"
+        else "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED"
+    )
+    if (record.get("schema_version") != "1.0"
+            or record.get("provider") != PROVIDER
+            or record.get("issuer_cik") != cik
+            or not isinstance(record.get("form"), str)
+            or record.get("form") != forms[i]
+            or record.get("form") not in ALLOWED_FORMS
+            or record.get("filed_at") != filed.isoformat()
+            or record.get("accepted_at") != accepted_at
+            or record.get("collected_at") != collected_at
+            or record.get("source_uri") != _source_uri(cik, accession, documents[i])
+            or record.get("index_source_uri") != expected_index_uri
+            or record.get("raw_sha256") is not None
+            or record.get("amends_accession") is not None
+            or record.get("evidence_status") != expected_status
+            or filed > cutoff or filed > observed_instant.date()
+            or (accepted_at is None and filed == observed_instant.date())
+            or (accepted_at is not None and datetime.fromisoformat(
+                accepted_at).astimezone(timezone.utc) > observed_instant)):
+        raise ValueError("Stored filing metadata does not match original index response")
+
+
 def list_filings(
     db_path: Path, *, cik: str, limit: int = 50, as_of: str | None = None,
 ) -> list[dict]:
@@ -469,26 +546,56 @@ def list_filings(
     params: tuple[Any, ...]
     if as_of is None:
         query = (
-            "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=? "
-            "ORDER BY json_extract(filing_json, '$.filed_at') DESC, accession DESC LIMIT ?"
+            "SELECT f.filing_json,o.id,o.sha256,o.provenance FROM filings AS f "
+            "JOIN observations AS o ON o.id=f.first_observation_id "
+            "WHERE f.provider=? AND f.issuer_cik=? "
+            "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
         )
         params = (PROVIDER, target, limit)
     else:
         cutoff = parse_day(as_of).isoformat() + "T23:59:59Z"
         query = (
-            "SELECT f.filing_json FROM filings AS f "
+            "SELECT f.filing_json,o.id,o.sha256,o.provenance FROM filings AS f "
+            "JOIN observations AS o ON o.id=f.first_observation_id "
             "WHERE f.provider=? AND f.issuer_cik=? "
             "AND json_extract(f.filing_json, '$.filed_at') <= ? "
+            "AND json_extract(f.filing_json, '$.collected_at') <= ? "
             "AND EXISTS (SELECT 1 FROM filing_observations AS fo "
             "JOIN observations AS o ON o.id=fo.observation_id "
             "WHERE fo.filing_cik=f.issuer_cik AND fo.accession=f.accession "
             "AND o.provider=f.provider AND o.issuer_cik=f.issuer_cik AND o.seen_at <= ?) "
             "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
         )
-        params = (PROVIDER, target, as_of, cutoff, limit)
+        params = (PROVIDER, target, as_of, cutoff, cutoff, limit)
     uri = Path(db_path).expanduser().resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:
-        return [json.loads(row[0]) for row in conn.execute(query, params)]
+        rows = [(json.loads(filing_json), observation_id, digest, provenance)
+                for filing_json, observation_id, digest, provenance
+                in conn.execute(query, params)]
+        groups: dict[int, list[int]] = {}
+        for index, (_, observation_id, _, _) in enumerate(rows):
+            groups.setdefault(observation_id, []).append(index)
+        for observation_id, indices in groups.items():
+            source = conn.execute(
+                "SELECT sha256,response,provenance FROM observations WHERE id=?",
+                (observation_id,),
+            ).fetchone()
+            if source is None:
+                raise ValueError("Stored index observation is missing")
+            source_sha256, raw, source_provenance = source
+            if (not isinstance(raw, bytes)
+                    or hashlib.sha256(raw).hexdigest() != source_sha256):
+                raise ValueError("Stored index response integrity failed")
+            payload = _validate_raw(raw)
+            for index in indices:
+                record, _, expected_sha256, provenance = rows[index]
+                if expected_sha256 != source_sha256 or provenance != source_provenance:
+                    raise ValueError("Stored index observation metadata is inconsistent")
+                _verify_stored_filing(
+                    record, payload=payload, observation_sha256=source_sha256,
+                    provenance=provenance, cik=target,
+                )
+        return [record for record, _, _, _ in rows]
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
