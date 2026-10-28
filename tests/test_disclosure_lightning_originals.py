@@ -263,6 +263,21 @@ class OriginalFilingTests(unittest.TestCase):
                 db_path=self.db, cik=C, accession=A,
                 sha256=saved["filing_sha256"])
 
+    def test_original_receipt_must_remain_linked_to_indexed_source_uri(self):
+        saved = self.save()
+        with _sqlite_connection(self.db) as conn:
+            conn.execute(
+                "UPDATE original_filing_receipts SET source_uri=? "
+                "WHERE issuer_cik=? AND accession=? AND sha256=?",
+                ("https://attacker.invalid/fake.htm", C, A, saved["filing_sha256"]),
+            )
+        self.assertEqual(originals.list_originals(
+            db_path=self.db, cik=C, accession=A), [])
+        with self.assertRaisesRegex(ValueError, "source URI"):
+            originals.read_original_bytes(
+                db_path=self.db, cik=C, accession=A,
+                sha256=saved["filing_sha256"])
+
     def test_cli_offline_file_roundtrip_and_readonly_list(self):
         source = self.root / "synthetic-filing.html"
         source.write_bytes(CONTENT)

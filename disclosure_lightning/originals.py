@@ -217,9 +217,12 @@ def list_originals(*, db_path: Path, cik: str, accession: str,
             return []
         if as_of is None:
             rows = db.execute(
-                "SELECT sha256,source_uri,retrieved_at,input_origin,content_type,length(file_bytes)"
-                " FROM original_filing_receipts WHERE issuer_cik=? AND accession=?"
-                " ORDER BY retrieved_at, sha256", (c, a),
+                "SELECT r.sha256,r.source_uri,r.retrieved_at,r.input_origin,r.content_type,length(r.file_bytes)"
+                " FROM original_filing_receipts AS r JOIN filings AS f"
+                " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
+                " WHERE r.issuer_cik=? AND r.accession=?"
+                " AND r.source_uri=json_extract(f.filing_json,'$.source_uri')"
+                " ORDER BY r.retrieved_at, r.sha256", (c, a),
             ).fetchall()
         else:
             cutoff_day = parse_day(as_of).isoformat()
@@ -229,6 +232,7 @@ def list_originals(*, db_path: Path, cik: str, accession: str,
                 " FROM original_filing_receipts AS r JOIN filings AS f"
                 " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
                 " WHERE r.issuer_cik=? AND r.accession=? AND r.retrieved_at<=?"
+                " AND r.source_uri=json_extract(f.filing_json,'$.source_uri')"
                 " AND json_extract(f.filing_json,'$.filed_at')<=?"
                 " AND json_extract(f.filing_json,'$.collected_at')<=?"
                 " ORDER BY r.retrieved_at, r.sha256", (c, a, cutoff, cutoff_day, cutoff),
@@ -252,15 +256,18 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
     if not isinstance(sha256, str) or re.fullmatch(
             r"[0-9a-f]{64}", sha256, re.ASCII) is None:
         raise ValueError("Invalid original filing SHA-256")
+    location = locate_original(db_path, cik=c, accession=a)
     with closing(_read_conn(db_path)) as db:
         row = db.execute(
-            "SELECT file_bytes FROM original_filing_receipts "
+            "SELECT file_bytes,source_uri FROM original_filing_receipts "
             "WHERE issuer_cik=? AND accession=? AND sha256=?",
             (c, a, sha256),
         ).fetchone()
     if row is None:
         raise KeyError("Original filing receipt not found")
-    raw = row[0]
+    raw, source_uri = row
+    if source_uri != location["source_uri"]:
+        raise ValueError("Saved original source URI no longer matches indexed locator")
     if (not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILING_BYTES
             or hashlib.sha256(raw).hexdigest() != sha256):
         raise ValueError("Saved original filing content integrity failed")
