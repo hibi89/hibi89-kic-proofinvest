@@ -460,16 +460,35 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     }
 
 
-def list_filings(db_path: Path, *, cik: str, limit: int = 50) -> list[dict]:
+def list_filings(
+    db_path: Path, *, cik: str, limit: int = 50, as_of: str | None = None,
+) -> list[dict]:
     if type(limit) is not int or not 1 <= limit <= 200:
         raise ValueError("Output limit must be 1..200")
+    target = cik10(cik)
+    params: tuple[Any, ...]
+    if as_of is None:
+        query = (
+            "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=? "
+            "ORDER BY json_extract(filing_json, '$.filed_at') DESC, accession DESC LIMIT ?"
+        )
+        params = (PROVIDER, target, limit)
+    else:
+        cutoff = parse_day(as_of).isoformat() + "T23:59:59Z"
+        query = (
+            "SELECT f.filing_json FROM filings AS f "
+            "WHERE f.provider=? AND f.issuer_cik=? "
+            "AND json_extract(f.filing_json, '$.filed_at') <= ? "
+            "AND EXISTS (SELECT 1 FROM filing_observations AS fo "
+            "JOIN observations AS o ON o.id=fo.observation_id "
+            "WHERE fo.filing_cik=f.issuer_cik AND fo.accession=f.accession "
+            "AND o.provider=f.provider AND o.issuer_cik=f.issuer_cik AND o.seen_at <= ?) "
+            "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
+        )
+        params = (PROVIDER, target, as_of, cutoff, limit)
     uri = Path(db_path).expanduser().resolve().as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as conn:
-        return [json.loads(row[0]) for row in conn.execute(
-            "SELECT filing_json FROM filings WHERE provider=? AND issuer_cik=?"
-            " ORDER BY json_extract(filing_json, '$.filed_at') DESC, accession DESC LIMIT ?",
-            (PROVIDER, cik10(cik), limit)
-        )]
+        return [json.loads(row[0]) for row in conn.execute(query, params)]
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -526,7 +545,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.list:
             if args.input_json or args.allow_network:
                 raise ValueError("--list cannot also import")
-            result = {"status": "READ_ONLY", "filings": list_filings(args.db, cik=cik)}
+            result = {"status": "READ_ONLY", "as_of": args.as_of,
+                      "filings": list_filings(args.db, cik=cik, as_of=args.as_of)}
         else:
             if bool(args.input_json) == bool(args.allow_network):
                 raise ValueError("Choose exactly one --input-json or --allow-network")

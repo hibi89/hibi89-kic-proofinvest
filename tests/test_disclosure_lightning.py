@@ -111,6 +111,24 @@ class DisclosureLightningTests(unittest.TestCase):
         core.save_index(special_db, self.raw, self.indexed())
         self.assertEqual(len(core.list_filings(special_db, cik=CIK)), 3)
 
+    def test_as_of_list_excludes_filings_not_observed_by_cutoff_day(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        self.assertEqual(core.list_filings(self.db, cik=CIK, as_of="2026-10-26"), [])
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK, as_of="2026-10-27")), 3)
+
+    def test_as_of_list_uses_observation_ledger_after_later_replay(self):
+        first = self.indexed(collected_at="2026-10-27T00:00:00Z")
+        core.save_index(self.db, self.raw, first)
+        later_payload = json.loads(self.raw)
+        later_payload["name"] = "SYNTHETIC UPDATED NAME"
+        later_raw = json.dumps(later_payload).encode("utf-8")
+        later = self.indexed(later_raw, as_of="2026-10-28",
+                             collected_at="2026-10-28T00:00:00Z")
+        core.save_index(self.db, later_raw, later)
+        self.assertEqual(core.list_filings(self.db, cik=CIK, as_of="2026-10-26"), [])
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK, as_of="2026-10-27")), 3)
+        self.assertEqual(len(core.list_filings(self.db, cik=CIK, as_of="2026-10-28")), 3)
+
     def test_list_limit_requires_an_integer_not_bool_or_fraction(self):
         core.save_index(self.db, self.raw, self.indexed())
         for limit in (True, False, 1.5, "2"):
@@ -262,6 +280,13 @@ class DisclosureLightningTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(core.main(args), 0)
         self.assertEqual(json.loads(output.getvalue())["status"], "REUSED")
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(core.main([
+                "--cik", CIK, "--as-of", "2026-10-26", "--db", str(self.db), "--list"
+            ]), 0)
+        listing = json.loads(output.getvalue())
+        self.assertEqual(listing["as_of"], "2026-10-26")
+        self.assertEqual(listing["filings"], [])
         with contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(core.main([
                 "--cik", CIK, "--as-of", "2026-10-27", "--db", str(self.db), "--list"

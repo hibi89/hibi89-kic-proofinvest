@@ -83,6 +83,8 @@ python -m unittest tests.test_disclosure_lightning -v
 
 Windows에서는 `/tmp/dl-demo.sqlite3` 대신 본인이 선택한 작업용 로컬 DB 파일 경로를 사용하세요. 모든 fixture 레코드는 **합성 자료**입니다. 첫 실행은 `SAVED`, 같은 파일을 다시 넣으면 `REUSED`와 `new_filings=0`이어야 합니다. SEC JSON의 **최근 공시(recent) 배열**에서 날짜와 폼 필터를 적용하며, SEC 원문이 아니라 API 메타데이터만 수집합니다. 수정공시는 독립 accession으로 보존합니다. 그 공시가 어떤 과거 공시를 수정했는지는 현재 자동 판별하지 않습니다.
 
+`--list`는 필수 `--as-of` 기준일의 UTC 종료 시점까지 SQLite 관측 이력에 나타난 공시만 읽습니다. 기준일 이후 처음 저장된 오래된 공시는 과거 조회에 섞이지 않습니다. 라이브러리에서 `list_filings()`를 `as_of` 없이 호출하면 기존처럼 최신 저장 목록을 반환합니다.
+
 ## 실제 SEC 데이터 1회 조회 (explicit opt-in)
 
 ```bash
