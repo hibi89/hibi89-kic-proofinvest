@@ -224,7 +224,8 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             ).fetchall()
             for name, digest, observation_id, count in rows:
                 observation = conn.execute(
-                    "SELECT response,seen_at,provenance,sha256 FROM observations WHERE id=?",
+                    "SELECT response,seen_at,provenance,sha256,provider,issuer_cik "
+                    "FROM observations WHERE id=?",
                     (observation_id,),
                 ).fetchone()
                 receipts[name] = (digest, count, observation)
@@ -238,6 +239,8 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             if (observation is None or not isinstance(observation[0], bytes)
                     or observation[2] != "OFFLINE_UNVERIFIED"
                     or observation[3] != digest
+                    or observation[4] != core.PROVIDER
+                    or observation[5] != target
                     or hashlib.sha256(observation[0]).hexdigest() != digest):
                 raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
             if count != page["filing_count"]:
