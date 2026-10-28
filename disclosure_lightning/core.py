@@ -689,22 +689,31 @@ def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: st
         raise ValueError("Stored filing metadata does not match original index response")
 
 
-def _last_checked_metadata(conn, *, cik: str, accession: str,
-                           as_of: date | None, has_check_table: bool) -> tuple[str, list[str]]:
+def _last_checked_metadata(conn, *, cik: str, accessions: list[str],
+                           as_of: date | None,
+                           has_check_table: bool) -> dict[str, tuple[str, list[str]]]:
+    """Load per-filing latest observations in bounded batched SQL queries."""
+    if not accessions:
+        return {}
+    placeholders = ",".join("?" for _ in accessions)
     queries = [
-        "SELECT o.seen_at,o.provenance FROM filing_observations AS fo "
+        "SELECT fo.accession,o.seen_at,o.provenance FROM filing_observations AS fo "
         "JOIN observations AS o ON o.id=fo.observation_id "
-        "WHERE fo.filing_cik=? AND fo.accession=?"
+        f"WHERE fo.filing_cik=? AND fo.accession IN ({placeholders})"
     ]
     if has_check_table:
         queries.append(
-            "SELECT c.checked_at,c.provenance FROM filing_observations AS fo "
+            "SELECT fo.accession,c.checked_at,c.provenance "
+            "FROM filing_observations AS fo "
             "JOIN observation_checks AS c ON c.observation_id=fo.observation_id "
-            "WHERE fo.filing_cik=? AND fo.accession=?"
+            f"WHERE fo.filing_cik=? AND fo.accession IN ({placeholders})"
         )
-    moments = []
+    moments: dict[str, list[tuple[datetime, str]]] = {
+        accession: [] for accession in accessions
+    }
+    params = (cik, *accessions)
     for query in queries:
-        for timestamp, provenance in conn.execute(query, (cik, accession)):
+        for accession, timestamp, provenance in conn.execute(query, params):
             try:
                 instant = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
             except (AttributeError, TypeError, ValueError) as exc:
@@ -713,13 +722,18 @@ def _last_checked_metadata(conn, *, cik: str, accession: str,
                 raise ValueError("Stored observation check timestamp lacks timezone")
             instant = instant.astimezone(timezone.utc)
             if as_of is None or instant.date() <= as_of:
-                moments.append((instant, provenance))
-    if not moments:
-        raise ValueError("Stored filing has no available observation timestamp")
-    last = max(moment for moment, _ in moments)
-    normalized = last.isoformat().replace("+00:00", "Z")
-    provenance_values = sorted({provenance for moment, provenance in moments if moment == last})
-    return normalized, provenance_values
+                moments[accession].append((instant, provenance))
+    results = {}
+    for accession, available in moments.items():
+        if not available:
+            raise ValueError("Stored filing has no available observation timestamp")
+        last = max(moment for moment, _ in available)
+        normalized = last.isoformat().replace("+00:00", "Z")
+        provenances = sorted({
+            provenance for moment, provenance in available if moment == last
+        })
+        results[accession] = (normalized, provenances)
+    return results
 
 
 def list_filings(
@@ -784,43 +798,44 @@ def list_filings(
                 payload, provenance=source_provenance, cik=target,
                 index_source_uri=first_record.get("index_source_uri"),
             )
+            linked_pages = set()
+            if historical_source and history_receipt_tables:
+                if "history_page_receipts" in history_receipt_tables:
+                    linked_pages.update((page_sha, page_name) for page_name, page_sha in conn.execute(
+                        "SELECT page_name,page_sha256 FROM history_page_receipts "
+                        "WHERE issuer_cik=? AND observation_id=?",
+                        (target, observation_id),
+                    ))
+                if "history_page_receipt_versions" in history_receipt_tables:
+                    linked_pages.update((page_sha, page_name) for page_name, page_sha in conn.execute(
+                        "SELECT page_name,page_sha256 FROM history_page_receipt_versions "
+                        "WHERE issuer_cik=? AND observation_id=?",
+                        (target, observation_id),
+                    ))
             for index in indices:
                 record, _, expected_sha256, provenance, first_seen = rows[index]
                 if expected_sha256 != source_sha256 or provenance != source_provenance:
                     raise ValueError("Stored index observation metadata is inconsistent")
                 if first_seen != record.get("collected_at"):
                     raise ValueError("Stored first-seen time does not match the indexed receipt")
-                if historical_source and history_receipt_tables:
-                    linked_pages = []
-                    if "history_page_receipts" in history_receipt_tables:
-                        linked_pages.extend(conn.execute(
-                            "SELECT page_name,page_sha256 FROM history_page_receipts "
-                            "WHERE issuer_cik=? AND observation_id=?",
-                            (target, observation_id),
-                        ).fetchall())
-                    if "history_page_receipt_versions" in history_receipt_tables:
-                        linked_pages.extend(conn.execute(
-                            "SELECT page_name,page_sha256 FROM history_page_receipt_versions "
-                            "WHERE issuer_cik=? AND observation_id=?",
-                            (target, observation_id),
-                        ).fetchall())
-                    if linked_pages:
-                        expected_name = record.get("index_source_uri", "").rsplit("/", 1)[-1]
-                        if (expected_sha256, expected_name) not in {
-                                (page_sha, page_name) for page_name, page_sha in linked_pages}:
-                            raise ValueError("Stored historical page URI does not match its receipt")
+                if historical_source and linked_pages:
+                    expected_name = record.get("index_source_uri", "").rsplit("/", 1)[-1]
+                    if (expected_sha256, expected_name) not in linked_pages:
+                        raise ValueError("Stored historical page URI does not match its receipt")
                 _verify_stored_filing(
                     record, payload=payload, observation_sha256=source_sha256,
                     provenance=provenance, cik=target,
                     prepared_source=prepared_source,
                 )
         cutoff = parse_day(as_of) if as_of is not None else None
+        latest_checks = _last_checked_metadata(
+            conn, cik=target,
+            accessions=[record["accession"] for record, *_ in rows],
+            as_of=cutoff, has_check_table=has_check_table,
+        )
         output = []
         for record, _, _, _, first_seen in rows:
-            last_checked, provenances = _last_checked_metadata(
-                conn, cik=target, accession=record["accession"],
-                as_of=cutoff, has_check_table=has_check_table,
-            )
+            last_checked, provenances = latest_checks[record["accession"]]
             output.append({**record, "first_seen_at": first_seen,
                            "last_checked_at": last_checked,
                            "last_checked_provenances": provenances})
