@@ -958,6 +958,21 @@ class DisclosureLightningTests(unittest.TestCase):
                 db_path=self.db, cik=CIK,
                 manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
 
+    def test_history_page_audit_requires_indexed_filing_associations(self):
+        from disclosure_lightning import history
+        history, pages, args = self._history_batch_fixture()
+        first = sorted(pages)[0]
+        history.import_history_batch(pages={first: pages[first]}, **args)
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "DELETE FROM filing_observations WHERE filing_cik=? AND accession=?",
+                (CIK, "0000320193-14-000001"),
+            )
+        with self.assertRaisesRegex(ValueError, "INDEX_LINK_MISSING"):
+            history.audit_manifest_pages(
+                db_path=self.db, cik=CIK,
+                manifest_sha256=args["manifest_sha256"], as_of=args["as_of"])
+
 
 if __name__ == "__main__":
     unittest.main()

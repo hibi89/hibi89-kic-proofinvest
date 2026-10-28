@@ -228,14 +228,14 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                     "FROM observations WHERE id=?",
                     (observation_id,),
                 ).fetchone()
-                receipts[name] = (digest, count, observation)
+                receipts[name] = (digest, count, observation_id, observation)
     audited = []
     for page in pages:
         name = page["name"]
         receipt = receipts.get(name) if page["eligible_by_start_date"] else None
         state = "MISSING"
         if receipt is not None:
-            digest, count, observation = receipt
+            digest, count, observation_id, observation = receipt
             if (observation is None or not isinstance(observation[0], bytes)
                     or observation[2] != "OFFLINE_UNVERIFIED"
                     or observation[3] != digest
@@ -264,6 +264,18 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                 raise ValueError("HISTORY_PAGE_RECEIPT_SOURCE_INVALID") from exc
             if indexed["source_sha256"] != digest:
                 raise ValueError("HISTORY_PAGE_RECEIPT_SOURCE_MISMATCH")
+            expected_accessions = [row["accession"] for row in indexed["filings"]]
+            if expected_accessions:
+                with closing(sqlite3.connect(uri, uri=True)) as conn:
+                    conn.execute("PRAGMA query_only=ON")
+                    placeholders = ",".join("?" for _ in expected_accessions)
+                    linked = {row[0] for row in conn.execute(
+                        "SELECT accession FROM filing_observations "
+                        f"WHERE filing_cik=? AND observation_id=? AND accession IN ({placeholders})",
+                        (target, observation_id, *expected_accessions),
+                    )}
+                if linked != set(expected_accessions):
+                    raise ValueError("HISTORY_PAGE_RECEIPT_INDEX_LINK_MISSING")
             state = "IMPORTED"
         audited.append({**page, "status": state})
     missing = [item["name"] for item in audited if item["status"] == "MISSING"]
