@@ -411,6 +411,16 @@ class ExtractedFilingTests(unittest.TestCase):
             self.assertEqual(extract.main(argv + ["--summary-only"]), 2)
         self.assertIn("cannot be combined", stderr.getvalue())
 
+    def test_read_only_extraction_does_not_modify_sqlite_bytes(self):
+        before = self.db.read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(extract.main([
+                "--db", str(self.db), "--cik", CIK, "--accession", ACC,
+                "--sha256", self.saved["filing_sha256"],
+                "--as-of", "2099-12-31", "--find", "revenue",
+            ]), 0)
+        self.assertEqual(self.db.read_bytes(), before)
+
     def test_same_raw_bytes_produce_deterministic_receipts(self):
         a = self.run_from_saved()
         b = self.run_from_saved()

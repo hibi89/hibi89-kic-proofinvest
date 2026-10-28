@@ -125,6 +125,13 @@ class DisclosureLightningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "metadata does not match"):
             core.list_filings(self.db, cik=CIK)
 
+    def test_read_only_as_of_listing_does_not_change_sqlite_bytes(self):
+        core.save_index(self.db, self.raw, self.indexed())
+        before = self.db.read_bytes()
+        self.assertEqual(len(core.list_filings(
+            self.db, cik=CIK, as_of="2026-10-27")), 3)
+        self.assertEqual(self.db.read_bytes(), before)
+
     def test_read_only_list_supports_uri_reserved_filename_characters(self):
         special_db = self.root / "ledger#archive.sqlite3"
         core.save_index(special_db, self.raw, self.indexed())
