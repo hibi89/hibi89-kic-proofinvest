@@ -1,3 +1,12 @@
+# DL P15 — CompanyFacts cache provenance and malformed XBRL context guards (2026-10-28 KST)
+
+- **Remote:** latest verified `feature/disclosure-lightning` source SHA `047dd3de776df13841c24a44bc561ecc22871bb9`; normal push and GitHub branch HEAD confirmed. Commit status API returned no checks (CI unverified).
+- **Hardening:** CompanyFacts conditional-cache loading now requires its validator to point at a digest-verified observation labeled `SEC_HTTPS_RESPONSE`; a synthetic DB provenance mutation is rejected. Inline XBRL parsing marks nested or mismatched context/unit trees incomplete instead of silently accepting a recovered partial tree.
+- **Verification:** focused DL suite **154 run / 151 PASS / 3 SKIP**; `python -B verify_local.py --full` at exact SHA **FAIL**, with syntax, focused core tests, and offline CLI smoke PASS. Full suite **472 run / 1 FAIL / 7 ERROR / 6 SKIP**; every failure/error is `ModuleNotFoundError: streamlit` in existing UI tests. No dependency install or weakened tests. Logs: `work/logs/dl-focused-047dd3d-20261028.log`, `work/logs/full-047dd3d-20261028.log`.
+- **Next:** continue synthetic testing for corrupted CompanyFacts metadata, file/DB failure recovery and XBRL namespace/malformed-markup boundaries. Do not perform real SEC calls or numeric normalization.
+
+---
+
 # DL P14 — CompanyFacts offline input bound alignment (2026-10-28 KST)
 
 - **Source:** latest confirmed remote code SHA `d1d1cf4ad2f4cb2b664feaba812d3f2ee45c5daa` on `feature/disclosure-lightning`.
