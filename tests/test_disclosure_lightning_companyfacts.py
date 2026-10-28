@@ -104,6 +104,23 @@ class CompanyFactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "list source integrity"):
             companyfacts.list_companyfacts(self.db, cik=CIK, as_of=AS_OF)
 
+    def test_oversized_database_blob_fails_before_returning_source_bytes(self):
+        _, meta = self.save()
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute("DROP TRIGGER companyfacts_observations_no_update")
+            db.execute(
+                "UPDATE companyfacts_observations SET response=zeroblob(?) "
+                "WHERE issuer_cik=? AND sha256=?",
+                (companyfacts.MAX_COMPANYFACTS_BYTES + 1, CIK, meta["source_sha256"]),
+            )
+            db.commit()
+        with self.assertRaisesRegex(ValueError, "source integrity"):
+            companyfacts.read_companyfacts(
+                self.db, cik=CIK, sha256=meta["source_sha256"], as_of=AS_OF,
+            )
+        with self.assertRaisesRegex(ValueError, "list source integrity"):
+            companyfacts.list_companyfacts(self.db, cik=CIK, as_of=AS_OF)
+
     def test_metadata_tampering_is_detected_by_read_only_envelope(self):
         _, meta = self.save()
         with closing(sqlite3.connect(self.db)) as db:

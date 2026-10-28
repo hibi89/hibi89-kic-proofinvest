@@ -38,9 +38,10 @@ def _stored_manifest(db_path: Path, cik: str, manifest_sha256: str) -> tuple[dic
     with closing(sqlite3.connect(uri, uri=True)) as conn:
         conn.execute("PRAGMA query_only=ON")
         found = conn.execute(
-            "SELECT response,seen_at,provenance FROM observations "
+            "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,"
+            "seen_at,provenance FROM observations "
             "WHERE provider=? AND issuer_cik=? AND sha256=?",
-            (core.PROVIDER, target, manifest_sha256),
+            (core.MAX_JSON_BYTES, core.PROVIDER, target, manifest_sha256),
         ).fetchone()
     if found is None:
         raise ValueError("MANIFEST_NOT_IN_PINNED_LOCAL_LEDGER")
@@ -274,8 +275,9 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
             with closing(sqlite3.connect(uri, uri=True)) as conn:
                 conn.execute("PRAGMA query_only=ON")
                 observation = conn.execute(
-                    "SELECT response,seen_at,provenance,sha256,provider,issuer_cik "
-                    "FROM observations WHERE id=?", (observation_id,),
+                    "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,"
+                    "seen_at,provenance,sha256,provider,issuer_cik "
+                    "FROM observations WHERE id=?", (core.MAX_JSON_BYTES, observation_id),
                 ).fetchone()
             if observation is None or not isinstance(observation[0], bytes):
                 raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
@@ -525,9 +527,10 @@ def review_amendment_candidates(*, db_path: Path, cik: str,
                 raise ValueError("AMENDMENT_INDEX_DIGEST_MISSING")
             if digest not in source_cache:
                 stored = conn.execute(
-                    "SELECT response,seen_at FROM observations WHERE "
+                    "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,seen_at "
+                    "FROM observations WHERE "
                     "provider=? AND issuer_cik=? AND sha256=?",
-                    (core.PROVIDER, target, digest),
+                    (core.MAX_JSON_BYTES, core.PROVIDER, target, digest),
                 ).fetchone()
                 if stored is None or not isinstance(stored[0], bytes):
                     raise ValueError("AMENDMENT_INDEX_ORIGINAL_NOT_FOUND")

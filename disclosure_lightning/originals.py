@@ -63,21 +63,23 @@ def locate_original(db_path: Path, *, cik: str, accession: str,
     with closing(_read_conn(db_path)) as conn:
         if as_of is None:
             row = conn.execute(
-                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id "
+                "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+                "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id "
                 "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
                 "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=?",
-                (cik, accession),
+                (core.MAX_JSON_BYTES, cik, accession),
             ).fetchone()
         else:
             cutoff_day = parse_day(as_of).isoformat()
             row = conn.execute(
-                "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id "
+                "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+                "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id "
                 "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
                 "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
                 "AND json_extract(f.filing_json,'$.filed_at')<=? "
                 "AND julianday(json_extract(f.filing_json,'$.collected_at'))<julianday(?) + 1 "
                 "AND julianday(o.seen_at)<julianday(?) + 1",
-                (cik, accession, cutoff_day, cutoff_day, cutoff_day),
+                (core.MAX_JSON_BYTES, cik, accession, cutoff_day, cutoff_day, cutoff_day),
             ).fetchone()
     if row is None:
         if as_of is not None:
@@ -257,12 +259,14 @@ def _load_original_http_cache(db_path: Path, receipt: dict) -> dict | None:
         if has_table is None:
             return None
         row = db.execute(
-            "SELECT v.etag,v.sha256,r.file_bytes,r.content_type,r.source_uri "
+            "SELECT v.etag,v.sha256,CASE WHEN length(r.file_bytes) BETWEEN 1 AND ? "
+            "THEN r.file_bytes END,r.content_type,r.source_uri "
             "FROM original_http_validators AS v JOIN original_filing_receipts AS r "
             "ON r.issuer_cik=v.issuer_cik AND r.accession=v.accession AND r.sha256=v.sha256 "
             "WHERE v.issuer_cik=? AND v.accession=? AND v.source_uri=? "
             "ORDER BY v.updated_at DESC LIMIT 1",
-            (receipt["issuer_cik"], receipt["accession"], receipt["source_uri"]),
+            (MAX_FILING_BYTES, receipt["issuer_cik"], receipt["accession"],
+             receipt["source_uri"]),
         ).fetchone()
     if row is None:
         return None
@@ -408,9 +412,10 @@ def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
             if current_location != receipt:
                 raise ValueError("Original filing locator changed before persistence")
             existing = db.execute(
-                "SELECT file_bytes FROM original_filing_receipts "
+                "SELECT CASE WHEN length(file_bytes) BETWEEN 1 AND ? THEN file_bytes END "
+                "FROM original_filing_receipts "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",
-                (location["issuer_cik"], location["accession"], digest),
+                (MAX_FILING_BYTES, location["issuer_cik"], location["accession"], digest),
             ).fetchone()
             if existing is not None:
                 if existing[0] != raw:
@@ -531,15 +536,17 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
         if has_receipts is None:
             raise KeyError("Original filing receipt not found")
         row = db.execute(
-            "SELECT f.filing_json,o.response,o.sha256,o.provenance,o.seen_at,o.id, "
-            "r.file_bytes,r.source_uri,r.retrieved_at "
+            "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+            "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id, "
+            "CASE WHEN length(r.file_bytes) BETWEEN 1 AND ? THEN r.file_bytes END,"
+            "r.source_uri,r.retrieved_at "
             "FROM filings AS f "
             "JOIN observations AS o ON o.id=f.first_observation_id "
             "JOIN original_filing_receipts AS r "
             "ON r.issuer_cik=f.issuer_cik AND r.accession=f.accession "
             "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
             "AND r.sha256=?",
-            (c, a, sha256),
+            (core.MAX_JSON_BYTES, MAX_FILING_BYTES, c, a, sha256),
         ).fetchone()
     if row is None:
         raise KeyError("Original filing receipt not found")

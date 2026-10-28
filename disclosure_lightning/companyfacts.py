@@ -211,9 +211,10 @@ def save_companyfacts(db_path: Path, raw: bytes, indexed: dict, *,
         db.execute("BEGIN IMMEDIATE")
         try:
             old = db.execute(
-                "SELECT response,source_uri FROM companyfacts_observations "
+                "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,source_uri "
+                "FROM companyfacts_observations "
                 "WHERE issuer_cik=? AND sha256=?",
-                (indexed["issuer_cik"], digest),
+                (MAX_COMPANYFACTS_BYTES, indexed["issuer_cik"], digest),
             ).fetchone()
             if old is None:
                 db.execute(
@@ -263,14 +264,15 @@ def _load_cache(db_path: Path, cik: str) -> dict | None:
         if table is None:
             return None
         row = db.execute(
-            "SELECT v.etag,v.sha256,o.response,o.source_uri,EXISTS("
+            "SELECT v.etag,v.sha256,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+            "THEN o.response END,o.source_uri,EXISTS("
             "SELECT 1 FROM companyfacts_checks c "
             "WHERE c.issuer_cik=v.issuer_cik AND c.sha256=v.sha256 "
             "AND c.provenance IN ('SEC_HTTPS_RESPONSE','SEC_HTTPS_304_NOT_MODIFIED')) "
             "FROM companyfacts_validators v "
             "JOIN companyfacts_observations o ON o.issuer_cik=v.issuer_cik AND o.sha256=v.sha256 "
             "WHERE v.issuer_cik=? AND v.source_uri=?",
-            (cik10(cik), uri),
+            (MAX_COMPANYFACTS_BYTES, cik10(cik), uri),
         ).fetchone()
     if row is None:
         return None
@@ -355,9 +357,10 @@ def list_companyfacts(db_path: Path, *, cik: str, as_of: str) -> list[dict]:
         if exists is None:
             return []
         rows = db.execute(
-            "SELECT sha256,source_uri,entity_name,collected_at,as_of_cutoff,provenance,response "
+            "SELECT sha256,source_uri,entity_name,collected_at,as_of_cutoff,provenance,"
+            "CASE WHEN length(response) BETWEEN 1 AND ? THEN response END "
             "FROM companyfacts_observations WHERE issuer_cik=? ORDER BY collected_at,sha256",
-            (target,),
+            (MAX_COMPANYFACTS_BYTES, target),
         )
         observations = []
         for sha, uri, name, collected, indexed_asof, provenance, raw in rows:
@@ -399,9 +402,10 @@ def _read_companyfacts_record(db_path: Path, *, cik: str, sha256: str,
     with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
         db.execute("PRAGMA query_only=ON")
         row = db.execute(
-            "SELECT response,source_uri,collected_at,as_of_cutoff,entity_name,provenance "
+            "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,"
+            "source_uri,collected_at,as_of_cutoff,entity_name,provenance "
             "FROM companyfacts_observations "
-            "WHERE issuer_cik=? AND sha256=?", (target, sha256),
+            "WHERE issuer_cik=? AND sha256=?", (MAX_COMPANYFACTS_BYTES, target, sha256),
         ).fetchone()
     if row is None:
         raise KeyError("CompanyFacts observation not found")

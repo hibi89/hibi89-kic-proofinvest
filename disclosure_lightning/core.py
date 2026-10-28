@@ -662,7 +662,10 @@ def save_index(db_path: Path, raw: bytes, indexed: dict, *,
             ).fetchone()
             if existing:
                 obs_id = existing[0]
-                stored = conn.execute("SELECT response FROM observations WHERE id=?", (obs_id,)).fetchone()
+                stored = conn.execute(
+                    "SELECT CASE WHEN length(response) BETWEEN 1 AND ? THEN response END "
+                    "FROM observations WHERE id=?", (MAX_JSON_BYTES, obs_id),
+                ).fetchone()
                 if stored[0] != raw:
                     raise ValueError("Stored SEC hash collision or corrupt observation")
             else:
@@ -979,8 +982,9 @@ def list_filings(
         }
         for observation_id, indices in groups.items():
             source = conn.execute(
-                "SELECT sha256,response,provenance FROM observations WHERE id=?",
-                (observation_id,),
+                "SELECT sha256,CASE WHEN length(response) BETWEEN 1 AND ? THEN response END,"
+                "provenance FROM observations WHERE id=?",
+                (MAX_JSON_BYTES, observation_id),
             ).fetchone()
             if source is None:
                 raise ValueError("Stored index observation is missing")
@@ -1062,12 +1066,13 @@ def _load_submission_cache(db_path: Path, cik: str) -> dict | None:
         if table is None:
             return None
         row = conn.execute(
-            "SELECT v.etag,v.response_sha256,o.sha256,o.response "
+            "SELECT v.etag,v.response_sha256,o.sha256,"
+            "CASE WHEN length(o.response) BETWEEN 1 AND ? THEN o.response END "
             "FROM http_validators AS v JOIN observations AS o "
             "ON o.provider=v.provider AND o.issuer_cik=v.issuer_cik "
             "AND o.sha256=v.response_sha256 "
             "WHERE v.provider=? AND v.issuer_cik=? AND v.source_uri=?",
-            (PROVIDER, target, source_uri),
+            (MAX_JSON_BYTES, PROVIDER, target, source_uri),
         ).fetchone()
     if row is None:
         return None
