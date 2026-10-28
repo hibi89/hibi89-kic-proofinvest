@@ -73,6 +73,16 @@ class CompanyFactsTests(unittest.TestCase):
             companyfacts.index_companyfacts(RAW, cik=CIK, as_of="2026-10-27",
                                              collected_at=COLLECTED)
 
+    def test_duplicate_keys_and_nonstandard_json_numbers_are_rejected(self):
+        duplicate_key = RAW.replace(b'"cik":320193', b'"cik":320193,"cik":320193')
+        nonstandard_number = RAW.replace(b'"val":100', b'"val":NaN')
+        for raw in (duplicate_key, nonstandard_number):
+            with self.subTest(raw=raw[:80]):
+                with self.assertRaisesRegex(ValueError, "Invalid UTF-8 CompanyFacts JSON"):
+                    companyfacts.index_companyfacts(
+                        raw, cik=CIK, as_of=AS_OF, collected_at=COLLECTED,
+                    )
+
     def test_response_hash_corruption_is_detected_on_read(self):
         _, meta = self.save()
         with closing(sqlite3.connect(self.db)) as db:
@@ -82,6 +92,19 @@ class CompanyFactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "integrity"):
             companyfacts.read_companyfacts(self.db, cik=CIK,
                                             sha256=meta["source_sha256"])
+
+    def test_metadata_tampering_is_detected_by_read_only_envelope(self):
+        _, meta = self.save()
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute(
+                "UPDATE companyfacts_observations SET entity_name=? WHERE issuer_cik=? AND sha256=?",
+                ("Different Issuer", CIK, meta["source_sha256"]),
+            )
+            db.commit()
+        with self.assertRaisesRegex(ValueError, "metadata integrity"):
+            companyfacts.read_companyfacts_envelope(
+                self.db, cik=CIK, sha256=meta["source_sha256"], as_of=AS_OF,
+            )
 
     def test_offline_companyfacts_input_uses_its_larger_explicit_bound(self):
         padded = RAW[:-1] + b',"padding":"' + b"x" * 8_000_001 + b'"}'
