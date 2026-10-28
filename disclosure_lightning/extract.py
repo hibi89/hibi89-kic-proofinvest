@@ -238,8 +238,11 @@ def extract_bytes(raw: bytes, *, content_type: str,
     return receipt
 
 
-def from_saved_original(*, db_path, cik: str, accession: str, sha256: str) -> dict:
-    receipts = list_originals(db_path=db_path, cik=cik, accession=accession)
+def from_saved_original(*, db_path, cik: str, accession: str, sha256: str,
+                        as_of: str | None = None) -> dict:
+    receipts = list_originals(
+        db_path=db_path, cik=cik, accession=accession, as_of=as_of
+    )
     matched = [entry for entry in receipts if entry["filing_sha256"] == sha256]
     if len(matched) != 1:
         raise ValueError("SAVED_ORIGINAL_RECEIPT_NOT_FOUND_OR_AMBIGUOUS")
@@ -247,11 +250,14 @@ def from_saved_original(*, db_path, cik: str, accession: str, sha256: str) -> di
     raw = read_original_bytes(
         db_path=db_path, cik=cik, accession=accession, sha256=sha256
     )
-    return extract_bytes(
+    result = extract_bytes(
         raw, content_type=meta["content_type"], filing_sha256=sha256,
         issuer_cik=cik, accession=accession, source_uri=meta["source_uri"],
         input_origin=meta["input_origin"],
     )
+    if as_of is not None:
+        result["as_of"] = as_of
+    return result
 
 
 
@@ -284,7 +290,7 @@ def find_evidence_candidates(receipt: dict, *, term: str,
             })
         if len(found) >= max_results:
             break
-    return {
+    result = {
         "schema": "disclosure-lightning.evidence-candidates.v1",
         "issuer_cik": receipt["issuer_cik"],
         "accession": receipt["accession"],
@@ -298,6 +304,9 @@ def find_evidence_candidates(receipt: dict, *, term: str,
         "financial_claim_verified": False,
         "candidates": found,
     }
+    if isinstance(receipt.get("as_of"), str):
+        result["as_of"] = receipt["as_of"]
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -308,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cik", required=True)
     parser.add_argument("--accession", required=True)
     parser.add_argument("--sha256", required=True, help="Known original-filing digest")
+    parser.add_argument("--as-of", required=True,
+                        help="Only return original bytes and index evidence available by this UTC date")
     parser.add_argument("--summary-only", action="store_true",
                         help="Return status and digests, not extracted text blocks")
     parser.add_argument("--find", help="Search extracted fragments for one literal keyword")
@@ -315,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = from_saved_original(
             db_path=args.db, cik=args.cik,
-            accession=args.accession, sha256=args.sha256
+            accession=args.accession, sha256=args.sha256, as_of=args.as_of,
         )
         truncated = result["truncated"]
         if args.find is not None:

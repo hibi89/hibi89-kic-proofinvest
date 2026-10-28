@@ -21,7 +21,7 @@ import urllib.request
 from contextlib import closing
 from pathlib import Path
 
-from .core import _NoRedirect, _timestamp, _valid_user_agent, cik10
+from .core import _NoRedirect, _timestamp, _valid_user_agent, cik10, parse_day
 
 MAX_FILING_BYTES = 25_000_000
 ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
@@ -206,7 +206,8 @@ def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
     }
 
 
-def list_originals(*, db_path: Path, cik: str, accession: str) -> list[dict]:
+def list_originals(*, db_path: Path, cik: str, accession: str,
+                   as_of: str | None = None) -> list[dict]:
     c, a = cik10(cik), _accession(accession)
     with closing(_read_conn(db_path)) as db:
         exists = db.execute(
@@ -214,11 +215,24 @@ def list_originals(*, db_path: Path, cik: str, accession: str) -> list[dict]:
         ).fetchone()
         if not exists:
             return []
-        rows = db.execute(
-            "SELECT sha256,source_uri,retrieved_at,input_origin,content_type,length(file_bytes)"
-            " FROM original_filing_receipts WHERE issuer_cik=? AND accession=?"
-            " ORDER BY retrieved_at, sha256", (c, a),
-        ).fetchall()
+        if as_of is None:
+            rows = db.execute(
+                "SELECT sha256,source_uri,retrieved_at,input_origin,content_type,length(file_bytes)"
+                " FROM original_filing_receipts WHERE issuer_cik=? AND accession=?"
+                " ORDER BY retrieved_at, sha256", (c, a),
+            ).fetchall()
+        else:
+            cutoff_day = parse_day(as_of).isoformat()
+            cutoff = cutoff_day + "T23:59:59Z"
+            rows = db.execute(
+                "SELECT r.sha256,r.source_uri,r.retrieved_at,r.input_origin,r.content_type,length(r.file_bytes)"
+                " FROM original_filing_receipts AS r JOIN filings AS f"
+                " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
+                " WHERE r.issuer_cik=? AND r.accession=? AND r.retrieved_at<=?"
+                " AND json_extract(f.filing_json,'$.filed_at')<=?"
+                " AND json_extract(f.filing_json,'$.collected_at')<=?"
+                " ORDER BY r.retrieved_at, r.sha256", (c, a, cutoff, cutoff_day, cutoff),
+            ).fetchall()
     return [
         {"filing_sha256": sha, "source_uri": uri, "retrieved_at": when,
          "input_origin": origin, "content_type": kind, "filing_bytes": length}

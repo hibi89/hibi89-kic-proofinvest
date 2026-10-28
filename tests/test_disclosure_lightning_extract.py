@@ -343,10 +343,27 @@ class ExtractedFilingTests(unittest.TestCase):
             extract.from_saved_original(
                 db_path=self.db, cik=CIK, accession=ACC, sha256="0" * 64)
 
+    def test_as_of_extraction_excludes_original_bytes_added_after_cutoff(self):
+        with _sqlite_connection(self.db) as db:
+            db.execute(
+                "UPDATE original_filing_receipts SET retrieved_at=? WHERE issuer_cik=? AND accession=?",
+                ("2025-11-02T00:00:00Z", CIK, ACC),
+            )
+        args = {
+            "db_path": self.db, "cik": CIK, "accession": ACC,
+            "sha256": self.saved["filing_sha256"],
+        }
+        with self.assertRaisesRegex(ValueError, "NOT_FOUND_OR_AMBIGUOUS"):
+            extract.from_saved_original(**args, as_of="2025-11-01")
+        result = extract.from_saved_original(**args, as_of="2025-11-02")
+        self.assertEqual(result["as_of"], "2025-11-02")
+        self.assertEqual(result["block_count"], 3)
+
     def test_cli_summary_only_never_echoes_private_source_text(self):
         argv = [
             "--db", str(self.db), "--cik", CIK, "--accession", ACC,
-            "--sha256", self.saved["filing_sha256"], "--summary-only"
+            "--sha256", self.saved["filing_sha256"], "--as-of", "2099-12-31",
+            "--summary-only"
         ]
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(extract.main(argv), 0)
@@ -354,6 +371,7 @@ class ExtractedFilingTests(unittest.TestCase):
         self.assertNotIn("blocks", report)
         self.assertNotIn("Revenue", stdout.getvalue())
         self.assertEqual(report["block_count"], 3)
+        self.assertEqual(report["as_of"], "2099-12-31")
 
     def test_bounded_keyword_candidates_keep_source_line_and_digest(self):
         receipt = self.run_from_saved()
@@ -379,13 +397,15 @@ class ExtractedFilingTests(unittest.TestCase):
     def test_cli_find_returns_candidates_without_claim_verification(self):
         argv = [
             "--db", str(self.db), "--cik", CIK, "--accession", ACC,
-            "--sha256", self.saved["filing_sha256"], "--find", "revenue"
+            "--sha256", self.saved["filing_sha256"], "--as-of", "2099-12-31",
+            "--find", "revenue"
         ]
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(extract.main(argv), 0)
         got = json.loads(stdout.getvalue())
         self.assertEqual(got["schema"], "disclosure-lightning.evidence-candidates.v1")
         self.assertEqual(got["returned"], 1)
+        self.assertEqual(got["as_of"], "2099-12-31")
         self.assertFalse(got["financial_claim_verified"])
         with contextlib.redirect_stderr(io.StringIO()) as stderr:
             self.assertEqual(extract.main(argv + ["--summary-only"]), 2)

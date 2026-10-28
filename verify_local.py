@@ -207,11 +207,14 @@ def smoke(root: Path, log: Path) -> dict:
                 return {"status": "FAIL", "step": "original-bytes",
                         "error": "UNEXPECTED_ORIGINAL_PROVENANCE", "log": str(log)}
 
+            evidence_as_of = datetime.now(timezone.utc).date().isoformat()
             extraction = [
                 sys.executable, "-B", "-m", "disclosure_lightning.extract",
                 "--db", str(db), "--cik", CIK,
                 "--accession", "0000320193-25-000901",
-                "--sha256", original_receipt["filing_sha256"], "--find", "revenue",
+                "--sha256", original_receipt["filing_sha256"],
+                "--as-of", evidence_as_of,
+                "--find", "revenue",
             ]
             proc = subprocess.run(
                 extraction, cwd=root, capture_output=True, text=True,
@@ -226,6 +229,7 @@ def smoke(root: Path, log: Path) -> dict:
             evidence = json.loads(proc.stdout)
             if (evidence.get("schema") != "disclosure-lightning.evidence-candidates.v1"
                     or evidence.get("returned") != 1
+                    or evidence.get("as_of") != evidence_as_of
                     or evidence.get("source_authenticity_verified") is not False
                     or evidence.get("financial_claim_verified") is not False
                     or evidence["candidates"][0].get("citation_status")
