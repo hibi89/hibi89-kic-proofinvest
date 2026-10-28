@@ -278,15 +278,18 @@ def _load_original_http_cache(db_path: Path, receipt: dict) -> dict | None:
 def fetch_original_with_cache(*, db_path: Path, receipt: dict, user_agent: str,
                               allow_network: bool = False) -> tuple[bytes, str, str | None, bool]:
     """Explicit archive GET with a hash-checked, source-bound optional ETag cache."""
-    cached = _load_original_http_cache(db_path, receipt)
     if not allow_network:
         raise ValueError("Explicit --allow-network is required")
     if not _valid_user_agent(user_agent):
         raise ValueError("Actual non-placeholder contact-bearing SEC User-Agent required")
+    cik = cik10(receipt.get("issuer_cik"))
+    accession = _accession(receipt.get("accession"))
+    persisted = locate_original(db_path, cik=cik, accession=accession)
+    if persisted != receipt:
+        raise ValueError("SEC archive locator does not match persisted indexed metadata")
     if receipt.get("evidence_status") != "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED":
         raise ValueError("Live original fetch requires previously indexed SEC HTTPS metadata")
-    _validate_locator_receipt(receipt, cik10(receipt.get("issuer_cik")),
-                              _accession(receipt.get("accession")))
+    cached = _load_original_http_cache(db_path, persisted)
     return _fetch_original_http(receipt["source_uri"], user_agent=user_agent, cached=cached)
 
 

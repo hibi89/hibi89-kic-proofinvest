@@ -175,6 +175,19 @@ class OriginalFilingTests(unittest.TestCase):
                     allow_network=True)
             opener.assert_not_called()
 
+    def test_cached_live_transport_requires_exact_persisted_locator(self):
+        fabricated = {
+            **self.receipt,
+            "evidence_status": "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED",
+        }
+        with patch("disclosure_lightning.originals.urllib.request.build_opener") as opener:
+            with self.assertRaisesRegex(ValueError, "persisted indexed metadata"):
+                originals.fetch_original_with_cache(
+                    db_path=self.db, receipt=fabricated,
+                    user_agent="DL Ops test@actualcorp.org", allow_network=True,
+                )
+            opener.assert_not_called()
+
     def test_mocked_sec_archive_download_saves_bytes_but_not_certification(self):
         from email.message import Message
         from urllib.error import HTTPError
