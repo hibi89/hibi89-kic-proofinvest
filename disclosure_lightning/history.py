@@ -22,6 +22,7 @@ from .originals import _read_local
 
 MAX_HISTORY_ROWS = core.MAX_HISTORY_RECORDS
 MAX_MANIFEST_PAGES = 256
+MAX_HISTORY_AUDIT_BYTES = 256_000_000
 DIGEST_RE = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 
 
@@ -223,19 +224,21 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                 (target, manifest_sha256, *names),
             ).fetchall()
             for name, digest, observation_id, count in rows:
-                observation = conn.execute(
-                    "SELECT response,seen_at,provenance,sha256,provider,issuer_cik "
-                    "FROM observations WHERE id=?",
-                    (observation_id,),
-                ).fetchone()
-                receipts[name] = (digest, count, observation_id, observation)
+                receipts[name] = (digest, count, observation_id)
     audited = []
+    audited_bytes = 0
     for page in pages:
         name = page["name"]
         receipt = receipts.get(name) if page["eligible_by_start_date"] else None
         state = "MISSING"
         if receipt is not None:
-            digest, count, observation_id, observation = receipt
+            digest, count, observation_id = receipt
+            with closing(sqlite3.connect(uri, uri=True)) as conn:
+                conn.execute("PRAGMA query_only=ON")
+                observation = conn.execute(
+                    "SELECT response,seen_at,provenance,sha256,provider,issuer_cik "
+                    "FROM observations WHERE id=?", (observation_id,),
+                ).fetchone()
             if (observation is None or not isinstance(observation[0], bytes)
                     or observation[2] != "OFFLINE_UNVERIFIED"
                     or observation[3] != digest
@@ -243,6 +246,11 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
                     or observation[5] != target
                     or hashlib.sha256(observation[0]).hexdigest() != digest):
                 raise ValueError("HISTORY_PAGE_RECEIPT_INTEGRITY_FAILED")
+            if len(observation[0]) > core.MAX_JSON_BYTES:
+                raise ValueError("HISTORY_PAGE_RECEIPT_SIZE_LIMIT_EXCEEDED")
+            audited_bytes += len(observation[0])
+            if audited_bytes > MAX_HISTORY_AUDIT_BYTES:
+                raise ValueError("HISTORY_AUDIT_BYTE_BUDGET_EXCEEDED")
             if count != page["filing_count"]:
                 raise ValueError("HISTORY_PAGE_RECEIPT_COUNT_MISMATCH")
             try:
@@ -289,6 +297,7 @@ def audit_manifest_pages(*, db_path: Path, cik: str, manifest_sha256: str,
         "imported_page_count": len(eligible) - len(missing),
         "missing_eligible_pages": missing,
         "complete_for_pinned_manifest": not missing,
+        "source_bytes_rechecked": audited_bytes,
         "source_authenticity_verified": False,
         "ledger_mutated": False,
     }
