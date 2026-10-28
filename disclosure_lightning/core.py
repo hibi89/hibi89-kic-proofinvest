@@ -560,10 +560,7 @@ def list_filings(
             "WHERE f.provider=? AND f.issuer_cik=? "
             "AND json_extract(f.filing_json, '$.filed_at') <= ? "
             "AND json_extract(f.filing_json, '$.collected_at') <= ? "
-            "AND EXISTS (SELECT 1 FROM filing_observations AS fo "
-            "JOIN observations AS o ON o.id=fo.observation_id "
-            "WHERE fo.filing_cik=f.issuer_cik AND fo.accession=f.accession "
-            "AND o.provider=f.provider AND o.issuer_cik=f.issuer_cik AND o.seen_at <= ?) "
+            "AND o.seen_at <= ? "
             "ORDER BY json_extract(f.filing_json, '$.filed_at') DESC, f.accession DESC LIMIT ?"
         )
         params = (PROVIDER, target, as_of, cutoff, cutoff, limit)
