@@ -109,6 +109,15 @@ SEC 응답의 `INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED`는 **정상적인
 
 Saved-filing Inline XBRL candidates are available through `python -m disclosure_lightning.xbrl --db ... --cik ... --accession ... --sha256 ... --as-of ...`. This read-only path preserves lexical text, QName, raw context/unit trees, period fields, scale/sign/format attributes, and source line hints. It does not normalize values or certify facts; unknown references remain UNKNOWN, continuations are not followed, and unsupported elements prevent a complete-extraction claim.
 
+## CompanyFacts raw response archive
+
+The `python -m disclosure_lightning.companyfacts` command stores a bounded raw CompanyFacts JSON response in the local SQLite evidence DB, keyed by issuer CIK and SHA-256. Offline fixture ingestion is available with `--input-json`; the command does not make a network request unless `--allow-network` is explicit and `DL_SEC_USER_AGENT` contains a real contact. Network retrieval supports an ETag-bound conditional request and only reuses a 304 response when the stored bytes, hash, CIK, and canonical source URI validate. `--list` is read-only and `read_companyfacts()` rechecks the response hash and CIK before returning bytes. Historical reads reject collection after the requested as-of date. The response remains raw: this path does not normalize facts, verify financial claims, or independently authenticate offline input. All fixtures and HTTP responses in the local test suite are synthetic mocks; no live SEC request is implied.
+
+```powershell
+python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --input-json .\fixtures\synthetic-companyfacts.json --collected-at 2026-10-28T00:00:00Z
+python -m disclosure_lightning.companyfacts --db .\work\dl.sqlite3 --cik 0000320193 --as-of 2026-10-28 --list
+```
+
 **구현됐지만 실자료로 검증되지 않은 범위:** 과거 `filings.files[]` continuation JSON의 오프라인 입력·커버리지 감사, 원문 바이트의 오프라인 저장 및 명시적 SEC 요청 경로, 저장된 HTML/텍스트와 일부 Inline XBRL의 로컬 후보 추출, bounded transient retry, submissions/archive ETag/304 캐시 처리. 합성 fixture/mock 테스트는 실제 SEC 통신이나 실제 공시 원문 검증을 뜻하지 않습니다. **남은 주요 기능:** XBRL 숫자·taxonomy 정규화와 전체 context/continuation 처리, 회사명/티커 검색·CIK 매핑, 수정 관계의 권위 있는 판정, 스케줄러와 교차 프로세스 속도 제한, 공급기관별 어댑터, API/GUI, 압축·용량정책, 성능·윈도우 상용 검수. KIC 11월 12일 예선 PDF는 기존 대회장 양식만 제출하며, DL 코드의 완료 여부는 선행 조건이 아닙니다. `lead/kic`와 `main`에는 자동 병합하지 않습니다.
 
 ## 2026-10-28 검증 게이트 (KIC 합의)

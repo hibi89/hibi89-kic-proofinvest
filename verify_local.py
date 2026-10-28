@@ -321,7 +321,8 @@ def main(argv: list[str] | None = None) -> int:
     results: dict[str, dict] = {}
     files = [root / "disclosure_lightning" / name
              for name in ("__init__.py", "__main__.py", "core.py",
-                          "history.py", "originals.py", "extract.py")]
+                          "history.py", "originals.py", "extract.py",
+                          "companyfacts.py", "xbrl.py")]
     files.extend(sorted((root / "tests").glob("test_disclosure_lightning*.py")))
     files.append(root / "verify_local.py")
     try:
