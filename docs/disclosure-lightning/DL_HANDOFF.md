@@ -1,3 +1,13 @@
+# DL P14 — CompanyFacts offline input bound alignment (2026-10-28 KST)
+
+- **Source:** latest confirmed remote code SHA `d1d1cf4ad2f4cb2b664feaba812d3f2ee45c5daa` on `feature/disclosure-lightning`.
+- **Change:** generalized the local JSON reader to accept an explicit size cap without changing its existing 8 MB default; CompanyFacts offline CLI now uses its own 50 MB bounded parser limit. This removes the mismatch that rejected larger eligible CompanyFacts files before payload validation, while retaining no-symlink and regular-file checks.
+- **Verification:** synthetic 8 MB+ CompanyFacts input test PASS; focused DL suite **153 run / 150 PASS / 3 SKIP**; `python -B verify_local.py` at exact code SHA **PASS** (syntax, core tests, offline CLI smoke). Last full suite was at preceding code SHA `c65e07d`: **470 run / 1 FAIL / 7 ERROR / 6 SKIP**, all failure/error cases due to missing `streamlit.testing.v1`; no install or weakened tests. Focused log: `work/logs/dl-focused-d1d1cf4-20261028.log`.
+- **Remote gate:** normal push succeeded; GitHub branch HEAD equals `d1d1cf4`. Combined status returned no CI status checks, so CI is unverified.
+- **Next:** continue malformed-source recovery and read-only KIC contract tests; never relax bounded parsing or reinterpret raw facts as verified values.
+
+---
+
 # DL P13 — Versioned read-only CompanyFacts handoff (2026-10-28 KST)
 
 - **Source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; latest confirmed code SHA `c65e07d8a9f7a0651bab22b174c42b94811395f0` (CompanyFacts envelope CLI), parent `4a24e9bb753186b83b935cb5faf4582e572206bf`. GitHub branch HEAD matched the normal push.
