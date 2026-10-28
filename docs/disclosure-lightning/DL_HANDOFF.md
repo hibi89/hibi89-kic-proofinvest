@@ -1,3 +1,12 @@
+# DL P13 — Versioned read-only CompanyFacts handoff (2026-10-28 KST)
+
+- **Source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`; latest confirmed code SHA `c65e07d8a9f7a0651bab22b174c42b94811395f0` (CompanyFacts envelope CLI), parent `4a24e9bb753186b83b935cb5faf4582e572206bf`. GitHub branch HEAD matched the normal push.
+- **Consumer contract:** CompanyFacts archive now supports `--read-sha256` to emit `disclosure-lightning.companyfacts-envelope.v1`, combining a hash/CIK/source/as-of-checked raw CompanyFacts object with collection metadata and explicit false authenticity/financial-verification flags. Existing KIC `verify_sec_annual_revenue` consumes the archived synthetic mapping successfully as `calculated_unverified`; this is a structural offline handoff, not source verification. No KIC source was edited.
+- **Verification:** CompanyFacts tests **10/10 PASS**; DL-focused suite **152 run / 149 PASS / 3 SKIP**; `python -B verify_local.py --full` on exact code SHA: **FAIL** with syntax/core/CLI smoke PASS and full tests FAIL. Full suite **470 run / 1 FAIL / 7 ERROR / 6 SKIP**; every failure/error is due to the absent `streamlit.testing.v1` dependency. No installation or weakened tests. Logs: `work/logs/dl-focused-c65e07d-20261028.log`, `work/logs/full-c65e07d-20261028.log`.
+- **Next:** preserve the separation between raw acquisition and KIC verification. Independently harden issuer/filing linkage and malformed-source cases using synthetic inputs; live SEC, KIC source edits, cross-branch merge, and financial normalization remain outside this checkpoint.
+
+---
+
 # DL P12 — Inline XBRL namespace, exclusion, and bound handling (2026-10-28 KST)
 
 - **Source:** `hibi89/hibi89-kic-proofinvest@feature/disclosure-lightning`, implementation SHA `2ef9cf7612affc704058d0b445ef432295044963`; normal push completed. The parser resolves namespace declarations by element scope and restores parent bindings, omits `ix:exclude` subtree text from fact lexical candidates, and bounds context/unit roots as well as total fact starts. Source bytes remain unchanged and hash-pinned.
