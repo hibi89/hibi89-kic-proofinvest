@@ -8,11 +8,11 @@ permissions:
   contents: read
 jobs:
   python:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Verify 60-day progress and handoff synchronization
@@ -46,7 +46,7 @@ jobs:
           )
           python -c 'import json; a=json.load(open("/tmp/kic-synthetic-demo/restored-cli.json")); b=json.load(open("/tmp/kic-synthetic-demo/restored-read.json")); assert a["source_kind"]=="SYNTHETIC_FIXTURE" and a["status"]=="demo_not_real"; assert b["source_kind"]=="SYNTHETIC_FIXTURE" and b["risk_display_pct"]=="266.67" and b["authenticated_external_source"] is False'
       - name: Archive PUBLIC SYNTHETIC demo only (no private PDF/PPTX)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proofinvest-synthetic-demo-recovery
           path: /tmp/kic-synthetic-demo/proofinvest-offline-demo.zip
@@ -59,7 +59,7 @@ jobs:
           python -m scripts.public_judge_artifact /tmp/kic-public-judge-replay/judge-replay.json
           python -m scripts.public_judge_artifact --verify /tmp/kic-public-judge-replay/judge-replay.json
       - name: Archive PUBLIC manual judge replay receipt (NO private submission materials)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proofinvest-public-judge-replay
           path: /tmp/kic-public-judge-replay/judge-replay.json
