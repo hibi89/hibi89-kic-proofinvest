@@ -564,33 +564,23 @@ def save_index(db_path: Path, raw: bytes, indexed: dict) -> dict:
     }
 
 
-def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: str,
-                         provenance: str, cik: str) -> None:
-    """Recheck a stored read-only row against its preserved source response."""
-    if (not isinstance(record, dict)
-            or record.get("index_raw_sha256") != observation_sha256):
-        raise ValueError("Stored index response integrity failed")
-    accession = record.get("accession")
-    if (not isinstance(accession, str) or re.fullmatch(
-            r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession, flags=re.ASCII) is None):
-        raise ValueError("Stored accession format is invalid")
+def _prepare_stored_index_source(payload: dict, *, provenance: str,
+                                 cik: str, index_source_uri: Any = None) -> dict:
+    """Validate and index one preserved source response for its returned rows."""
     if "cik" in payload:
         source_cik = payload.get("cik")
         if (type(source_cik) not in (int, str) or not str(source_cik).isascii()
                 or not str(source_cik).isdecimal() or not int(str(source_cik))
                 or cik10(str(int(str(source_cik)))) != cik):
             raise ValueError("Stored filing issuer does not match original index")
-        recent = payload.get("filings")
-        recent = recent.get("recent") if isinstance(recent, dict) else None
+        filings = payload.get("filings")
+        recent = filings.get("recent") if isinstance(filings, dict) else None
         expected_index_uri = f"https://data.sec.gov/submissions/CIK{cik}.json"
         history = False
     else:
         recent = payload
-        expected_index_uri = record.get("index_source_uri")
-        if (not isinstance(expected_index_uri, str) or re.fullmatch(
-                rf"https://data\.sec\.gov/submissions/CIK{cik}-submissions-[0-9]{{3}}\.json",
-                expected_index_uri, flags=re.ASCII) is None
-                or provenance != "OFFLINE_UNVERIFIED"):
+        expected_index_uri = index_source_uri
+        if provenance != "OFFLINE_UNVERIFIED":
             raise ValueError("Stored historical index source is invalid")
         history = True
     if not isinstance(recent, dict):
@@ -599,11 +589,11 @@ def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: st
     if not isinstance(accessions, list) or len(accessions) > (
             MAX_HISTORY_RECORDS if history else MAX_RECORDS):
         raise ValueError("Stored index accession array is invalid")
-    matches = [i for i, value in enumerate(accessions)
-               if value == record.get("accession")]
-    if len(matches) != 1:
-        raise ValueError("Stored accession is absent or duplicated in original index")
-    i = matches[0]
+    if history:
+        if (not isinstance(expected_index_uri, str) or re.fullmatch(
+                rf"https://data\.sec\.gov/submissions/CIK{cik}-submissions-[0-9]{{3}}\.json",
+                expected_index_uri, flags=re.ASCII) is None):
+            raise ValueError("Stored historical index source is invalid")
     forms = _column(recent, "form", len(accessions))
     days = _column(recent, "filingDate", len(accessions))
     documents = _column(recent, "primaryDocument", len(accessions))
@@ -611,6 +601,51 @@ def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: st
     if accepted is not None and (not isinstance(accepted, list)
                                  or len(accepted) != len(accessions)):
         raise ValueError("Stored index acceptance timestamps are misaligned")
+    positions: dict[str, int] = {}
+    duplicates: set[str] = set()
+    for i, value in enumerate(accessions):
+        if isinstance(value, str):
+            if value in positions:
+                duplicates.add(value)
+            else:
+                positions[value] = i
+    return {
+        "expected_index_uri": expected_index_uri,
+        "history": history,
+        "positions": positions,
+        "duplicates": duplicates,
+        "forms": forms,
+        "days": days,
+        "documents": documents,
+        "accepted": accepted,
+    }
+
+
+def _verify_stored_filing(record: dict, *, payload: dict, observation_sha256: str,
+                         provenance: str, cik: str,
+                         prepared_source: dict | None = None) -> None:
+    """Recheck one stored row against its preserved source response."""
+    if (not isinstance(record, dict)
+            or record.get("index_raw_sha256") != observation_sha256):
+        raise ValueError("Stored index response integrity failed")
+    accession = record.get("accession")
+    if (not isinstance(accession, str) or re.fullmatch(
+            r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession, flags=re.ASCII) is None):
+        raise ValueError("Stored accession format is invalid")
+    source = prepared_source or _prepare_stored_index_source(
+        payload, provenance=provenance, cik=cik,
+        index_source_uri=record.get("index_source_uri"),
+    )
+    expected_index_uri = source["expected_index_uri"]
+    history = source["history"]
+    accession = record["accession"]
+    if (accession not in source["positions"]
+            or accession in source["duplicates"]):
+        raise ValueError("Stored accession is absent or duplicated in original index")
+    i = source["positions"][accession]
+    forms, days, documents, accepted = (
+        source["forms"], source["days"], source["documents"], source["accepted"]
+    )
     accepted_at = _accepted(accepted[i]) if accepted is not None else None
     filed = parse_day(days[i])
     cutoff = parse_day(record.get("as_of_cutoff"))
@@ -744,6 +779,11 @@ def list_filings(
                 raise ValueError("Stored index response integrity failed")
             payload = _validate_raw(raw)
             historical_source = "cik" not in payload
+            first_record = rows[indices[0]][0]
+            prepared_source = _prepare_stored_index_source(
+                payload, provenance=source_provenance, cik=target,
+                index_source_uri=first_record.get("index_source_uri"),
+            )
             for index in indices:
                 record, _, expected_sha256, provenance, first_seen = rows[index]
                 if expected_sha256 != source_sha256 or provenance != source_provenance:
@@ -772,6 +812,7 @@ def list_filings(
                 _verify_stored_filing(
                     record, payload=payload, observation_sha256=source_sha256,
                     provenance=provenance, cik=target,
+                    prepared_source=prepared_source,
                 )
         cutoff = parse_day(as_of) if as_of is not None else None
         output = []
