@@ -236,6 +236,11 @@ class OriginalFilingTests(unittest.TestCase):
 
     def test_verified_read_only_original_bytes_for_kic_parser(self):
         saved = self.save()
+        with self.assertRaisesRegex(ValueError, "not available by as-of"):
+            originals.locate_original(
+                self.db, cik=C, accession=A, as_of="2000-01-01")
+        self.assertEqual(originals.locate_original(
+            self.db, cik=C, accession=A, as_of="2099-12-31"), self.receipt)
         raw = originals.read_original_bytes(
             db_path=self.db, cik=C, accession=A,
             sha256=saved["filing_sha256"],
@@ -301,7 +306,12 @@ class OriginalFilingTests(unittest.TestCase):
             self.assertEqual(originals.main(args), 0)
         self.assertEqual(json.loads(out.getvalue())["status"], "REUSED")
         with contextlib.redirect_stdout(io.StringIO()) as out:
-            self.assertEqual(originals.main(args[:-2] + ["--list"]), 0)
+            self.assertEqual(originals.main(args[:-2] + ["--list", "--as-of", "2000-01-01"]), 0)
+        result = json.loads(out.getvalue())
+        self.assertEqual(result["as_of"], "2000-01-01")
+        self.assertEqual(result["receipts"], [])
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(originals.main(args[:-2] + ["--list", "--as-of", "2099-12-31"]), 0)
         self.assertEqual(len(json.loads(out.getvalue())["receipts"]), 1)
 
     def test_offline_html_source_to_saved_text_evidence_e2e(self):

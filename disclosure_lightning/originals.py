@@ -52,15 +52,30 @@ def _read_conn(db_path: Path):
     return db
 
 
-def locate_original(db_path: Path, *, cik: str, accession: str) -> dict:
+def locate_original(db_path: Path, *, cik: str, accession: str,
+                    as_of: str | None = None) -> dict:
     """Allow only primary SEC filing URL already anchored in saved metadata."""
     cik, accession = cik10(cik), _accession(accession)
     with closing(_read_conn(db_path)) as conn:
-        row = conn.execute(
-            "SELECT filing_json FROM filings WHERE provider='SEC_EDGAR'"
-            " AND issuer_cik=? AND accession=?", (cik, accession)
-        ).fetchone()
+        if as_of is None:
+            row = conn.execute(
+                "SELECT filing_json FROM filings WHERE provider='SEC_EDGAR'"
+                " AND issuer_cik=? AND accession=?", (cik, accession)
+            ).fetchone()
+        else:
+            cutoff_day = parse_day(as_of).isoformat()
+            cutoff = cutoff_day + "T23:59:59Z"
+            row = conn.execute(
+                "SELECT f.filing_json FROM filings AS f "
+                "JOIN observations AS o ON o.id=f.first_observation_id "
+                "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
+                "AND json_extract(f.filing_json,'$.filed_at')<=? "
+                "AND json_extract(f.filing_json,'$.collected_at')<=? "
+                "AND o.seen_at<=?", (cik, accession, cutoff_day, cutoff, cutoff),
+            ).fetchone()
     if row is None:
+        if as_of is not None:
+            raise ValueError("SEC filing was not available by as-of date")
         raise ValueError("SEC filing ID not found in the indexed SQLite evidence")
     receipt = json.loads(row[0])
     prefix = ("https://www.sec.gov/Archives/edgar/data/"
@@ -256,7 +271,7 @@ def read_original_bytes(*, db_path: Path, cik: str, accession: str,
     if not isinstance(sha256, str) or re.fullmatch(
             r"[0-9a-f]{64}", sha256, re.ASCII) is None:
         raise ValueError("Invalid original filing SHA-256")
-    location = locate_original(db_path, cik=c, accession=a)
+    location = locate_original(db_path, cik=c, accession=a, as_of=as_of)
     if as_of is not None:
         eligible = list_originals(
             db_path=db_path, cik=c, accession=a, as_of=as_of
@@ -287,6 +302,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--db", type=Path, required=True)
     parser.add_argument("--cik", required=True)
     parser.add_argument("--accession", required=True)
+    parser.add_argument("--as-of", help="Filter read-only receipts by the UTC end of this date")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--input-file", type=Path, help="Offline file input (not SEC-authenticated)")
     group.add_argument("--allow-network", action="store_true", help="One SEC archive HTTPS GET")
@@ -300,9 +316,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.input_file or args.allow_network or args.content_type != "application/octet-stream":
                 raise ValueError("Read-only listing cannot import")
             result = {"status": "READ_ONLY", "receipts": list_originals(
-                db_path=args.db, cik=args.cik, accession=args.accession
+                db_path=args.db, cik=args.cik, accession=args.accession,
+                as_of=args.as_of,
             )}
+            if args.as_of is not None:
+                result["as_of"] = parse_day(args.as_of).isoformat()
         else:
+            if args.as_of is not None:
+                raise ValueError("--as-of is only supported with --list")
             if not (args.input_file or args.allow_network):
                 raise ValueError("Provide --input-file or --allow-network explicitly")
             if args.allow_network and args.content_type != "application/octet-stream":
