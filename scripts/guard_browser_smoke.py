@@ -155,6 +155,42 @@ def run(output: Path) -> dict:
                             path=str(output / "intent-router-browser.png"),
                             full_page=True,
                         )
+                        # Mock model suggestions exercise the real LLM
+                        # proposal gate, but NEVER call Gemini or SEC APIs.
+                        page.get_by_role(
+                            "button", name="모의 LLM 제안 검증"
+                        ).click()
+                        expect(page.get_by_text(
+                            "ACCEPTED", exact=True
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "모의 제안 경로 Guard"
+                        )).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "mock-llm-proposal-accepted.png"),
+                            full_page=True,
+                        )
+                        model_picker = page.get_by_role(
+                            "combobox", name="모의 모델 응답"
+                        )
+                        model_picker.click()
+                        model_picker.fill("불일치 제안")
+                        page.get_by_role(
+                            "option", name="불일치 제안: SOURCE_REVIEW"
+                        ).click(timeout=10000)
+                        page.get_by_role(
+                            "button", name="모의 LLM 제안 검증"
+                        ).click()
+                        expect(page.get_by_text(
+                            "BLOCKED", exact=True
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "로컬 도구 실행 0회 · 추출 데이터 없음"
+                        )).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "mock-llm-proposal-blocked.png"),
+                            full_page=True,
+                        )
                     finally:
                         browser.close()
 
@@ -191,6 +227,17 @@ def run(output: Path) -> dict:
                     "router_screenshot": "intent-router-browser.png",
                     "router_status": "REJECT",
                     "router_intent": "GROWTH_CHECK",
+                    "mock_llm_api_calls": 0,
+                    "mock_model_proposal_cases": [
+                        {"proposal": "GROWTH_CHECK", "preflight": "ACCEPTED",
+                         "local_guard": "REJECT"},
+                        {"proposal": "SOURCE_REVIEW", "preflight": "BLOCKED",
+                         "local_tool_calls": 0},
+                    ],
+                    "mock_model_screenshots": [
+                        "mock-llm-proposal-accepted.png",
+                        "mock-llm-proposal-blocked.png",
+                    ],
                 }
                 (output / "guard-browser-evidence.json").write_text(
                     json.dumps(result, indent=2, ensure_ascii=False) + "\n",
