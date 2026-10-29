@@ -30,6 +30,18 @@ jobs:
           path: /tmp/kic-guard-evidence/guard-demo.json
           if-no-files-found: error
           retention-days: 14
+      - name: Execute 15-case question-router judge matrix (offline)
+        run: |
+          mkdir -p /tmp/kic-router-judge
+          python -B -m scripts.kic_router_judge_matrix /tmp/kic-router-judge/router-matrix.json
+          python -c 'import json; x=json.load(open("/tmp/kic-router-judge/router-matrix.json")); assert x["status"] == "PASS" and x["passed"] == x["cases"] == 15 and x["failed"] == 0; assert x["llm_requests"] == x["real_sec_requests"] == x["trades"] == 0; assert not x["source_authenticated"]'
+      - name: Archive reproducible router judge matrix (no personal data)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-router-judge-matrix
+          path: /tmp/kic-router-judge/router-matrix.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify 60-day progress and handoff synchronization
         run: python scripts/master_progress.py --check
       - name: Full 60-day master progress JSON sync check
