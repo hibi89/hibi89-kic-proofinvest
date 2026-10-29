@@ -1,3 +1,10 @@
+## 2026-10-29 KST — Input precheck and stored decision contract
+- Guard workflow rejects partial/blank human review before audit write: 97d813ac64e2a33fab53a03d9867f3a37c4fb849.
+- Regression test added: 219833501007cea51a2affcc90f67125445003c1.
+- Guard audit verify_chain validates decision schema, status and no trade/human approval flags: f2776bbe014a77025697a405a595e49276fe3106.
+- Known issue: malformed non-dict decision JSON can raise AttributeError; attempted exception guard was blocked by tool safety. Fix next.
+- No test execution. Github.com DNS unavailable from runtime; connector read/write available. Estimated 77% (+2pp), 7–14h remaining, not verified functional progress.
+
 ## 2026-10-29 KST — Audit request-hash consistency
 - New regression test: tests/test_guard_registry_link.py, dbb2861112f84f37aee8ca2592aa16efa77dc0f1.
 - GuardAuditStore.verify_chain now rejects mismatch between stored audit event request_hash and guard_run_registry.request_hash, a085d7208babe943cc5ccc21d0c6853e474ab701.
