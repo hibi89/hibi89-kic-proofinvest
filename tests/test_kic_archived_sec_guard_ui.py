@@ -87,7 +87,7 @@ class ArchivedGuardUITests(unittest.TestCase):
         self.assertTrue(GuardReviewStore(self.audit).verify_reviews())
         self.assertTrue(any(m.label == "Guard 판정" and m.value == "HOLD"
                             for m in app.metric))
-        self.assertTrue(any(m.label == "SQLite 감사 무결성" and m.value == "PASS"
+        self.assertTrue(any(m.label == "SQLite 감사·근거 연결" and m.value == "PASS"
                             for m in app.metric))
         self.assertTrue(any("로컬 ZIP 검산" in s.value for s in app.success))
         self.assertFalse(any("검증 실패" in e.value for e in app.error))
@@ -165,6 +165,10 @@ class ArchivedGuardUITests(unittest.TestCase):
             {**original, "source_authenticated": True},
             {**original, "guard": {**original["guard"], "decision": "APPROVE"}},
             {**original, "audit": {**original["audit"], "chain_valid": False}},
+            {**original, "audit": {**original["audit"],
+                "verified_against_persisted_request": False}},
+            {**original, "audit": {**original["audit"],
+                "bound_source_evidence_sha256": "f" * 64}},
         ):
             self.assertFalse(_safe_archived_report(forged))
         with patch("proofinvest.archived_sec_guard_ui.run_archived_sec_guard_report",

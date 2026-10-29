@@ -57,6 +57,10 @@ def _safe_archived_report(value: Any) -> bool:
             or guard.get("source_authenticated") is not False
             or audit.get("chain_valid") is not True
             or audit.get("human_review_integrity_valid") is not True
+            or audit.get("verified_against_persisted_request") is not True
+            or audit.get("bound_source_evidence_sha256")
+                != evidence.get("evidence_chain_sha256")
+            or audit.get("bound_guard_decision") != guard.get("decision")
             or audit.get("externally_anchored") is not False
             or review_summary.get("schema") != "proofinvest.offline-review-summary.v1"
             or review_summary.get("status") != "human_review_required"
@@ -115,7 +119,7 @@ def _display_report(st, report: dict[str, Any]) -> None:
     a, b, c = st.columns(3)
     a.metric("검산", report["verification"]["status"])
     b.metric("Guard 판정", report["guard"]["decision"])
-    c.metric("SQLite 감사 무결성", "PASS")
+    c.metric("SQLite 감사·근거 연결", "PASS")
     st.warning(
         "로컬 ZIP·SHA 일치는 SEC 공식 원문 인증이 아닙니다. "
         "기관 투자 판단·수익률 예측·실거래·제출이 아닙니다."
@@ -131,6 +135,7 @@ def _display_report(st, report: dict[str, Any]) -> None:
         {"항목": "교차 근거 SHA-256", "값": evidence["evidence_chain_sha256"]},
         {"항목": "감사 실행 ID", "값": audit["run_id"]},
         {"항목": "감사 이벤트 SHA-256", "값": audit["event_hash"]},
+        {"항목": "저장된 근거·Risk·Guard 재검증", "값": "PASS (로컬 SHA-256 연결)"},
     ], use_container_width=True, hide_index=True)
     st.subheader("사람 검토 후속 조치 (자동 승인 없음)")
     # The backend summary contains only predefined action/reason codes.

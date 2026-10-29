@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from .guard_audit import GuardAuditStore
+from .guard_bound_audit import verify_bound_guard_audit
+from .guard_sec_adapter import evaluate_sec_guard
 from .guard_review import GuardReviewStore
 from .guard_workflow import run_guard_review
 from .sec_bundle_replay import replay_local_capture
@@ -27,6 +29,14 @@ _CIK = re.compile(r"[0-9]{10}\Z", re.ASCII)
 _ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
 _UTC_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z", re.ASCII)
 _REVIEW_ACTIONS = ("ACKNOWLEDGE", "REQUEST_EXCEPTION")
+_RISK_CODES = frozenset({
+    "SOURCE_ORIGIN_UNAUTHENTICATED", "INPUT_SECTIONS_MISSING",
+    "CLAIMED_GROWTH_CONFLICT", "FINANCIAL_CALCULATION_UNAVAILABLE",
+    "SOURCE_DIGEST_MISSING", "SOURCE_SPAN_INVALID",
+    "LOCAL_IXBRL_CONTEXT_MATCH_UNVERIFIED", "IXBRL_CONTEXT_NOT_CONFIRMED",
+    "LOCAL_NUMERIC_TEXT_MATCH_UNVERIFIED", "NUMERIC_TEXT_MATCH_NOT_CONFIRMED",
+    "LOCAL_EVIDENCE_REVIEW_ONLY",
+})
 
 
 def _canonical_sha256(value: Any) -> str:
@@ -86,10 +96,15 @@ def _validate_replay(replay: Any) -> tuple[str, dict[str, Any]]:
                  or triage.get("priority") != "high"
                  or risk.get("status") != "unavailable")):
         raise ValueError("CONFLICT_MUST_ESCALATE")
+    codes = risk.get("reason_codes")
     if (risk.get("source_authenticated") is not False
             or risk.get("investment_recommendation") is not False
             or risk.get("trade_authorized") is not False
-            or "SOURCE_ORIGIN_UNAUTHENTICATED" not in risk.get("reason_codes", ())):
+            or risk.get("status") not in ("reviewed_unverified", "unavailable")
+            or type(codes) is not list or not codes
+            or any(not isinstance(code, str) or code not in _RISK_CODES
+                   for code in codes)
+            or "SOURCE_ORIGIN_UNAUTHENTICATED" not in codes):
         raise ValueError("RISK_TRUST_BOUNDARY_VIOLATED")
     issuer, accession, day = (replay.get(key) for key in (
         "issuer_cik", "accession", "as_of_self_reported",
@@ -161,20 +176,48 @@ def run_archived_sec_guard_report(
         "needle_sha256": hashlib.sha256(needle.encode("utf-8")).hexdigest(),
         "claimed_growth_pct": claimed_growth_pct,
     })
+    # Bind the actual locally reviewed risk status/codes into the stored
+    # request. Missing independently verified ratios must NEVER be promoted
+    # into an investment or model-based decision.
+    risk_evidence = {
+        "risk_calculated": False,
+        "status": receipt["risk"]["status"],
+        "reason_codes": sorted(set(receipt["risk"]["reason_codes"])),
+        "source_authenticated": False,
+        "financial_values_authenticated": False,
+        "source_rights_verified": False,
+    }
+    expected = "REJECT" if status == "conflict" else "HOLD"
+    preview = evaluate_sec_guard({"status": status}, risk=risk_evidence)["guard"]
+    if (preview.get("decision") != expected
+            or preview.get("human_approved") is not False
+            or preview.get("trade_executed") is not False
+            or preview.get("source_authenticated") is not False):
+        raise ValueError("GUARD_UNVERIFIED_EVIDENCE_DECISION_INVALID")
     guard_run = run_guard_review(
         {"status": status}, run_id=run_id, database_path=audit,
-        source_evidence_digest=evidence_hash, risk=None,
+        source_evidence_digest=evidence_hash, risk=risk_evidence,
         reviewer=reviewer, action=action, reason=reason,
     )
     guard = guard_run["guard"]
-    expected = "REJECT" if status == "conflict" else "HOLD"
     if (guard.get("decision") != expected
             or guard.get("source_authenticated") is not False
             or guard.get("trade_executed") is not False
             or guard.get("human_approved") is not False):
         raise ValueError("GUARD_UNVERIFIED_EVIDENCE_DECISION_INVALID")
-    if not GuardAuditStore(audit).verify_chain() or not GuardReviewStore(audit).verify_reviews():
-        raise ValueError("LOCAL_GUARD_AUDIT_INTEGRITY_FAILED")
+    verified_readback = verify_bound_guard_audit(
+        audit, run_id=run_id, source_evidence_digest=evidence_hash,
+        financial_status=status, risk_evidence=risk_evidence,
+        event_id=guard_run["audit"]["event_id"],
+        event_hash=guard_run["audit"]["event_hash"],
+        guard_decision=guard, human_review=guard_run["review"],
+    )
+    if (verified_readback.get("verified_against_persisted_request") is not True
+            or verified_readback.get("source_evidence_digest") != evidence_hash
+            or verified_readback.get("guard_decision") != expected
+            or verified_readback.get("audit_chain_valid") is not True
+            or verified_readback.get("human_review_chain_valid") is not True):
+        raise ValueError("LOCAL_GUARD_EVIDENCE_BINDING_FAILED")
     hashes = receipt["local_integrity"]["sha256"]
     financial = receipt["offline_financial_review"]
     summary = receipt["review_summary"]
@@ -205,6 +248,7 @@ def run_archived_sec_guard_report(
         },
         "risk": {
             "status": receipt["risk"]["status"],
+            "reason_codes": risk_evidence["reason_codes"],
             "source_authenticated": False,
             "risk_is_investment_recommendation": False,
         },
@@ -217,6 +261,10 @@ def run_archived_sec_guard_report(
             "replayed": guard_run["audit"]["replayed"],
             "chain_valid": True,
             "human_review_integrity_valid": True,
+            "verified_against_persisted_request": True,
+            "bound_source_evidence_sha256": evidence_hash,
+            "bound_guard_decision": expected,
+            "bound_review_id": verified_readback["review_id"],
             "externally_anchored": False,
         },
         "human_review": guard_run["review"],
@@ -256,6 +304,10 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
             or not isinstance(report.get("audit"), dict)
             or report["audit"].get("chain_valid") is not True
             or report["audit"].get("human_review_integrity_valid") is not True
+            or report["audit"].get("verified_against_persisted_request") is not True
+            or report["audit"].get("bound_source_evidence_sha256")
+                != report["evidence"].get("evidence_chain_sha256")
+            or report["audit"].get("bound_guard_decision") != report["guard"].get("decision")
             or report["guard"].get("decision") not in ("HOLD", "REJECT")
             or report["verification"].get("status") not in (
                 "calculated_unverified", "conflict",
@@ -317,6 +369,7 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
         "- Risk: **UNVERIFIED; NO TRADE AUTHORIZATION**",
         f"- Guard: **{guard['decision']}**",
         f"- Audit event SHA-256: `{audit['event_hash']}`",
+        "- Persisted evidence fingerprint / financial verdict / risk / Guard cross-check: PASS",
         "- Local audit chain + human review integrity: PASS",
         "- External audit anchoring: NO",
         "",
