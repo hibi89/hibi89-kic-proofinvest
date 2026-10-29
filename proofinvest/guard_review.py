@@ -29,7 +29,7 @@ class GuardReviewStore:
         # Use a single transaction for chain check, eligibility and review insertion.
         with store._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            if not store.verify_chain(conn=conn) or not self.verify_reviews():
+            if not store.verify_chain(conn=conn) or not self.verify_reviews(conn=conn):
                 raise ValueError("Audit or review integrity invalid")
             row = conn.execute(
                 "SELECT decision, event_id FROM guard_run_registry WHERE run_id=?", (run_id,)
@@ -66,11 +66,14 @@ class GuardReviewStore:
             return {"review_id": cur.lastrowid, "action": action, "decision": decision,
                     "simulated_only": True, "trade_executed": False, "record_hash": digest}
 
-    def verify_reviews(self) -> bool:
+    def verify_reviews(self, *, conn: sqlite3.Connection | None = None) -> bool:
         """Detect changes to stored review fields (not privileged history rewrites)."""
         from .guard_audit import GuardAuditStore
         store = GuardAuditStore(self.path)
-        with store._connect() as conn:
+        owned = conn is None
+        if owned:
+            conn = store._connect()
+        try:
             if not store.verify_chain(conn=conn):
                 return False
             exists = conn.execute(
@@ -105,3 +108,6 @@ class GuardReviewStore:
                 if action == "AUTHORIZE_SIMULATION" and decision != "APPROVE":
                     return False
             return True
+        finally:
+            if owned:
+                conn.close()
