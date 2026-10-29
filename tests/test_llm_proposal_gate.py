@@ -43,6 +43,35 @@ class LLMSafetyGateTests(unittest.TestCase):
                 self.assertEqual(len(result["local_result"]["tool_calls"]), expected_calls)
                 self.assertFalse(result["authenticated_external_source"])
 
+    def test_preflight_does_not_read_any_local_evidence(self):
+        from proofinvest.intent_router import route_question
+        with patch("proofinvest.intent_router.run_curated_apple_demo",
+                   side_effect=AssertionError("TOOL_EXECUTED")) as read, \
+             patch("proofinvest.intent_router.evaluate_sec_guard",
+                   side_effect=AssertionError("GUARD_EXECUTED")) as guard:
+            preview = route_question(GROWTH, dry_run=True)
+        self.assertEqual(preview["status"], "ready")
+        self.assertEqual(preview["selected_intent"], "GROWTH_CHECK")
+        self.assertEqual(preview["tool_calls"], [])
+        self.assertEqual(preview["evidence"]["claim_pct"], "20")
+        read.assert_not_called()
+        guard.assert_not_called()
+
+    def test_mismatched_model_proposal_triggers_zero_real_local_tools(self):
+        with patch("proofinvest.intent_router.run_curated_apple_demo",
+                   side_effect=AssertionError("TOOL_EXECUTED")) as read, \
+             patch("proofinvest.intent_router.evaluate_sec_guard",
+                   side_effect=AssertionError("GUARD_EXECUTED")) as guard:
+            result = evaluate_model_proposal(
+                GROWTH, {"action": "RUN", "intent": "SOURCE_REVIEW"}
+            )
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["reason_code"],
+                         "MODEL_INTENT_MISMATCH_OR_UNSUPPORTED_REQUEST")
+        self.assertIsNone(result["local_result"])
+        read.assert_not_called()
+        guard.assert_not_called()
+
     def test_model_mismatch_cannot_pick_other_local_tool(self):
         for question, suggestion in (
             (GROWTH, "SOURCE_REVIEW"),
