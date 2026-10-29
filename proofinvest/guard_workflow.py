@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any, Mapping
 
 from .guard_audit import GuardAuditStore
@@ -18,6 +19,7 @@ def run_guard_review(
     reviewer: str | None = None,
     action: str | None = None,
     reason: str | None = None,
+    source_evidence_digest: str | None = None,
 ) -> dict[str, Any]:
     """Persist Guard decision before any explicit human review.
 
@@ -39,6 +41,12 @@ def run_guard_review(
             raise ValueError("Reviewer required")
         if not (5 <= len(reason.strip()) <= 1000):
             raise ValueError("Explicit review reason required")
+    # Optional evidence binding is strictly a fingerprint: no untrusted filing
+    # text enters the Guard audit database. Older callers remain unchanged.
+    if source_evidence_digest is not None:
+        if (not isinstance(source_evidence_digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", source_evidence_digest, re.ASCII) is None):
+            raise ValueError("Invalid source evidence fingerprint")
     mapped = evaluate_sec_guard(sec_verdict, risk=risk)
     request = {
         "sec_verdict": dict(sec_verdict),
@@ -47,6 +55,8 @@ def run_guard_review(
         "risk": dict(risk) if risk is not None else None,
         "policy_version": mapped["guard"]["policy_version"],
     }
+    if source_evidence_digest is not None:
+        request["source_evidence_digest"] = source_evidence_digest
     receipt = GuardAuditStore(database_path).record_decision(
         run_id, request, mapped["guard"]
     )
