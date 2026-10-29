@@ -25,7 +25,7 @@ jobs:
         run: python -B -m scripts.verify_local --full
       - name: Guard decision, audit, review and workflow regressions (offline)
         run: |
-          python -B -m unittest -v tests.test_guard_agent tests.test_guard_audit tests.test_guard_review tests.test_guard_sec_adapter tests.test_guard_workflow tests.test_guard_registry_link
+          python -B -m unittest discover -s tests -p 'test_guard*.py' -v
 
       - name: Synthetic snapshot create/reuse/reload (temporary HOME; no credentials)
         run: |
