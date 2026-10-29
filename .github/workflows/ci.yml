@@ -115,6 +115,7 @@ jobs:
           name: proofinvest-guard-browser-evidence
           path: |
             /tmp/kic-guard-browser/guard-browser-clickthrough.png
+            /tmp/kic-guard-browser/intent-router-browser.png
             /tmp/kic-guard-browser/guard-browser-evidence.json
           if-no-files-found: error
           retention-days: 14
