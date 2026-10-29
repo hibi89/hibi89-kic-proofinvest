@@ -51,12 +51,23 @@ The synthetic demo exercises the actual local ledger, original-file extractor, G
 
 Latest verified CI: `81607de86557458afe4e5e952415e91f4e56ff1b` -> GitHub Actions run `40905577717` **SUCCESS**, full offline Python verifier **675 tests, 0 failures, 0 skipped**, syntax checks **125 PASS**, Chromium Guard click-through **SUCCESS**.
 
-Integration workstream milestone ledger: **5/8 = 62.5% (~63%)** (branch/source, isolation compatibility, offline bridge, regression CI, SQLite audit/report E2E). Remaining: report UI/demo presentation, leak-safe selective AutoML, final preliminary PDF review/submission gates. This is **NOT** the total KIC production or contest submission completion percentage.
+Previous milestone 5/8 at the CLI-only phase is historical; the current scoped integration ledger is **6/8 = 75%** after Streamlit and Chromium verification. Not overall KIC production/submission completion.
+
+## ProofInvest UI integration verified (2026-10-30 KST)
+
+- `proofinvest/dl_guard_ui.py` and `streamlit_app.py` add a new offline DL -> Guard -> SQLite audit/report mode with **explicit run only**. Synthetic demo uses disposable databases; local saved-DL mode requires an existing user-selected DL SQLite ledger, separate audit SQLite, pinned original SHA/as-of and user-supplied run ID. Optional human acknowledgement/exception request is explicit; no simulation authorization, trades, or SEC network.
+- The view displays only SHA/citation positions, Guard HOLD, and audit chain integrity, with guarded JSON/Markdown exports; untrusted source HTML is never rendered as trusted Markdown.
+- `tests/test_kic_dl_guard_streamlit.py`: five headless AppTest cases covering no implicit writes, synthetic click path, actual saved-DL submit and audit writes, bad SHA failure, and untrusted/forged verdict suppression.
+- `scripts/guard_browser_smoke.py`: real Playwright Chromium clicks through the synthetic DL/Guard report mode, confirms HOLD/PASS, verifies that no new record was written into the separate curated Guard ledger, and captures `dl-guard-browser-report.png`. CI archives the screenshot as a public-safe evidence artifact.
+- **Verified code SHA** `ebd10935618c74c80ddf51c87557bdb8312c06e6`; GitHub Actions run `40906694316` **SUCCESS**. Full offline Python verifier **680/680 PASS**, no skips, 127 syntax checks, Chromium UI job **SUCCESS** with actual DL Guard screenshot.
+- These results demonstrate **synthetic** real browser E2E and local saved-source headless UI only. The owner's Windows environment, independent live SEC provenance, target-machine deployment, AutoML and official organizer PDF remain unverified/not done.
+
+**Integration workstream: 6/8 = 75% complete** (isolation, DL reader, evidence-to-Guard, comprehensive CI, SQLite audit/report, UI/Chromium demo). This is a scoped integration milestone percentage, **not** KIC full product/submission completion. KIC main implementation's earlier provisional **84%** is a different denominator.
 
 ## Remaining ordered gates
 
-1. Connect the now-tested DL/Guard audit report to the actual ProofInvest review **UI** and demonstrate on the owner's intended machine.
-2. Selectively integrate AutoML only after chronological evaluation, leakage controls, and baseline tests.
-3. Produce and independently check the official 10-page preliminary PDF; final submission is a separate owner approval gate.
+1. Independently validate the new UI on the owner's intended Windows machine (CI Chromium completed; Windows remains unverified).
+2. Integrate only needed AutoML capability after chronological evaluation, leakage controls, baselines, and evidence-scope checks.
+3. Produce and independently check the official <=10-page preliminary PDF before 2026-11-12 10:00 KST; final submission requires separate owner approval.
 
 **Completion measurement (integration workstream only):** **5 of 8 = 62.5%**; main branch's previous **84%** implementation estimate is separate and preliminary. No current evidence for a measured total KIC product completion percentage.
