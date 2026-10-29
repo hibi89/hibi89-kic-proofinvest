@@ -240,8 +240,9 @@ def _render_sec_curated_case(st) -> None:
                     st.info("저장된 로컬 감사 기록이 없습니다.")
                 else:
                     store = GuardAuditStore(db_path)
-                    if not store.verify_chain():
-                        st.error("감사 해시 체인 검증 실패 — 이력 표시를 중단합니다.")
+                    from proofinvest.guard_review import GuardReviewStore
+                    if not store.verify_chain() or not GuardReviewStore(db_path).verify_reviews():
+                        st.error("감사 또는 사람 검토 무결성 검증 실패 — 이력 표시를 중단합니다.")
                     else:
                         with sqlite3.connect(db_path) as conn:
                             rows = conn.execute(
