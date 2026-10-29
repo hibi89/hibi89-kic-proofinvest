@@ -1,3 +1,9 @@
+## 2026-10-29 KST — Human review input and audit UI
+- Workflow validates review action and length bounds before any audit write: d51019641f34311c58e1db6abd40ed5ae1b517af.
+- Tests verify invalid action and too-short reason do not create audit DB: 1086e2ad5badee66ed833b2c23c9940a63b787cb.
+- Streamlit displays human review history separately after integrity verification: 8369a8890266352b00d6b4bab3464917abc6fa75.
+- Runtime tests/UI NOT executed; estimated 84% (+3pp), 4–10h remaining.
+
 ## 2026-10-29 KST — SEC evidence replay identity
 - Guard workflow now binds full SEC verdict to audit request hash: b654ea9cddb57348e512729fb8a239f2fd78232a.
 - Regression test ensures numeric evidence change with same run_id raises: a8b2cffefc9eb8305120dee6a0f9ac97002395fa.
