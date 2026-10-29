@@ -214,8 +214,11 @@ def main(argv: list[str] | None = None) -> int:
     except PlannerGateError as exc:
         result = _base(str(exc), llm_attempted=args.allow_network)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["status"] in ("needs_evidence", "needs_authentication",
-                                     "needs_clarification") else 2
+    # A correct REJECT on a contradicted claim is a successful *guarded*
+    # evaluation, not a process failure. Unsupported/model-invalid requests
+    # remain exit code 2, as do missing credentials and network opt-in.
+    return 0 if (result["model_proposal_accepted"]
+                 or result["status"] == "needs_clarification") else 2
 
 
 if __name__ == "__main__":
