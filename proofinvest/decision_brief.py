@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .source_assurance import validate_local_source_assurance
+
 _SHA = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _CIK = re.compile(r"[0-9]{10}\Z", re.ASCII)
 _ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
@@ -72,6 +74,8 @@ def build_archived_decision_brief(report: Any) -> dict[str, Any]:
                 "official_contest_submission",
             ))):
         raise ValueError("UNTRUSTED_DECISION_BRIEF_REPORT")
+    if not validate_local_source_assurance(report.get("source_assurance")):
+        raise ValueError("SOURCE_OR_RIGHTS_ASSURANCE_NOT_VERIFIED")
     try:
         research = report["research"]
         evidence = report["evidence"]
@@ -192,6 +196,15 @@ def build_archived_decision_brief(report: Any) -> dict[str, Any]:
             {"code": "LOCAL_GUARD_AUDIT", "status": "BOUND_LOCAL_ONLY",
              "meaning": "현재 근거 해시·Risk·Guard가 저장된 SQLite 감사 이벤트와 일치"},
         ],
+        "source_assurance": {
+            "schema": "proofinvest.archived-source-assurance.v1",
+            "status": "LOCAL_BYTES_ONLY_EXTERNAL_ASSURANCE_BLOCKED",
+            "provider_authenticated": False,
+            "capture_time_independently_verified": False,
+            "source_rights_verified": False,
+            "raw_filing_redistribution_enabled": False,
+            "live_source_eligible_for_investment": False,
+        },
         "unverified": [
             "SEC 원본·기업 실재·접수 식별자 출처 진위",
             "공시 당시 공개 여부와 수집시각의 외부 증빙",

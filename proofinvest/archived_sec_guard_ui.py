@@ -15,6 +15,7 @@ from .archived_sec_guard_report import (
     render_archived_sec_guard_markdown,
     run_archived_sec_guard_report,
 )
+from .source_assurance import validate_local_source_assurance
 
 _CACHE = "_kic_archived_sec_guard_ui_last_report"
 _ACTIONS = ("기록 없음", "ACKNOWLEDGE", "REQUEST_EXCEPTION")
@@ -41,6 +42,8 @@ def _safe_archived_report(value: Any) -> bool:
     research = value.get("research")
     evidence = value.get("evidence")
     review_summary = value.get("review_summary")
+    if not validate_local_source_assurance(value.get("source_assurance")):
+        return False
     if not all(isinstance(x, dict) for x in (
         verification, risk, guard, audit, research, evidence, review_summary,
     )):
@@ -101,6 +104,7 @@ def _display_report(st, report: dict[str, Any]) -> None:
             "risk": report["risk"],
             "review_summary": report["review_summary"],
             "decision_brief": report["decision_brief"],
+            "source_assurance": report["source_assurance"],
             "guard": report["guard"],
             "audit": report["audit"],
             "human_review": report["human_review"],
@@ -138,6 +142,15 @@ def _display_report(st, report: dict[str, Any]) -> None:
         {"검증 항목": row["meaning"], "검증 범위": row["status"]}
         for row in brief["checks"]
     ], use_container_width=True, hide_index=True)
+    st.subheader("출처·수집시각·원문 이용권한 검증")
+    st.dataframe([
+        {"검증 게이트": gate["meaning"], "상태": gate["status"]}
+        for gate in report["source_assurance"]["checks"]
+    ], use_container_width=True, hide_index=True)
+    st.caption(
+        "기능에서 지원되는 로컬 해시·상태 기록과 법적 원문 이용허락은 다릅니다. "
+        "이 화면은 원문 공개·재배포, 실제 거래 또는 투자 권고를 허가하지 않습니다."
+    )
     st.subheader("아직 인증·검증하지 않은 항목")
     st.markdown("\n".join("- " + item for item in brief["unverified"]))
     st.subheader("담당자가 확인할 후속 작업")

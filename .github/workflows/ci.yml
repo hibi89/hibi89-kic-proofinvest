@@ -157,7 +157,7 @@ jobs:
       - name: Windows disposable SQLite, UI AppTest and actual demo CLI
         shell: pwsh
         run: |
-          python -B -m unittest tests.test_guard_audit tests.test_guard_review tests.test_kic_dl_guard_demo tests.test_kic_dl_guard_streamlit tests.test_kic_archived_sec_guard_report tests.test_kic_archived_sec_guard_ui tests.test_kic_bound_evidence_readback tests.test_kic_decision_brief -v
+          python -B -m unittest tests.test_guard_audit tests.test_guard_review tests.test_kic_dl_guard_demo tests.test_kic_dl_guard_streamlit tests.test_kic_archived_sec_guard_report tests.test_kic_archived_sec_guard_ui tests.test_kic_bound_evidence_readback tests.test_kic_decision_brief tests.test_kic_source_assurance -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B -m proofinvest.kic_dl_guard_demo --format json > synthetic-guard.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

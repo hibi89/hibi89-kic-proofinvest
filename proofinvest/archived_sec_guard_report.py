@@ -23,6 +23,10 @@ from .guard_sec_adapter import evaluate_sec_guard
 from .guard_review import GuardReviewStore
 from .guard_workflow import run_guard_review
 from .sec_bundle_replay import replay_local_capture
+from .source_assurance import (
+    evaluate_local_source_assurance,
+    validate_local_source_assurance,
+)
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _RUN = re.compile(r"[A-Za-z0-9_-]{1,128}\Z", re.ASCII)
@@ -169,6 +173,10 @@ def run_archived_sec_guard_report(
         claimed_growth_pct=claimed_growth_pct,
     )
     status, receipt = _validate_replay(replay)
+    # A locally matching ZIP is NOT proof of SEC issuer, capture time or rights.
+    # Do not create a Guard audit if any caller-controlled replay flag attempts
+    # to claim external assurance.
+    source_assurance = evaluate_local_source_assurance(receipt)
     evidence_hash = _canonical_sha256({
         "schema": "proofinvest.offline-sec-guard-bound-evidence.v1",
         "replay": receipt,
@@ -254,6 +262,7 @@ def run_archived_sec_guard_report(
             "risk_is_investment_recommendation": False,
         },
         "review_summary": summary,
+        "source_assurance": source_assurance,
         "guard": guard,
         "audit": {
             "run_id": run_id,
@@ -350,6 +359,10 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
             raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
     if not isinstance(audit.get("event_hash"), str) or _SHA.fullmatch(audit["event_hash"]) is None:
         raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
+    # Reject user-edited source and reuse rights even if the local hash still
+    # matches a self-reported archive. This code cannot certify distribution.
+    if not validate_local_source_assurance(report.get("source_assurance")):
+        raise ValueError("SOURCE_RIGHTS_ORIGIN_SCOPE_INVALID")
     # Independent deterministic regeneration detects tampering of the
     # narrative/priority/action copy; no arbitrary untrusted prose is rendered.
     brief = build_archived_decision_brief(report)
@@ -372,6 +385,11 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
         "",
         "### 확인하지 못한 것 — 외부 출처 미인증",
         *[f"- {item}" for item in brief["unverified"]],
+        "",
+        "### 사용·배포 및 출처 확인 범위",
+        "- 로컬 내부 검토 및 해시·상태 요약만 허용",
+        "- 원문 배포·재사용 권리 미확인, 원문 공개/재배포 금지",
+        "- 실제 SEC HTTP 수행·수집시각·기관 인증 증거 없음",
         "",
         "### 다음 수동 검토 작업",
         *[f"- {index}. {item['meaning']}" for index, item in

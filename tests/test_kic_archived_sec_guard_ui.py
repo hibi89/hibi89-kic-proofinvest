@@ -169,6 +169,12 @@ class ArchivedGuardUITests(unittest.TestCase):
                 "verified_against_persisted_request": False}},
             {**original, "audit": {**original["audit"],
                 "bound_source_evidence_sha256": "f" * 64}},
+            {**original, "source_assurance": {
+                **original["source_assurance"], "source_rights_verified": True}},
+            {**original, "source_assurance": {
+                **original["source_assurance"],
+                "software_scope_not_legal_permission": {
+                    "raw_filing_redistribution": True}}},
         ):
             self.assertFalse(_safe_archived_report(forged))
         with patch("proofinvest.archived_sec_guard_ui.run_archived_sec_guard_report",
