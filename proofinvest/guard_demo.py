@@ -57,13 +57,15 @@ def run_demo(database_path: str | Path) -> dict:
         raise RuntimeError("Guard demo audit integrity failed")
     return {
         "schema": "proofinvest.guard-demo.v1",
-        "source_kind": "SYNTHETIC_SCENARIO_NOT_AUTHENTICATED",
+        "source_kind": "MIXED_SYNTHETIC_AND_MANUALLY_CURATED_UNAUTHENTICATED",
         "live_api_called": False,
         "trade_executed": False,
         "audit_valid": audit_valid,
         "reviews_valid": reviews_valid,
         "runs": outcomes,
+        "audited_run_count": len(outcomes) + 1,
         "curated_sec": {
+            "source_kind": curated["demonstration_source"],
             "status": curated["status"],
             "growth_pct": curated["growth_pct"],
             "external_source_authenticated": curated["authenticated_external_source"],
