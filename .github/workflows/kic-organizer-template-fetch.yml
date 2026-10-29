@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Fetch organizer public template directly from DAKER static files
         env:
-          PUBLIC_ORGANIZER_PPTX_URL: 'https://cfiles.dacon.co.kr/competitions/daker_2026_kic/%28%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8%29KIC_AI_%E1%84%8B%E1%85%A6%E1%84%8B%E1%85%B5%E1%84%8C%E1%85%A5%E1%86%AB%E1%84%90%E1%85%B3_%E1%84%80%E1%85%A9%E1%86%BC%E1%84%86%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_%E1%84%80%E1%85%B5%E1%85%92%E1%85%AC%E1%86%A8%E1%84%89%E1%85%A5.pptx'
+          PUBLIC_ORGANIZER_PPTX_URL: 'https://cfiles.dacon.co.kr/competitions/daker_2026_kic/%28%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8%29KIC_AI_%E1%84%8B%E1%85%A6%E1%84%8B%E1%85%B5%E1%84%8C%E1%85%A5%E1%86%AB%E1%84%90%E1%85%B3_%E1%84%80%E1%85%A9%E1%86%BC%E1%84%86%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_%E1%84%80%E1%85%B5%E1%84%92%E1%85%AC%E1%86%A8%E1%84%89%E1%85%A5.pptx'
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/kic-public-template"
