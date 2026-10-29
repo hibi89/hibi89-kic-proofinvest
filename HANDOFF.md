@@ -1,3 +1,9 @@
+## 2026-10-29 KST — SEC Guard integration
+- Added proofinvest/guard_sec_adapter.py (65895eb4), tests/test_guard_sec_adapter.py (5bcdc70e), and Streamlit curated SEC view preview (1435e34c).
+- SEC numeric comparison remains unverified source. Without separate Risk data, calculated_unverified maps to numeric VERIFIED but Guard HOLD. Conflict REJECT, unavailable HOLD. Preview shows policy reasons and no trade.
+- Tests authored but NOT executed; UI runtime not verified. Human review and audit store are NOT yet wired into Streamlit.
+- Next: run all Guard tests, inspect real UI, connect persistent decision and review safely, then PDF.
+
 ## 2026-10-29 KST — Explicit human review increment
 - Added proofinvest/guard_review.py (9af1cc15): review records in SQLite; AUTHORIZE_SIMULATION only when stored Guard decision is APPROVE; HOLD/REJECT cannot be overridden. Does not execute trades or change verification.
 - Added tests/test_guard_review.py (4c0b92dc): six tests authored, NOT YET EXECUTED.
