@@ -20,12 +20,43 @@ No mutation to `lead/kic`, `feature/disclosure-lightning` or the AutoML source r
 - Chromium Guard UI click-through job: successful (this is existing Guard UI; the new DL vendor adapter has **not** been wired into the browser).
 - No live SEC queries, source authentication, customer credentials, real financial verification, actual trading, cloud deployment, or contest submission took place.
 
+## Verified offline DL -> Guard -> SQLite -> report
+
+Implemented at `21e23ee349825747b4fb32a74b31f96b213d3d9a`:
+- `proofinvest/dl_vendor_audit_report.py`: reads date-pinned SHA-checked DL source, binds a canonical SHA-256 fingerprint of the entire unverified evidence result to Guard's run-id, writes deterministic HOLD to a **separate** SQLite audit ledger, validates the tamper-evident chain, optionally records ACKNOWLEDGE or REQUEST_EXCEPTION human review, then returns a report with source/citation digests and explicit trust limitations. Changed source/search term with identical run-id fails closed.
+- `proofinvest/guard_workflow.py`: optional bounded 64-hex `source_evidence_digest` request binding. Existing callers preserve their unchanged behavior.
+- `tests/test_kic_dl_vendor_audit_report.py`: verification of persistence, deterministic replay, changed-evidence refusal, source date/digest refusal, forbidden authorization, human-review integrity, audit tamper response and safe Markdown.
+
+CLI added at `8f123a1f189b11c7ec2d0780e0542b03ae2f0f97`:
+
+```bash
+python -m proofinvest.dl_vendor_audit_report \
+  --dl-db /path/to/existing-dl.sqlite \
+  --audit-db /path/to/separate-guard.sqlite \
+  --cik 0000320193 --accession 0000320193-25-000079 \
+  --sha256 <ACTUAL_SAVED_ORIGINAL_SHA256> --as-of 2025-11-01 \
+  --term Revenue --run-id demo-1 --format markdown
+```
+
+Requires a real pre-existing **local** DL ledger and its saved SHA; no SEC HTTP is made.
+
+Self-contained synthetic demonstration added at `81607de86557458afe4e5e952415e91f4e56ff1b`:
+
+```bash
+python -m proofinvest.kic_dl_guard_demo --format json
+python -m proofinvest.kic_dl_guard_demo --format markdown
+```
+
+The synthetic demo exercises the actual local ledger, original-file extractor, Guard HOLD, SQLite audit, human acknowledgement and report generation; temporary SQLite files are discarded on exit. **It is NOT a real SEC filing or SEC certification.**
+
+Latest verified CI: `81607de86557458afe4e5e952415e91f4e56ff1b` -> GitHub Actions run `40905577717` **SUCCESS**, full offline Python verifier **675 tests, 0 failures, 0 skipped**, syntax checks **125 PASS**, Chromium Guard click-through **SUCCESS**.
+
+Integration workstream milestone ledger: **5/8 = 62.5% (~63%)** (branch/source, isolation compatibility, offline bridge, regression CI, SQLite audit/report E2E). Remaining: report UI/demo presentation, leak-safe selective AutoML, final preliminary PDF review/submission gates. This is **NOT** the total KIC production or contest submission completion percentage.
+
 ## Remaining ordered gates
 
-1. Link offline vendor DL candidate output into the existing ProofInvest review/report path without treating text as verified numeric facts.
-2. Validate DL source-to-Guard-to-SQLite audit in a single tested end-to-end flow, with explicit human review only.
-3. Complete reporting/UI presentation and runnable local demo on the intended target machine.
-4. Selectively integrate AutoML only after chronological evaluation, leakage controls, and baseline tests.
-5. Produce and independently check the official 10-page preliminary PDF; final submission is a separate owner approval gate.
+1. Connect the now-tested DL/Guard audit report to the actual ProofInvest review **UI** and demonstrate on the owner's intended machine.
+2. Selectively integrate AutoML only after chronological evaluation, leakage controls, and baseline tests.
+3. Produce and independently check the official 10-page preliminary PDF; final submission is a separate owner approval gate.
 
-**Completion measurement (integration workstream only):** 4 of 8 explicitly scoped milestones complete (branch/source, compatibility isolation, offline Guard bridge, full CI/regression verification) = **50%**. This is not a claim that the entire KIC hackathon product is 50% done. Previous **84%** on lead/kic was a provisional estimate for the main implementation only, not final E2E or submission readiness.
+**Completion measurement (integration workstream only):** **5 of 8 = 62.5%**; main branch's previous **84%** implementation estimate is separate and preliminary. No current evidence for a measured total KIC product completion percentage.
