@@ -60,6 +60,15 @@ class GuardWorkflowTests(unittest.TestCase):
                         0,
                     )
 
+    def test_same_run_rejects_changed_numeric_evidence(self):
+        original = {"status": "calculated_unverified", "current_usd": "100",
+                    "prior_usd": "90", "growth_pct": "11.11"}
+        changed = {**original, "current_usd": "101"}
+        run_guard_review(original, run_id="evidence-1", database_path=self.db)
+        with self.assertRaises(ValueError):
+            run_guard_review(changed, run_id="evidence-1", database_path=self.db)
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
     def test_idempotent_replay(self):
         first = run_guard_review({"status": "unavailable"}, run_id="same", database_path=self.db)
         second = run_guard_review({"status": "unavailable"}, run_id="same", database_path=self.db)
