@@ -1,3 +1,8 @@
+## 2026-10-29 KST — Malformed audit payload fail-closed
+- Commit 5d8238f2f903f4f68220f1682a4e533ae118b396 adds AttributeError to malformed nested JSON handling in GuardAuditStore.verify_chain.
+- Commit 096e15730994bc7ad7c18c63eaf680506ef9c7ef adds regression for corrupted nested decision even with recalculated event digest.
+- GitHub PR workflow lookup returned no runs for latest test commit; no test pass claim. Provisional 78% (+1pp), 7–13h remaining.
+
 ## 2026-10-29 KST — Input precheck and stored decision contract
 - Guard workflow rejects partial/blank human review before audit write: 97d813ac64e2a33fab53a03d9867f3a37c4fb849.
 - Regression test added: 219833501007cea51a2affcc90f67125445003c1.
