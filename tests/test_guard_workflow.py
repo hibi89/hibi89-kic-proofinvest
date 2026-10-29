@@ -38,6 +38,28 @@ class GuardWorkflowTests(unittest.TestCase):
         self.assertEqual(result["review"]["action"], "AUTHORIZE_SIMULATION")
         self.assertFalse(result["trade_executed"])
 
+    def test_incomplete_review_does_not_write_decision(self):
+        with self.assertRaises(ValueError):
+            run_guard_review(
+                {"status": "calculated_unverified"},
+                run_id="invalid-review",
+                database_path=self.db,
+                reviewer="reviewer",
+                action="ACKNOWLEDGE",
+                reason=" ",
+            )
+        if self.db.exists():
+            import sqlite3
+            with sqlite3.connect(self.db) as conn:
+                existing = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE name='guard_run_registry'"
+                ).fetchone()
+                if existing:
+                    self.assertEqual(
+                        conn.execute("SELECT COUNT(*) FROM guard_run_registry").fetchone()[0],
+                        0,
+                    )
+
     def test_idempotent_replay(self):
         first = run_guard_review({"status": "unavailable"}, run_id="same", database_path=self.db)
         second = run_guard_review({"status": "unavailable"}, run_id="same", database_path=self.db)
