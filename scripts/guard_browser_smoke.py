@@ -131,8 +131,14 @@ def run(output: Path) -> dict:
                         page.screenshot(path=str(output / "guard-browser-clickthrough.png"), full_page=True)
                         # Exercise the separate deterministic question router
                         # in a real Chromium session, never a live LLM agent.
-                        page.get_by_test_id("stSelectbox").first.click()
-                        page.get_by_role("option", name="질문별 로컬 도구 선택 — 규칙 기반 시연").click()
+                        # Search the selectbox rather than assuming all
+                        # options are mounted (Streamlit virtualizes its menu).
+                        picker = page.get_by_role("combobox", name="자료 유형")
+                        picker.click()
+                        picker.fill("질문별 로컬 도구 선택")
+                        page.get_by_role(
+                            "option", name="질문별 로컬 도구 선택 — 규칙 기반 시연"
+                        ).click(timeout=10000)
                         expect(page.get_by_text(
                             "ProofInvest — 질문별 로컬 도구 선택"
                         )).to_be_visible(timeout=15000)
