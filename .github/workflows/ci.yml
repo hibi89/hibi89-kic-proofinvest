@@ -15,6 +15,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Guard SEC Decimal integration and judge receipt (offline, no credentials)
+        run: |
+          mkdir -p /tmp/kic-guard-evidence
+          python -B -m unittest discover -s tests -p 'test_guard*.py' -v
+          python -B -m proofinvest.guard_demo > /tmp/kic-guard-evidence/guard-demo.json
+          python -c 'import json; r=json.load(open("/tmp/kic-guard-evidence/guard-demo.json")); assert r["audited_run_count"] == 4; assert [x["decision"] for x in r["runs"]] == ["HOLD", "REJECT", "APPROVE"]; assert r["curated_sec"]["conflicting_claim_status"] == "conflict"; assert r["curated_sec"]["guard_decision"] == "HOLD"; assert r["audit_valid"] and r["reviews_valid"]; assert not r["live_api_called"] and not r["trade_executed"]'
+      - name: Archive offline Guard judge receipt (no private submission materials)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-guard-offline-receipt
+          path: /tmp/kic-guard-evidence/guard-demo.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify 60-day progress and handoff synchronization
         run: python scripts/master_progress.py --check
       - name: Full 60-day master progress JSON sync check
