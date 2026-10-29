@@ -98,6 +98,19 @@ class DlGuardAppClickthroughTests(unittest.TestCase):
         self.assertFalse(self.dl_db.exists())
         self.assertFalse(any("DO NOT RENDER" in str(x.value) for x in at.markdown))
 
+    def test_synthetic_windows_permission_error_is_sanitized(self):
+        at = self.screen()
+        with patch("proofinvest.kic_dl_guard_demo.run_synthetic_demo",
+                   side_effect=PermissionError(
+                       "C:\\Users\\SENSITIVE\\AppData\\Local\\Temp\\secret.sqlite"
+                   )):
+            at.button(key="dl_guard_demo_run").click().run(timeout=30)
+        self.assertFalse(at.exception)
+        self.assertTrue(any("진단 코드: PermissionError" in e.value
+                            for e in at.error))
+        self.assertFalse(any("SENSITIVE" in e.value for e in at.error))
+        self.assertFalse(any(m.label == "Guard 판정" for m in at.metric))
+
     def test_local_form_is_write_free_until_submit_and_then_audits(self):
         sha = self.make_dl()
         at = self.screen()

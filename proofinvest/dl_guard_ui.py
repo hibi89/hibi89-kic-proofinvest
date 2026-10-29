@@ -134,8 +134,19 @@ def render_dl_guard_report(st) -> None:
                         or not _safe_report(demo.get("report"))):
                     raise ValueError("Untrusted synthetic demo result")
                 st.session_state[_CACHE] = {"mode": SYNTHETIC, "result": demo["report"]}
-            except (ImportError, OSError, ValueError, TypeError, KeyError, sqlite3.Error):
-                st.error("합성 통합 시연 검증 실패 — 결과·다운로드를 차단했습니다.")
+            except (ImportError, OSError, ValueError, TypeError, KeyError, sqlite3.Error) as exc:
+                # Expose a bounded error *class* (not the exception message,
+                # personal Windows path, local database or filing bytes).
+                kind = type(exc).__name__
+                allowed = {"ImportError", "OSError", "PermissionError",
+                           "FileNotFoundError", "ValueError", "TypeError",
+                           "KeyError", "OperationalError", "IntegrityError",
+                           "DatabaseError"}
+                code = kind if kind in allowed else "LOCAL_DEMO_ERROR"
+                st.error(
+                    "합성 통합 시연 검증 실패 — 결과·다운로드를 차단했습니다. "
+                    f"진단 코드: {code}"
+                )
     else:
         st.caption(
             "기존에 저장한 DL SQLite 파일과 별도의 Guard 감사 SQLite 경로를 명시하세요. "

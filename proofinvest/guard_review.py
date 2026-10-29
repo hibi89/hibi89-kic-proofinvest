@@ -4,6 +4,7 @@ A human review never changes the Guard decision or triggers real transactions.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import hashlib
 import json
 import sqlite3
@@ -27,7 +28,9 @@ class GuardReviewStore:
         from .guard_audit import GuardAuditStore
         store = GuardAuditStore(self.path)
         # Use a single transaction for chain check, eligibility and review insertion.
-        with store._connect() as conn:
+        # Context-managed SQLite transactions do not close file handles on exit.
+        # Explicit closing is essential for Windows ephemeral demo DB cleanup.
+        with closing(store._connect()) as conn, conn:
             conn.execute("BEGIN IMMEDIATE")
             if not store.verify_chain(conn=conn) or not self.verify_reviews(conn=conn):
                 raise ValueError("Audit or review integrity invalid")
