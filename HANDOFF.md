@@ -1,3 +1,9 @@
+## 2026-10-29 KST — Human review and audit history UI
+- Curated SEC Streamlit view adds explicit review recording UI: reviewer, ACKNOWLEDGE/REQUEST_EXCEPTION, reason; writes to SQLite only on click. Commit 7d1827445352183fc6c0c563b7aace2fb4c77da8.
+- Adds on-demand Guard decision hash-chain validation and last 50 event receipts. Commit 86ca51e56526138de21a2466a17b453fe19de845.
+- No real trading, external source authentication or approval in SEC curated UI; risk absent implies HOLD. Human review rows are NOT covered by Guard audit chain.
+- Tests and UI runtime NOT executed; provisional 70% implementation estimate (+5pp), 10–18 focused hours remaining. Next priority actual tests, review-row integrity and PDF.
+
 ## 2026-10-29 KST — Guard audit Streamlit opt-in
 - Streamlit curated SEC view button saves Guard decision and audit only on click; shows replay or first-write receipt. Commit c4318e5c3a1fb0f6faf470ad0ee9a69429304165.
 - No real SEC API, trade or human authorization on this button. Local data directory ~/.proofinvest-guard is created only on click.
