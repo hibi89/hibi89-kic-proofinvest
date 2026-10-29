@@ -1,5 +1,6 @@
 """Offline SQLite audit tests; no external provider access."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -36,7 +37,7 @@ class GuardAuditTests(unittest.TestCase):
 
     def test_tamper_detected(self):
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute("UPDATE guard_audit_events SET payload_json='{}'")
         self.assertFalse(self.store.verify_chain())
         with self.assertRaises(ValueError):
@@ -46,7 +47,7 @@ class GuardAuditTests(unittest.TestCase):
         import json
         from proofinvest.guard_audit import _canonical, _digest
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             payload = json.loads(conn.execute(
                 "SELECT payload_json FROM guard_audit_events WHERE run_id='demo-1'"
             ).fetchone()[0])

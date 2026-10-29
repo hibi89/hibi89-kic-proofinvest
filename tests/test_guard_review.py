@@ -1,6 +1,7 @@
 """Guard human review is explicitly separate from verification and execution."""
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from proofinvest.guard_agent import evaluate_guard
@@ -58,7 +59,7 @@ class HumanReviewTests(unittest.TestCase):
         import sqlite3
         self.record("good", "VERIFIED")
         self.review.record_review("good", "reviewer", "ACKNOWLEDGE", "Reviewed simulated data")
-        with sqlite3.connect(self.review.path) as conn:
+        with closing(sqlite3.connect(self.review.path)) as conn, conn:
             conn.execute("UPDATE guard_human_reviews SET reason='altered'")
         self.assertFalse(self.review.verify_reviews())
         with self.assertRaises(ValueError):

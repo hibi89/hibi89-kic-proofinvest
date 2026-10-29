@@ -9,6 +9,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -125,7 +126,7 @@ class DlGuardAppClickthroughTests(unittest.TestCase):
         self.assertTrue(GuardReviewStore(self.audit_db).verify_reviews())
         self.assertTrue(any(m.label == "Guard 판정" and m.value == "HOLD"
                             for m in at.metric))
-        with sqlite3.connect(self.audit_db) as conn:
+        with closing(sqlite3.connect(self.audit_db)) as conn, conn:
             self.assertEqual(conn.execute(
                 "SELECT count(*) FROM guard_audit_events").fetchone()[0], 1)
             audit = conn.execute(
