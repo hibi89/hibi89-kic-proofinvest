@@ -122,7 +122,11 @@ class GuardAuditStore:
                     return False
                 try:
                     decoded = json.loads(payload)
-                    if decoded["request_hash"] != registry[0]:
+                    if (decoded["request_hash"] != registry[0]
+                            or decoded["decision"].get("schema") != "proofinvest.guard-decision.v1"
+                            or decoded["decision"].get("decision") not in ("APPROVE", "HOLD", "REJECT")
+                            or decoded["decision"].get("trade_executed") is not False
+                            or decoded["decision"].get("human_approved") is not False):
                         return False
                 except (KeyError, ValueError, TypeError):
                     return False
