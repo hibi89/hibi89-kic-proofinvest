@@ -63,7 +63,7 @@ class BatchReviewTests(unittest.TestCase):
              "next_action": "RECHECK_LOCAL_ARCHIVE"}]}
         csv_text = format_review_queue_csv(batch)
         self.assertEqual(csv_text,
-                         "index,status,priority,next_action\\n3,blocked,high,RECHECK_LOCAL_ARCHIVE\\n")
+                         "index,status,priority,next_action\n3,blocked,high,RECHECK_LOCAL_ARCHIVE\n")
 
     def test_directory_discovery_is_bounded_and_sorted(self):
         with tempfile.TemporaryDirectory() as folder:
