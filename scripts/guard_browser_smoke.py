@@ -91,17 +91,24 @@ def run(output: Path) -> dict:
                             raise AssertionError("Explicit Guard click did not create SQLite audit")
 
                         page.get_by_text("사람 검토 기록 — 로컬 모의").click()
-                        page.get_by_label("검토자 식별명").fill("browser-judge")
-                        page.get_by_label("검토 사유 (5자 이상)").fill(
-                            "Reviewed offline calculation with no trading authorization"
-                        )
-                        # Streamlit reruns after input edits; avoid clicking a
-                        # button while the previous widget subtree is replaced.
-                        expect(page.get_by_label("검토자 식별명")).to_have_value("browser-judge")
-                        expect(page.get_by_label("검토 사유 (5자 이상)")).to_have_value(
-                            "Reviewed offline calculation with no trading authorization"
-                        )
-                        page.wait_for_timeout(500)
+                        # Commit each Streamlit input sequentially. Filling a
+                        # second field during the first widget rerun can lose
+                        # the value before the user has a chance to submit.
+                        reviewer_field = page.get_by_label("검토자 식별명")
+                        reviewer_field.fill("browser-judge")
+                        reviewer_field.press("Tab")
+                        page.wait_for_timeout(800)
+                        expect(reviewer_field).to_have_value("browser-judge")
+                        reason_text = "Reviewed offline calculation with no trading authorization"
+                        reason_field = page.get_by_label("검토 사유 (5자 이상)")
+                        for _ in range(3):
+                            reason_field.fill(reason_text)
+                            reason_field.press("Tab")
+                            page.wait_for_timeout(800)
+                            if reason_field.input_value() == reason_text:
+                                break
+                        else:
+                            raise AssertionError("Streamlit did not retain review reason")
                         review_button = page.get_by_role("button", name="검토 기록 저장", exact=True)
                         if review_button.count() == 0 or not review_button.is_visible():
                             # Streamlit may close the expander on a rerender.
