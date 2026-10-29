@@ -60,6 +60,24 @@ class GuardWorkflowTests(unittest.TestCase):
                         0,
                     )
 
+    def test_invalid_review_action_does_not_create_audit(self):
+        with self.assertRaises(ValueError):
+            run_guard_review(
+                {"status": "calculated_unverified"}, run_id="invalid-action",
+                database_path=self.db, reviewer="human",
+                action="EXECUTE_TRADE", reason="Unauthorized operation",
+            )
+        self.assertFalse(self.db.exists())
+
+    def test_short_review_reason_does_not_create_audit(self):
+        with self.assertRaises(ValueError):
+            run_guard_review(
+                {"status": "calculated_unverified"}, run_id="short-reason",
+                database_path=self.db, reviewer="human",
+                action="ACKNOWLEDGE", reason="bad",
+            )
+        self.assertFalse(self.db.exists())
+
     def test_same_run_rejects_changed_numeric_evidence(self):
         original = {"status": "calculated_unverified", "current_usd": "100",
                     "prior_usd": "90", "growth_pct": "11.11"}
