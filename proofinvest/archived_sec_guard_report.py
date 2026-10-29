@@ -18,6 +18,7 @@ from typing import Any
 
 from .guard_audit import GuardAuditStore
 from .guard_bound_audit import verify_bound_guard_audit
+from .decision_brief import build_archived_decision_brief
 from .guard_sec_adapter import evaluate_sec_guard
 from .guard_review import GuardReviewStore
 from .guard_workflow import run_guard_review
@@ -222,7 +223,7 @@ def run_archived_sec_guard_report(
     financial = receipt["offline_financial_review"]
     summary = receipt["review_summary"]
     span = receipt["source_span"]
-    return {
+    report = {
         "schema": "proofinvest.archived-sec-guard-report.v1",
         "status": "local_archive_review_audited_unverified",
         "research": {
@@ -285,6 +286,8 @@ def run_archived_sec_guard_report(
         "trade_executed": False,
         "official_contest_submission": False,
     }
+    report["decision_brief"] = build_archived_decision_brief(report)
+    return report
 
 
 def render_archived_sec_guard_markdown(report: Any) -> str:
@@ -347,11 +350,32 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
             raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
     if not isinstance(audit.get("event_hash"), str) or _SHA.fullmatch(audit["event_hash"]) is None:
         raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
+    # Independent deterministic regeneration detects tampering of the
+    # narrative/priority/action copy; no arbitrary untrusted prose is rendered.
+    brief = build_archived_decision_brief(report)
+    if report.get("decision_brief") != brief:
+        raise ValueError("DECISION_BRIEF_TAMPERED_OR_OUTDATED")
     # No freeform source, claim or review reason embedded in Markdown.
     return "\n".join([
         "# ProofInvest — Offline evidence audit (UNVERIFIED)",
         "",
         "**No SEC attestation, model-based investment advice, trading, or contest submission.**",
+        "",
+        "## 검토 결론 / Decision brief",
+        f"- 판정: **{brief['decision']}**",
+        f"- 결론: {brief['headline']}",
+        f"- 사유: {brief['rationale']}",
+        f"- 검토 우선순위: **{brief['priority']}** (실제 금융 위험등급 아님)",
+        "",
+        "### 확인한 것 — 오직 로컬 범위",
+        *[f"- {row['meaning']} ({row['status']})" for row in brief["checks"]],
+        "",
+        "### 확인하지 못한 것 — 외부 출처 미인증",
+        *[f"- {item}" for item in brief["unverified"]],
+        "",
+        "### 다음 수동 검토 작업",
+        *[f"- {index}. {item['meaning']}" for index, item in
+          enumerate(brief["next_actions"], start=1)],
         "",
         "## Research / local source identity",
         f"- CIK (self-reported): `{source['issuer_cik']}`",

@@ -100,6 +100,7 @@ def _display_report(st, report: dict[str, Any]) -> None:
             "verification": report["verification"],
             "risk": report["risk"],
             "review_summary": report["review_summary"],
+            "decision_brief": report["decision_brief"],
             "guard": report["guard"],
             "audit": report["audit"],
             "human_review": report["human_review"],
@@ -124,6 +125,26 @@ def _display_report(st, report: dict[str, Any]) -> None:
         "로컬 ZIP·SHA 일치는 SEC 공식 원문 인증이 아닙니다. "
         "기관 투자 판단·수익률 예측·실거래·제출이 아닙니다."
     )
+    brief = report["decision_brief"]
+    st.subheader("의사결정 요약 — 검증한 범위만")
+    if brief["decision"] == "REJECT":
+        st.error(brief["headline"])
+    else:
+        st.warning(brief["headline"])
+    st.write(brief["rationale"])
+    st.caption("검토 우선순위: " + brief["priority"]
+               + " · 실제 투자 위험등급이나 승인 상태가 아닙니다.")
+    st.dataframe([
+        {"검증 항목": row["meaning"], "검증 범위": row["status"]}
+        for row in brief["checks"]
+    ], use_container_width=True, hide_index=True)
+    st.subheader("아직 인증·검증하지 않은 항목")
+    st.markdown("\n".join("- " + item for item in brief["unverified"]))
+    st.subheader("담당자가 확인할 후속 작업")
+    st.dataframe([
+        {"우선순위": index, "조치": row["meaning"]}
+        for index, row in enumerate(brief["next_actions"], start=1)
+    ], use_container_width=True, hide_index=True)
     source = report["research"]
     evidence = report["evidence"]
     audit = report["audit"]
