@@ -1,3 +1,43 @@
+# [해총 확인 요청] KIC 외부 GitHub 구성요소 미통합·미검증 점검 (2026-10-29 KST)
+
+> **사용자 직접 지시:** “그거 깃헙에있는거중에 안된거 해총한테하는말에 남겨놔라 해총이보고확인하게”. 이 섹션은 **해총이 다음 KIC 작업 시작 시 우선 확인할 미완료 통합 체크리스트**다. 아래는 `lead/kic` 실제 파일 트리(HEAD `6359418dec87c162bc1310ddcccbb0e49d0c1400`), 설계 문서, 브랜치 비교 기준이며 기능 존재·실환경 검증·최종 제출을 혼동하지 않는다.
+
+## 1. 확인된 코드/브랜치 차이 — 최우선
+
+- **Disclosure Lightning (DL): 부분 통합, 전체 병합 아님.** `lead/kic`에는 `disclosure_lightning/core.py`, `originals.py`, `proofinvest/dl_bridge.py`, `dl_source_span.py` 등이 있어 오프라인 색인·원문 연결은 가능하다. 그러나 `feature/disclosure-lightning`에 있는 **`disclosure_lightning/companyfacts.py`, `extract.py`, `history.py`, `xbrl.py`는 `lead/kic`에 없다**. 브랜치 비교 결과 **diverged**(DL feature 기준 ahead 239 / behind 198; 단순 병합 불가). **해총 액션:** 네 파일과 테스트/의존성/계약의 실제 최신 코드를 읽고 KIC에 필요한 기능만 선별하여 충돌 없는 통합 계획을 정하라. 무조건 병합·사유 없는 복사·비공개 Bid_Owl 소스 공개 금지. 실제 SEC 인증/실 HTTP 성공은 별도 증거가 필요하다.
+- **Research·Verification·Risk feature 브랜치:** `lead/kic`에 `proofinvest/research.py`, `engine.py`, `risk.py` 등 구현이 존재하지만 세 feature 브랜치는 각각 `lead/kic`와 diverged(Research ahead 10 / behind 479; Verification ahead 4 / behind 479; Risk ahead 4 / behind 479). **해총 액션:** feature 쪽에 미반영된 *실제 유효 기능*이 있는지 diff와 테스트를 확인하라. 단순 ahead 숫자만으로 누락을 확정하거나 전량 병합하지 말 것.
+- **실행 UI:** `streamlit_app.py`는 DL·Guard·intent router·SEC 관련 코드를 포함하지만 `rag`, `smax`, `azent` 호출은 현재 검색되지 않았다. **해총 액션:** 브라우저에서 데이터→검증→Guard→감사/보고의 한 흐름이 실제 연결되는지 확인하라. 모의 LLM 경로와 실제 Gemini 호출을 구분할 것.
+
+## 2. 외부 프로젝트: 필수·선택 구분 (불필요한 강제 통합 금지)
+
+| 구성요소 | 현재 확인 | 해총 판정/다음 조치 |
+| --- | --- | --- |
+| ProofInvest Research/Verification/Risk | KIC 브랜치에 코드 있음 | 통합 E2E 및 근거 정확성 검증 |
+| Disclosure Lightning | KIC에 오프라인 부분 구현, feature에 추가 모듈 | **필요한 4개 모듈 차이 우선 감사** |
+| Guard-Agent | 로컬 판정/사람 검토/SQLite 감사 구현 | 실제 SEC 근거와 묶인 end-to-end 확인 |
+| LLM/Gemini | 모의 제안 게이트·실제 연결 함수가 존재하나 실제 API 동작은 별도 미검증 | 승인된 환경에서 실제 호출/거절·실패 처리 검증 |
+| Lightning Azent (LA) | KIC 현재 런타임 의존성 아님 | 원 설계에서 명시적으로 **연동 보류**, 필수화 금지 |
+| SMAX² | 범용 전처리 `hibi89/SMAX@preprocessing` 준비 여부 미확인 | 검증된 인터페이스가 있을 때만 선택적 연동 |
+| RAG_STUDIO | KIC 런타임 미통합 | 현재 필수 아님; 문서검색은 별도 좁은 구현 가능 |
+| AI_AutoML_Analyst | 시각화/평가 로직 일부 재사용 후보 | 본선 후 권리·품질 검증 뒤 선별, 전체 런타임 이식 금지 |
+| CODE COUNCIL / HAE / REA / DBVORA | 현재 KIC 런타임 통합 근거 없음 | 필수 KIC 제품 구성 아님; 불필요한 통합 금지 |
+
+## 3. 실제 제품 완성까지 남은 검증
+
+1. DL 누락 모듈 **선별 검토** 및 실제 SEC Submissions/CompanyFacts/원문 간 출처 연결. 현재 실 SEC HTTPS/원본 인증/권리 확인을 성공했다고 주장하지 않는다.
+2. 실제 LLM 의도 선택 → 허용 도구 → 숫자 검산 → Guard 판정 → 사람 승인/보류 → SQLite 감사 → Streamlit 결과/보고 **한 번의 재현 가능한 E2E**. 모의 모델 응답·합성 공시만으로 실제 API 성공 주장 금지.
+3. 실제 SEC 공시 기준 수치·기간·단위·CIK/accession/원문 구간과 위험 판단의 신뢰 경계 검수. 필요 시 접근·연락처 UA·저장권한 등 사용자 승인 선행.
+4. 본선용 심사 접근 가능한 URL, 실제 브라우저/배포/보안 검증 및 데모·발표 패키지(본선 진출 조건부).
+5. **예선 제출은 별도:** 2026-11-12 10:00 KST까지 주최 측 공식 10슬라이드 PPTX를 정확한 7개 필수 섹션에 맞게 채운 **10페이지 이내 PDF**, 사용자 최종 확인, DAKER 제출/접수증. 공식 원본 PPTX는 GitHub Actions `40884902830`에서 무결성 확인·artifact 확보. 양식 다운로드 성공 ≠ 내용 이식/최종 PDF 승인/제출 완료.
+
+## 4. 완료율 정정 및 해총 의사결정 요청
+
+- 과거 언급한 **96%는 예선 MVP·기획서 작업의 잠정치**이며, KIC 전체 제품 통합률로 사용할 수 없다. **전체 통합률은 실제 E2E·실 SEC·실 LLM·배포 증거가 확보되기 전까지 미산정**.
+- CI 성공(예: `lead/kic` 최신 `40884902870`)은 해당 커밋의 오프라인/모의 테스트 증거일 뿐 실제 SEC·Gemini·제출 성공이 아니다.
+- **해총에게 요청:** (a) 위 외부 프로젝트별 필요/제외를 확정, (b) DL feature의 네 모듈 중 KIC 필수만 추출, (c) 통합 E2E 우선순위와 검증 게이트 설정, (d) 예선 PDF와 본선 제품을 분리하여 각각 진척·잔여시간 보고. **필요한 통합이 끝나기 전 'KIC 전체 100%' 선언 금지.**
+
+---
+
 ## 2026-10-28 KST — 후속 확인 및 미완료 항목 정정
 
 - **후속 개선 확인:** 기존 보고서 §7의 “새 검사 명령 직접검증”은 더 이상 다음 작업이 아니다. 현재 `.github/workflows/ci.yml`에서 `python -B -m scripts.verify_local --full`을 직접 실행하며, 기능 커밋 `175e53027a456afa61ee98c46d7d55d3f01a0d12`의 기록된 Actions 결과는 **486/486 PASS**다. 이 한 명령 검증 경로는 구현·CI 연결 완료로 처리한다. Windows 사용자 PC에서의 실제 실행은 여전히 미검증.
