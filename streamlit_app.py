@@ -187,7 +187,13 @@ def _render_sec_curated_case(st) -> None:
             from proofinvest.guard_workflow import run_guard_review
             local_dir = Path.home() / ".proofinvest-guard"
             local_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-            key = "|".join([date_choices[asof_label], str(growth_choices[claim_label])])
+            import json
+            key = json.dumps(
+                {"as_of": date_choices[asof_label],
+                 "claim": growth_choices[claim_label], "verdict": verdict},
+                sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                allow_nan=False,
+            )
             run_id = "curated-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
             receipt = run_guard_review(
                 verdict, run_id=run_id,
@@ -217,7 +223,13 @@ def _render_sec_curated_case(st) -> None:
                 from proofinvest.guard_workflow import run_guard_review
                 local_dir = Path.home() / ".proofinvest-guard"
                 local_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-                key = "|".join([date_choices[asof_label], str(growth_choices[claim_label])])
+                import json
+                key = json.dumps(
+                    {"as_of": date_choices[asof_label],
+                     "claim": growth_choices[claim_label], "verdict": verdict},
+                    sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                    allow_nan=False,
+                )
                 run_id = "curated-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
                 result = run_guard_review(
                     verdict, run_id=run_id, database_path=local_dir / "audit.sqlite",
