@@ -1,3 +1,8 @@
+## 2026-10-29 KST — Explicit human review increment
+- Added proofinvest/guard_review.py (9af1cc15): review records in SQLite; AUTHORIZE_SIMULATION only when stored Guard decision is APPROVE; HOLD/REJECT cannot be overridden. Does not execute trades or change verification.
+- Added tests/test_guard_review.py (4c0b92dc): six tests authored, NOT YET EXECUTED.
+- Remaining: integrate with existing SEC/verification/risk and Streamlit, run tests, improve review record tamper evidence, finish PDF. Audit hash chain covers Guard decisions, NOT the separate human review rows; do not claim reviews are chain-protected.
+
 ## 2026-10-29 KST — Guard code initial increment
 1. Goal: Begin approved Guard implementation without modifying existing working modules.
 2. Implemented: standalone deterministic guard_agent.py with demo policy, Decimal string ratio, verification precedence and explicit no-human/no-trade flags; no SEC calls.
