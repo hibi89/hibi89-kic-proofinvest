@@ -16,6 +16,7 @@ _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (202
 _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_DL_GUARD = "DL → Guard → SQLite 감사 보고서 — 오프라인"
+_SOURCE_SEC_ARCHIVED_GUARD = "저장된 SEC 3원문 ZIP → 검산·Risk·Guard 감사 — 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
 _SOURCE_TEMPORAL_BASELINE = "AutoML 시간순 검증 — 합성 기준 모델"
 
@@ -560,6 +561,8 @@ def render_app(st) -> None:
         available_sources.append(_SOURCE_DL_ARCHIVE)
     if (Path(__file__).resolve().parent / "proofinvest/dl_guard_ui.py").is_file():
         available_sources.append(_SOURCE_DL_GUARD)
+    if (Path(__file__).resolve().parent / "proofinvest/archived_sec_guard_ui.py").is_file():
+        available_sources.append(_SOURCE_SEC_ARCHIVED_GUARD)
     if (Path(__file__).resolve().parent / "proofinvest/temporal_baseline_ui.py").is_file():
         available_sources.append(_SOURCE_TEMPORAL_BASELINE)
     router_file = Path(__file__).resolve().parent / "proofinvest/intent_router_ui.py"
@@ -580,6 +583,10 @@ def render_app(st) -> None:
     if source == _SOURCE_DL_GUARD:
         from proofinvest.dl_guard_ui import render_dl_guard_report
         render_dl_guard_report(st)
+        return
+    if source == _SOURCE_SEC_ARCHIVED_GUARD:
+        from proofinvest.archived_sec_guard_ui import render_archived_sec_guard
+        render_archived_sec_guard(st)
         return
     if source == _SOURCE_SEC_CURATED:
         _render_sec_curated_case(st)

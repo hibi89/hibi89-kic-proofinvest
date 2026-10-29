@@ -106,7 +106,7 @@ class ArchivedSECGuardReportTests(unittest.TestCase):
             self.assertIs(result[key], False, key)
         self.assertTrue(GuardAuditStore(self.audit).verify_chain())
         self.assertTrue(GuardReviewStore(self.audit).verify_reviews())
-        with sqlite3.connect(self.audit) as db:
+        with contextlib.closing(sqlite3.connect(self.audit)) as db, db:
             row = db.execute("SELECT payload_json FROM guard_audit_events").fetchone()[0]
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM guard_run_registry").fetchone()[0], 1)
@@ -133,7 +133,7 @@ class ArchivedSECGuardReportTests(unittest.TestCase):
         self.assertEqual(first["audit"]["event_hash"], second["audit"]["event_hash"])
         self.assertEqual(first["evidence"]["evidence_chain_sha256"],
                          second["evidence"]["evidence_chain_sha256"])
-        with sqlite3.connect(self.audit) as db:
+        with contextlib.closing(sqlite3.connect(self.audit)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM guard_audit_events").fetchone()[0], 1)
 
@@ -142,7 +142,7 @@ class ArchivedSECGuardReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Run ID reused"):
             self.report(claimed_growth_pct="100.01")
         self.assertTrue(GuardAuditStore(self.audit).verify_chain())
-        with sqlite3.connect(self.audit) as db:
+        with contextlib.closing(sqlite3.connect(self.audit)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM guard_audit_events").fetchone()[0], 1)
 
@@ -210,11 +210,11 @@ class ArchivedSECGuardReportTests(unittest.TestCase):
 
     def test_tampered_existing_audit_does_not_accept_new_event(self):
         self.report()
-        with sqlite3.connect(self.audit) as db:
+        with contextlib.closing(sqlite3.connect(self.audit)) as db, db:
             db.execute("UPDATE guard_audit_events SET payload_json='{}'")
         with self.assertRaises(ValueError):
             self.report(run_id="another")
-        with sqlite3.connect(self.audit) as db:
+        with contextlib.closing(sqlite3.connect(self.audit)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM guard_audit_events").fetchone()[0], 1)
 
