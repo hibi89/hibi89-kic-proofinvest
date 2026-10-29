@@ -48,7 +48,7 @@ def _result(status: str, reason: str, question: str | None = None) -> dict[str, 
     }
 
 
-def route_question(question: Any) -> dict[str, Any]:
+def route_question(question: Any, *, dry_run: bool = False) -> dict[str, Any]:
     """Classify one Korean/English question and execute bounded local tools."""
     if not isinstance(question, str) or not 1 <= len(question.strip()) <= 240:
         return _result("blocked", "INVALID_QUESTION")
@@ -94,6 +94,19 @@ def route_question(question: Any) -> dict[str, Any]:
                 "검산할 성장률 주장 하나를 %로 입력해 주세요.",
             )
         claim = claims[0] if claims else None
+
+    # Pure preflight: inspect the original question without touching evidence
+    # or Guard tools. Used to reject any untrusted model proposal BEFORE
+    # executing even read-only local tools.
+    if dry_run is True:
+        preview = _result("ready", "ROUTE_PREFLIGHT_ONLY")
+        preview["selected_intent"] = intent
+        preview["evidence"] = {"as_of": as_of, "claim_pct": claim}
+        preview["trace"] = [
+            {"step": "PLAN", "decision": "PREFLIGHT_ONLY"},
+            {"step": "SELECT", "decision": intent},
+        ]
+        return preview
 
     result = _result("completed", "STRUCTURAL_NUMERIC_ONLY")
     result["selected_intent"] = intent
