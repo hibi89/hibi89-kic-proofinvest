@@ -1,3 +1,10 @@
+## 2026-10-29 KST — Offline Guard workflow composition
+- Added proofinvest/guard_workflow.py, commit dd9adbe9158201241d662e9242989cddae135d2b, linking SEC verdict, Guard decision, SQLite audit, and optional explicit human simulation review.
+- Added tests/test_guard_workflow.py, commit d31d6b70c79df7f998d90ab849ef924cf51620dd, five cases written but NOT EXECUTED.
+- Not done: actual local E2E runtime verification, persistent Streamlit approval/review UI, review hash chain, submission PDF.
+- Source provenance remains unverified; no real SEC request or trade.
+- Provisional MVP completion estimate 65%; do not treat as measured pass rate. Next: run tests and fix failures before increasing completion percentage.
+
 ## 2026-10-29 KST — SEC Guard integration
 - Added proofinvest/guard_sec_adapter.py (65895eb4), tests/test_guard_sec_adapter.py (5bcdc70e), and Streamlit curated SEC view preview (1435e34c).
 - SEC numeric comparison remains unverified source. Without separate Risk data, calculated_unverified maps to numeric VERIFIED but Guard HOLD. Conflict REJECT, unavailable HOLD. Preview shows policy reasons and no trade.
