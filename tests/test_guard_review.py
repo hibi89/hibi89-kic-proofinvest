@@ -49,6 +49,21 @@ class HumanReviewTests(unittest.TestCase):
         self.assertEqual(result["decision"], "REJECT")
         self.assertFalse(result["trade_executed"])
 
+    def test_review_integrity_after_write(self):
+        self.record("good", "VERIFIED")
+        self.review.record_review("good", "reviewer", "ACKNOWLEDGE", "Reviewed simulated data")
+        self.assertTrue(self.review.verify_reviews())
+
+    def test_review_tampering_blocks_followup(self):
+        import sqlite3
+        self.record("good", "VERIFIED")
+        self.review.record_review("good", "reviewer", "ACKNOWLEDGE", "Reviewed simulated data")
+        with sqlite3.connect(self.review.path) as conn:
+            conn.execute("UPDATE guard_human_reviews SET reason='altered'")
+        self.assertFalse(self.review.verify_reviews())
+        with self.assertRaises(ValueError):
+            self.review.record_review("good", "reviewer", "ACKNOWLEDGE", "Second review attempt")
+
     def test_missing_reason_fails(self):
         self.record("good", "VERIFIED")
         with self.assertRaises(ValueError):
