@@ -265,6 +265,37 @@ class ArchivedSECGuardReportTests(unittest.TestCase):
                 **result, "guard": {**result["guard"], "decision": "APPROVE"}
             })
 
+    def test_renderer_rejects_forged_identifiers_and_untrusted_markdown(self):
+        valid = self.report()
+        for section, field, bad in (
+            ("research", "issuer_cik", "x<script>alert(1)</script>"),
+            ("research", "accession", "malicious-source-link"),
+            ("research", "observed_utc_day_self_reported", "not-a-day"),
+            ("evidence", "submissions_sha256", "bad-hash"),
+            ("evidence", "original_filing_sha256", "<h1>forged</h1>"),
+            ("audit", "run_id", "arbitrary/file"),
+            ("audit", "event_hash", "not-an-event-hash"),
+        ):
+            with self.subTest(section=section, field=field):
+                forged = copy.deepcopy(valid)
+                forged[section][field] = bad
+                with self.assertRaises(ValueError):
+                    render_archived_sec_guard_markdown(forged)
+        for section, field in (
+            ("research", "origin_authenticated"),
+            ("risk", "source_authenticated"),
+            ("audit", "externally_anchored"),
+            ("guard", "source_authenticated"),
+            ("guard", "human_approved"),
+        ):
+            with self.subTest(section=section, field=field):
+                forged = copy.deepcopy(valid)
+                forged[section][field] = True
+                with self.assertRaises(ValueError):
+                    render_archived_sec_guard_markdown(forged)
+        with self.assertRaises(ValueError):
+            render_archived_sec_guard_markdown({**valid, "model_trained": True})
+
     def test_cli_json_and_markdown_are_safe(self):
         for fmt in ("json", "markdown"):
             with self.subTest(fmt=fmt):

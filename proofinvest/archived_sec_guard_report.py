@@ -266,6 +266,35 @@ def render_archived_sec_guard_markdown(report: Any) -> str:
     source, evidence, verification, guard, audit = (
         report[key] for key in ("research", "evidence", "verification", "guard", "audit")
     )
+    # This renderer is also a public callable function: reject forged metadata
+    # before Markdown interpolation (a direct caller can bypass the pipeline).
+    if (source.get("origin_authenticated") is not False
+            or verification.get("arithmetic_is_source_authentication") is not False
+            or report.get("model_trained") is not False
+            or report.get("risk", {}).get("source_authenticated") is not False
+            or report.get("risk", {}).get("risk_is_investment_recommendation") is not False
+            or audit.get("externally_anchored") is not False
+            or guard.get("source_authenticated") is not False
+            or guard.get("trade_executed") is not False
+            or guard.get("human_approved") is not False):
+        raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
+    if (not isinstance(source.get("issuer_cik"), str)
+            or _CIK.fullmatch(source["issuer_cik"]) is None
+            or not isinstance(source.get("accession"), str)
+            or _ACCESSION.fullmatch(source["accession"]) is None
+            or not source["accession"].startswith(source["issuer_cik"] + "-")
+            or not isinstance(source.get("observed_utc_day_self_reported"), str)
+            or _UTC_DAY.fullmatch(source["observed_utc_day_self_reported"]) is None
+            or not isinstance(audit.get("run_id"), str)
+            or _RUN.fullmatch(audit["run_id"]) is None):
+        raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
+    for key in ("submissions_sha256", "companyfacts_sha256",
+                "original_filing_sha256", "evidence_chain_sha256"):
+        value = evidence.get(key)
+        if not isinstance(value, str) or _SHA.fullmatch(value) is None:
+            raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
+    if not isinstance(audit.get("event_hash"), str) or _SHA.fullmatch(audit["event_hash"]) is None:
+        raise ValueError("INVALID_UNVERIFIED_SEC_AUDIT_REPORT")
     # No freeform source, claim or review reason embedded in Markdown.
     return "\n".join([
         "# ProofInvest — Offline evidence audit (UNVERIFIED)",

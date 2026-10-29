@@ -151,13 +151,13 @@ def run(output: Path) -> dict:
                         expect(page.get_by_text(
                             "ProofInvest — DL → Guard 감사 보고서"
                         )).to_be_visible(timeout=15000)
-                        if not page.get_by_role(
+                        # Streamlit can mount the screen heading before its
+                        # interactive controls; explicitly await hydration.
+                        demo_button = page.get_by_role(
                             "button", name="합성 DL → Guard 감사·보고서 실행"
-                        ).is_visible():
-                            raise AssertionError("Missing explicit DL Guard run button")
-                        page.get_by_role(
-                            "button", name="합성 DL → Guard 감사·보고서 실행"
-                        ).click()
+                        )
+                        expect(demo_button).to_be_visible(timeout=20000)
+                        demo_button.click()
                         expect(page.get_by_text(
                             "합성 자료 E2E 실행 및 임시 감사 검증 완료"
                         )).to_be_visible(timeout=15000)
