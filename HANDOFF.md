@@ -1,3 +1,8 @@
+## 2026-10-29 KST — Explicit Guard CI stage
+- Existing .github/workflows/ci.yml push workflow now executes Guard test discovery: python -B -m unittest discover -s tests -p 'test_guard*.py' -v.
+- Commits e5571e5b0c733070d08f47d4cba7164a54ace261 and 283471de9a360e88974098dff9c83039bb0b1e2e.
+- This is a CI configuration change, NOT evidence of test execution success. Prior status query showed no combined statuses. Estimated implementation 79% (+1pp), 6–12 focused hours remaining.
+
 ## 2026-10-29 KST — Malformed audit payload fail-closed
 - Commit 5d8238f2f903f4f68220f1682a4e533ae118b396 adds AttributeError to malformed nested JSON handling in GuardAuditStore.verify_chain.
 - Commit 096e15730994bc7ad7c18c63eaf680506ef9c7ef adds regression for corrupted nested decision even with recalculated event digest.
