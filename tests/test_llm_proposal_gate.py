@@ -163,6 +163,19 @@ class LLMSafetyGateTests(unittest.TestCase):
             with self.assertRaisesRegex(PlannerGateError, "MODEL_RESPONSE_CONTRACT_INVALID"):
                 request_gemini_proposal(GROWTH, allow_network=True)
 
+    def test_cli_conflict_is_guarded_success_not_a_crash(self):
+        with patch("proofinvest.llm_proposal_gate.request_gemini_proposal",
+                   return_value='{"action":"RUN","intent":"GROWTH_CHECK"}') as caller, \
+             patch("builtins.print") as printing:
+            code = main(["--question", GROWTH, "--allow-network"])
+        self.assertEqual(code, 0)
+        caller.assert_called_once_with(GROWTH, allow_network=True)
+        self.assertTrue(printing.called)
+        result = json.loads(printing.call_args.args[0])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["local_result"]["guard"]["decision"], "REJECT")
+        self.assertTrue(result["model_proposal_accepted"])
+
     def test_cli_refuses_network_without_flag(self):
         with patch("proofinvest.llm_proposal_gate.request_gemini_proposal") as request, \
              patch("builtins.print"):
