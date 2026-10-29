@@ -23,6 +23,10 @@ jobs:
         run: python -m pip install -r requirements-ui.txt
       - name: One-command full local verifier (syntax, SHA, unittest, AppTest; no API)
         run: python -B -m scripts.verify_local --full
+      - name: Guard decision, audit, review and workflow regressions (offline)
+        run: |
+          python -B -m unittest -v tests.test_guard_agent tests.test_guard_audit tests.test_guard_review tests.test_guard_sec_adapter tests.test_guard_workflow tests.test_guard_registry_link
+
       - name: Synthetic snapshot create/reuse/reload (temporary HOME; no credentials)
         run: |
           export HOME="$(mktemp -d)"
