@@ -6,8 +6,10 @@ not provenance. The report carries checksums rather than untrusted filing text.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -190,3 +192,46 @@ def render_dl_audit_markdown(result: dict[str, Any]) -> str:
         "This report is not the official organizer PDF.",
         "",
     ])
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the explicit local-only report pipeline; stdout contains no raw HTML."""
+    parser = argparse.ArgumentParser(
+        description="Offline pinned DL filing -> Guard HOLD -> SQLite audit -> report",
+    )
+    parser.add_argument("--dl-db", type=Path, required=True, help="Existing saved DL ledger")
+    parser.add_argument("--audit-db", type=Path, required=True, help="Separate Guard audit ledger")
+    parser.add_argument("--cik", required=True)
+    parser.add_argument("--accession", required=True)
+    parser.add_argument("--sha256", required=True, help="Saved original SHA-256")
+    parser.add_argument("--as-of", required=True, help="Evidence cutoff UTC YYYY-MM-DD")
+    parser.add_argument("--term", required=True, help="Literal evidence search term")
+    parser.add_argument("--run-id", required=True, help="Stable idempotency key")
+    parser.add_argument("--max-results", type=int, default=5)
+    parser.add_argument("--format", choices=("json", "markdown"), default="json")
+    parser.add_argument("--reviewer")
+    parser.add_argument("--action", choices=("ACKNOWLEDGE", "REQUEST_EXCEPTION"))
+    parser.add_argument("--reason")
+    args = parser.parse_args(argv)
+    try:
+        result = run_saved_dl_audit_report(
+            dl_db_path=args.dl_db, audit_db_path=args.audit_db,
+            cik=args.cik, accession=args.accession, sha256=args.sha256,
+            as_of=args.as_of, term=args.term, run_id=args.run_id,
+            max_results=args.max_results,
+            reviewer=args.reviewer, action=args.action, reason=args.reason,
+        )
+    except (OSError, ValueError, TypeError, KeyError):
+        # Never echo local user paths, filing bytes or database error payloads.
+        print(json.dumps({"status": "DL_AUDIT_FAILED",
+                          "reason_code": "INVALID_LOCAL_INPUT_OR_EVIDENCE"}),
+              file=sys.stderr)
+        return 2
+    if args.format == "markdown":
+        print(render_dl_audit_markdown(result), end="")
+    else:
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

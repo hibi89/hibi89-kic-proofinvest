@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import sqlite3
+import contextlib
+import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,7 +12,7 @@ from unittest.mock import patch
 
 from integrations.dl_vendor import core, originals
 from proofinvest.dl_vendor_audit_report import (
-    render_dl_audit_markdown, run_saved_dl_audit_report,
+    main, render_dl_audit_markdown, run_saved_dl_audit_report,
 )
 from proofinvest.guard_audit import GuardAuditStore
 from proofinvest.guard_review import GuardReviewStore
@@ -148,6 +151,43 @@ class DLSavedAuditReportTests(unittest.TestCase):
             self.run_report(audit_db_path=self.source)
         with self.assertRaises(ValueError):
             self.run_report(audit_db_path=self.source.parent)
+        self.assertFalse(self.audit.exists())
+
+    def cli(self, *, fmt="json", as_of=DAY):
+        args = [
+            "--dl-db", str(self.source), "--audit-db", str(self.audit),
+            "--cik", CIK, "--accession", ACCESSION, "--sha256", self.sha,
+            "--as-of", as_of, "--term", "Revenue", "--run-id", "cli-demo",
+            "--format", fmt,
+        ]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            status = main(args)
+        return status, stdout.getvalue(), stderr.getvalue()
+
+    def test_cli_json_end_to_end(self):
+        status, out, err = self.cli()
+        self.assertEqual(status, 0)
+        self.assertEqual(err, "")
+        result = json.loads(out)
+        self.assertEqual(result["guard"]["decision"], "HOLD")
+        self.assertTrue(result["audit"]["chain_valid"])
+        self.assertFalse(result["live_api_called"])
+
+    def test_cli_markdown_omits_untrusted_text(self):
+        status, out, err = self.cli(fmt="markdown")
+        self.assertEqual(status, 0)
+        self.assertEqual(err, "")
+        self.assertIn("**HOLD**", out)
+        self.assertNotIn("Revenue 100", out)
+        self.assertNotIn("NEVER ECHO", out)
+
+    def test_cli_fail_closed_does_not_create_audit(self):
+        status, out, err = self.cli(as_of="2025-10-30")
+        self.assertEqual(status, 2)
+        self.assertEqual(out, "")
+        self.assertIn("INVALID_LOCAL_INPUT_OR_EVIDENCE", err)
+        self.assertNotIn(str(self.source), err)
         self.assertFalse(self.audit.exists())
 
     def test_invalid_evidence_fingerprint_precheck_is_write_free(self):
