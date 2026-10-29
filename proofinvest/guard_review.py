@@ -29,8 +29,8 @@ class GuardReviewStore:
         # Use a single transaction for chain check, eligibility and review insertion.
         with store._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            if not store.verify_chain(conn=conn):
-                raise ValueError("Audit chain invalid")
+            if not store.verify_chain(conn=conn) or not self.verify_reviews():
+                raise ValueError("Audit or review integrity invalid")
             row = conn.execute(
                 "SELECT decision, event_id FROM guard_run_registry WHERE run_id=?", (run_id,)
             ).fetchone()
