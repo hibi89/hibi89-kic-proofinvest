@@ -32,6 +32,13 @@ def run_guard_review(
         for value in (reviewer, action, reason)
     ):
         raise ValueError("Explicit reviewer, action and reason are all required")
+    if wants_review:
+        if action not in ("ACKNOWLEDGE", "REQUEST_EXCEPTION", "AUTHORIZE_SIMULATION"):
+            raise ValueError("Unsupported review action")
+        if not (1 <= len(reviewer.strip()) <= 80):
+            raise ValueError("Reviewer required")
+        if not (5 <= len(reason.strip()) <= 1000):
+            raise ValueError("Explicit review reason required")
     mapped = evaluate_sec_guard(sec_verdict, risk=risk)
     request = {
         "sec_verdict": dict(sec_verdict),
