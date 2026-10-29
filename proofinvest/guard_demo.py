@@ -20,8 +20,7 @@ def run_demo(database_path: str | Path) -> dict:
     db = Path(database_path)
     examples = [
         ("missing-risk", {"status": "calculated_unverified"}, None, None),
-        ("conflict", {"status": "conflict"},
-         {"risk_calculated": True, "comparison_ratio_pct": "100"}, None),
+
         ("simulated", {"status": "calculated_unverified"},
          {"risk_calculated": True, "comparison_ratio_pct": "100"},
          {"reviewer": "offline-demo", "action": "AUTHORIZE_SIMULATION",
@@ -37,6 +36,14 @@ def run_demo(database_path: str | Path) -> dict:
     )
     if curated_result["guard"]["decision"] != "HOLD":
         raise RuntimeError("Unverified curated SEC data must HOLD without risk")
+    # Compute an actual contradictory numeric claim using the same curated fixture.
+    conflict = run_curated_apple_demo(as_of="2025-11-01", claimed_growth_pct="20.00")
+    if conflict["status"] != "conflict":
+        raise RuntimeError("Contradictory SEC claim did not produce CONFLICT")
+    examples.insert(1, (
+        "conflict", conflict,
+        {"risk_calculated": True, "comparison_ratio_pct": "100"}, None
+    ))
     outcomes = []
     for run_id, verdict, risk, review in examples:
         outcome = run_guard_review(
@@ -68,6 +75,7 @@ def run_demo(database_path: str | Path) -> dict:
             "source_kind": curated["demonstration_source"],
             "status": curated["status"],
             "growth_pct": curated["growth_pct"],
+            "conflicting_claim_status": conflict["status"],
             "external_source_authenticated": curated["authenticated_external_source"],
             "guard_decision": curated_result["guard"]["decision"],
             "trade_executed": curated_result["trade_executed"],
