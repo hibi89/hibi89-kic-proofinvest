@@ -201,6 +201,35 @@ def _render_sec_curated_case(st) -> None:
                      "human_review": "NOT_REQUESTED", "trade_executed": False})
         except (ValueError, OSError, TypeError, KeyError, ImportError) as exc:
             st.error("감사 기록 저장 또는 검증 실패 — 승인되지 않았습니다.")
+    # Human review is separate from Guard scoring. The SEC curated view
+    # has no verified risk facts and therefore cannot authorize a simulation.
+    with st.expander("사람 검토 기록 — 로컬 모의", expanded=False):
+        st.caption("검토 기록은 실제 투자 승인이나 거래 실행이 아닙니다.")
+        reviewer = st.text_input("검토자 식별명", key="guard_reviewer", max_chars=80)
+        review_action = st.selectbox(
+            "검토 조치", ["ACKNOWLEDGE", "REQUEST_EXCEPTION"],
+            key="guard_review_action",
+        )
+        review_reason = st.text_area("검토 사유 (5자 이상)", key="guard_review_reason")
+        if st.button("검토 기록 저장", key="guard_review_save"):
+            try:
+                import hashlib
+                from proofinvest.guard_workflow import run_guard_review
+                local_dir = Path.home() / ".proofinvest-guard"
+                local_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+                key = "|".join([date_choices[asof_label], str(growth_choices[claim_label])])
+                run_id = "curated-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+                result = run_guard_review(
+                    verdict, run_id=run_id, database_path=local_dir / "audit.sqlite",
+                    reviewer=reviewer, action=review_action, reason=review_reason,
+                )
+                st.success("모의 검토 기록 저장 완료")
+                st.json({"run_id": run_id, "guard_decision": result["guard"]["decision"],
+                         "review_id": result["review"]["review_id"],
+                         "review_action": result["review"]["action"],
+                         "trade_executed": False})
+            except (ValueError, OSError, TypeError, KeyError, ImportError):
+                st.error("검토 기록 저장 실패 — 승인되지 않았습니다.")
     if verdict["status"] == "unavailable":
         st.warning(
             "기준일 또는 증거가 검증 요건에 맞지 않아 계산 보류: "
