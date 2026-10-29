@@ -1,3 +1,47 @@
+## 2026-10-29 KST — 해총 확인 요청: KIC GitHub 미통합 구성요소 실사 (최우선 확인사항)
+
+> **형의 직접 지시:** "KIC에 들어가는 GitHub 애들 다 넣은 거 맞나, 어떻게 완성이 되지?" → 아직 최종 통합 완료 아님. 해총은 아래 실제 브랜치·코드·테스트를 교차확인하고, **예선 제출 완료와 본선 제품 완성률을 분리**해서 보고할 것. 이 문서는 미완료 작업의 검수 요청이지 자동 전체 병합 승인, PDF 업로드 승인, 외부 API 실행 승인이 아님.
+
+**실사 기준 저장소:** `hibi89/hibi89-kic-proofinvest` · `lead/kic@6359418dec87c162bc1310ddcccbb0e49d0c1400` · 비교 DL `feature/disclosure-lightning@760ddd3a0e4ad5814e76146c0d536bebc4520f81`. 최신 원격 상태가 바뀌면 SHA와 차이를 다시 검증할 것. [실사 때의 KIC offline-tests](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40884902870) **SUCCESS**: Guard 43개 회귀 테스트 통과, Chromium Guard 클릭 검증 PASS. 이는 **오프라인·수동 정리된 SEC 형식 데이터의 검사**이지 SEC 실제 데이터 인증/본선 앱 완료 증거가 아님.
+
+### A. 현재 들어가 있고 검증된 부분
+
+- `lead/kic/proofinvest/`: Research, Verification, Risk 및 SEC 검토/증빙 처리 모듈, `dl_bridge.py`, `sec_three_source.py`, `sec_bundle_replay.py`, `guard_agent.py`, `guard_workflow.py`, `guard_audit.py`, `guard_review.py` 등 **코드 존재**. 기능마다 검증 범위가 다르므로 존재 자체를 운영 완성으로 계산하지 말 것.
+- `streamlit_app.py`: 합성/수동 SEC·Guard 검토 화면과 저장/감사 경로. 최신 Chromium 클릭 검증은 오프라인에서 성공했으나 외부 SEC 원문 인증과 실거래는 아님.
+- `lead/kic/disclosure_lightning/`: `core.py`, `originals.py` 등 **부분 사본/브리지 존재**. 따라서 "DL 전혀 없음"도 "DL 최신판 전체 통합"도 아님.
+- `feature/research`, `feature/verification`, `feature/risk`, `feature/kic-dl-integrated-mvp` 브랜치가 존재. **브랜치 존재나 과거 이관 기록만으로 최신 변경이 모두 `lead/kic`에 반영되었다고 판단하지 말 것.**
+
+### B. 해총이 비교·검수할 미통합 또는 미검증 항목
+
+| 우선순위 | GitHub 구성요소 / 목표 | 현 실사 결과 | 해총 다음 확인 및 수용 조건 |
+| --- | --- | --- | --- |
+| **P0** | **Disclosure Lightning 최신 기능** · `feature/disclosure-lightning` → `lead/kic` | DL 측에 있으나 KIC `lead/kic`의 `disclosure_lightning/`에는 없는 경로 **5개**: `companyfacts.py`, `extract.py`, `history.py`, `xbrl.py`, `fixtures/kic_apple_handoff_synthetic.json`. 단, KIC 자체 `proofinvest/sec_companyfacts.py` 등과 기능 중복 가능 | **파일/함수 수준 변경·중복·라이선스·의존성·테스트** 대조 후 KIC에 실제 필요한 어댑터만 선별 통합. 전체 DL 브랜치 일괄 병합 금지; 실제 SEC CIK/접수번호/출처·원문 해시/기간 계약 E2E 검사. DL 작업 브랜치 소유자의 변경 보호 |
+| **P0** | **실제 SEC 공식 공시 기반 end-to-end** | 3자료 Submissions·CompanyFacts·원문 연결과 오프라인 ZIP/출처 스팬 코드는 있으나 **실 SEC 요청·원문 진위·권리·동작 호환성 미검증**. 수동 자료/합성 CI를 실증으로 승격 금지 | 사용자 명시 승인, 준수 가능한 SEC 연락처 포함 User-Agent, 적법한 이용조건 검토 **이후에만** 실제 SEC 1개 기업 자료로 검증. 실 호출 없이 가능한 계약검사는 선행 진행 |
+| **P1 / 본선** | **SMAX `preprocessing` 전처리기** | KIC 내 직접 연동/완성된 표준 계약 **미검증**; Python KIC가 SMAX의 JS 모듈을 바로 import할 수 없음 | 먼저 외부 브랜치 상태·권리 검증. 필요 시 JSON/CLI 데이터 계약만 연결, 검증·기간/단위/출처 보존. 예선의 필수 의존성 아님 |
+| **P1 / 본선** | **AI_AutoML_Analyst** | KIC용 모델/평가 엔진 직접 통합 **미완료**. 기획서에는 **선별 평가/시각화 로직만 재사용** 명시 | 학습 라벨·시간 누출·실제 기업 holdout이 확보되면 필요한 sklearn 로직만 이식·비교. 검증 불가 시 `NO_TRAIN`. 별도 AutoML 서비스 통째로 이식하지 말 것 |
+| **P1 / 본선** | **사전학습 DL 공시문서 검색** | MiniLM 등은 설계/후보이며 KIC 실제 학습·추론 성능 수치 및 인용 스팬 품질 미검증 | 라이선스·모델 리비전 확인, SEC 원문 스팬 기반 BM25/키워드 대비 검색 품질과 CPU 성능 측정 후 선택. 숫자 검산을 DL에 맡기지 말 것 |
+| **P1 / 본선** | **미국 주가지수 3종 + 인플레이션 4종** | S&P 500, Nasdaq-100, DJIA + 미국·중국·유로지역·일본 CPI/HICP YoY는 **확정 설계**, 실제 시계열 수집/릴리스 시점·시각화 미연동 | 출처 사용권·역사적 발표일·데이터 빈도·ETF와 지수 차이 검증 후 본선 범위로 추진. 예선 제출 전 신규 데이터 API 필수 아님 |
+| **P1 / 본선** | **심사위원용 실제 동작 URL·통합보고서** | 오프라인 Python/Streamlit과 CI 증거 존재; **공개 판정 가능한 본선 URL, 실제 기업의 출처 인증형 E2E, 최종 발표자료 미완료** | 실제 SEC→Research→Verification→Risk→Guard→사람 검토→근거 표시 보고서의 한 기업 시나리오를 브라우저로 검증. 검증 범위와 미검증 범위 동시 공시 |
+| **제외 / 병합 금지** | DBVORA, SOVIA, Lightning Azent, 전체 Bid Owl, 새 범용 RAG, 전체 AutoML 서비스 | 현재 KIC 범위 문서에서 직접 의존을 배제/보류한 구성요소 | 별도 사용자 범위 변경 없이는 **넣지 말 것**. 전체 GitHub 저장소 개수만큼 합치는 것이 완성 조건이 아님 |
+
+### C. 예선과 본선의 완료 게이트를 혼동하지 말 것
+
+1. **예선 P0 (2026-11-12 10:00 KST):** 주최 측 **공식 7항목·10페이지 이내 PDF**만 필수. 비공개 최종 후보 파일의 정확한 **제목·SHA·페이지·출처·내용**을 형이 승인하고, **별도 명시적 승인 하에** DAKER 제출 및 **접수 영수증** 확인해야 완료. 기존 구버전 해시 핀 검사 우회/비공개 PDF 공개 저장소 업로드 금지. 전체 DL·SMAX·AutoML·DL 모델 통합 **예선 필수 아님**.
+2. **본선 P1 (진출할 경우 2026-12-22 10:00 KST):** 위 필요 요소 선별 통합, 실 SEC 1개 기업 기반 E2E, 검증 가능한 데모 URL/코드/발표 PDF. 출처·권리·데이터 미확보 시 구현/성능을 완료라 주장하지 말 것.
+3. **완성률 검증:** 기존 KIC 60일 원장의 `29 DONE / 3 BLOCKED / 28 NOT_STARTED`는 2026-10-25 기준 **일정 관리 숫자**이지 "전체 제품 48% 또는 94%" 같은 제품 완성도 아님. 2026-10-29 코드·브라우저 CI 성공도 본선 전체 기능 완료율 산정 근거가 아님. PayPal 프로젝트의 94% 등은 KIC에 적용 금지.
+
+### D. 해총 요청 행동 (순서)
+
+1. 위 **DL 최신 브랜치 누락 5개**와 KIC 대체 구현을 실제 소스 함수/스키마/테스트 단위로 1:1 비교하고, **필수/중복/불필요**를 판정한 **통합 매트릭스**부터 작성.
+2. `lead/kic`의 현행 Research·Verification·Risk·Guard 통합 테스트와 Streamlit/E2E 상태를 실제 CI SHA 기준으로 확인. 현행 제품에 필요한 **한 기업 근거 체인**에서 가장 큰 기능 단절점을 지정.
+3. **예선 PDF 최종 승인/접수**를 최우선 별도 게이트로 유지하고, 본선 기능 미완료가 예선 제출을 지연시키지 않도록 함.
+4. 본선용 SMAX/AutoML/DL/7계열은 **설계 대비 미구현**으로 별도 추적. 자동으로 KIC 저장소에 전체 코드 복제하거나 임의 병합하지 말 것.
+5. 보고 시 "**현재 코드에 실제 포함 / 일부 연결 / 기능 중복·확인 필요 / 본선 계획 / 제외**"를 각각 구분하고, 새 코드·CI·실데이터 근거 없는 퍼센트는 추정이라고 명시.
+
+**핵심 한 줄:** **KIC GitHub 관련 기능이 전부 최종 통합된 것이 아니다. 지금 가장 큰 기술 검수는 DL 최신판의 필요한 기능만 선별 통합하는지 여부와 진짜 SEC 출처 기반 E2E이며, 예선 제출은 별도로 공식 PDF 승인·접수부터 마무리한다.**
+
+---
+
 # [해총 확인 요청] KIC 외부 GitHub 구성요소 미통합·미검증 점검 (2026-10-29 KST)
 
 > **사용자 직접 지시:** “그거 깃헙에있는거중에 안된거 해총한테하는말에 남겨놔라 해총이보고확인하게”. 이 섹션은 **해총이 다음 KIC 작업 시작 시 우선 확인할 미완료 통합 체크리스트**다. 아래는 `lead/kic` 실제 파일 트리(HEAD `6359418dec87c162bc1310ddcccbb0e49d0c1400`), 설계 문서, 브랜치 비교 기준이며 기능 존재·실환경 검증·최종 제출을 혼동하지 않는다.
