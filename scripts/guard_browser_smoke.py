@@ -129,6 +129,26 @@ def run(output: Path) -> dict:
                             "Guard 결정 감사 체인 검증 통과 (로컬 무결성만)"
                         )).to_be_visible(timeout=15000)
                         page.screenshot(path=str(output / "guard-browser-clickthrough.png"), full_page=True)
+                        # Exercise the separate deterministic question router
+                        # in a real Chromium session, never a live LLM agent.
+                        page.get_by_test_id("stSelectbox").first.click()
+                        page.get_by_role("option", name="질문별 로컬 도구 선택 — 규칙 기반 시연").click()
+                        expect(page.get_by_text(
+                            "ProofInvest — 질문별 로컬 도구 선택"
+                        )).to_be_visible(timeout=15000)
+                        page.get_by_role(
+                            "button", name="로컬 도구 선택·검증"
+                        ).click()
+                        expect(page.get_by_text(
+                            "GROWTH_CHECK", exact=True
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "REJECT", exact=True
+                        )).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "intent-router-browser.png"),
+                            full_page=True,
+                        )
                     finally:
                         browser.close()
 
@@ -162,6 +182,9 @@ def run(output: Path) -> dict:
                     "live_sec_api_called": False,
                     "trade_executed": False,
                     "screenshot": "guard-browser-clickthrough.png",
+                    "router_screenshot": "intent-router-browser.png",
+                    "router_status": "REJECT",
+                    "router_intent": "GROWTH_CHECK",
                 }
                 (output / "guard-browser-evidence.json").write_text(
                     json.dumps(result, indent=2, ensure_ascii=False) + "\n",
