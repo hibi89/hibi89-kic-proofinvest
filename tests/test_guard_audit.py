@@ -42,6 +42,27 @@ class GuardAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.record_decision("demo-2", self.request, self.decision)
 
+    def test_malformed_nested_decision_fails_closed(self):
+        import json
+        from proofinvest.guard_audit import _canonical, _digest
+        self.store.record_decision("demo-1", self.request, self.decision)
+        with sqlite3.connect(self.path) as conn:
+            payload = json.loads(conn.execute(
+                "SELECT payload_json FROM guard_audit_events WHERE run_id='demo-1'"
+            ).fetchone()[0])
+            payload["decision"] = "malformed"
+            encoded = _canonical(payload).decode("utf-8")
+            digest = _digest("0" * 64, encoded.encode("utf-8"))
+            conn.execute(
+                "UPDATE guard_audit_events SET payload_json=?, event_hash=? WHERE run_id='demo-1'",
+                (encoded, digest),
+            )
+            conn.execute(
+                "UPDATE guard_run_registry SET decision=? WHERE run_id='demo-1'",
+                (encoded,),
+            )
+        self.assertFalse(self.store.verify_chain())
+
     def test_invalid_run_id(self):
         with self.assertRaises(ValueError):
             self.store.record_decision("../escape", self.request, self.decision)
