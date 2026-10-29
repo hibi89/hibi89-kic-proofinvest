@@ -1,3 +1,9 @@
+## 2026-10-29 KST — SEC evidence replay identity
+- Guard workflow now binds full SEC verdict to audit request hash: b654ea9cddb57348e512729fb8a239f2fd78232a.
+- Regression test ensures numeric evidence change with same run_id raises: a8b2cffefc9eb8305120dee6a0f9ac97002395fa.
+- Existing older SQLite audit records for same run_id may require new run_id because request hashing changed; do not delete user audit data. No external SEC authentication.
+- Tests still not executed; GitHub workflow lookup only PR-triggered runs and returned none, combined status empty. Provisional 81% (+2pp), 5–11h remaining.
+
 ## 2026-10-29 KST — Explicit Guard CI stage
 - Existing .github/workflows/ci.yml push workflow now executes Guard test discovery: python -B -m unittest discover -s tests -p 'test_guard*.py' -v.
 - Commits e5571e5b0c733070d08f47d4cba7164a54ace261 and 283471de9a360e88974098dff9c83039bb0b1e2e.
