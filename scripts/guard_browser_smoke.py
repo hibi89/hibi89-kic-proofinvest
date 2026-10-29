@@ -101,8 +101,13 @@ def run(output: Path) -> dict:
                         expect(page.get_by_label("검토 사유 (5자 이상)")).to_have_value(
                             "Reviewed offline calculation with no trading authorization"
                         )
-                        page.wait_for_timeout(1200)
-                        page.get_by_role("button", name="검토 기록 저장", exact=True).click()
+                        page.wait_for_timeout(500)
+                        review_button = page.get_by_role("button", name="검토 기록 저장", exact=True)
+                        if review_button.count() == 0 or not review_button.is_visible():
+                            # Streamlit may close the expander on a rerender.
+                            page.get_by_text("사람 검토 기록 — 로컬 모의").click()
+                        expect(review_button).to_be_visible(timeout=10000)
+                        review_button.click()
                         expect(page.get_by_text("모의 검토 기록 저장 완료")).to_be_visible(timeout=15000)
 
                         page.get_by_text("저장된 Guard 감사 이력 조회").click()
