@@ -26,6 +26,8 @@ class GuardDemoTests(unittest.TestCase):
         )
         self.assertEqual(receipt["curated_sec"]["status"], "calculated_unverified")
         self.assertEqual(receipt["curated_sec"]["guard_decision"], "HOLD")
+        self.assertEqual(receipt["curated_sec"]["conflicting_claim_status"], "conflict")
+        self.assertIn("CLAIM_CONFLICT", receipt["runs"][1]["reason_codes"])
         self.assertFalse(receipt["curated_sec"]["external_source_authenticated"])
         self.assertFalse(receipt["curated_sec"]["trade_executed"])
         self.assertTrue(receipt["audit_valid"])
