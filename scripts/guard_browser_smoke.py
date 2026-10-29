@@ -95,6 +95,13 @@ def run(output: Path) -> dict:
                         page.get_by_label("검토 사유 (5자 이상)").fill(
                             "Reviewed offline calculation with no trading authorization"
                         )
+                        # Streamlit reruns after input edits; avoid clicking a
+                        # button while the previous widget subtree is replaced.
+                        expect(page.get_by_label("검토자 식별명")).to_have_value("browser-judge")
+                        expect(page.get_by_label("검토 사유 (5자 이상)")).to_have_value(
+                            "Reviewed offline calculation with no trading authorization"
+                        )
+                        page.wait_for_timeout(1200)
                         page.get_by_role("button", name="검토 기록 저장", exact=True).click()
                         expect(page.get_by_text("모의 검토 기록 저장 완료")).to_be_visible(timeout=15000)
 
