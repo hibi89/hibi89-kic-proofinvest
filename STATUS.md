@@ -1,3 +1,5 @@
+> **2026-10-29 KST — GUARD WORKFLOW:** Offline SEC verdict → Guard → SQLite audit → optional explicit human simulation review now composed in `proofinvest/guard_workflow.py` (`dd9adbe9`), five E2E tests authored (`d31d6b70`). **Tests NOT executed; integration runtime not yet proven.** Streamlit currently shows read-only Guard preview; persistent review UI not yet connected. Estimated completion remains 65% provisional pending runtime validation.
+
 > **2026-10-29 KST — SEC GUARD INTEGRATION:** Adapter `65895eb4`, 5 authored tests `5bcdc70e`, Streamlit curated SEC Guard preview `1435e34c`. Unverified SEC numbers cannot imply source authentication; no Risk => HOLD. Tests/UI runtime not executed. Audit and human review not yet connected to UI.
 
 > **2026-10-29 KST — HUMAN REVIEW CODE:** `proofinvest/guard_review.py` and six new tests committed (`9af1cc15`, `4c0b92dc`). Separate human review record; simulation-only approval for stored APPROVE decisions; REJECT/HOLD not overridable. Tests NOT executed, no UI/E2E. Review records are not part of existing Guard audit hash chain.
