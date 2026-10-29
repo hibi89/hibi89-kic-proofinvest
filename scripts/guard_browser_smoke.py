@@ -115,7 +115,13 @@ def run(output: Path) -> dict:
                             page.get_by_text("사람 검토 기록 — 로컬 모의").click()
                         expect(review_button).to_be_visible(timeout=10000)
                         review_button.click()
-                        expect(page.get_by_text("모의 검토 기록 저장 완료")).to_be_visible(timeout=15000)
+                        # A successful Streamlit form submit rerenders a collapsed
+                        # expander; the success is present but initially hidden.
+                        success_message = page.get_by_text("모의 검토 기록 저장 완료")
+                        expect(success_message).to_have_count(1, timeout=15000)
+                        if not success_message.is_visible():
+                            page.get_by_text("사람 검토 기록 — 로컬 모의").click()
+                        expect(success_message).to_be_visible(timeout=10000)
 
                         page.get_by_text("저장된 Guard 감사 이력 조회").click()
                         page.get_by_role("button", name="감사 무결성·이력 조회").click()
