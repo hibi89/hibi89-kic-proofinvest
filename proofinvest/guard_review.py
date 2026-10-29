@@ -65,3 +65,43 @@ class GuardReviewStore:
             )
             return {"review_id": cur.lastrowid, "action": action, "decision": decision,
                     "simulated_only": True, "trade_executed": False, "record_hash": digest}
+
+    def verify_reviews(self) -> bool:
+        """Detect changes to stored review fields (not privileged history rewrites)."""
+        from .guard_audit import GuardAuditStore
+        store = GuardAuditStore(self.path)
+        with store._connect() as conn:
+            if not store.verify_chain(conn=conn):
+                return False
+            exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='guard_human_reviews'"
+            ).fetchone()
+            if not exists:
+                return True
+            rows = conn.execute(
+                """SELECT run_id, decision_event_id, reviewer, action, reason,
+                          reviewed_at, record_hash FROM guard_human_reviews
+                   ORDER BY review_id"""
+            ).fetchall()
+            for run_id, event_id, reviewer, action, reason, reviewed_at, recorded in rows:
+                expected = hashlib.sha256(json.dumps(
+                    [run_id, event_id, reviewer, action, reason, reviewed_at],
+                    ensure_ascii=False, separators=(",", ":")
+                ).encode("utf-8")).hexdigest()
+                if recorded != expected:
+                    return False
+                decision_row = conn.execute(
+                    "SELECT decision FROM guard_run_registry WHERE run_id=? AND event_id=?",
+                    (run_id, event_id),
+                ).fetchone()
+                if decision_row is None:
+                    return False
+                try:
+                    decision = json.loads(decision_row[0])["decision"]["decision"]
+                except (ValueError, TypeError, KeyError):
+                    return False
+                if action not in ("ACKNOWLEDGE", "REQUEST_EXCEPTION", "AUTHORIZE_SIMULATION"):
+                    return False
+                if action == "AUTHORIZE_SIMULATION" and decision != "APPROVE":
+                    return False
+            return True
