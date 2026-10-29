@@ -128,7 +128,7 @@ class GuardAuditStore:
                             or decoded["decision"].get("trade_executed") is not False
                             or decoded["decision"].get("human_approved") is not False):
                         return False
-                except (KeyError, ValueError, TypeError):
+                except (AttributeError, KeyError, ValueError, TypeError):
                     return False
                 previous = digest
             return conn.execute("SELECT COUNT(*) FROM guard_run_registry").fetchone()[0] == len(rows)
