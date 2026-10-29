@@ -24,6 +24,14 @@ def run_guard_review(
     A numeric SEC comparison is not independent SEC source authentication.
     A missing Risk result means HOLD. All approvals are simulation-only.
     """
+    # Reject incomplete review submissions before any audit write.
+    # An invalid review must not create a new Guard decision as a side effect.
+    wants_review = any(value is not None for value in (reviewer, action, reason))
+    if wants_review and not all(
+        isinstance(value, str) and value.strip()
+        for value in (reviewer, action, reason)
+    ):
+        raise ValueError("Explicit reviewer, action and reason are all required")
     mapped = evaluate_sec_guard(sec_verdict, risk=risk)
     request = {
         "sec_status": mapped["sec_status"],
@@ -43,9 +51,7 @@ def run_guard_review(
         "live_api_called": False,
         "trade_executed": False,
     }
-    if any(value is not None for value in (reviewer, action, reason)):
-        if not all(isinstance(value, str) and value.strip() for value in (reviewer, action, reason)):
-            raise ValueError("Explicit reviewer, action and reason are all required")
+    if wants_review:
         result["review"] = GuardReviewStore(database_path).record_review(
             run_id, reviewer, action, reason
         )
