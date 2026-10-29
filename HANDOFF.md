@@ -1,3 +1,9 @@
+## 2026-10-29 KST — Audit request-hash consistency
+- New regression test: tests/test_guard_registry_link.py, dbb2861112f84f37aee8ca2592aa16efa77dc0f1.
+- GuardAuditStore.verify_chain now rejects mismatch between stored audit event request_hash and guard_run_registry.request_hash, a085d7208babe943cc5ccc21d0c6853e474ab701.
+- Runtime test execution still blocked by github.com DNS from execution container. GitHub connector reads/writes are functional.
+- Provisional implementation estimate 75% (+2pp), remaining 8–15 focused hours. Do not claim test PASS until executed.
+
 ## 2026-10-29 KST — Review integrity hardening
 - Added verify_reviews() for stored human review digest and stored Guard eligibility, within same SQLite connection/transaction; commits 88b2be2c, 002f1e2e, a0613927.
 - Added two regression tests, commit 6299d6d5. Streamlit audit history now blocks display on review integrity failure, commit 05aa0aed.
