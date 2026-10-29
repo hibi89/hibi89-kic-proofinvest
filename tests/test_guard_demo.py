@@ -15,6 +15,15 @@ class GuardDemoTests(unittest.TestCase):
             ["HOLD", "REJECT", "APPROVE"],
         )
         self.assertEqual(receipt["runs"][2]["review_action"], "AUTHORIZE_SIMULATION")
+        self.assertEqual(receipt["audited_run_count"], 4)
+        self.assertEqual(
+            receipt["source_kind"],
+            "MIXED_SYNTHETIC_AND_MANUALLY_CURATED_UNAUTHENTICATED",
+        )
+        self.assertEqual(
+            receipt["curated_sec"]["source_kind"],
+            "HUMAN_CURATED_FROM_PUBLIC_SEC_10K_NOT_RAW_API",
+        )
         self.assertEqual(receipt["curated_sec"]["status"], "calculated_unverified")
         self.assertEqual(receipt["curated_sec"]["guard_decision"], "HOLD")
         self.assertFalse(receipt["curated_sec"]["external_source_authenticated"])
