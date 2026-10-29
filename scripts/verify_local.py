@@ -86,6 +86,24 @@ def main(argv=None) -> int:
             "failed":0 if passed else "SEE_TEST_LOG",
             "exit_code":process.returncode,"log":"tests.log",
         }
+        if not passed:
+            # CI used to report only SEE_TEST_LOG, hiding the failing test
+            # inside an ephemeral temp directory. Print bounded unittest
+            # failure sections without dumping successful test output.
+            markers=list(re.finditer(r"(?m)^(?:FAIL|ERROR): [^\\n]+$", text))
+            for item in markers[:5]:
+                section=text[item.start():]
+                stop=section.find("\\n======================================================================",1)
+                if stop>=0:
+                    section=section[:stop]
+                print("UNittest failure diagnostic:\\n"+section[:2400],file=sys.stderr)
+            tail=re.search(r"(?m)^FAILED \\([^\\n]+\\)$",text)
+            if tail:
+                print(tail.group(0),file=sys.stderr)
+            if not markers:
+                print("UNittest exit code:",process.returncode,
+                      "last lines:", "\\n".join(text.splitlines()[-12:])[:1600],
+                      file=sys.stderr)
     except subprocess.TimeoutExpired:
         details["tests"]["status"]="FAIL"
         details["tests"]["reason_code"]="TEST_TIMEOUT"
