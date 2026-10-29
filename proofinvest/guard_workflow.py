@@ -34,6 +34,7 @@ def run_guard_review(
         raise ValueError("Explicit reviewer, action and reason are all required")
     mapped = evaluate_sec_guard(sec_verdict, risk=risk)
     request = {
+        "sec_verdict": dict(sec_verdict),
         "sec_status": mapped["sec_status"],
         "source_authenticated": False,
         "risk": dict(risk) if risk is not None else None,
