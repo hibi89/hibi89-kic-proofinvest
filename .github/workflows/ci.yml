@@ -128,6 +128,7 @@ jobs:
           path: |
             /tmp/kic-guard-browser/guard-browser-clickthrough.png
             /tmp/kic-guard-browser/intent-router-browser.png
+            /tmp/kic-guard-browser/dl-guard-browser-report.png
             /tmp/kic-guard-browser/mock-llm-proposal-accepted.png
             /tmp/kic-guard-browser/mock-llm-proposal-blocked.png
             /tmp/kic-guard-browser/guard-browser-evidence.json

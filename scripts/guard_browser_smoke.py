@@ -129,6 +129,44 @@ def run(output: Path) -> dict:
                             "Guard 결정 감사 체인 검증 통과 (로컬 무결성만)"
                         )).to_be_visible(timeout=15000)
                         page.screenshot(path=str(output / "guard-browser-clickthrough.png"), full_page=True)
+                        # Verify the NEW DL/Guard report screen through a real
+                        # Chromium click: no implicit disk writes, no SEC calls.
+                        dl_picker = page.get_by_role("combobox", name="자료 유형")
+                        dl_picker.click()
+                        dl_picker.fill("DL → Guard → SQLite 감사 보고서")
+                        page.get_by_role(
+                            "option", name="DL → Guard → SQLite 감사 보고서 — 오프라인"
+                        ).click(timeout=10000)
+                        expect(page.get_by_text(
+                            "ProofInvest — DL → Guard 감사 보고서"
+                        )).to_be_visible(timeout=15000)
+                        if not page.get_by_role(
+                            "button", name="합성 DL → Guard 감사·보고서 실행"
+                        ).is_visible():
+                            raise AssertionError("Missing explicit DL Guard run button")
+                        page.get_by_role(
+                            "button", name="합성 DL → Guard 감사·보고서 실행"
+                        ).click()
+                        expect(page.get_by_text(
+                            "합성 자료 E2E 실행 및 임시 감사 검증 완료"
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "HOLD", exact=True
+                        ).first).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "PASS", exact=True
+                        ).first).to_be_visible(timeout=15000)
+                        if not db.is_file():
+                            raise AssertionError("Existing curated Guard ledger missing")
+                        with sqlite3.connect(db) as existing:
+                            if existing.execute(
+                                "SELECT count(*) FROM guard_audit_events"
+                            ).fetchone()[0] != 1:
+                                raise AssertionError("Synthetic DL run wrote curated Guard DB")
+                        page.screenshot(
+                            path=str(output / "dl-guard-browser-report.png"),
+                            full_page=True,
+                        )
                         # Exercise the separate deterministic question router
                         # in a real Chromium session, never a live LLM agent.
                         # Search the selectbox rather than assuming all
@@ -225,6 +263,8 @@ def run(output: Path) -> dict:
                     "trade_executed": False,
                     "screenshot": "guard-browser-clickthrough.png",
                     "router_screenshot": "intent-router-browser.png",
+                    "dl_guard_screenshot": "dl-guard-browser-report.png",
+                    "dl_guard_status": "SYNTHETIC_HOLD_WITH_VERIFIED_TEMP_AUDIT",
                     "router_status": "REJECT",
                     "router_intent": "GROWTH_CHECK",
                     "mock_llm_api_calls": 0,
