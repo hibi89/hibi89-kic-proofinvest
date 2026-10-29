@@ -90,7 +90,7 @@ def run(output: Path) -> dict:
                         if not db.is_file():
                             raise AssertionError("Explicit Guard click did not create SQLite audit")
 
-                        page.get_by_text("사람 검토 기록 — 로컬 모의").click()
+                        page.get_by_text("사람 검토 기록 — 로컬 모의").last.click()
                         # Commit each Streamlit input sequentially. Filling a
                         # second field during the first widget rerun can lose
                         # the value before the user has a chance to submit.
@@ -112,7 +112,7 @@ def run(output: Path) -> dict:
                         review_button = page.get_by_role("button", name="검토 기록 저장", exact=True)
                         if review_button.count() == 0 or not review_button.is_visible():
                             # Streamlit may close the expander on a rerender.
-                            page.get_by_text("사람 검토 기록 — 로컬 모의").click()
+                            page.get_by_text("사람 검토 기록 — 로컬 모의").last.click()
                         expect(review_button).to_be_visible(timeout=10000)
                         review_button.click()
                         # A successful Streamlit form submit rerenders a collapsed
@@ -120,7 +120,7 @@ def run(output: Path) -> dict:
                         success_message = page.get_by_text("모의 검토 기록 저장 완료")
                         expect(success_message).to_have_count(1, timeout=15000)
                         if not success_message.is_visible():
-                            page.get_by_text("사람 검토 기록 — 로컬 모의").click()
+                            page.get_by_text("사람 검토 기록 — 로컬 모의").last.click()
                         expect(success_message).to_be_visible(timeout=10000)
 
                         page.get_by_text("저장된 Guard 감사 이력 조회").click()
