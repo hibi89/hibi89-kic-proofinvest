@@ -179,6 +179,28 @@ def _render_sec_curated_case(st) -> None:
     st.json({"reason_codes": guard_preview["guard"]["reason_codes"],
              "policy_version": guard_preview["guard"]["policy_version"],
              "source_authenticated": False, "trade_executed": False})
+    # Persist only on explicit click. This is a local demo acknowledgement,
+    # never an investment authorization or authenticated SEC attestation.
+    if st.button("Guard 판정·감사 기록 저장 (로컬 모의)", key="guard_sec_record"):
+        try:
+            import hashlib
+            from proofinvest.guard_workflow import run_guard_review
+            local_dir = Path.home() / ".proofinvest-guard"
+            local_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+            key = "|".join([date_choices[asof_label], str(growth_choices[claim_label])])
+            run_id = "curated-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+            receipt = run_guard_review(
+                verdict, run_id=run_id,
+                database_path=local_dir / "audit.sqlite",
+            )
+            st.success("로컬 감사 기록 저장 완료" if not receipt["audit"]["replayed"]
+                       else "기존 감사 기록 재조회 (중복 저장 없음)")
+            st.json({"run_id": run_id, "guard": receipt["guard"]["decision"],
+                     "audit_event_id": receipt["audit"]["event_id"],
+                     "audit_hash": receipt["audit"]["event_hash"],
+                     "human_review": "NOT_REQUESTED", "trade_executed": False})
+        except (ValueError, OSError, TypeError, KeyError, ImportError) as exc:
+            st.error("감사 기록 저장 또는 검증 실패 — 승인되지 않았습니다.")
     if verdict["status"] == "unavailable":
         st.warning(
             "기준일 또는 증거가 검증 요건에 맞지 않아 계산 보류: "
