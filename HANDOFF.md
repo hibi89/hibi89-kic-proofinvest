@@ -1,3 +1,9 @@
+## 2026-10-29 KST — Review integrity hardening
+- Added verify_reviews() for stored human review digest and stored Guard eligibility, within same SQLite connection/transaction; commits 88b2be2c, 002f1e2e, a0613927.
+- Added two regression tests, commit 6299d6d5. Streamlit audit history now blocks display on review integrity failure, commit 05aa0aed.
+- No actual test execution/CI verification. Local hashes are not externally anchored, and deletion/rewrite by privileged editors is not prevented.
+- Provisional 73% implementation estimate, +3pp, 9–16 focused hours remaining; prioritize actual Python tests and full UI runtime before any larger completion claim.
+
 ## 2026-10-29 KST — Human review and audit history UI
 - Curated SEC Streamlit view adds explicit review recording UI: reviewer, ACKNOWLEDGE/REQUEST_EXCEPTION, reason; writes to SQLite only on click. Commit 7d1827445352183fc6c0c563b7aace2fb4c77da8.
 - Adds on-demand Guard decision hash-chain validation and last 50 event receipts. Commit 86ca51e56526138de21a2466a17b453fe19de845.
