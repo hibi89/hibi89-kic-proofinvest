@@ -120,6 +120,12 @@ class GuardAuditStore:
                 ).fetchone()
                 if registry is None or registry[1] != payload or registry[2] != event_id:
                     return False
+                try:
+                    decoded = json.loads(payload)
+                    if decoded["request_hash"] != registry[0]:
+                        return False
+                except (KeyError, ValueError, TypeError):
+                    return False
                 previous = digest
             return conn.execute("SELECT COUNT(*) FROM guard_run_registry").fetchone()[0] == len(rows)
         finally:
