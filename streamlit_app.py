@@ -15,6 +15,7 @@ _SOURCE_MANUAL = "삼성전자 공개 재무제표 수동검산 (2024/2023)"
 _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (2025/2024)"
 _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
+_SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -555,7 +556,14 @@ def render_app(st) -> None:
     dl_replay = Path(__file__).resolve().parent / "proofinvest/kic_dl_original_demo.py"
     if dl_archive.is_file() and dl_replay.is_file():
         available_sources.append(_SOURCE_DL_ARCHIVE)
+    router_file = Path(__file__).resolve().parent / "proofinvest/intent_router_ui.py"
+    if router_file.is_file():
+        available_sources.append(_SOURCE_INTENT_ROUTER)
     source = st.selectbox("자료 유형", available_sources)
+    if source == _SOURCE_INTENT_ROUTER:
+        from proofinvest.intent_router_ui import render_router
+        render_router(st)
+        return
     if source == _SOURCE_DL_ARCHIVE:
         _render_dl_archive_case(st)
         return
