@@ -106,12 +106,18 @@ def evaluate_model_proposal(
         output["status"] = "needs_clarification"
         output["reason_code"] = "MODEL_REQUESTS_CLARIFICATION"
         return output
-    # Deterministic, local read-only execution independent of model inputs.
-    # The router handles all malformed, mixed, missing or unsupported requests.
-    local = route_question(question)
-    if local["selected_intent"] != intent or local["selected_intent"] is None:
+    # Validate solely from the ORIGINAL question *before* touching any
+    # local evidence or Guard function. Model mismatches get zero tool calls.
+    preflight = route_question(question, dry_run=True)
+    if (preflight["status"] != "ready"
+            or preflight["selected_intent"] != intent
+            or preflight["selected_intent"] is None
+            or preflight["tool_calls"]):
         output["reason_code"] = "MODEL_INTENT_MISMATCH_OR_UNSUPPORTED_REQUEST"
         return output
+    # Now the independently selected intent agrees: only allowlisted,
+    # deterministic, offline tools can run with parser-derived parameters.
+    local = route_question(question)
     if len(local["tool_calls"]) > 2 or local["external_tool_calls"] != 0:
         output["reason_code"] = "LOCAL_TOOL_BUDGET_ORIGIN_FAILURE"
         return output
