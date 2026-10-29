@@ -9,7 +9,7 @@ No mutation to `lead/kic`, `feature/disclosure-lightning` or the AutoML source r
 - **Original KIC engine unchanged**: `disclosure_lightning/core.py` and `originals.py` were restored byte-for-byte from `lead/kic` after the first direct overlay caused CI regressions. Existing `proofinvest/dl_bridge.py`, Guard and SEC pipeline remain in place.
 - **Complete newer DL source**: `integrations/dl_vendor/` contains the pinned `feature/disclosure-lightning@760ddd3a0e4ad5814e76146c0d536bebc4520f81` package (core, originals, companyfacts, extract, history, xbrl, fixtures and CLI) under an isolated Python namespace.
 - **DL regression suites**: original reference tests preserved under `integrations/dl_vendor/reference_tests/`; ported, runnable tests under `tests/test_kic_dl_vendor_{companyfacts,extract,xbrl}.py`.
-- **Optional AutoML reference only**: `integrations/automl_source/evaluator.py` and `model_selector.py` came from `hibi89/AI_AutoML_Analyst` main at fetch time; commit was not pinned. Not wired into runtime. Time-series chronology and leakage validation are outstanding.
+- **AutoML reference + narrow adapted baseline**: `integrations/automl_source/evaluator.py` and `model_selector.py` are still reference-only; they are NOT imported or run. The separate KIC-authored `proofinvest/temporal_baseline.py` uses only a deterministic train-mean baseline (no sklearn dependency) with strict point-in-time, publication-vintage, rights and train/holdout gates, and returns `NO_TRAIN` for all non-self-authored source data. No live financial data or financial ML fit has occurred.
 - **KIC vendor evidence-to-Guard adapter**: `proofinvest/dl_vendor_evidence.py` reads SHA-checked, date-scoped locally stored primary filing bytes via vendor DL, extracts bounded human-review text candidates and passes an unavailable-numeric verdict to the deterministic Guard. Result is **HOLD** and never promotes text to authenticated SEC numeric evidence, approves a trade or calls the network.
 - **Integration regression tests**: `tests/test_kic_dl_vendor_evidence.py` covers archived synthetic original -> text candidates -> Guard HOLD, missing evidence, SHA mismatch, cutoff, input bounds, and noncreation of absent SQLite DB.
 
@@ -66,8 +66,29 @@ Previous milestone 5/8 at the CLI-only phase is historical; the current scoped i
 
 ## Remaining ordered gates
 
-1. Independently validate the new UI on the owner's intended Windows machine (CI Chromium completed; Windows remains unverified).
-2. Integrate only needed AutoML capability after chronological evaluation, leakage controls, baselines, and evidence-scope checks.
-3. Produce and independently check the official <=10-page preliminary PDF before 2026-11-12 10:00 KST; final submission requires separate owner approval.
+1. Owner independently validates the new UI on the intended Windows machine (CI Chromium and synthetic UI completed; Windows remains unverified).
+2. Owner reviews the latest separate PRIVATE 10-page organizer-template-based PDF and exact proposed title; PDF bytes are not kept in this PUBLIC repository.
+3. After explicit owner approval, repeat exact-byte organizer preflight and use authorized DAKER account to submit before **2026-11-12 10:00 KST**; only an actual DAKER receipt can prove submission.
 
-**Completion measurement (integration workstream only):** **5 of 8 = 62.5%**; main branch's previous **84%** implementation estimate is separate and preliminary. No current evidence for a measured total KIC product completion percentage.
+**Historical** 5/8 reflected the prior CLI-only phase. Current integration status and the complete 8-item denominator appear below; the main branch's older **84%** estimate used a different scope and must not be combined.
+
+## Current technical milestone ledger (2026-10-30 KST)
+
+Verified code SHA: `2bfa1717bce9cde45033b95d17594976600a9311` on `feature/kic-integrated-components`.
+GitHub Actions full workflow: [40911940757](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/40911940757) **SUCCESS**:
+Python tests **702/702 PASS, 0 failed, 0 skipped**, syntax **131 PASS**; Playwright Chromium Guard/DL click-through **SUCCESS**.
+
+- 1/8 — Dedicated isolated KIC integration branch and source assembly: **DONE**
+- 2/8 — KIC DL baseline contract restored; newer DL package isolated: **DONE**
+- 3/8 — Saved original text candidates linked to fail-closed Guard: **DONE**
+- 4/8 — Offline source/date/tamper/integration regression verification: **DONE**
+- 5/8 — Guard + human review + SQLite hash-chain and report CLI: **DONE**
+- 6/8 — Streamlit DL audit view + actual Chromium synthetic click-through: **DONE**
+- 7/8 — KIC-authored narrow chronological baseline and synthetic UI: **DONE**; the generic AutoML runtime remains unused. Train-only mean vs future holdout, available-at/revision time gates, date/group controls, actual data NO_TRAIN, no trained ML or prediction. 702 PASS includes these unit/AppTests.
+- 8/8 — Exact official PDF reviewed/approved, authorized DAKER submission and receipt: **BLOCKED** (private V6 draft was QA checked offline, but neither user approval nor submission has occurred).
+
+**Verified integration workstream: 7/8 = 87.5% (~88%).** This denominator describes only the eight scoped workstream milestones; it is not KIC production readiness, real SEC authentication, finalist model quality, live deployment or full official contest completion.
+
+Private proposal status: a distinct **V6 owner-review-only** PDF/PPTX was prepared from the organizer-style editable base, 10 pages/10 slides and 258 preserved shape geometries; six historical CI labels were updated from 680 to **702**, to match run 40911940757. Private file bytes and packet remain outside PUBLIC GitHub. Its visual/content and exact-title owner approval, organizer eligibility, authenticated DAKER final upload and receipt are separate unpassed gates. Do not silently change the earlier pinned `scripts/kic_submission_preflight.py` file hash or bypass its refusal of unapproved revisions.
+
+All runs described above are **offline synthetic or manually curated**. SEC filing provenance, lawful live external macro feeds, actual financial ML performance, investment actions, authorized external deployment and user's Windows runtime remain unverified.
