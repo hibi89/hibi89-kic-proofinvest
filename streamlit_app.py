@@ -17,6 +17,7 @@ _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_DL_GUARD = "DL → Guard → SQLite 감사 보고서 — 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
+_SOURCE_TEMPORAL_BASELINE = "AutoML 시간순 검증 — 합성 기준 모델"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -559,10 +560,16 @@ def render_app(st) -> None:
         available_sources.append(_SOURCE_DL_ARCHIVE)
     if (Path(__file__).resolve().parent / "proofinvest/dl_guard_ui.py").is_file():
         available_sources.append(_SOURCE_DL_GUARD)
+    if (Path(__file__).resolve().parent / "proofinvest/temporal_baseline_ui.py").is_file():
+        available_sources.append(_SOURCE_TEMPORAL_BASELINE)
     router_file = Path(__file__).resolve().parent / "proofinvest/intent_router_ui.py"
     if router_file.is_file():
         available_sources.append(_SOURCE_INTENT_ROUTER)
     source = st.selectbox("자료 유형", available_sources)
+    if source == _SOURCE_TEMPORAL_BASELINE:
+        from proofinvest.temporal_baseline_ui import render_temporal_baseline
+        render_temporal_baseline(st)
+        return
     if source == _SOURCE_INTENT_ROUTER:
         from proofinvest.intent_router_ui import render_router
         render_router(st)

@@ -42,7 +42,7 @@ def _ready() -> None:
 
 
 def run(output: Path) -> dict:
-    from playwright.sync_api import sync_playwright, expect
+    from playwright.sync_api import sync_playwright, expect, TimeoutError as PlaywrightTimeoutError
 
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="kic-guard-browser-home-") as home:
@@ -131,12 +131,23 @@ def run(output: Path) -> dict:
                         page.screenshot(path=str(output / "guard-browser-clickthrough.png"), full_page=True)
                         # Verify the NEW DL/Guard report screen through a real
                         # Chromium click: no implicit disk writes, no SEC calls.
-                        dl_picker = page.get_by_role("combobox", name="자료 유형")
-                        dl_picker.click()
-                        dl_picker.fill("DL → Guard → SQLite 감사 보고서")
-                        page.get_by_role(
-                            "option", name="DL → Guard → SQLite 감사 보고서 — 오프라인"
-                        ).click(timeout=10000)
+                        # Streamlit selectbox options can be virtualized and its
+                        # keyword filter asynchronously re-rendered. Retry the
+                        # *same exact destination* with shorter search terms.
+                        # A failed search must never select another source.
+                        option_name = "DL → Guard → SQLite 감사 보고서 — 오프라인"
+                        for search_term in ("감사", "DL", "SQLite"):
+                            dl_picker = page.get_by_role("combobox", name="자료 유형")
+                            dl_picker.click()
+                            dl_picker.fill(search_term)
+                            option = page.get_by_role("option", name=option_name, exact=True)
+                            try:
+                                option.click(timeout=4500)
+                                break
+                            except PlaywrightTimeoutError:
+                                dl_picker.press("Escape")
+                        else:
+                            raise AssertionError("DL Guard screen option unavailable after bounded retries")
                         expect(page.get_by_text(
                             "ProofInvest — DL → Guard 감사 보고서"
                         )).to_be_visible(timeout=15000)
