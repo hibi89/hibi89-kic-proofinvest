@@ -297,9 +297,12 @@ class DisclosureLightningTests(unittest.TestCase):
             )
             self.assertEqual(received, self.raw)
             opener.return_value.open.assert_called_once()
+        # A mocked HTTP fetch is observed now, not retrospectively at a
+        # historical cutoff. Preserve production's fail-closed as-of rule.
+        observed_at = core._timestamp()
         index = core.index_submissions(
-            received, cik=CIK, as_of="2026-10-27", forms=FORMS,
-            provenance="SEC_HTTPS_RESPONSE",
+            received, cik=CIK, as_of=observed_at[:10], forms=FORMS,
+            provenance="SEC_HTTPS_RESPONSE", collected_at=observed_at,
         )
         self.assertEqual(index["filings"][0]["evidence_status"],
                          "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED")
