@@ -1,0 +1,649 @@
+"""DL original-filing byte collector: saved SEC index → bounded primary document.
+
+Two strict modes: caller-supplied offline file (UNVERIFIED) or one explicitly
+opted-in official SEC archive HTTP GET with genuine contact. Original file bytes
+are stored unchanged, by SHA-256, separately from SEC submissions JSON.
+No inferred issuer numbers, HTML parsing, historical authentication, or ML.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import http.client
+import json
+import os
+import re
+import sqlite3
+import stat
+import sys
+import urllib.error
+import urllib.request
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
+
+from . import core
+from .core import (
+    _NoRedirect, _bounded_sec_get, _timestamp, _valid_user_agent, cik10, parse_day,
+)
+
+MAX_FILING_BYTES = 25_000_000
+ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
+DOCNAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,199}\Z", re.ASCII)
+MIME_TYPES = frozenset({
+    "text/html", "text/plain", "text/xml", "application/xml",
+    "application/xhtml+xml",
+})
+
+
+def _accession(value: str) -> str:
+    if not isinstance(value, str) or ACCESSION.fullmatch(value) is None:
+        raise ValueError("SEC accession must match NNNNNNNNNN-YY-NNNNNN")
+    return value
+
+
+def _db_path(db_path: Path) -> Path:
+    supplied = Path(db_path).expanduser()
+    if supplied.is_symlink() or not supplied.is_file():
+        raise ValueError("A real previously indexed SQLite DB is required")
+    return supplied.resolve()
+
+
+def _read_conn(db_path: Path):
+    uri = _db_path(db_path).as_uri() + "?mode=ro"
+    db = sqlite3.connect(uri, uri=True)
+    db.execute("PRAGMA query_only=ON")
+    return db
+
+
+def locate_original(db_path: Path, *, cik: str, accession: str,
+                    as_of: str | None = None) -> dict:
+    """Allow only primary SEC filing URL already anchored in saved metadata."""
+    cik, accession = cik10(cik), _accession(accession)
+    with closing(_read_conn(db_path)) as conn:
+        if as_of is None:
+            row = conn.execute(
+                "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+                "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id "
+                "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
+                "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=?",
+                (core.MAX_JSON_BYTES, cik, accession),
+            ).fetchone()
+        else:
+            cutoff_day = parse_day(as_of).isoformat()
+            row = conn.execute(
+                "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+                "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id "
+                "FROM filings AS f JOIN observations AS o ON o.id=f.first_observation_id "
+                "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
+                "AND json_extract(f.filing_json,'$.filed_at')<=? "
+                "AND julianday(json_extract(f.filing_json,'$.collected_at'))<julianday(?) + 1 "
+                "AND julianday(o.seen_at)<julianday(?) + 1",
+                (core.MAX_JSON_BYTES, cik, accession, cutoff_day, cutoff_day, cutoff_day),
+            ).fetchone()
+    if row is None:
+        if as_of is not None:
+            raise ValueError("SEC filing was not available by as-of date")
+        raise ValueError("SEC filing ID not found in the indexed SQLite evidence")
+    filing_json, index_raw, index_digest, provenance, first_seen, observation_id = row
+    receipt = json.loads(filing_json)
+    _verify_indexed_locator(
+        receipt, index_raw, index_digest, provenance, first_seen, cik,
+        db_path=db_path, observation_id=observation_id,
+    )
+    return _validate_locator_receipt(receipt, cik, accession)
+
+
+def _verify_indexed_locator(receipt: dict, raw: bytes, digest: str,
+                            provenance: str, first_seen: str, cik: str,
+                            *, db_path: Path, observation_id: int) -> None:
+    if (not isinstance(raw, bytes) or not isinstance(digest, str)
+            or hashlib.sha256(raw).hexdigest() != digest
+            or first_seen != receipt.get("collected_at")
+            or digest != receipt.get("index_raw_sha256")):
+        raise ValueError("SEC index source integrity failed")
+    payload = core._validate_raw(raw)
+    core._verify_stored_filing(
+        receipt, payload=payload, observation_sha256=digest,
+        provenance=provenance, cik=cik,
+    )
+    if "cik" in payload:
+        return
+    with closing(_read_conn(db_path)) as conn:
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name IN ('history_page_receipts','history_page_receipt_versions')"
+        )}
+        linked_pages = []
+        if "history_page_receipts" in tables:
+            linked_pages.extend(conn.execute(
+                "SELECT page_name,page_sha256 FROM history_page_receipts "
+                "WHERE issuer_cik=? AND observation_id=?", (cik, observation_id),
+            ).fetchall())
+        if "history_page_receipt_versions" in tables:
+            linked_pages.extend(conn.execute(
+                "SELECT page_name,page_sha256 FROM history_page_receipt_versions "
+                "WHERE issuer_cik=? AND observation_id=?", (cik, observation_id),
+            ).fetchall())
+    if linked_pages:
+        expected_name = receipt.get("index_source_uri", "").rsplit("/", 1)[-1]
+        if (expected_name, digest) not in {
+                (page_name, page_sha256) for page_name, page_sha256 in linked_pages}:
+            raise ValueError("Historical page URI does not match its pinned receipt")
+
+
+def _validate_locator_receipt(receipt: dict, cik: str, accession: str) -> dict:
+    prefix = ("https://www.sec.gov/Archives/edgar/data/"
+              f"{int(cik)}/{accession.replace('-', '')}/")
+    url = receipt.get("source_uri")
+    if (not isinstance(url, str) or not url.startswith(prefix)
+            or len(url) > len(prefix) + 200):
+        raise ValueError("Primary document URL not established by metadata")
+    name = url[len(prefix):]
+    if DOCNAME.fullmatch(name) is None or name.startswith(".") or ".." in name:
+        raise ValueError("Unsafe SEC primary document path")
+    if (receipt.get("issuer_cik") != cik or receipt.get("accession") != accession
+            or receipt.get("provider") != "SEC_EDGAR"
+            or receipt.get("raw_sha256") is not None
+            or receipt.get("evidence_status") not in (
+                "OFFLINE_SOURCE_UNVERIFIED",
+                "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED",
+            )):
+        raise ValueError("Unexpected SEC metadata contract")
+    return receipt
+
+
+def _read_local(path: Path) -> bytes:
+    source = Path(path).expanduser()
+    if source.is_symlink():
+        raise ValueError("Symlink original input forbidden")
+    fd = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(fd, "rb") as handle:
+        meta = os.fstat(handle.fileno())
+        if not stat.S_ISREG(meta.st_mode) or not 0 < meta.st_size <= MAX_FILING_BYTES:
+            raise ValueError("Original file must be a bounded regular file")
+        data = handle.read(MAX_FILING_BYTES + 1)
+    if not 0 < len(data) <= MAX_FILING_BYTES:
+        raise ValueError("Original file must contain 1..25MB")
+    return data
+
+
+def fetch_original(*, receipt: dict, user_agent: str,
+                   allow_network: bool = False) -> tuple[bytes, str]:
+    """One explicit official GET operation with bounded transient retries only."""
+    if not allow_network:
+        raise ValueError("Explicit --allow-network is required")
+    if not _valid_user_agent(user_agent):
+        raise ValueError("Actual non-placeholder contact-bearing SEC User-Agent required")
+    if receipt.get("evidence_status") != "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED":
+        raise ValueError("Live original fetch requires previously indexed SEC HTTPS metadata")
+    cik, accession = cik10(receipt.get("issuer_cik")), _accession(receipt.get("accession"))
+    prefix = ("https://www.sec.gov/Archives/edgar/data/"
+              f"{int(cik)}/{accession.replace('-', '')}/")
+    url = receipt.get("source_uri")
+    name = url[len(prefix):] if isinstance(url, str) and url.startswith(prefix) else ""
+    if (not name or DOCNAME.fullmatch(name) is None
+            or name.startswith(".") or ".." in name):
+        raise ValueError("SEC original URL must match its CIK/accession and primary filename")
+    content, kind, _, _ = _fetch_original_http(
+        url, user_agent=user_agent,
+    )
+    return content, kind
+
+
+def _valid_etag(value: object) -> bool:
+    return (isinstance(value, str) and len(value) <= 512
+            and re.fullmatch(r'(?:W/)?"[\x21\x23-\x7e]*"', value, re.ASCII) is not None)
+
+
+def _fetch_original_http(url: str, *, user_agent: str,
+                         cached: dict | None = None) -> tuple[bytes, str, str | None, bool]:
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": "text/html,application/xhtml+xml,text/plain,application/xml,text/xml",
+        "Accept-Encoding": "identity",
+    }
+    if cached is not None:
+        data, etag, digest = cached.get("raw"), cached.get("etag"), cached.get("sha256")
+        if (cached.get("source_uri") != url or not isinstance(data, bytes)
+                or not _valid_etag(etag) or not isinstance(digest, str)
+                or hashlib.sha256(data).hexdigest() != digest
+                or not 0 < len(data) <= MAX_FILING_BYTES
+                or cached.get("content_type") not in MIME_TYPES):
+            raise ValueError("SEC archive conditional cache failed integrity validation")
+        headers["If-None-Match"] = etag
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+    def read_response(response):
+        if response.geturl() != url or response.status != 200:
+            raise ValueError("SEC archive returned redirect or non-200 response")
+        kind = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if kind not in MIME_TYPES:
+            raise ValueError("SEC primary file has unsupported content-type")
+        length = response.headers.get("Content-Length")
+        if length is not None and (not length.isdecimal()
+                                   or not 0 < int(length) <= MAX_FILING_BYTES):
+            raise ValueError("SEC primary file advertised invalid size")
+        body = response.read(MAX_FILING_BYTES + 1)
+        response_etag = response.headers.get("ETag")
+        return body, kind, response_etag if _valid_etag(response_etag) else None, False
+
+    def read_not_modified(error):
+        if cached is None:
+            raise ValueError("SEC archive returned 304 without a hash-verified cached original")
+        if error.geturl() != url:
+            raise ValueError("SEC archive 304 response URL mismatch")
+        value = error.headers.get("ETag")
+        if value is not None and not _valid_etag(value):
+            raise ValueError("SEC archive returned an invalid ETag")
+        return cached["raw"], cached["content_type"], value or cached["etag"], True
+
+    try:
+        content, kind, etag, unchanged = _bounded_sec_get(
+            opener, req, read_response, read_not_modified=read_not_modified,
+        )
+    except (urllib.error.URLError, http.client.HTTPException, OSError,
+            TimeoutError) as exc:
+        raise ValueError(f"SEC archive request failed: {type(exc).__name__}") from exc
+    if not 0 < len(content) <= MAX_FILING_BYTES:
+        raise ValueError("SEC original response was empty or oversized")
+    return content, kind, etag, unchanged
+
+
+def _load_original_http_cache(db_path: Path, receipt: dict) -> dict | None:
+    with closing(_read_conn(db_path)) as db:
+        has_table = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='original_http_validators'"
+        ).fetchone()
+        if has_table is None:
+            return None
+        row = db.execute(
+            "SELECT v.etag,v.sha256,CASE WHEN length(r.file_bytes) BETWEEN 1 AND ? "
+            "THEN r.file_bytes END,r.content_type,r.source_uri "
+            "FROM original_http_validators AS v JOIN original_filing_receipts AS r "
+            "ON r.issuer_cik=v.issuer_cik AND r.accession=v.accession AND r.sha256=v.sha256 "
+            "WHERE v.issuer_cik=? AND v.accession=? AND v.source_uri=? "
+            "ORDER BY v.updated_at DESC LIMIT 1",
+            (MAX_FILING_BYTES, receipt["issuer_cik"], receipt["accession"],
+             receipt["source_uri"]),
+        ).fetchone()
+    if row is None:
+        return None
+    etag, digest, raw, kind, source_uri = row
+    if (not _valid_etag(etag) or not isinstance(raw, bytes)
+            or hashlib.sha256(raw).hexdigest() != digest
+            or source_uri != receipt["source_uri"]):
+        raise ValueError("Stored SEC archive conditional cache failed integrity validation")
+    return {"etag": etag, "sha256": digest, "raw": raw,
+            "content_type": kind, "source_uri": source_uri}
+
+
+def fetch_original_with_cache(*, db_path: Path, receipt: dict, user_agent: str,
+                              allow_network: bool = False) -> tuple[bytes, str, str | None, bool]:
+    """Explicit archive GET with a hash-checked, source-bound optional ETag cache."""
+    if not allow_network:
+        raise ValueError("Explicit --allow-network is required")
+    if not _valid_user_agent(user_agent):
+        raise ValueError("Actual non-placeholder contact-bearing SEC User-Agent required")
+    cik = cik10(receipt.get("issuer_cik"))
+    accession = _accession(receipt.get("accession"))
+    persisted = locate_original(db_path, cik=cik, accession=accession)
+    if persisted != receipt:
+        raise ValueError("SEC archive locator does not match persisted indexed metadata")
+    if receipt.get("evidence_status") != "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED":
+        raise ValueError("Live original fetch requires previously indexed SEC HTTPS metadata")
+    cached = _load_original_http_cache(db_path, persisted)
+    return _fetch_original_http(receipt["source_uri"], user_agent=user_agent, cached=cached)
+
+
+def persist_original(*, db_path: Path, receipt: dict, raw: bytes,
+                     kind: str, origin: str, etag: str | None = None,
+                     http_not_modified: bool = False) -> dict:
+    if origin not in ("OFFLINE_FILE_UNVERIFIED", "SEC_HTTPS_RESPONSE_UNVERIFIED"):
+        raise ValueError("Invalid original file provenance")
+    if kind not in MIME_TYPES and kind != "application/octet-stream":
+        raise ValueError("Unsupported original file content type")
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILING_BYTES:
+        raise ValueError("Original SEC bytes missing or excessive")
+    if type(http_not_modified) is not bool:
+        raise ValueError("HTTP cache response flag must be boolean")
+    if etag is not None and (origin != "SEC_HTTPS_RESPONSE_UNVERIFIED"
+                             or not _valid_etag(etag)):
+        raise ValueError("Invalid SEC archive ETag validator")
+    if http_not_modified and (origin != "SEC_HTTPS_RESPONSE_UNVERIFIED" or etag is None):
+        raise ValueError("SEC archive 304 requires a valid persisted validator")
+    location = locate_original(
+        db_path, cik=receipt["issuer_cik"], accession=receipt["accession"]
+    )
+    if location != receipt:
+        raise ValueError("Original filing locator changed since preflight")
+    if origin == "SEC_HTTPS_RESPONSE_UNVERIFIED" and location["evidence_status"] != (
+            "INDEXED_OFFICIAL_HTTP_NOT_FULL_FILING_VERIFIED"):
+        raise ValueError("SEC transport receipt requires original official metadata")
+    digest = hashlib.sha256(raw).hexdigest()
+    db_path = _db_path(db_path)
+    with closing(sqlite3.connect(db_path)) as db:
+        db.execute("PRAGMA busy_timeout=5000")
+        with db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS original_filing_receipts (
+                    issuer_cik TEXT NOT NULL,
+                    accession TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    source_uri TEXT NOT NULL,
+                    retrieved_at TEXT NOT NULL,
+                    input_origin TEXT NOT NULL,
+                    content_type TEXT NOT NULL,
+                    file_bytes BLOB NOT NULL,
+                    PRIMARY KEY (issuer_cik, accession, sha256)
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS original_http_validators (
+                    issuer_cik TEXT NOT NULL,
+                    accession TEXT NOT NULL,
+                    source_uri TEXT NOT NULL,
+                    etag TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (issuer_cik, accession, source_uri),
+                    FOREIGN KEY (issuer_cik, accession, sha256)
+                      REFERENCES original_filing_receipts(issuer_cik, accession, sha256)
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS original_http_checks (
+                    issuer_cik TEXT NOT NULL,
+                    accession TEXT NOT NULL,
+                    source_uri TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    checked_at TEXT NOT NULL,
+                    provenance TEXT NOT NULL,
+                    PRIMARY KEY (issuer_cik, accession, source_uri, checked_at, provenance),
+                    FOREIGN KEY (issuer_cik, accession, sha256)
+                      REFERENCES original_filing_receipts(issuer_cik, accession, sha256)
+                )
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_update
+                BEFORE UPDATE ON original_filing_receipts
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_delete
+                BEFORE DELETE ON original_filing_receipts
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_no_update
+                BEFORE UPDATE ON original_http_checks
+                BEGIN SELECT RAISE(ABORT, 'Original HTTP checks are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_no_delete
+                BEFORE DELETE ON original_http_checks
+                BEGIN SELECT RAISE(ABORT, 'Original HTTP checks are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_receipts_no_replace
+                BEFORE INSERT ON original_filing_receipts
+                WHEN EXISTS(SELECT 1 FROM original_filing_receipts old
+                    WHERE old.issuer_cik=NEW.issuer_cik
+                      AND old.accession=NEW.accession AND old.sha256=NEW.sha256)
+                BEGIN SELECT RAISE(ABORT, 'Original filing receipts are append-only'); END
+            """)
+            db.execute("""
+                CREATE TRIGGER IF NOT EXISTS original_checks_keep_duplicate
+                BEFORE INSERT ON original_http_checks
+                WHEN EXISTS(SELECT 1 FROM original_http_checks old
+                    WHERE old.issuer_cik=NEW.issuer_cik AND old.accession=NEW.accession
+                      AND old.source_uri=NEW.source_uri AND old.checked_at=NEW.checked_at
+                      AND old.provenance=NEW.provenance)
+                BEGIN SELECT RAISE(IGNORE); END
+            """)
+            # The preflight above can race with an external local DB writer.
+            # Recheck the indexed source under the write reservation so this
+            # transaction cannot persist bytes against a stale locator.
+            current_location = locate_original(
+                db_path, cik=location["issuer_cik"], accession=location["accession"]
+            )
+            if current_location != receipt:
+                raise ValueError("Original filing locator changed before persistence")
+            existing = db.execute(
+                "SELECT CASE WHEN length(file_bytes) BETWEEN 1 AND ? THEN file_bytes END "
+                "FROM original_filing_receipts "
+                "WHERE issuer_cik=? AND accession=? AND sha256=?",
+                (MAX_FILING_BYTES, location["issuer_cik"], location["accession"], digest),
+            ).fetchone()
+            if existing is not None:
+                if existing[0] != raw:
+                    raise ValueError("Original SHA-256 digest collision or corrupt evidence")
+                state = "REUSED"
+            else:
+                db.execute(
+                    "INSERT INTO original_filing_receipts VALUES(?,?,?,?,?,?,?,?)",
+                    (location["issuer_cik"], location["accession"], digest,
+                     location["source_uri"], _timestamp(), origin, kind, raw),
+                )
+                state = "SAVED"
+            if origin == "SEC_HTTPS_RESPONSE_UNVERIFIED":
+                if etag is None:
+                    db.execute(
+                        "DELETE FROM original_http_validators "
+                        "WHERE issuer_cik=? AND accession=? AND source_uri=?",
+                        (location["issuer_cik"], location["accession"], location["source_uri"]),
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO original_http_validators"
+                        "(issuer_cik,accession,source_uri,etag,sha256,updated_at) "
+                        "VALUES(?,?,?,?,?,?) ON CONFLICT(issuer_cik,accession,source_uri) "
+                        "DO UPDATE SET etag=excluded.etag,sha256=excluded.sha256,"
+                        "updated_at=excluded.updated_at",
+                        (location["issuer_cik"], location["accession"], location["source_uri"],
+                         etag, digest, _timestamp()),
+                    )
+                db.execute(
+                    "INSERT OR IGNORE INTO original_http_checks VALUES(?,?,?,?,?,?)",
+                    (location["issuer_cik"], location["accession"], location["source_uri"],
+                     digest, _timestamp(), "SEC_HTTPS_304_NOT_MODIFIED" if http_not_modified
+                     else "SEC_HTTPS_RESPONSE"),
+                )
+    return {
+        "status": state, "issuer_cik": location["issuer_cik"],
+        "accession": location["accession"], "source_uri": location["source_uri"],
+        "filing_sha256": digest, "filing_bytes": len(raw),
+        "input_origin": origin,
+        "content_type": kind,
+        "original_filing_retrieved": origin == "SEC_HTTPS_RESPONSE_UNVERIFIED",
+        "authenticated_external_source": False,
+        "http_cache_response_not_modified": http_not_modified,
+        "note": "SHA-256 of saved original bytes, not a certification of filing authenticity.",
+    }
+
+
+def list_originals(*, db_path: Path, cik: str, accession: str,
+                   as_of: str | None = None) -> list[dict]:
+    c, a = cik10(cik), _accession(accession)
+    with closing(_read_conn(db_path)) as db:
+        exists = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='original_filing_receipts'"
+        ).fetchone()
+        if not exists:
+            return []
+        if as_of is None:
+            rows = db.execute(
+                "SELECT r.sha256,r.source_uri,r.retrieved_at,r.input_origin,r.content_type,length(r.file_bytes)"
+                " FROM original_filing_receipts AS r JOIN filings AS f"
+                " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
+                " WHERE r.issuer_cik=? AND r.accession=?"
+                " AND r.source_uri=json_extract(f.filing_json,'$.source_uri')"
+                " ORDER BY r.retrieved_at, r.sha256", (c, a),
+            ).fetchall()
+        else:
+            cutoff_day = parse_day(as_of).isoformat()
+            rows = db.execute(
+                "SELECT r.sha256,r.source_uri,r.retrieved_at,r.input_origin,r.content_type,length(r.file_bytes)"
+                " FROM original_filing_receipts AS r JOIN filings AS f"
+                " ON f.provider='SEC_EDGAR' AND f.issuer_cik=r.issuer_cik AND f.accession=r.accession"
+                " JOIN observations AS o ON o.id=f.first_observation_id"
+                " WHERE r.issuer_cik=? AND r.accession=?"
+                " AND julianday(r.retrieved_at)<julianday(?) + 1"
+                " AND julianday(o.seen_at)<julianday(?) + 1"
+                " AND r.source_uri=json_extract(f.filing_json,'$.source_uri')"
+                " AND json_extract(f.filing_json,'$.filed_at')<=?"
+                " AND julianday(json_extract(f.filing_json,'$.collected_at'))<julianday(?) + 1"
+                " ORDER BY r.retrieved_at, r.sha256",
+                (c, a, cutoff_day, cutoff_day, cutoff_day, cutoff_day),
+            ).fetchall()
+    if rows:
+        location = locate_original(
+            db_path, cik=c, accession=a, as_of=as_of,
+        )
+        if any(uri != location["source_uri"] for _, uri, *_ in rows):
+            raise ValueError("Original receipt source URI does not match the verified index")
+    return [
+        {"filing_sha256": sha, "source_uri": uri, "retrieved_at": when,
+         "input_origin": origin, "content_type": kind, "filing_bytes": length}
+        for sha, uri, when, origin, kind, length in rows
+    ]
+
+
+
+def read_original_bytes(*, db_path: Path, cik: str, accession: str,
+                        sha256: str, as_of: str | None = None) -> bytes:
+    """Read exactly one persisted raw primary document; verify digest on read.
+
+    This returns untrusted original bytes, NOT normalized finance claims.
+    Never render them as trusted HTML without separate sanitization.
+    """
+    c, a = cik10(cik), _accession(accession)
+    if not isinstance(sha256, str) or re.fullmatch(
+            r"[0-9a-f]{64}", sha256, re.ASCII) is None:
+        raise ValueError("Invalid original filing SHA-256")
+    cutoff_day = parse_day(as_of).isoformat() if as_of is not None else None
+    with closing(_read_conn(db_path)) as db:
+        # Keep filing metadata, receipt chronology, and original bytes in one
+        # SQLite read snapshot so a concurrent update cannot cross the as-of
+        # preflight and change which bytes the caller receives.
+        db.execute("BEGIN")
+        has_receipts = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='original_filing_receipts'"
+        ).fetchone()
+        if has_receipts is None:
+            raise KeyError("Original filing receipt not found")
+        row = db.execute(
+            "SELECT f.filing_json,CASE WHEN length(o.response) BETWEEN 1 AND ? "
+            "THEN o.response END,o.sha256,o.provenance,o.seen_at,o.id, "
+            "CASE WHEN length(r.file_bytes) BETWEEN 1 AND ? THEN r.file_bytes END,"
+            "r.source_uri,r.retrieved_at "
+            "FROM filings AS f "
+            "JOIN observations AS o ON o.id=f.first_observation_id "
+            "JOIN original_filing_receipts AS r "
+            "ON r.issuer_cik=f.issuer_cik AND r.accession=f.accession "
+            "WHERE f.provider='SEC_EDGAR' AND f.issuer_cik=? AND f.accession=? "
+            "AND r.sha256=?",
+            (core.MAX_JSON_BYTES, MAX_FILING_BYTES, c, a, sha256),
+        ).fetchone()
+    if row is None:
+        raise KeyError("Original filing receipt not found")
+    (filing_json, index_raw, index_digest, provenance, first_seen, observation_id,
+     raw, source_uri, retrieved_at) = row
+    location = json.loads(filing_json)
+    _verify_indexed_locator(
+        location, index_raw, index_digest, provenance, first_seen, c,
+        db_path=db_path, observation_id=observation_id,
+    )
+    location = _validate_locator_receipt(location, c, a)
+    if source_uri != location["source_uri"]:
+        raise ValueError("Saved original source URI no longer matches indexed locator")
+    if cutoff_day is not None:
+        if (not isinstance(location.get("filed_at"), str)
+                or location["filed_at"] > cutoff_day
+                or not _at_or_before_day(location.get("collected_at"), cutoff_day)
+                or not _at_or_before_day(first_seen, cutoff_day)
+                or not _at_or_before_day(retrieved_at, cutoff_day)):
+            raise ValueError("Original filing bytes were not available by as-of date")
+    if (not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILING_BYTES
+            or hashlib.sha256(raw).hexdigest() != sha256):
+        raise ValueError("Saved original filing content integrity failed")
+    return raw
+
+
+def _at_or_before_day(timestamp: str, cutoff_day: str) -> bool:
+    try:
+        moment = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        if moment.tzinfo is None or moment.utcoffset() is None:
+            return False
+        return moment.astimezone(timezone.utc).date() <= parse_day(cutoff_day)
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="DL original SEC primary document archive (no unverified promotion)"
+    )
+    parser.add_argument("--db", type=Path, required=True)
+    parser.add_argument("--cik", required=True)
+    parser.add_argument("--accession", required=True)
+    parser.add_argument("--as-of", help="Filter read-only receipts by the UTC end of this date")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--input-file", type=Path, help="Offline file input (not SEC-authenticated)")
+    group.add_argument("--allow-network", action="store_true",
+                       help="One SEC archive GET operation (at most 3 attempts)")
+    parser.add_argument("--content-type", choices=tuple(sorted(MIME_TYPES | {"application/octet-stream"})),
+                        default="application/octet-stream",
+                        help="Explicit local file MIME claim (unverified); live MIME is response-derived")
+    parser.add_argument("--list", action="store_true", help="Read-only receipt list")
+    args = parser.parse_args(argv)
+    try:
+        if args.list:
+            if args.input_file or args.allow_network or args.content_type != "application/octet-stream":
+                raise ValueError("Read-only listing cannot import")
+            result = {"status": "READ_ONLY", "receipts": list_originals(
+                db_path=args.db, cik=args.cik, accession=args.accession,
+                as_of=args.as_of,
+            )}
+            if args.as_of is not None:
+                result["as_of"] = parse_day(args.as_of).isoformat()
+        else:
+            if args.as_of is not None:
+                raise ValueError("--as-of is only supported with --list")
+            if not (args.input_file or args.allow_network):
+                raise ValueError("Provide --input-file or --allow-network explicitly")
+            if args.allow_network and args.content_type != "application/octet-stream":
+                raise ValueError("Live content-type comes from HTTP response only")
+            receipt = locate_original(args.db, cik=args.cik, accession=args.accession)
+            if args.input_file:
+                raw = _read_local(args.input_file)
+                kind, origin = args.content_type, "OFFLINE_FILE_UNVERIFIED"
+            else:
+                raw, kind, etag, not_modified = fetch_original_with_cache(
+                    db_path=args.db, receipt=receipt, allow_network=True,
+                    user_agent=os.environ.get("DL_SEC_USER_AGENT", ""),
+                )
+                origin = "SEC_HTTPS_RESPONSE_UNVERIFIED"
+            if args.input_file:
+                result = persist_original(
+                    db_path=args.db, receipt=receipt, raw=raw, kind=kind, origin=origin
+                )
+            else:
+                result = persist_original(
+                    db_path=args.db, receipt=receipt, raw=raw, kind=kind, origin=origin,
+                    etag=etag, http_not_modified=not_modified,
+                )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    except (OSError, sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+        print(json.dumps({
+            "status": "DL_ORIGINAL_FAILED", "reason": str(exc)[:400],
+        }, ensure_ascii=False), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
