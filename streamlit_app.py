@@ -170,6 +170,15 @@ def _render_sec_curated_case(st) -> None:
         "[SEC 공식 접수 페이지](https://www.sec.gov/Archives/edgar/data/"
         "320193/000032019325000079/0000320193-25-000079-index.htm)"
     )
+    # Offline Guard preview: never authorize a real investment action.
+    from proofinvest.guard_sec_adapter import evaluate_sec_guard
+    guard_preview = evaluate_sec_guard(verdict)
+    st.subheader("Guard-Agent — 모의 투자 검토 통제")
+    st.metric("정책 판정", guard_preview["guard"]["decision"])
+    st.caption("수치 검산만 수행 · 부채/자본 위험 근거 없음 → HOLD · 사람 승인/실거래 없음")
+    st.json({"reason_codes": guard_preview["guard"]["reason_codes"],
+             "policy_version": guard_preview["guard"]["policy_version"],
+             "source_authenticated": False, "trade_executed": False})
     if verdict["status"] == "unavailable":
         st.warning(
             "기준일 또는 증거가 검증 요건에 맞지 않아 계산 보류: "
