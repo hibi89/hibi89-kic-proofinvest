@@ -1,3 +1,5 @@
+> **2026-10-29 KST — SEC GUARD INTEGRATION:** Adapter `65895eb4`, 5 authored tests `5bcdc70e`, Streamlit curated SEC Guard preview `1435e34c`. Unverified SEC numbers cannot imply source authentication; no Risk => HOLD. Tests/UI runtime not executed. Audit and human review not yet connected to UI.
+
 > **2026-10-29 KST — HUMAN REVIEW CODE:** `proofinvest/guard_review.py` and six new tests committed (`9af1cc15`, `4c0b92dc`). Separate human review record; simulation-only approval for stored APPROVE decisions; REJECT/HOLD not overridable. Tests NOT executed, no UI/E2E. Review records are not part of existing Guard audit hash chain.
 
 > **2026-10-29 KST — GUARD AUDIT INCREMENT:** `proofinvest/guard_audit.py` adds local SQLite decision events with hash-chain verification and run-id idempotency; `tests/test_guard_audit.py` adds six regression tests (commits `0f2492ba`, `569ded7d`). No external API, no trade, no automatic human signoff. **New tests committed but not executed/CI confirmed in this turn.** Human review workflow, UI and actual ProofInvest E2E remain open; local hash chain is tamper-evident, not immutable.
