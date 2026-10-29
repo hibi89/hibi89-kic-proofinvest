@@ -230,6 +230,31 @@ def _render_sec_curated_case(st) -> None:
                          "trade_executed": False})
             except (ValueError, OSError, TypeError, KeyError, ImportError):
                 st.error("검토 기록 저장 실패 — 승인되지 않았습니다.")
+    with st.expander("저장된 Guard 감사 이력 조회", expanded=False):
+        if st.button("감사 무결성·이력 조회", key="guard_audit_history"):
+            try:
+                from proofinvest.guard_audit import GuardAuditStore
+                import sqlite3
+                db_path = Path.home() / ".proofinvest-guard" / "audit.sqlite"
+                if not db_path.is_file():
+                    st.info("저장된 로컬 감사 기록이 없습니다.")
+                else:
+                    store = GuardAuditStore(db_path)
+                    if not store.verify_chain():
+                        st.error("감사 해시 체인 검증 실패 — 이력 표시를 중단합니다.")
+                    else:
+                        with sqlite3.connect(db_path) as conn:
+                            rows = conn.execute(
+                                "SELECT event_id, run_id, event_type, event_hash, created_at "
+                                "FROM guard_audit_events ORDER BY event_id DESC LIMIT 50"
+                            ).fetchall()
+                        st.success("Guard 결정 감사 체인 검증 통과 (로컬 무결성만)")
+                        st.dataframe([
+                            {"event_id": a, "run_id": b, "type": c, "sha256": d, "UTC": e}
+                            for a, b, c, d, e in rows
+                        ], use_container_width=True, hide_index=True)
+            except (sqlite3.Error, ValueError, OSError, ImportError):
+                st.error("감사 기록을 안전하게 조회할 수 없습니다.")
     if verdict["status"] == "unavailable":
         st.warning(
             "기준일 또는 증거가 검증 요건에 맞지 않아 계산 보류: "
