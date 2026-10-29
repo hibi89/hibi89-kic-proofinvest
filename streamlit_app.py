@@ -249,10 +249,25 @@ def _render_sec_curated_case(st) -> None:
                                 "SELECT event_id, run_id, event_type, event_hash, created_at "
                                 "FROM guard_audit_events ORDER BY event_id DESC LIMIT 50"
                             ).fetchall()
+                            review_table = conn.execute(
+                                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                                "AND name='guard_human_reviews'"
+                            ).fetchone()
+                            reviews = (conn.execute(
+                                "SELECT review_id, run_id, reviewer, action, reason, "
+                                "reviewed_at, record_hash FROM guard_human_reviews "
+                                "ORDER BY review_id DESC LIMIT 50"
+                            ).fetchall() if review_table else [])
                         st.success("Guard 결정 감사 체인 검증 통과 (로컬 무결성만)")
                         st.dataframe([
                             {"event_id": a, "run_id": b, "type": c, "sha256": d, "UTC": e}
                             for a, b, c, d, e in rows
+                        ], use_container_width=True, hide_index=True)
+                        st.caption("사람 검토 이력 — 원래 Guard 판정과 별도 저장")
+                        st.dataframe([
+                            {"review_id": a, "run_id": b, "reviewer": c,
+                             "action": d, "reason": e, "UTC": g, "sha256": h}
+                            for a, b, c, d, e, g, h in reviews
                         ], use_container_width=True, hide_index=True)
             except (sqlite3.Error, ValueError, OSError, ImportError):
                 st.error("감사 기록을 안전하게 조회할 수 없습니다.")
