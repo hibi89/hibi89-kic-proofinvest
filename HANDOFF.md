@@ -1,3 +1,15 @@
+## 2026-10-29 KST — ProofInvest Guard design publication (10-field handoff)
+1. Goal: Finalize owner-approved ProofInvest + Guard-Agent scope without changing original Research/Verification/Risk or preliminary PDF constraints.
+2. Decision: A modular Guard inside ProofInvest selected over Lightning Azent integration. Full contract, precedence, audit and fallback in docs/architecture/PROOFINVEST_GUARD_FINAL_BLUEPRINT_20261029.md.
+3. Tests: Documentation-only; no new tests executed; prior historical CI does not validate Guard.
+4. State: Design published; Guard implementation, offline E2E, live SEC, private PDF, production, DAKER submission UNVERIFIED/NOT DONE.
+5. Risks/recovery: Decimal float, conflicting manual overrides, SQLite immutability claims, missing context and multi-claim precedence resolved in design; rollback by ordinary Git revert of document commits.
+6. Repository: hibi89/hibi89-kic-proofinvest, lead/kic, initial design commit 9e0d1c7c6d9ba8c8c3f2663c357f16cf816b80ba; documentation successor SHA to check.
+7. Deployment: None; existing offline Python/Streamlit only; no new API execution.
+8. Originals/security: Public repository docs only; private organizer PDF, contact UA, SEC source ZIP, credentials and DL-owned feature branch untouched.
+9. Next: inspect actual source/schema, implement Guard additive and tests, one synthetic labeled E2E, prepare private official seven-section <=10-page PDF; require separate approval for live SEC and final DAKER upload.
+10. Time: 2026-10-29 KST; four-day aggressive target, 24-33h estimate unverified; historical master ledger unchanged.
+
 ## 2026-10-28 KIC 개발 속도 개선 + 로컬 SEC ZIP 오프라인 재분석
 - 작업: `AGENTS.md` 개발 프로세스 단순화; `verify_local.ps1`/`scripts.verify_local` 핵심/전체 단일검증, 임시폴더 summary/log; `proofinvest.sec_bundle_replay`로 보존 ZIP의 SHA/수집시각과 회계금액/원문 passage 원본 재계산. 한 기능 커밋/단일 통합 CI. 메타데이터가 주장하는 SEC HTTPS는 **외부 출처 인증이 아님**.
 - 로컬 사용법: `python -m proofinvest.sec_bundle_replay evidence.zip --current-end YYYY-MM-DD --prior-end YYYY-MM-DD --needle UNIQUE_ASCII_PHRASE`. 기존 ZIP 수정·외부 네트워크·원본 HTML 노출 없음. 변경 테스트 `python -m unittest tests.test_sec_bundle_replay -v`; 전체 `python -m unittest discover -s tests -v`; Windows는 `powershell -ExecutionPolicy Bypass -File .\verify_local.ps1 [-Full]`.
