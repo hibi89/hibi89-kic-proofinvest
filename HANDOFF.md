@@ -1,3 +1,9 @@
+## 2026-10-29 KST — Guard audit Streamlit opt-in
+- Streamlit curated SEC view button saves Guard decision and audit only on click; shows replay or first-write receipt. Commit c4318e5c3a1fb0f6faf470ad0ee9a69429304165.
+- No real SEC API, trade or human authorization on this button. Local data directory ~/.proofinvest-guard is created only on click.
+- Validation: GitHub remote clone/test could not run from current execution container (DNS resolution unavailable). All new tests remain authored but unexecuted; UI runtime unverified.
+- Next: actual Python unittest execution and fix failures, implement explicit human review UI and review-chain integrity, then preliminary PDF.
+
 ## 2026-10-29 KST — Offline Guard workflow composition
 - Added proofinvest/guard_workflow.py, commit dd9adbe9158201241d662e9242989cddae135d2b, linking SEC verdict, Guard decision, SQLite audit, and optional explicit human simulation review.
 - Added tests/test_guard_workflow.py, commit d31d6b70c79df7f998d90ab849ef924cf51620dd, five cases written but NOT EXECUTED.
