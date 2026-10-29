@@ -1,0 +1,52 @@
+# One-off organizer-provided public PPTX download. Triggered ONLY when this
+# workflow file changes on lead/kic. No user account, payment or credentials.
+# Upstream URL: https://daker.ai/public/hackathons/kic-ai-agent-competition
+name: kic-organizer-template-download-once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-organizer-template-fetch.yml'
+permissions:
+  contents: read
+jobs:
+  public-template:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch organizer public template directly from DAKER static files
+        env:
+          PUBLIC_ORGANIZER_PPTX_URL: 'https://cfiles.dacon.co.kr/competitions/daker_2026_kic/%28%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8%29KIC_AI_%E1%84%8B%E1%85%A6%E1%84%8B%E1%85%B5%E1%84%8C%E1%85%A5%E1%86%AB%E1%84%90%E1%85%B3_%E1%84%80%E1%85%A9%E1%86%BC%E1%84%86%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_%E1%84%80%E1%85%B5%E1%85%92%E1%85%AC%E1%86%A8%E1%84%89%E1%85%A5.pptx'
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/kic-public-template"
+          curl --fail --location --silent --show-error \
+            --connect-timeout 15 --max-time 65 --retry 1 \
+            --user-agent 'Mozilla/5.0 (compatible; KIC-preliminary-application)' \
+            --referer 'https://daker.ai/public/hackathons/kic-ai-agent-competition' \
+            "${PUBLIC_ORGANIZER_PPTX_URL}" \
+            -o "${RUNNER_TEMP}/kic-public-template/organizer-template.pptx"
+          python - <<'PY'
+          import hashlib, os, pathlib, zipfile
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"kic-public-template/organizer-template.pptx"
+          data=p.read_bytes()
+          if not 1000 <= len(data) <= 10_000_000 or data[:2] != b"PK":
+              raise RuntimeError("Public PPTX returned invalid bytes")
+          with zipfile.ZipFile(p) as archive:
+              if archive.testzip() is not None:
+                  raise RuntimeError("Public PPTX ZIP failed integrity check")
+              names=set(archive.namelist())
+              if not {"ppt/presentation.xml", "[Content_Types].xml"}.issubset(names):
+                  raise RuntimeError("PPTX structure missing")
+              slides=sum(name.startswith("ppt/slides/slide") and name.endswith(".xml")
+                         and "/" not in name.removeprefix("ppt/slides/") for name in names)
+          print(f"PUBLIC_ORGANIZER_TEMPLATE_OK size={len(data)} slides={slides}")
+          print("SHA256", hashlib.sha256(data).hexdigest())
+          PY
+      - name: Deliver public template only as expiring artifact (not repo source)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kic-organizer-public-pptx-template
+          path: ${{ runner.temp }}/kic-public-template/organizer-template.pptx
+          if-no-files-found: error
+          retention-days: 7
