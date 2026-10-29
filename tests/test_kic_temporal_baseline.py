@@ -9,15 +9,16 @@ from proofinvest.temporal_baseline import (
 )
 
 AS_OF = "2025-01-01T00:00:00Z"
+_UNSET = object()  # Distinguish omitted rows from explicitly malformed None.
 
 
 class KicConditionalBaselineTests(unittest.TestCase):
     def setUp(self):
         self.rows = synthetic_temporal_rows()
 
-    def check_block(self, code, *, rows=None, as_of=AS_OF):
+    def check_block(self, code, *, rows=_UNSET, as_of=AS_OF):
         received = evaluate_historical_baseline(
-            self.rows if rows is None else rows, evaluation_as_of=as_of
+            self.rows if rows is _UNSET else rows, evaluation_as_of=as_of
         )
         self.assertEqual(received["status"], "NO_TRAIN")
         self.assertEqual(received["reason_code"], code)
