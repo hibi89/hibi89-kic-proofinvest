@@ -45,12 +45,18 @@ try {
     if ($null -eq $python) {
         throw "PYTHON_NOT_FOUND"
     }
+    # Resolve a plain executable STRING. & $python.Source can be parsed as
+    # invoking a member expression rather than a valid command in WinPS 5.1.
+    $pythonExecutable = [string]$python.Source
+    if ([string]::IsNullOrWhiteSpace($pythonExecutable)) {
+        throw "PYTHON_EXECUTABLE_NOT_RESOLVED"
+    }
 } catch {
     [Console]::Error.WriteLine("P21_LOCAL_PREFLIGHT_BLOCKED")
     exit 2
 }
 
-$params = @(
+$pythonArgs = @(
     "-B", "-m", "proofinvest.kuodra_loose_sec_compatibility",
     "--submissions", ([System.IO.Path]::Combine($directory, $SubmissionsFile)),
     "--companyfacts", ([System.IO.Path]::Combine($directory, $CompanyFactsFile)),
@@ -60,7 +66,7 @@ $params = @(
 )
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    & $python.Source @params
+    & $pythonExecutable @pythonArgs
     $code = $LASTEXITCODE
     if ($null -eq $code -or $code -notin @(0, 2)) {
         [Console]::Error.WriteLine("P21_LOCAL_PROCESS_UNEXPECTED_EXIT")
@@ -68,7 +74,9 @@ try {
     }
 } catch {
     # Fail without echoing file paths, SEC raw source bytes or stack traces.
-    [Console]::Error.WriteLine("P21_LOCAL_INSPECTION_FAILED")
+    # Only the exception CLASS is logged: no private files/paths/traces.
+    $typeName = $_.Exception.GetType().Name
+    [Console]::Error.WriteLine("P21_LOCAL_INSPECTION_FAILED_" + $typeName)
     $code = 2
 } finally {
     Pop-Location
