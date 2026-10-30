@@ -117,6 +117,33 @@ class KuodraThreeIntentReplayTests(unittest.TestCase):
                 self.assertEqual(out["balance_sheet"]["status"], "reviewed_unverified")
                 self.assertEqual(out["balance_sheet"]["liabilities_to_equity_pct"], "200.00")
 
+    def test_risk_intent_reconciled_nci_runs_same_guard_audit(self):
+        path = self.root / "nci-balance.zip"
+        data = json.loads(_companyfacts())
+        us = data["facts"]["us-gaap"]
+        us["Assets"]["units"]["USD"][0]["val"] = 320
+        parent = us["StockholdersEquity"]["units"]["USD"][0]
+        us["MinorityInterest"] = {"units": {"USD": [
+            {**parent, "val": 20}
+        ]}}
+        us["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = {
+            "units": {"USD": [{**parent, "val": 120}]}
+        }
+        _save(path, companyfacts=json.dumps(data).encode())
+        request = self.request | {"capture_zip": str(path), "run_id": "p8-nci-001"}
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_HTTP")) as network:
+            out = self._exec("RISK_CHECK", request=request)
+        network.assert_not_called()
+        self.assertEqual(out["status"], "completed")
+        self.assertEqual(out["balance_sheet"]["equity_denominator_usd"], "120")
+        self.assertEqual(out["balance_sheet"]["liabilities_to_equity_pct"], "166.67")
+        self.assertEqual(out["balance_sheet"]["noncontrolling_interest_usd"], "20")
+        self.assertEqual(out["guard"]["decision"], "HOLD")
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+        self.assertFalse(out["source_authenticated"])
+        self.assertFalse(out["trade_executed"])
+
     def test_risk_intent_no_balance_abstains_before_sqlite(self):
         path = self.root / "missing-risk.zip"
         _save(path, companyfacts=_companyfacts(balanced=False))

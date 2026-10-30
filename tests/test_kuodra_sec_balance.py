@@ -228,6 +228,14 @@ class KuodraBalanceReviewTests(unittest.TestCase):
         self.assertEqual(out["status"], "reviewed_unverified")
         self.assertEqual(out["liabilities_to_equity_pct"], "200.00")
 
+    def test_explicit_null_optional_equity_cannot_bypass_conflicting_source(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["StockholdersEquity"] = None
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(120)
+        value = review(data)
+        self.assertEqual(value["status"], "unavailable")
+        self.assertEqual(value["reason_code"], "BALANCE_FACT_UNAVAILABLE_OR_MIXED_UNITS")
+
     def test_saved_zip_to_guard_sqlite_with_balance_and_no_policy_upgrade(self):
         root = tempfile.TemporaryDirectory(prefix="kuodra-balance-")
         self.addCleanup(root.cleanup)

@@ -49,9 +49,9 @@ def _single_instant(
     accession: str, end: Any, cutoff: Any, optional: bool = False,
 ) -> tuple[int, str] | None:
     """Only one exact USD instant amount from target 10-K, no cross-accession join."""
-    tag = usgaap.get(tag_name)
-    if tag is None and optional:
+    if tag_name not in usgaap and optional:
         return None
+    tag = usgaap.get(tag_name)
     units = tag.get("units") if isinstance(tag, Mapping) else None
     if not isinstance(units, Mapping) or set(units) != {"USD"}:
         raise _FactBlocked("BALANCE_FACT_UNAVAILABLE_OR_MIXED_UNITS")
