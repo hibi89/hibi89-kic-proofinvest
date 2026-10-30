@@ -16,6 +16,10 @@ IGNORED = frozenset({
     "script", "style", "head", "template", "noscript", "svg",
     "iframe", "object", "canvas", "audio", "video",
     "noembed", "noframes",
+    # SEC Inline XBRL structural facts can live outside presented body text.
+    # Do not promote ix:header/ix:hidden or fact-excluded fragments to an
+    # operator evidence anchor. Ordinary ix:nonfraction body text stays eligible.
+    "ix:header", "ix:hidden", "ix:references", "ix:resources", "ix:exclude",
 })
 
 
