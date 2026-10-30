@@ -383,7 +383,19 @@ def render_synthetic_guard_ui(st) -> None:
             st.error("비교 시나리오의 실제 실행·감사 검증 실패로 결과를 차단했습니다.")
             return
         st.subheader("3가지 사례 · 로컬 실제 코드 실행 비교")
+        passed = sum(row["SQLite 감사"] == "PASS" for row in comparison)
+        blocked = sum(row["Guard"] == "REJECT" for row in comparison)
+        held = sum(row["Guard"] == "HOLD" for row in comparison)
+        k1, k2, k3 = st.columns(3)
+        k1.metric("로컬 SQLite 무결성", f"{passed}/3 PASS")
+        k2.metric("검증 보류", f"{held} HOLD")
+        k3.metric("주장 충돌 차단", f"{blocked} REJECT")
         st.dataframe(comparison, use_container_width=True, hide_index=True)
+        st.info(
+            "심사 포인트: 같은 가상 원문·숫자라도 주장 충돌은 REJECT, "
+            "출처 또는 인용 근거가 불충분하면 HOLD로 구분됩니다. "
+            "어느 경우에도 실거래와 외부 출처 인증은 수행되지 않습니다."
+        )
         st.download_button(
             "합성 비교 매트릭스 JSON",
             data=comparison_json,
@@ -405,6 +417,13 @@ def render_synthetic_guard_ui(st) -> None:
         return
     if not clicked:
         st.info("실행 전에는 DB를 만들지 않습니다. 파일 업로드·외부 호출 없음.")
+        with st.expander("심사 60초 시연 순서", expanded=False):
+            st.markdown(
+                "1. **수치 일치** 선택 → 검증 실행 → HOLD와 로컬 감사 해시 확인.\n"
+                "2. **주장 불일치** 선택 → 검증 실행 → REJECT 이유 확인.\n"
+                "3. **3개 시나리오 일괄 비교** → 3/3 감사 영수증과 ZIP 다운로드.\n"
+                "이 시연은 가상 SEC 형식 자료이며 실제 SEC 조회·인증·거래가 아닙니다."
+            )
         st.markdown(
             '<div class="pi-disclaimer"><strong>검증 대상</strong> · '
             '수치 일치 / 주장 충돌 / 스크립트 인용 차단. '
