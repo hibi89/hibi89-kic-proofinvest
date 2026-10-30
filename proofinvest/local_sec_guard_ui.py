@@ -308,6 +308,25 @@ def render_synthetic_guard_ui(st) -> None:
         "원본은 로컬 합성 데이터이며, 실행 후 임시 DB는 삭제됩니다."
     )
 
+    st.markdown("#### 심사위원을 위한 3가지 판단 사례")
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        with st.container(border=True):
+            st.caption("01 / 수치 일치")
+            st.metric("예상 Guard 판정", "HOLD")
+            st.caption("산술 일치만으로 외부 출처를 인증할 수 없음")
+    with s2:
+        with st.container(border=True):
+            st.caption("02 / 성장률 충돌")
+            st.metric("예상 Guard 판정", "REJECT")
+            st.caption("인용된 주장과 재계산 결과가 불일치")
+    with s3:
+        with st.container(border=True):
+            st.caption("03 / 스크립트 인용")
+            st.metric("예상 Guard 판정", "HOLD")
+            st.caption("보이는 본문에 없는 인용은 근거로 사용 불가")
+    st.caption("실행 전 정책 예상 결과입니다. 버튼을 눌러야 실제 파이프라인과 임시 SQLite 검증이 실행됩니다.")
+
     with st.container(border=True):
         st.markdown("#### 01 / 검증할 상황 선택")
         st.caption("서로 다른 3가지 수치·인용 상태에서 Guard가 어떻게 판단하는지 비교합니다.")
