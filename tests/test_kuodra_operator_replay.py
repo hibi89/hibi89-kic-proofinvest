@@ -142,13 +142,13 @@ class OperatorProposalReplayTests(unittest.TestCase):
         self.assertFalse(self.db.exists())
 
     def test_issuer_accession_and_as_of_bound_before_sqlite(self):
-        for key, replacement in (
-            ("issuer_cik", "0000000002"),
-            ("accession", "0000000001-25-999999"),
-            ("as_of", "2025-10-17"),
+        for change in (
+            {"issuer_cik": "0000000002", "accession": "0000000002-25-000001"},
+            {"accession": "0000000001-25-999999"},
+            {"as_of": "2025-10-17"},
         ):
-            with self.subTest(key=key):
-                request = dict(self.req, **{key: replacement})
+            with self.subTest(change=change):
+                request = dict(self.req, **change)
                 result = self.run_gated(req=request)
                 self.assertEqual(result["status"], "blocked")
                 self.assertEqual(result["local_tool_attempts"], 1)
