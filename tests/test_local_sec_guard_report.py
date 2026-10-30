@@ -46,6 +46,10 @@ class LocalSecGuardReportTests(unittest.TestCase):
     def test_complete_three_file_path_holds_and_audits(self):
         result = review_local_sec_with_guard(**fixture(self.db))
         self.assertEqual(result["verification"]["status"], "calculated_unverified")
+        self.assertEqual(result["verification"]["revenue_concept"],
+                         "RevenueFromContractWithCustomerExcludingAssessedTax")
+        self.assertEqual(result["verification"]["annual_period_starts"],
+                         ["2023-10-01", "2024-10-01"])
         self.assertEqual(result["source"]["html_text_node_status"],
                          "untrusted_html_text_node_literal_located")
         self.assertEqual(result["risk"]["status"], "reviewed_unverified")

@@ -18,10 +18,16 @@ from proofinvest.kuodra_operator_replay import main, run_offline_proposal_replay
 from proofinvest.kuodra_operator_html import render_kuodra_operator_html
 from proofinvest.sec_capture_bundle import save_local_capture_bundle
 from proofinvest.guard_audit import GuardAuditStore
+from proofinvest.sec_companyfacts import TAG
 
 
-def _fixture(root: Path, *, with_balance: bool = True, conflict: bool = False):
+def _fixture(root: Path, *, with_balance: bool = True, conflict: bool = False,
+             revenue_concept: str = TAG):
     original = synthetic_companyfacts()
+    if revenue_concept != TAG:
+        original["facts"]["us-gaap"][revenue_concept] = (
+            original["facts"]["us-gaap"].pop(TAG)
+        )
     if with_balance:
         for name, value in (
             ("Assets", 300), ("Liabilities", 200), ("StockholdersEquity", 100)
@@ -119,6 +125,25 @@ class OperatorHtmlReportTests(unittest.TestCase):
         self.assertNotIn("https://", page)
         self.assertNotIn(str(self.src), page)
         self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
+    def test_alt_revenues_taxonomy_reaches_operator_html_from_original_zip(self):
+        place = self.root / "alt-revenue"
+        place.mkdir()
+        source, db, request = _fixture(place, revenue_concept="Revenues")
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_EXTERNAL_HTTP")) as network:
+            out = self._report(request)
+            page = render_kuodra_operator_html(out).decode("utf-8")
+        network.assert_not_called()
+        self.assertEqual(out["status"], "completed")
+        self.assertEqual(out["verification"]["revenue_concept"], "Revenues")
+        self.assertEqual(out["verification"]["annual_period_starts"],
+                         ["2023-10-01", "2024-10-01"])
+        self.assertIn("<th>Revenue concept</th><td>Revenues</td>", page)
+        self.assertIn("100.00%", page)
+        self.assertFalse(out["source_authenticated"])
+        self.assertTrue(GuardAuditStore(db).verify_chain())
+        self.assertTrue(source.is_file())
 
     def test_risk_check_and_source_review_reports_are_distinct(self):
         for intent in ("SOURCE_REVIEW", "RISK_CHECK"):

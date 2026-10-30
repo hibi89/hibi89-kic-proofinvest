@@ -234,6 +234,12 @@ def build_local_sec_review_packet(
             "prior_amount": verdict["prior_usd"],
             "current_amount": verdict["current_usd"],
             "growth_pct": verdict["growth_pct"],
+            # Keep one exact SEC revenue taxonomy concept through the
+            # source packet -> Guard report -> operator HTML path. Do not
+            # auto-label every amount with the historical default tag.
+            "revenue_concept": verdict["revenue_concept"],
+            "annual_period_starts": list(verdict["annual_period_starts"]),
+            "filing_date": verdict["filing_date"],
             "status": verdict["status"],
             "reason_code": verdict["reason_code"],
         },
