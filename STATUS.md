@@ -1,3 +1,5 @@
+2026-10-30 KST: Actual Chromium click-through now runs independent READ-ONLY audit-snapshot verification and archives bounded JSON verdict. One privacy output test added. CI queued treated nonblocking, previous d40342d3 Python+Chromium passed; new sha runtime unverified.
+
 2026-10-30 KST: Added strict read-only closed Guard SQLite snapshot inspector and 5 targeted tests. It preserves original bytes, validates full chain/reviews from existing GuardAuditStore/GuardReviewStore using supplied query-only SQLite connection, rejects journal/WAL sidecars, reports only count/digest with all external trust flags false. CI and Production for this SHA not yet verified; prior completed d40342d3 passed. No new SEC/LLM/DAKER dependency.
 
 2026-10-30 KST: Integrated exact, validated synthetic judge ZIP into 3-case Streamlit UI and Chromium real download tests, without blocking on queued CI. 1 extra AppTest authored. Public bundle stays synthetic-only (1 start HTML + 9 per-case files + 1 SHA manifest); new SHA CI pending and Production unverified.

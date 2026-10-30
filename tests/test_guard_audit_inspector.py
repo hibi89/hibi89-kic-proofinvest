@@ -54,6 +54,15 @@ class GuardAuditSnapshotInspectorTests(unittest.TestCase):
         self.assertFalse(summary["trade_executed"])
         self.assertFalse(summary["raw_record_content_exported"])
 
+    def test_receipt_never_includes_review_text_or_local_paths(self):
+        summary = inspect_guard_snapshot(self.path)
+        dumped = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn(str(self.path), dumped)
+        self.assertNotIn("demo-reviewer", dumped)
+        self.assertNotIn("needs human review", dumped)
+        self.assertNotIn("offline-inspector", dumped)
+        self.assertNotIn("reason", dumped.lower())
+
     def test_rejects_tampered_decision_and_never_repairs_db(self):
         with sqlite3.connect(self.path) as con:
             con.execute(

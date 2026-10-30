@@ -22,6 +22,7 @@ from pathlib import Path
 
 from proofinvest.guard_audit import GuardAuditStore
 from proofinvest.guard_review import GuardReviewStore
+from proofinvest.guard_audit_inspector import inspect_guard_snapshot
 
 APP = Path(__file__).resolve().parents[1] / "streamlit_app.py"
 SEC_MODE = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (2025/2024)"
@@ -388,6 +389,19 @@ def run(output: Path) -> dict:
                 if not (audit_ok and reviews_ok and decisions == 1
                         and reviews == 1 and action == "ACKNOWLEDGE"):
                     raise AssertionError("Guard browser SQLite evidence mismatch")
+                audit_snapshot = inspect_guard_snapshot(db)
+                if (audit_snapshot["status"] != "LOCAL_HASH_CHAIN_VALID"
+                        or audit_snapshot["audit_events"] != 1
+                        or audit_snapshot["human_reviews"] != 1
+                        or audit_snapshot["decisions"]["HOLD"] != 1
+                        or audit_snapshot["database_authenticated"] is not False
+                        or audit_snapshot["sec_issuer_authenticated"] is not False
+                        or audit_snapshot["raw_record_content_exported"] is not False):
+                    raise AssertionError("Independent read-only audit inspection mismatch")
+                (output / "guard-audit-snapshot-inspection.json").write_text(
+                    json.dumps(audit_snapshot, sort_keys=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
                 result = {
                     "schema": "proofinvest.guard-browser-evidence.v1",
                     "status": "PASS",
@@ -400,6 +414,8 @@ def run(output: Path) -> dict:
                     "review_action": action,
                     "audit_integrity_verified": audit_ok,
                     "reviews_integrity_verified": reviews_ok,
+                    "readonly_snapshot_inspection": "LOCAL_HASH_CHAIN_VALID",
+                    "readonly_snapshot_receipt": "guard-audit-snapshot-inspection.json",
                     "live_sec_api_called": False,
                     "trade_executed": False,
                     "screenshot": "guard-browser-clickthrough.png",

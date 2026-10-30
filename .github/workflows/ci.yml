@@ -150,6 +150,7 @@ jobs:
             /tmp/kic-guard-browser/sec-guard-compare-browser.png
             /tmp/kic-guard-browser/sec-guard-compare-browser.json
             /tmp/kic-guard-browser/sec-guard-browser-judge-pack.zip
+            /tmp/kic-guard-browser/guard-audit-snapshot-inspection.json
             /tmp/kic-guard-browser/guard-browser-evidence.json
           if-no-files-found: error
           retention-days: 14
