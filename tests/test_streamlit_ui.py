@@ -72,7 +72,7 @@ class StreamlitHeadlessTests(unittest.TestCase):
 
         app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
         with tempfile.TemporaryDirectory() as root:
-            with patch.dict(os.environ, {"HOME": root}):
+            with patch.dict(os.environ, {"HOME": root, "USERPROFILE": root}):
                 cache = Path(root) / ".proofinvest-synthetic-cache"
                 cache.mkdir()
                 store.save_synthetic_snapshot(cache)
@@ -93,7 +93,7 @@ class StreamlitHeadlessTests(unittest.TestCase):
 
         app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
         with tempfile.TemporaryDirectory() as root:
-            with patch.dict(os.environ, {"HOME": root}):
+            with patch.dict(os.environ, {"HOME": root, "USERPROFILE": root}):
                 at = AppTest.from_file(str(app)).run(timeout=15)
                 with patch.object(store, "load_synthetic_snapshot", side_effect=AssertionError("fallback")):
                     at.radio[0].set_value("저장된 결과 재조회 (재계산 없음)").run(timeout=15)
@@ -109,7 +109,7 @@ class StreamlitHeadlessTests(unittest.TestCase):
 
         app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
         with tempfile.TemporaryDirectory() as root:
-            with patch.dict(os.environ, {"HOME": root}):
+            with patch.dict(os.environ, {"HOME": root, "USERPROFILE": root}):
                 cache = Path(root) / ".proofinvest-synthetic-cache"
                 cache.mkdir()
                 store.save_synthetic_snapshot(cache)
