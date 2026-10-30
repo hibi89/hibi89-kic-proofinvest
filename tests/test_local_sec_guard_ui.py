@@ -180,6 +180,15 @@ class LocalSecGuardUiTests(unittest.TestCase):
         self.assertTrue(any("로컬 실제 코드 실행 비교" in x.value
                             for x in at.subheader))
 
+    def test_comparison_has_downloadable_zip_with_start_page(self):
+        from streamlit.testing.v1 import AppTest
+        file = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        at = AppTest.from_file(str(file)).run(timeout=20)
+        at.selectbox[0].set_value("SEC→Guard 감사 연결 — 합성 오프라인").run(timeout=20)
+        at.button[1].click().run(timeout=45)
+        self.assertFalse(at.exception, [str(e.message) for e in at.exception])
+        self.assertTrue(any("START_HERE.html" in c.value for c in at.caption))
+
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"

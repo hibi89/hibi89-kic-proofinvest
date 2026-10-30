@@ -339,6 +339,37 @@ def run(output: Path) -> dict:
                                        row["SQLite 감사"] != "PASS"
                                        for row in matrix["cases"])):
                             raise AssertionError("Browser comparison contract invalid")
+                        # Verify the full public synthetic judge ZIP by its
+                        # actual browser download, not by trusting UI labels.
+                        with page.expect_download(timeout=30000) as got_bundle:
+                            page.get_by_role(
+                                "button", name="전체 합성 증빙 ZIP (시작 페이지 포함)"
+                            ).click()
+                        bundle_download = got_bundle.value
+                        if bundle_download.suggested_filename != (
+                                "proofinvest_SYNTHETIC_GUARD_JUDGE.zip"):
+                            raise AssertionError("Unexpected judge ZIP filename")
+                        zip_path = output / "sec-guard-browser-judge-pack.zip"
+                        bundle_download.save_as(str(zip_path))
+                        import zipfile
+                        with zipfile.ZipFile(zip_path) as judge_zip:
+                            members = set(judge_zip.namelist())
+                            manifest = json.loads(judge_zip.read(
+                                "SYNTHETIC_JUDGE_MANIFEST.json"
+                            ))
+                            landing = judge_zip.read("START_HERE.html").decode("utf-8")
+                            if (len(members) != 11
+                                    or len(manifest["file_list"]) != 10
+                                    or manifest["landing_page"] != "START_HERE.html"
+                                    or manifest["evidence_class"] !=
+                                    "SYNTHETIC_ONLY_UNVERIFIED"
+                                    or "SYNTHETIC ONLY / NOT REAL SEC" not in landing
+                                    or any(manifest[key] is not False for key in (
+                                        "real_sec_authenticated",
+                                        "real_agent_executed", "trade_executed",
+                                        "official_kic_submission"
+                                    ))):
+                                raise AssertionError("Unsafe browser judge ZIP")
                     finally:
                         browser.close()
 
@@ -377,6 +408,8 @@ def run(output: Path) -> dict:
                     "synthetic_html_download_verified": True,
                     "synthetic_html_download": "sec-guard-browser-downloaded-script.html",
                     "synthetic_comparison_download_verified": True,
+                    "synthetic_full_judge_zip_verified": True,
+                    "synthetic_full_judge_zip": "sec-guard-browser-judge-pack.zip",
                     "synthetic_comparison_download": "sec-guard-compare-browser.json",
                     "synthetic_comparison_screenshot": "sec-guard-compare-browser.png",
                     "synthetic_comparison_decisions": ["HOLD", "REJECT", "HOLD"],

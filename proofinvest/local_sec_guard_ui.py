@@ -330,6 +330,16 @@ def render_synthetic_guard_ui(st) -> None:
         try:
             comparison = build_synthetic_case_comparison()
             comparison_json = export_synthetic_comparison_json(comparison)
+            # Import only for an explicit three-case click. The pack module
+            # imports this UI's validated pure synthetic functions; no cyclic
+            # import occurs until the UI module has finished loading.
+            from scripts.sec_guard_judge_pack import build_bytes, verify_bytes
+            bundle = build_bytes()
+            receipt = verify_bytes(bundle)
+            if (receipt["cases"] != 3 or receipt["files"] != 10
+                    or receipt["external_source_authenticated"] is not False
+                    or receipt["official_submission"] is not False):
+                raise ValueError("SYNTHETIC_JUDGE_BUNDLE_INTEGRITY_FAILED")
         except (ValueError, OSError, KeyError, TypeError, OverflowError):
             st.error("비교 시나리오의 실제 실행·감사 검증 실패로 결과를 차단했습니다.")
             return
@@ -343,6 +353,15 @@ def render_synthetic_guard_ui(st) -> None:
             key="sec_guard_comparison_export",
             on_click="ignore",
         )
+        st.download_button(
+            "전체 합성 증빙 ZIP (시작 페이지 포함)",
+            data=bundle,
+            mime="application/zip",
+            file_name="proofinvest_SYNTHETIC_GUARD_JUDGE.zip",
+            key="sec_guard_full_judge_pack",
+            on_click="ignore",
+        )
+        st.caption("ZIP 안의 START_HERE.html을 열면 세 가지 오프라인 보고서를 볼 수 있습니다.")
         st.warning("세 사례 모두 가상 SEC 형식 자료이며, 실제 투자 적격성·출처 인증을 뜻하지 않습니다.")
         return
     if not clicked:
