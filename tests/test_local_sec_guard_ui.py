@@ -96,6 +96,40 @@ class LocalSecGuardUiTests(unittest.TestCase):
                 self.assertEqual(result["report"]["guard"]["decision"],
                                  "REJECT" if case == "conflict" else "HOLD")
 
+    def test_markdown_summary_and_json_share_guard_and_hash(self):
+        import json
+        from proofinvest.local_sec_guard_ui import export_synthetic_guard_markdown
+        for case in ("matched", "conflict", "script"):
+            with self.subTest(case=case):
+                report = run_synthetic_guard_case(case)
+                text = export_synthetic_guard_markdown(report).decode("utf-8")
+                receipt = json.loads(export_synthetic_guard_json(report))
+                self.assertIn("SYNTHETIC / UNVERIFIED", text)
+                self.assertIn(report["audit"]["event_hash"], text)
+                self.assertIn(report["source"]["archived_original_sha256"], text)
+                self.assertIn("Guard result: **" + receipt["report"]["guard"]["decision"], text)
+                self.assertIn("real SEC issuer evidence", text)
+
+    def test_markdown_and_json_refuse_forged_real_source(self):
+        from proofinvest.local_sec_guard_ui import export_synthetic_guard_markdown
+        report = run_synthetic_guard_case("matched")
+        report["limits"]["external_source_authenticated"] = True
+        with self.assertRaisesRegex(ValueError, "SYNTHETIC_EXPORT_BLOCKED"):
+            export_synthetic_guard_markdown(report)
+
+    def test_streamlit_masthead_static_design_is_local_and_textual(self):
+        from unittest.mock import Mock
+        from proofinvest.ui_theme import render_shell
+        st = Mock()
+        render_shell(st)
+        st.markdown.assert_called_once()
+        html = st.markdown.call_args.args[0]
+        self.assertIn("PROOF", html)
+        self.assertIn("INVEST", html)
+        self.assertNotIn("http://", html)
+        self.assertNotIn("https://", html)
+        self.assertIn("prefers-color-scheme", html)
+
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"

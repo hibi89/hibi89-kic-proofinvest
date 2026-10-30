@@ -543,6 +543,11 @@ def _render_dl_archive_case(st) -> None:
 
 def render_app(st) -> None:
     st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
+    # Optional static design layer; synthetic recovery archives omit this module.
+    design_file = Path(__file__).resolve().parent / "proofinvest/ui_theme.py"
+    if design_file.is_file():
+        from proofinvest.ui_theme import render_shell
+        render_shell(st)
     # The public recovery ZIP is synthetic-only: never offer an unavailable
     # manual issuer mode or import its dependencies from an unrelated install.
     evidence_file = Path(__file__).resolve().parent / "docs/evidence/samsung_2024_cfs_revenue.json"

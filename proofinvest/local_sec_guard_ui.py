@@ -156,67 +156,211 @@ def export_synthetic_guard_json(report: dict[str, Any]) -> bytes:
     return encoded
 
 
+def export_synthetic_guard_markdown(report: dict[str, Any]) -> bytes:
+    """Readable judge copy bound to the exact same synthetic export contract."""
+    safe = json.loads(export_synthetic_guard_json(report))
+    r = safe["report"]
+    fin = r["verification"]
+    src = r["source"]
+    guard = r["guard"]
+    decision = guard["decision"]
+    caveat = (
+        "The literal is within a raw HTML text node, but issuer/source truth "
+        "has NOT been authenticated."
+        if src["exact_raw_byte_span_verified"] else
+        "A literal was found only in script/non-visible markup. The citation "
+        "is UNAVAILABLE."
+    )
+    lines = [
+        "# ProofInvest | SYNTHETIC / UNVERIFIED Judge Review",
+        "",
+        "**This is a fictional offline test, not real SEC issuer evidence, investment "
+        "advice, a trained AI agent, or a KIC submission.**",
+        "",
+        "## 1. Decision and next action",
+        f"- Guard result: **{decision}** (never trade/approve)",
+        "- Reason codes: " + ", ".join(guard["reason_codes"]),
+        "- Human action: independently verify source and missing Risk evidence",
+        "",
+        "## 2. Artificial financial check",
+        f"- Prior year: USD {fin['prior_amount']}",
+        f"- Current year: USD {fin['current_amount']}",
+        f"- Change: {fin['growth_pct']}%",
+        "- Arithmetic status: " + fin["status"],
+        "- Reason: " + fin["reason_code"],
+        "",
+        "## 3. Source byte evidence",
+        "- Fictional CIK: " + r["issuer"]["cik"],
+        "- Fictional accession: " + r["issuer"]["accession"],
+        "- Submissions SHA-256: " + src["submissions_sha256"],
+        "- CompanyFacts SHA-256: " + src["companyfacts_sha256"],
+        "- Original HTML SHA-256: " + src["archived_original_sha256"],
+        "- Text-node check: " + src["html_text_node_status"],
+        "- Citation caveat: " + caveat,
+        "",
+        "## 4. Risk, Guard and audit",
+        "- Risk status: " + r["risk"]["status"],
+        "- Risk reasons: " + ", ".join(r["risk"]["reason_codes"]),
+        "- Audit hash: " + r["audit"]["event_hash"],
+        "- SQLite chain verified: YES (local consistency only)",
+        "- Human review integrity: YES (local consistency only)",
+        "",
+        "## 5. Explicit limitations",
+        "- Source issuer identity/authenticity: NOT VERIFIED",
+        "- Original publication or redistribution rights: NOT VERIFIED",
+        "- Live SEC/LLM/real-time financial data: NONE",
+        "- Trading, simulation authorization, or official contest upload: NONE",
+        "- All source data and financial values in this document are SYNTHETIC.",
+        "",
+    ]
+    result = ("\n".join(lines)).encode("utf-8")
+    if len(result) > 32768:
+        raise ValueError("SYNTHETIC_MARKDOWN_TOO_LARGE")
+    return result
+
+
 def render_synthetic_guard_ui(st) -> None:
+    """Judge-first overview, with every decision backed by the real offline path."""
     st.title("ProofInvest — SEC 근거부터 Guard 감사까지")
+    st.markdown(
+        '<div class="pi-eyebrow">CASE REVIEW / 01 — 실증 가능한 오프라인 경로</div>',
+        unsafe_allow_html=True,
+    )
     st.warning(
         "SYNTHETIC ONLY · 가상 기업·인공 공시 자료입니다. SEC 조회·"
         "실제 원문 인증·AI Agent·투자 권고·거래·DAKER 제출은 없습니다."
     )
     st.caption(
-        "출처 연결 → 숫자 검산 → 미인증 Risk → Guard → SQLite 감사 → 보고서. "
-        "버튼을 눌렀을 때만 실행하며, 감사 DB는 임시 생성 후 삭제됩니다."
+        "연구 → 수치 검증 → Risk 근거 보류 → Guard → SQLite 감사. "
+        "원본은 로컬 합성 데이터이며, 실행 후 임시 DB는 삭제됩니다."
     )
-    choice = st.selectbox("검증 시나리오", list(SCENARIOS), key="sec_guard_case")
-    if not st.button("합성 SEC→Guard 검증 실행", key="sec_guard_execute"):
+
+    with st.container(border=True):
+        st.markdown("#### 01 / 검증할 상황 선택")
+        st.caption("서로 다른 3가지 수치·인용 상태에서 Guard가 어떻게 판단하는지 비교합니다.")
+        choice = st.selectbox("검증 시나리오", list(SCENARIOS), key="sec_guard_case")
+        clicked = st.button(
+            "합성 SEC→Guard 검증 실행",
+            key="sec_guard_execute",
+            type="primary",
+            use_container_width=True,
+        )
+    if not clicked:
         st.info("실행 전에는 DB를 만들지 않습니다. 파일 업로드·외부 호출 없음.")
+        st.markdown(
+            '<div class="pi-disclaimer"><strong>검증 대상</strong> · '
+            '수치 일치 / 주장 충돌 / 스크립트 인용 차단. '
+            '모든 결과는 실데이터 인증이나 투자 판단이 아닌 로컬 동작 재현입니다.</div>',
+            unsafe_allow_html=True,
+        )
         return
+
     try:
         report = run_synthetic_guard_case(SCENARIOS[choice])
+        safe_json = export_synthetic_guard_json(report)
+        safe_markdown = export_synthetic_guard_markdown(report)
     except (ValueError, OSError, KeyError, TypeError, OverflowError):
-        st.error("로컬 원문·검산·감사 연결 검증에 실패하여 결과를 표시하지 않습니다.")
+        st.error("로컬 검증 또는 보고서 안전 검사 실패 — 결과 표시와 내보내기를 차단했습니다.")
         return
-    x, y, z = st.columns(3)
-    x.metric("수치 검산", report["verification"]["status"])
-    y.metric("Guard 판정", report["guard"]["decision"])
-    z.metric("외부 원문 인증", "미인증")
-    st.subheader("단계별 감사 추적")
-    st.dataframe([
-        {"단계": "Research", "상태": report["source"]["evidence_link_status"],
-         "설명": "가상 출처 식별자·원문 해시 연결"},
-        {"단계": "Verification", "상태": report["verification"]["reason_code"],
-         "설명": "합성 수치의 산술 검산"},
-        {"단계": "Risk", "상태": report["risk"]["status"],
-         "설명": "인증된 위험 수치 없어 보류"},
-        {"단계": "Guard", "상태": report["guard"]["decision"],
-         "설명": "HOLD 또는 REJECT — 실행 불가"},
-        {"단계": "Audit", "상태": "PASS" if report["audit_chain_valid"] else "BLOCKED",
-         "설명": "임시 SQLite 해시 체인 검증"},
-    ], use_container_width=True, hide_index=True)
-    st.caption(
-        "HTML 인용 검증: " + report["source"]["html_text_node_status"]
-        + " · 원문 SHA256: " + report["source"]["archived_original_sha256"]
+
+    fin = report["verification"]
+    source = report["source"]
+    guard = report["guard"]
+    risk = report["risk"]
+    st.markdown(
+        '<div class="pi-eyebrow">RESULT / 02 — 숫자보다 중요한 검증 상태</div>',
+        unsafe_allow_html=True,
     )
-    with st.expander("합성 감사 영수증", expanded=False):
+    a, b, c = st.columns(3)
+    a.metric("수치 검산", fin["status"])
+    b.metric("Guard 판정", guard["decision"])
+    c.metric("외부 원문 인증", "미인증")
+    desc = {
+        "matched": "숫자는 일치하지만 출처와 위험 근거를 인증하지 못해 HOLD",
+        "conflict": "주장과 계산이 충돌하여 REJECT; 숫자를 임의로 수정하지 않음",
+        "script": "인용이 본문이 아닌 스크립트에만 있어 HOLD; 인용 근거 불가",
+    }[SCENARIOS[choice]]
+    cls = "pi-case--blocked" if guard["decision"] == "REJECT" else ""
+    st.markdown(
+        '<div class="pi-case ' + cls + '"><strong>' + guard["decision"]
+        + '</strong> — ' + desc + '</div>',
+        unsafe_allow_html=True,
+    )
+
+    with st.container(border=True):
+        st.markdown("#### 03 / 실제 모듈 실행 추적")
+        st.dataframe(
+            [
+                {"단계": "Research", "검증 상태": source["evidence_link_status"],
+                 "의미": "원문 바이트·SHA 연결 (진위 미확인)"},
+                {"단계": "Verification", "검증 상태": fin["reason_code"],
+                 "의미": "가상 매출 수치의 산술 비교"},
+                {"단계": "Risk", "검증 상태": risk["status"],
+                 "의미": "인증된 부채·자본 근거 부족"},
+                {"단계": "Guard", "검증 상태": guard["decision"],
+                 "의미": "승인·거래를 허용하지 않음"},
+                {"단계": "Audit", "검증 상태": "PASS" if report["audit_chain_valid"] else "BLOCKED",
+                 "의미": "임시 SQLite 체인 무결성"},
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.caption(
+            "HTML 인용 검증: " + source["html_text_node_status"]
+            + " · 원문 SHA256: " + source["archived_original_sha256"]
+        )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        with st.container(border=True):
+            st.markdown("#### 04 / 재무 수치")
+            st.metric("연매출 변화 · 가상 수치", fin["growth_pct"] + "%")
+            st.dataframe([
+                {"기간": fin["prior_period_end"], "매출 (USD · 가상)": fin["prior_amount"]},
+                {"기간": fin["current_period_end"], "매출 (USD · 가상)": fin["current_amount"]},
+            ], use_container_width=True, hide_index=True)
+            st.caption("숫자 일치는 독립적인 원문 인증이 아닙니다.")
+    with c2:
+        with st.container(border=True):
+            st.markdown("#### 05 / 감사 영수증")
+            st.caption("감사 해시 앞 16자리 (로컬 저장 일치만 확인)")
+            st.code(report["audit"]["event_hash"][:16] + "...", language="text")
+            st.metric("감사 체인", "PASS" if report["audit_chain_valid"] else "BLOCKED")
+            st.caption("모든 Guard 판정은 실제 주문을 실행하지 않습니다.")
+
+    with st.expander("기술 증빙 · 세부 근거와 제한", expanded=False):
         st.json({
             "audit": report["audit"],
-            "guard_reasons": report["guard"]["reason_codes"],
+            "guard_reasons": guard["reason_codes"],
+            "risk_reasons": risk["reason_codes"],
             "source_hashes": {
-                "submissions": report["source"]["submissions_sha256"],
-                "companyfacts": report["source"]["companyfacts_sha256"],
-                "original": report["source"]["archived_original_sha256"],
+                "submissions": source["submissions_sha256"],
+                "companyfacts": source["companyfacts_sha256"],
+                "original": source["archived_original_sha256"],
             },
-            "limitations": report["limits"],
+            "limits": report["limits"],
         })
-    try:
-        safe_export = export_synthetic_guard_json(report)
-    except ValueError:
-        st.error("안전 검사에 실패하여 합성 파일 내보내기를 차단했습니다.")
-        return
-    st.download_button(
-        "합성 감사 JSON 다운로드 (실제 공시 아님)",
-        data=safe_export,
-        file_name="proofinvest_SYNTHETIC_SEC_GUARD_UNVERIFIED.json",
-        mime="application/json",
-        key="sec_guard_synthetic_export",
-    )
+
+    st.markdown("#### 06 / 보고서 내보내기")
+    left, right = st.columns(2)
+    with left:
+        st.download_button(
+            "합성 감사 JSON 다운로드 (실제 공시 아님)",
+            data=safe_json,
+            file_name="proofinvest_SYNTHETIC_SEC_GUARD_UNVERIFIED.json",
+            mime="application/json",
+            key="sec_guard_synthetic_export",
+            on_click="ignore",
+            use_container_width=True,
+        )
+    with right:
+        st.download_button(
+            "심사용 Markdown 요약 (합성 전용)",
+            data=safe_markdown,
+            file_name="proofinvest_SYNTHETIC_SEC_GUARD_REVIEW.md",
+            mime="text/markdown",
+            key="sec_guard_synthetic_markdown",
+            on_click="ignore",
+            use_container_width=True,
+        )
     st.warning("감사 해시 일치는 원문 진위/사용권리/투자 적격성 검증이 아닙니다.")
