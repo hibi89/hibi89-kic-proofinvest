@@ -29,7 +29,7 @@ from .local_sec_packet import (
 
 _REVIEW_ACTIONS = frozenset(("ACKNOWLEDGE", "REQUEST_EXCEPTION"))
 _PINNED_KEYS = frozenset(("submissions", "companyfacts", "original_filing"))
-_SHA256 = re.compile(r"[0-9a-f]{64}\\Z", re.ASCII)
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 
 
 def _pinned_local_source_match(
@@ -281,14 +281,14 @@ def main(argv: list[str] | None = None) -> int:
             args.expected_companyfacts_sha256,
             args.expected_original_sha256)
     if 0 < sum(x is not None for x in pins) < 3:
-        parser.exit(2, "Local SEC Guard report blocked: ALL_THREE_SOURCE_PINS_REQUIRED\\n")
+        parser.exit(2, "Local SEC Guard report blocked: ALL_THREE_SOURCE_PINS_REQUIRED\n")
     expected_pins = None if all(x is None for x in pins) else {
         "submissions": pins[0],
         "companyfacts": pins[1],
         "original_filing": pins[2],
     }
     if expected_pins is not None and args.history_page_json is not None:
-        parser.exit(2, "Local SEC Guard report blocked: HISTORY_PAGE_NOT_PINNED\\n")
+        parser.exit(2, "Local SEC Guard report blocked: HISTORY_PAGE_NOT_PINNED\n")
     # Resolve paths before touching input data or a persistent audit: a
     # destination must never alias any source, nor may HTML and the audit
     # database share an uncreated destination (SQLite otherwise wins race).
