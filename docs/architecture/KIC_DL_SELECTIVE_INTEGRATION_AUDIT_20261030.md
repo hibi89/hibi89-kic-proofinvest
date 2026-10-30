@@ -1,0 +1,31 @@
+# KIC ↔ Disclosure Lightning: selective integration audit
+
+Date: 2026-10-30 KST · Evidence: `hibi89/hibi89-kic-proofinvest` `lead/kic@66b1b91c6f5ae5921aa6de3928267701cb810a7e` vs `feature/disclosure-lightning@760ddd3a0e4ad5814e76146c0d536bebc4520f81`.
+
+## Purpose and observed limits
+
+This is a **source-level inventory and architecture decision**, not an approved cross-branch merge, executed end-to-end integration or SEC provenance certification. The lead code CI #41063549798 and the DL feature CI #40669947617 both finished success **on their respective SHA**; this does not establish combined compatibility. No source bytes, API credentials, real SEC requests, protected official PDF, submission or production deployment were used.
+
+| DL feature-only module | KIC lead existing overlap / verified gap | Decision for KIC | Condition before use |
+| --- | --- | --- | --- |
+| `disclosure_lightning/companyfacts.py` | KIC already has `proofinvest/sec_companyfacts.verify_sec_annual_revenue`, bounded `sec_three_source._fetch_companyfacts`, and opt-in `sec_capture_bundle`. DL additionally provides immutable CompanyFacts observations, cache/validators and as-of reads. DL permits up to 50 MB vs KIC's deliberately tighter 8 MB transport limit. | **Do not merge now.** Preserve KIC three-source, no-cache finite review. Consider a read-only typed receipt adapter only if a genuine repeatable retention requirement is approved. | Pin CIK + accession + as-of + raw SHA; explicit retention and rights; no silent limit increase or accidental network; SQLite compatibility tests. |
+| `disclosure_lightning/extract.py` | KIC already has `proofinvest.visible_text_evidence`, `numeric_literal_anchor` and `dl_source_span` for literal/untrusted text and byte-offset checks. DL supports broader visible-text fragments and candidate search, not financial authentication. | **Defer.** Do not duplicate literal scanning for preliminary. | Benchmark retrieval coverage/false positives on approved original filing bytes, preserve escaping and unverified status. |
+| `disclosure_lightning/history.py` | KIC `core.index_submissions` processes the bounded recent window; `sec_three_source` explicitly rejects a selected 10-K absent from that window. DL supplies pinned older-page manifests, history import/audit and amendment candidate review. This is a **genuine unimplemented long-horizon capability**, but not needed for the frozen Nov-12 PDF. | **P1 targeted adapter candidate**, not a full merge. First prove *offline* historical receipt→selection; do not expand the three-GET live contract implicitly. | Approved provider use/extra request count, as-of/accepted-at chronology, idempotent receipt integrity, schema isolation, deterministic selected 10-K, no automatic network. |
+| `disclosure_lightning/xbrl.py` | KIC `ixbrl_revenue_review` already checks strict annual-revenue context/unit/scale; DL generic extractor surfaces many untrusted inline-XBRL facts and source-line hints, without numeric normalization/authentication. | **Defer broad ingestion.** Keep narrow, fail-closed revenue verifier for preliminary. | Exact context, unit, taxonomy, period and source bytes proven; compare benchmark quality and memory usage; label generic candidates unverified. |
+| Newer DL `core.py` and `originals.py` paths | KIC contains deliberately smaller local copies; feature branch has cache/validator and expanded historical/original HTTP behavior. API names overlap, but storage/transport contracts need not match. | **Do not copy/replace wholesale** or combine SQLite schemas. | Interface-by-interface compatibility, no retry/proxy/redirect surprise, proof against time leakage and SHA/date mix-ups. |
+| `fixtures/kic_apple_handoff_synthetic.json` | Fixture data, not a runtime dependency. | Keep in feature branch unless a narrowly scoped regression demands it. | Preserve `SYNTHETIC_FIXTURE` label; never promote to real SEC fact. |
+
+## Two implementation options and decision
+
+- **Option A: Full feature-branch merge.** Potentially broad capability in one operation but high regression/security/maintenance cost: diverged source files, different persistence contracts and bigger transport caps. **Rejected** as an automatic action.
+- **Option B: Small explicit adapters for a verified gap.** More limited initial coverage, lower data/security blast radius, easier CI ownership, and lower ongoing support cost. **Recommended only for finalist work after approval and offline contract tests**; history import is the clearest candidate.
+- **Option C: Keep KIC standalone until preliminary.** No new runtime cost; existing SEC 3-source + Guard + judge ZIP remain functional within their proven synthetic/offline bounds. **Chosen for the Nov-12 preliminary path.** Does not mean final product complete.
+
+## Gates and testable next work
+
+1. **P0:** Participant review of the **exact private** seven-section ≤10-page official PDF (filename, SHA256, content/title). Separate owner authorization required for DAKER upload; confirm receipt before 2026-11-12 10:00 KST. Public repository must not receive private PDF/PPTX.
+2. **P1 offline:** On an independently authorized finalist work item, define a versioned JSON contract for an older 10-K's DL pinned history receipt; test duplicate import, tamper, as-of instant before/after SEC accepted-at, conflicts, 10-K/A and absent files. No network by default.
+3. **P1 live:** Only with explicit SEC identity/contact-bearing User-Agent, provider-rights and request-count approval: source → raw SHA → CIK/accession/period/unit → Guard HOLD/REJECT → human review → SQLite audit → browser report. Test verified source transport separately from actual source truth.
+4. **No fictional completeness percentage.** Branch CI success is not proof of cross-branch integration, live financial facts or a production judge URL.
+
+Rollback: this audit makes **no code change**. Remove this single documentation entry if architecture is superseded; never force-push. Evidence references: `proofinvest/sec_three_source.py`, `proofinvest/sec_companyfacts.py`, `proofinvest/ixbrl_revenue_review.py`, `proofinvest/dl_source_span.py`, `proofinvest/visible_text_evidence.py`, DL `companyfacts.py`, `extract.py`, `history.py`, `xbrl.py`, `core.py`, `originals.py`.

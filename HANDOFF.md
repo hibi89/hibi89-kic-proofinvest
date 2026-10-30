@@ -1,3 +1,11 @@
+## 2026-10-30 KST — KIC/DL selective integration audit (resume)
+1. **Goal:** Check four feature-only DL modules against current KIC lead and decide whether full merge is necessary.
+2. **Outcome:** Source-level matrix `docs/architecture/KIC_DL_SELECTIVE_INTEGRATION_AUDIT_20261030.md`. CompanyFacts, text extraction and inline XBRL partially duplicate KIC logic; older-page `history.py` is a real future capability gap. Keep preliminary standalone; target one offline history receipt adapter only if finalist work is approved.
+3. **Verified:** KIC lead `66b1b91c` Actions #41063549798 SUCCESS; DL `760ddd3a` Actions #40669947617 SUCCESS on separate branches. No integrated test was executed; no product-code mutation.
+4. **Open:** Exact private seven-section ≤10-page PDF SHA/title approval, separate DAKER upload permission/receipt by 2026-11-12 10:00 KST; live SEC/rights/UA and production also not verified.
+5. **Boundaries/rollback:** No SQL schema, API calls, source data, feature branch, official artifacts, secrets or URL changed. This note and audit can be reverted as documentation only; no force push.
+6. **Next:** Preserve verified offline CI; obtain explicit owner gate for official PDF. For finalist only, use bounded offline historic receipt contract and regressions before any new SEC requests. Documentation commit SHA checked against remote after writing; KIC source remains `66b1b91c`.
+
 ## 2026-10-30 KST — browser E2E SQLite connection lifetime (10-point resume)
 1. **Goal:** Prevent the Windows WinError 32 class of file locks in the judge Chromium smoke's own SQLite reader handles; preserve existing SEC→Guard/review evidence checks.
 2. **Implementation / decision:** In `scripts/guard_browser_smoke.py` explicitly close both short-lived sqlite3 readers using `contextlib.closing`. Keep existing SQL, guard decisions, hashes, UI assertions and report output unchanged. Prefer this two-line behavioral fix over a new database abstraction.
