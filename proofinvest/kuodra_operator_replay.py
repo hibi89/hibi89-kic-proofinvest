@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from datetime import date
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -108,7 +109,7 @@ def _result(reason: str, *, status: str = "blocked") -> dict[str, Any]:
         "local_tool_attempts": 0, "max_local_tool_attempts": 1,
         "external_tool_calls": 0, "network_calls": 0,
         "guard": None, "verification": None, "balance_sheet": None,
-        "source_review": None, "audit": None,
+        "source_review": None, "issuer": None, "audit": None,
         "audit_written": False, "source_authenticated": False,
         "source_rights_verified": False, "ai_agent_executed": False,
         "live_model_called": False, "live_sec_called": False,
@@ -171,6 +172,8 @@ def run_offline_proposal_replay(
         return result
     if (report.get("status") != "OFFLINE_CAPTURE_REVIEW_RECORDED"
             or report.get("issuer", {}).get("cik") != operator_request["issuer_cik"]
+            or report.get("issuer", {}).get("accession") != operator_request["accession"]
+            or report.get("issuer", {}).get("as_of") != operator_request["as_of"]
             or report.get("guard", {}).get("decision") not in ("HOLD", "REJECT")
             or report.get("audit_chain_valid") is not True):
         result.update(reason_code="OFFLINE_RESULT_CONTRACT_INVALID",
@@ -194,7 +197,7 @@ def run_offline_proposal_replay(
     result.update(status="completed", reason_code=reason,
                   verification=report["verification"], guard=report["guard"],
                   balance_sheet=report["balance_sheet"],
-                  source_review=report["source_review"],
+                  source_review=report["source_review"], issuer=report["issuer"],
                   audit=report["audit"], audit_written=True)
     return result
 
@@ -205,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--operator-request-json", type=Path, required=True)
     p.add_argument("--proposal-json", type=Path, required=True)
     p.add_argument("--acknowledge-local-audit-persistence", action="store_true")
+    p.add_argument("--report-html", type=Path,
+                   help="Optional NEW local HTML report; requires audit consent; never overwrite")
     args = p.parse_args(argv)
     try:
         request = json.loads(
@@ -212,12 +217,47 @@ def main(argv: list[str] | None = None) -> int:
             object_pairs_hook=_unique_json_object,
         )
         proposal = _read_regular_local(args.proposal_json, 2_048).decode("utf-8")
+        if args.report_html is not None:
+            # Refuse conflicts BEFORE permitting the local SQLite audit.
+            if not _valid_request(request) or not args.acknowledge_local_audit_persistence:
+                raise ValueError("REPORT_REQUIRES_VALID_APPROVED_REQUEST")
+            target = args.report_html.expanduser()
+            inputs = (
+                args.operator_request_json, args.proposal_json,
+                Path(request["audit_db"]), Path(request["capture_zip"]),
+            )
+            resolved = target.resolve(strict=False)
+            if (target.suffix.lower() != ".html"
+                    or target.exists() or target.is_symlink()
+                    or not target.parent.is_dir() or target.parent.is_symlink()
+                    or resolved in {
+                        x.expanduser().resolve(strict=False) for x in inputs
+                    }):
+                raise ValueError("REPORT_HTML_DESTINATION_UNAVAILABLE")
         report = run_offline_proposal_replay(
             request, proposal,
             acknowledge_local_audit_persistence=args.acknowledge_local_audit_persistence,
         )
     except (ValueError, UnicodeError, TypeError, OSError, RecursionError):
         report = _result("INVALID_LOCAL_OPERATOR_OR_PROPOSAL_FILE")
+    if args.report_html is not None:
+        report["html_report_status"] = "not_written"
+        if report["status"] == "completed":
+            from .kuodra_operator_html import render_kuodra_operator_html
+            try:
+                document = render_kuodra_operator_html(report)
+                # Exclusive create prevents overwriting originals or existing reports.
+                with args.report_html.expanduser().open("xb") as output:
+                    output.write(document)
+                    output.flush()
+                    os.fsync(output.fileno())
+                report["html_report_status"] = "written"
+            except (ValueError, TypeError, OSError, RecursionError):
+                # SQLite may already contain a successful audit. Preserve that
+                # truth, do not claim both the audit AND HTML were absent.
+                report["status"] = "report_export_failed"
+                report["reason_code"] = "HTML_EXPORT_FAILED_CHECK_AUDIT"
+                report["html_report_status"] = "failed_check_target"
     print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
     return 0 if report["status"] in ("completed", "needs_clarification") else 2
 
