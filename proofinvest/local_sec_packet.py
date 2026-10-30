@@ -31,6 +31,7 @@ from proofinvest.sec_companyfacts import verify_sec_annual_revenue
 from proofinvest.numeric_literal_anchor import find_numeric_literals_in_html_text
 from proofinvest.visible_text_evidence import confirm_html_text_node_literal
 from proofinvest.ixbrl_revenue_review import review_inline_annual_revenue
+from proofinvest.dei_identity_review import review_embedded_dei_identity
 
 _MAX_CLAIM_BYTES = 400
 _MAX_FILE_BYTES = 8_000_000
@@ -104,6 +105,11 @@ def build_local_sec_review_packet(
     facts = _json_object(companyfacts_json, limit=_MAX_FILE_BYTES)
     if type(original_filing) is not bytes or not 0 < len(original_filing) <= MAX_FILING_BYTES:
         raise ValueError("ORIGINAL_FILE_MISSING_OR_OVERSIZED")
+    dei_review = review_embedded_dei_identity(original_filing, cik=cik)
+    if dei_review["status"] in ("conflict", "ambiguous"):
+        # Reported metadata is untrusted. A contradiction within the source
+        # must not pass to Guard/SQLite even if financial arithmetic matches.
+        raise ValueError("ORIGINAL_DEI_SELF_CLAIM_CONFLICT_OR_AMBIGUOUS")
     # Disallow oversized free-form user strings and do not copy them to output.
     if claimed_growth_pct is not None and (
             not isinstance(claimed_growth_pct, str)
@@ -225,6 +231,7 @@ def build_local_sec_review_packet(
             "numeric_literal_crosscheck": numeric_literals,
             "html_text_node_literal_check": text_node_literal,
             "ixbrl_revenue_context_review": ixbrl_review,
+            "original_dei_identity_review": dei_review,
             "link_status": crosslink["status"],
         },
         "financial": {

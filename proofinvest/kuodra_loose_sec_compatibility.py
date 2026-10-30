@@ -18,6 +18,7 @@ from typing import Any, Mapping
 from disclosure_lightning.core import index_submissions, parse_day, MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
 from .ixbrl_revenue_review import review_inline_annual_revenue
+from .dei_identity_review import review_embedded_dei_identity
 from .kuodra_offline_preflight import _candidate_needle_receipts
 from .local_sec_packet import _json_object, _read_regular_local, _MAX_FILE_BYTES
 from .sec_companyfacts import REVENUE_TAGS, MAX_ROWS, _date, verify_sec_annual_revenue
@@ -44,6 +45,7 @@ def _result(reason: str) -> dict[str, Any]:
         "period_candidates": [],
         "candidates_truncated": False,
         "original_strict_utf8": False,
+        "embedded_dei_identity": None,
         "eligible_original_text_candidate_count": 0,
         "original_text_disclosed": False,
         "original_filing_belongs_to_accession_verified": False,
@@ -169,6 +171,11 @@ def inspect_loose_sec_files(
         utf8 = True
     except UnicodeDecodeError:
         utf8 = False
+    dei_identity = review_embedded_dei_identity(original, cik=cik)
+    if dei_identity["status"] in ("conflict", "ambiguous"):
+        blocked = _result("ORIGINAL_DEI_SELF_CLAIM_CONFLICT_OR_AMBIGUOUS")
+        blocked["embedded_dei_identity"] = dei_identity
+        return blocked
     candidate_count = len(_candidate_needle_receipts(original)) if utf8 else 0
     out = _result(
         "MANUAL_PERIOD_NEEDLE_REVIEW_REQUIRED"
@@ -189,6 +196,7 @@ def inspect_loose_sec_files(
         period_candidates=approved[:_MAX_DISPLAY],
         candidates_truncated=len(approved) > _MAX_DISPLAY,
         original_strict_utf8=utf8,
+        embedded_dei_identity=dei_identity,
         eligible_original_text_candidate_count=candidate_count,
     )
     return out

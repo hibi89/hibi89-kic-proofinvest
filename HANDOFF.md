@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P24 original DEI identity self-claim crosscheck (CI pending)
+
+1. Objective: prevent user-supplied 10-K HTML with an explicit contradictory Inline XBRL DEI entity CIK/document type from slipping through otherwise valid Submissions+CompanyFacts arithmetic into Guard/SQLite. No evidence in scope proves a raw SEC original belongs to an accession, so this only checks disclosed self-claims and does NOT upgrade trust.
+2. Options: (A) assume the original's CIK/form from operator filenames (no original internal check, inexpensive but unsafe), (B) require strict XML/XHTML on every EDGAR document (rejects real ordinary HTML), (C) bounded stdlib HTMLParser matching only `ix:nonNumeric` name=dei:EntityCentralIndexKey / dei:DocumentType when actually present (selected; missing => unavailable, mismatched/ambiguous => fail-closed).
+3. Data flow: new proofinvest/dei_identity_review.py parses exact UTF-8 ordinary HTML including ix:hidden DEI metadata without network. Duplicate same-value claims allowed, contradictory values/unknown nested markup/character refs stop. P20 inspection returns embedded_dei_identity and blocks conflict; local_sec_packet checks same before any temp SQLite/Guard, returns untrusted metadata. It never claims matching accession, issuer authenticity or SEC licensing.
+4. Tests: 10 tests in tests/test_kuodra_dei_identity.py for matching/incorrect CIK & 10-Q, absent/partial, repeat/duplicate contradictions, script fake tags, malformed nested/unclosed/entity, invalid UTF8, loose preflight conflict, Guard no-write on conflict and valid Guard HOLD.
+5. Baseline: P23 source 90b5756f4b9d35939ef4a32ca40d6b5cbf565450 Actions #41116700165 Python 887 0 failures/errors/skips CI3/3 PASS; docs head 830acdac2e0686829dcaecce71d3f7726e3ecb97.
+6. Safety/approval: no real SEC GET, no Google/Gemini, no original storage/credentials, user DB edits or production changes. All new tests synthetic, temporary local SQLite in unit test. Preserve old metadata-only absence behavior, same Guard HOLD/REJECT. Only ordinary code/document changes to lead/kic.
+7. Files: new proofinvest/dei_identity_review.py, P20 kuodra_loose_sec_compatibility.py, local_sec_packet.py, tests/test_kuodra_dei_identity.py, HANDOFF.md and STATUS.md.
+8. Status: exact P24 source SHA/CI pending. A matched DEI self-claim is not source/origin/authenticity evidence; absence is reported as unavailable, not positive identity.
+9. Next: verify exact CI and fix observed issues, then real SEC owner supplied original needed to validate actual EDGAR HTML; Gemini and Production remain separate.
+10. Checkpoint: 2026-10-31 KST P24 code prepared; no real data authentication or release claim.
+
 ## 2026-10-31 KST — KUODRA P23 visible SEC exposure gate for macro cards (CI 3/3 SUCCESS)
 
 1. Goal: make issuer-specific macro/sector cards depend on an actual eligible SEC HTML text-node span, not only exact raw byte equality that formerly accepted script/style/comment/attribute/head/ix:hidden/exclude tokens.
