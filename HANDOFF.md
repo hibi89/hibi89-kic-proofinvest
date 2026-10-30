@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P15 offline operator-selected pinned request draft (CI pending)
+
+1. Goal: Eliminate error-prone manual JSON wiring from saved SEC ZIP preflight to P14 identity/SHA-pinned operator replay while retaining user choice, model proposal gate, Guard HOLD and explicit SQLite approval.
+2. Alternatives: Auto-select and immediately execute period/needle (higher false evidence and hidden persistence risk) vs explicit period+literal selection producing only a strictly checked request draft (chosen; no unapproved side effects).
+3. Data flow: P13 fiscal pair preview -> operator manually specifies current/prior/needle/intent/audit path/run_id -> P15 verifies pair, rereads ZIP, compares actual raw three hashes to preview, enforces unique eligible original HTML text span -> P14 expected_source_sha256 request JSON. No LLM selection, Guard or SQLite write, SEC HTTP or source-trust upgrade.
+4. Code/tests: New proofinvest/kuodra_operator_request_draft.py CLI and 13 offline tests in tests/test_kuodra_operator_request_draft.py. Output defaults to stdout; optional --output-request-json NEW.json creates only a new local draft, atomically no-clobber; subsequent execution requires independently supplied matching proposal and --acknowledge-local-audit-persistence. Test suite and exact SHA CI pending.
+5. Existing verified baseline: P14 source 39f62d3c5e76d3edf7a462b2b8452f0925d2d880 Actions #41105748771 SUCCESS 3/3; documentation SHA fb53d750324ff2f8dec7defed39eddcc9f72e6f4 CI #41106002704 SUCCESS. No live SEC, Gemini or Production verified.
+6. Safety/recovery: No original ZIP overwrite, no existing user DB, no model/network calls, no DAKER submission, no DL branch changes. P15 additive standalone module and tests; normal revert if regression, no force push.
+7. Repo: hibi89/hibi89-kic-proofinvest lead/kic; parent fb53d750324ff2f8dec7defed39eddcc9f72e6f4; new module and tests plus root HANDOFF/STATUS.
+8. Test environment: GitHub Actions Python full offline verifier, Windows SQLite, Chromium. No runnable local GitHub clone because sandbox DNS to github.com failed; CI is actual execution gate.
+9. Next: Check P15 SHA Python/Windows/Chromium CI, fix pinpoint failures; then strengthen real SEC format compatibility offline or seek explicit owner approval for lawful three live requests/local retention. No paid model calls without separate authorization.
+10. Checkpoint 2026-10-31 KST: implementation prepared; exact P15 GitHub commit and CI to be verified after push.
+
 ## 2026-10-31 KST — KUODRA P14 operator-pinned SEC raw source digests (CI verified)
 
 1. Objective: Bind P13 read-only ZIP preview raw SHA-256 fingerprints to exact SEC bytes used by P5/P7, rejecting internally valid same-issuer/accession/as-of replacement before Guard/SQLite.
