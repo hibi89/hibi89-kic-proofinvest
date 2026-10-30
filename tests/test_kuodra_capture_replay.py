@@ -112,6 +112,50 @@ class KuodraCaptureReplayTests(unittest.TestCase):
             replay_saved_capture(**(self.kwargs | {"bundle_path": invalid}))
         self.assertFalse(self.db.exists())
 
+    def _macro(self):
+        start = SYNTHETIC_HTML.index(PHRASE.encode("utf-8"))
+        return {
+            "exposures": [{
+                "series_id": "US_CPI_YOY", "start_byte": start,
+                "end_byte_exclusive": start + len(PHRASE.encode("utf-8")),
+                "literal": PHRASE,
+                "rationale": "Only a synthetic exposure for contract testing.",
+            }],
+            "observations": [{
+                "series_id": "US_CPI_YOY", "unit": "percent_yoy",
+                "benchmark": "United States CPI-U all items YoY",
+                "value": "2.50", "period_end": "2025-09-30",
+                "released_at": "2025-10-15T10:00:00Z",
+                "vintage_at": "2025-10-15T10:00:01Z",
+                "collected_at": "2025-10-15T10:00:02Z",
+                "source_url": "https://example.org/synthetic-cpi",
+                "rights_basis_url": "https://example.org/synthetic-terms",
+                "rights_note": "Synthetic local-use attestation only; unverified.",
+                "rights_review": "LOCAL_ANALYSIS_PERMITTED_ATTESTED",
+                "payload_sha256": hashlib.sha256(b"synthetic CPI").hexdigest(),
+            }],
+        }
+
+    def test_saved_sec_zip_macro_context_to_guard_without_policy_change(self):
+        original = self.zip.read_bytes()
+        result = replay_saved_capture(**(self.kwargs | {
+            "macro_context": self._macro()
+        }))
+        self.assertEqual(result["guard"]["decision"], "HOLD")
+        self.assertEqual(result["macro_context"]["cards"][0]["value"], "2.50")
+        self.assertFalse(result["macro_context"]["guard_policy_modified"])
+        self.assertFalse(result["macro_context"]["source_authenticated"])
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+        self.assertEqual(self.zip.read_bytes(), original)
+
+    def test_macro_contract_rejects_before_sqlite_creation(self):
+        macro = self._macro()
+        macro["exposures"][0]["literal"] = "not an exact original"
+        macro["observations"] = "untrusted string not a list"
+        with self.assertRaisesRegex(ValueError, "MACRO_CONTEXT_INVALID_INPUT"):
+            replay_saved_capture(**(self.kwargs | {"macro_context": macro}))
+        self.assertFalse(self.db.exists())
+
     def test_collision_with_input_prevents_write(self):
         with self.assertRaisesRegex(ValueError, "COLLISION"):
             replay_saved_capture(**(self.kwargs | {"audit_db": self.zip}))
