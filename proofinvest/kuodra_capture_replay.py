@@ -38,6 +38,9 @@ def replay_saved_capture(
     acknowledge_local_audit_persistence: bool = False,
     macro_context: Mapping[str, Any] | None = None,
     macro_raw_observations: Mapping[str, bytes] | None = None,
+    expected_issuer_cik: str | None = None,
+    expected_accession: str | None = None,
+    expected_as_of: str | None = None,
 ) -> dict[str, Any]:
     """Replay a bounded, previously captured ZIP with no HTTP or model.
 
@@ -59,6 +62,17 @@ def replay_saved_capture(
         # Bundle manifest is validated but not independently authenticated.
         raise ValueError("CAPTURE_BUNDLE_INTEGRITY_UNVERIFIED")
     day = receipt.get("observed_utc_day")
+    # Bind operator-selected issuer/accession/date to the SAME ZIP bytes that
+    # will feed SQLite. Preflighting a path elsewhere does not prevent an
+    # attacker from replacing it before this final read.
+    if (expected_issuer_cik is not None
+            and receipt.get("issuer_cik") != expected_issuer_cik):
+        raise ValueError("CAPTURE_EXPECTED_ISSUER_MISMATCH")
+    if (expected_accession is not None
+            and receipt.get("accession") != expected_accession):
+        raise ValueError("CAPTURE_EXPECTED_ACCESSION_MISMATCH")
+    if (expected_as_of is not None and day != expected_as_of):
+        raise ValueError("CAPTURE_EXPECTED_AS_OF_MISMATCH")
     instants = [
         _capture_instant(receipt.get(k), day)
         for k in ("submissions_observed_at_utc",
