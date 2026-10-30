@@ -156,7 +156,7 @@ class OperatorProposalReplayTests(unittest.TestCase):
 
     def test_invalid_operator_request_fails_without_tool(self):
         for req in (
-            dict(self.req, requested_intent="RISK_CHECK"),
+            dict(self.req, requested_intent="UNSUPPORTED_TOOL"),
             dict(self.req, current_end="2026-01-01"),
             dict(self.req, needle="x"),
             dict(self.req, run_id="../../secret"),

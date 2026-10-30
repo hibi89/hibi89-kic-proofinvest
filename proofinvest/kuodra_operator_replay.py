@@ -28,6 +28,8 @@ _REQUIRED = frozenset({
     "audit_db", "run_id", "current_end", "prior_end", "needle",
 })
 _OPTIONAL = frozenset({"claimed_growth_pct"})
+_INTENTS = frozenset(("GROWTH_CHECK", "SOURCE_REVIEW", "RISK_CHECK"))
+
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -68,7 +70,7 @@ def _valid_request(req: Any) -> bool:
             or cik == "0000000000"
             or type(acc) is not str or _ACCESSION.fullmatch(acc) is None
             or not acc.startswith(cik + "-")
-            or req.get("requested_intent") != "GROWTH_CHECK"):
+            or req.get("requested_intent") not in _INTENTS):
         return False
     d, current, prior = (_calendar_day(req.get(k)) for k in
                          ("as_of", "current_end", "prior_end"))
@@ -87,6 +89,10 @@ def _valid_request(req: Any) -> bool:
                 or "\x00" in value):
             return False
     claim = req.get("claimed_growth_pct")
+    if req["requested_intent"] != "GROWTH_CHECK" and claim is not None:
+        # A source or risk request must not hide a growth-claim contradiction
+        # that changes the Guard decision under a separate requested intent.
+        return False
     if claim is not None and (type(claim) is not str or
                               _DECIMAL.fullmatch(claim) is None):
         return False
@@ -101,7 +107,8 @@ def _result(reason: str, *, status: str = "blocked") -> dict[str, Any]:
         "selected_intent": None, "model_proposal_accepted": False,
         "local_tool_attempts": 0, "max_local_tool_attempts": 1,
         "external_tool_calls": 0, "network_calls": 0,
-        "guard": None, "verification": None, "balance_sheet": None, "audit": None,
+        "guard": None, "verification": None, "balance_sheet": None,
+        "source_review": None, "audit": None,
         "audit_written": False, "source_authenticated": False,
         "source_rights_verified": False, "ai_agent_executed": False,
         "live_model_called": False, "live_sec_called": False,
@@ -138,7 +145,7 @@ def run_offline_proposal_replay(
         return result
     # Reuse the tested ZIP/Decimal/Guard/SQLite pipeline. The ZIP loader
     # matches the issuer/accession/as_of during the final read, BEFORE write.
-    result["selected_intent"] = "GROWTH_CHECK"
+    result["selected_intent"] = intent
     result["model_proposal_accepted"] = True
     result["local_tool_attempts"] = 1
     result["audit_written"] = None  # unknown if a local failure occurs
@@ -155,6 +162,7 @@ def run_offline_proposal_replay(
             expected_issuer_cik=operator_request["issuer_cik"],
             expected_accession=operator_request["accession"],
             expected_as_of=operator_request["as_of"],
+            required_review_intent=intent if intent != "GROWTH_CHECK" else None,
         )
     except (ValueError, KeyError, TypeError, OSError, sqlite3.Error,
             OverflowError, RecursionError):
@@ -168,9 +176,25 @@ def run_offline_proposal_replay(
         result.update(reason_code="OFFLINE_RESULT_CONTRACT_INVALID",
                       model_proposal_accepted=False)
         return result
-    result.update(status="completed", reason_code="OFFLINE_GUARD_AUDIT_RECORDED",
+    if (intent == "RISK_CHECK" and
+            report["balance_sheet"].get("status") != "reviewed_unverified"):
+        result.update(reason_code="RISK_REVIEW_RESULT_UNAVAILABLE",
+                      model_proposal_accepted=False)
+        return result
+    if (intent == "SOURCE_REVIEW" and
+            report["source_review"].get("exact_raw_byte_span_verified") is not True):
+        result.update(reason_code="SOURCE_REVIEW_RESULT_UNAVAILABLE",
+                      model_proposal_accepted=False)
+        return result
+    reason = {
+        "GROWTH_CHECK": "OFFLINE_GUARD_AUDIT_RECORDED",
+        "SOURCE_REVIEW": "LOCAL_SOURCE_SPAN_REVIEW_UNVERIFIED",
+        "RISK_CHECK": "LOCAL_BALANCE_RISK_REVIEW_UNVERIFIED",
+    }[intent]
+    result.update(status="completed", reason_code=reason,
                   verification=report["verification"], guard=report["guard"],
                   balance_sheet=report["balance_sheet"],
+                  source_review=report["source_review"],
                   audit=report["audit"], audit_written=True)
     return result
 

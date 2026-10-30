@@ -41,6 +41,7 @@ def replay_saved_capture(
     expected_issuer_cik: str | None = None,
     expected_accession: str | None = None,
     expected_as_of: str | None = None,
+    required_review_intent: str | None = None,
 ) -> dict[str, Any]:
     """Replay a bounded, previously captured ZIP with no HTTP or model.
 
@@ -109,6 +110,7 @@ def replay_saved_capture(
         current_end=current_end, prior_end=prior_end, needle=needle,
         claimed_growth_pct=claimed_growth_pct,
         audit_db_path=dest, run_id=run_id,
+        required_review_intent=required_review_intent,
     )
     actual = report["source"]
     sha = receipt["raw_response_sha256"]
@@ -131,6 +133,11 @@ def replay_saved_capture(
         "observed_utc_day_self_reported": day,
         "original_capture_hashes_match": True,
         "verification": report["verification"],
+        "source_review": {
+            **report["source"],
+            "source_authenticated": False,
+            "source_rights_verified": False,
+        },
         "risk": report["risk"],
         "balance_sheet": report["balance_sheet"],
         "guard": report["guard"],

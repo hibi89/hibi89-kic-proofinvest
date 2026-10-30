@@ -62,6 +62,7 @@ def review_local_sec_with_guard(
     reviewer: str | None = None,
     action: str | None = None,
     reason: str | None = None,
+    required_review_intent: str | None = None,
 ) -> dict[str, Any]:
     """Read three local inputs, emit a safe report and persist explicit audit.
 
@@ -70,6 +71,8 @@ def review_local_sec_with_guard(
     legacy Guard remains unchanged; this path can only HOLD or REJECT.
     """
     db_path = _check_audit_path(audit_db_path)
+    if required_review_intent not in (None, "SOURCE_REVIEW", "RISK_CHECK"):
+        raise ValueError("UNSUPPORTED_SEC_REVIEW_INTENT")
     if action is not None and action not in _REVIEW_ACTIONS:
         raise ValueError("LOCAL_SOURCE_CANNOT_AUTHORIZE_SIMULATION")
     # Reject incomplete reviews before any local SQLite side effects.
@@ -124,6 +127,15 @@ def review_local_sec_with_guard(
             "numeric_literals": source["numeric_literal_crosscheck"],
         },
     )
+    # A proposal is NOT permission to persist a spurious result. Refuse
+    # the operator's requested review BEFORE the Guard/SQLite side effect
+    # when its essential locally checked evidence is unavailable.
+    if required_review_intent == "SOURCE_REVIEW" and not text_ok:
+        raise ValueError("SOURCE_REVIEW_EXACT_TEXT_EVIDENCE_REQUIRED")
+    if (required_review_intent == "RISK_CHECK" and
+            (balance_sheet["status"] != "reviewed_unverified"
+             or balance_sheet["balance_identity_match"] is not True)):
+        raise ValueError("RISK_REVIEW_RECONCILED_BALANCE_REQUIRED")
     # The local risk screen is informational, NOT approved financial risk
     # data. It must never be passed as eligible risk to evaluate_guard.
     if (local_risk.get("source_authenticated") is not False
