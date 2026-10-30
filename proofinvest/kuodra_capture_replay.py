@@ -6,7 +6,9 @@ authenticity or independent finance attestation. This module does NO network.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +43,7 @@ def replay_saved_capture(
     expected_issuer_cik: str | None = None,
     expected_accession: str | None = None,
     expected_as_of: str | None = None,
+    expected_source_sha256: Mapping[str, str] | None = None,
     required_review_intent: str | None = None,
 ) -> dict[str, Any]:
     """Replay a bounded, previously captured ZIP with no HTTP or model.
@@ -62,6 +65,19 @@ def replay_saved_capture(
             or receipt.get("capture_bytes_persisted") is not False):
         # Bundle manifest is validated but not independently authenticated.
         raise ValueError("CAPTURE_BUNDLE_INTEGRITY_UNVERIFIED")
+    # P14: bind the operator-reviewed P13 source digests to actual decoded
+    # ZIP raw bytes before Guard/SQLite, not just the self-reported manifest.
+    if expected_source_sha256 is not None:
+        keys = frozenset(("submissions", "companyfacts", "original_filing"))
+        if (not isinstance(expected_source_sha256, Mapping)
+                or set(expected_source_sha256) != keys
+                or any(type(expected_source_sha256[k]) is not str
+                       or re.fullmatch(r"[0-9a-f]{64}", expected_source_sha256[k]) is None
+                       for k in keys)):
+            raise ValueError("CAPTURE_EXPECTED_SOURCE_DIGEST_INVALID")
+        if any(hashlib.sha256(raws[k]).hexdigest() != expected_source_sha256[k]
+               for k in keys):
+            raise ValueError("CAPTURE_OPERATOR_PINNED_SOURCE_MISMATCH")
     day = receipt.get("observed_utc_day")
     # Bind operator-selected issuer/accession/date to the SAME ZIP bytes that
     # will feed SQLite. Preflighting a path elsewhere does not prevent an
@@ -132,6 +148,7 @@ def replay_saved_capture(
         "issuer": report["issuer"],
         "observed_utc_day_self_reported": day,
         "original_capture_hashes_match": True,
+        "operator_source_digests_verified": expected_source_sha256 is not None,
         "verification": report["verification"],
         "source_review": {
             **report["source"],

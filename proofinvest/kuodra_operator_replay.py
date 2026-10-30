@@ -28,7 +28,7 @@ _REQUIRED = frozenset({
     "issuer_cik", "accession", "as_of", "requested_intent", "capture_zip",
     "audit_db", "run_id", "current_end", "prior_end", "needle",
 })
-_OPTIONAL = frozenset({"claimed_growth_pct"})
+_OPTIONAL = frozenset({"claimed_growth_pct", "expected_source_sha256"})
 _INTENTS = frozenset(("GROWTH_CHECK", "SOURCE_REVIEW", "RISK_CHECK"))
 
 
@@ -97,6 +97,14 @@ def _valid_request(req: Any) -> bool:
     if claim is not None and (type(claim) is not str or
                               _DECIMAL.fullmatch(claim) is None):
         return False
+    if "expected_source_sha256" in req:
+        pins = req["expected_source_sha256"]
+        keys = frozenset(("submissions", "companyfacts", "original_filing"))
+        if (not isinstance(pins, Mapping) or set(pins) != keys
+                or any(type(pins[k]) is not str
+                       or re.fullmatch(r"[0-9a-f]{64}", pins[k]) is None
+                       for k in keys)):
+            return False
     return True
 
 
@@ -111,6 +119,7 @@ def _result(reason: str, *, status: str = "blocked") -> dict[str, Any]:
         "guard": None, "verification": None, "balance_sheet": None,
         "source_review": None, "issuer": None, "audit": None,
         "audit_written": False, "source_authenticated": False,
+        "operator_source_digests_verified": False,
         "source_rights_verified": False, "ai_agent_executed": False,
         "live_model_called": False, "live_sec_called": False,
         "trade_executed": False, "official_contest_submission": False,
@@ -163,6 +172,7 @@ def run_offline_proposal_replay(
             expected_issuer_cik=operator_request["issuer_cik"],
             expected_accession=operator_request["accession"],
             expected_as_of=operator_request["as_of"],
+            expected_source_sha256=operator_request.get("expected_source_sha256"),
             required_review_intent=intent if intent != "GROWTH_CHECK" else None,
         )
     except (ValueError, KeyError, TypeError, OSError, sqlite3.Error,
@@ -198,7 +208,8 @@ def run_offline_proposal_replay(
                   verification=report["verification"], guard=report["guard"],
                   balance_sheet=report["balance_sheet"],
                   source_review=report["source_review"], issuer=report["issuer"],
-                  audit=report["audit"], audit_written=True)
+                  audit=report["audit"], audit_written=True,
+                  operator_source_digests_verified=report["operator_source_digests_verified"])
     return result
 
 

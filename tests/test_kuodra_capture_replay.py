@@ -88,6 +88,26 @@ class KuodraCaptureReplayTests(unittest.TestCase):
         self.assertFalse(first["audit"]["replayed"])
         self.assertTrue(again["audit"]["replayed"])
 
+    def test_p14_direct_replay_accepts_exact_operator_source_pins(self):
+        _, raw = synthetic_receipt()
+        pins = {k: hashlib.sha256(v).hexdigest() for k, v in raw.items()}
+        result = replay_saved_capture(**(self.kwargs | {
+            "expected_source_sha256": pins,
+        }))
+        self.assertTrue(result["operator_source_digests_verified"])
+        self.assertEqual(result["guard"]["decision"], "HOLD")
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
+    def test_p14_direct_replay_rejects_wrong_pin_pre_audit(self):
+        _, raw = synthetic_receipt()
+        pins = {k: hashlib.sha256(v).hexdigest() for k, v in raw.items()}
+        pins["original_filing"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "CAPTURE_OPERATOR_PINNED_SOURCE_MISMATCH"):
+            replay_saved_capture(**(self.kwargs | {
+                "expected_source_sha256": pins,
+            }))
+        self.assertFalse(self.db.exists())
+
     def test_denied_consent_has_no_sqlite_side_effects(self):
         with self.assertRaisesRegex(ValueError, "CONSENT"):
             replay_saved_capture(**(self.kwargs | {

@@ -14,14 +14,15 @@ from proofinvest.guard_audit import GuardAuditStore
 from proofinvest.kic_dl_demo import SYNTHETIC_ACCESSION, SYNTHETIC_CIK, synthetic_companyfacts, synthetic_submissions
 from proofinvest.kic_dl_original_demo import PHRASE, SYNTHETIC_HTML
 from proofinvest.kuodra_operator_replay import main, run_offline_proposal_replay
+from proofinvest.kuodra_offline_preflight import inspect_saved_capture_periods
 from proofinvest.sec_capture_bundle import save_local_capture_bundle
 
 
-def capture_fixture(path: Path) -> None:
+def capture_fixture(path: Path, *, original: bytes = SYNTHETIC_HTML) -> None:
     raw = {
         "submissions": synthetic_submissions(),
         "companyfacts": json.dumps(synthetic_companyfacts()).encode(),
-        "original_filing": SYNTHETIC_HTML,
+        "original_filing": original,
     }
     rec = {
         "schema": "proofinvest.sec-3source-explicit-transport.v1",
@@ -152,6 +153,53 @@ class OperatorProposalReplayTests(unittest.TestCase):
                 result = self.run_gated(req=request)
                 self.assertEqual(result["status"], "blocked")
                 self.assertEqual(result["local_tool_attempts"], 1)
+                self.assertFalse(self.db.exists())
+
+    def test_p14_p13_preview_pins_valid_sources_without_network(self):
+        preview = inspect_saved_capture_periods(self.zip)
+        self.assertEqual(preview["status"], "review_candidates_available")
+        request = self.req | {"expected_source_sha256": preview["source_sha256"]}
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_HTTP")) as net:
+            result = self.run_gated(req=request)
+        net.assert_not_called()
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["operator_source_digests_verified"])
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+        self.assertFalse(result["source_authenticated"])
+
+    def test_p14_consistent_same_identity_replacement_is_rejected_before_audit(self):
+        preview = inspect_saved_capture_periods(self.zip)
+        self.assertEqual(preview["status"], "review_candidates_available")
+        request = self.req | {"expected_source_sha256": preview["source_sha256"]}
+        # Different internally consistent ZIP, same issuer/accession/as_of.
+        self.zip.unlink()
+        capture_fixture(self.zip, original=SYNTHETIC_HTML + b"<!-- changed -->")
+        changed = inspect_saved_capture_periods(self.zip)
+        self.assertEqual(changed["status"], "review_candidates_available")
+        self.assertNotEqual(changed["source_sha256"], preview["source_sha256"])
+        blocked = self.run_gated(req=request)
+        self.assertEqual(blocked["status"], "blocked")
+        self.assertEqual(blocked["local_tool_attempts"], 1)
+        self.assertIsNone(blocked["audit_written"])
+        self.assertFalse(blocked["operator_source_digests_verified"])
+        self.assertFalse(self.db.exists())
+
+    def test_p14_invalid_digest_shapes_block_before_any_tool(self):
+        preview = inspect_saved_capture_periods(self.zip)["source_sha256"]
+        for pins in (
+            None, {}, {"submissions": preview["submissions"]},
+            preview | {"extra": "0" * 64},
+            preview | {"companyfacts": "A" * 64},
+            preview | {"original_filing": False},
+            preview | {"original_filing": "0" * 63},
+        ):
+            with self.subTest(pins=pins):
+                result = self.run_gated(req=self.req | {
+                    "expected_source_sha256": pins,
+                })
+                self.assertEqual(result["reason_code"], "INVALID_OPERATOR_REQUEST")
+                self.assertEqual(result["local_tool_attempts"], 0)
                 self.assertFalse(self.db.exists())
 
     def test_invalid_operator_request_fails_without_tool(self):
