@@ -34,7 +34,7 @@ class GuardStreamlitClickthroughTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(prefix="kic-guard-ui-")
         self.addCleanup(self.tmp.cleanup)
         home = Path(self.tmp.name)
-        env = patch.dict(os.environ, {"HOME": str(home)})
+        env = patch.dict(os.environ, {"HOME": str(home), "USERPROFILE": str(home)})
         env.start()
         self.addCleanup(env.stop)
         self.db = home / ".proofinvest-guard" / "audit.sqlite"
