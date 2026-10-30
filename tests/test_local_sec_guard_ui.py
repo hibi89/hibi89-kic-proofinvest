@@ -170,6 +170,40 @@ class LocalSecGuardUiTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "SYNTHETIC_COMPARISON_EXPORT_BLOCKED"):
             export_synthetic_comparison_json(cases)
 
+    def test_judge_trace_uses_actual_case_results_without_trust_upgrade(self):
+        from proofinvest.local_sec_guard_ui import (
+            build_judge_evidence_trace, render_judge_evidence_trace_html,
+        )
+        from html import unescape
+        for case, decision, citation, numeric in (
+            ("matched", "HOLD", "로컬 위치 확인", "산술 확인"),
+            ("conflict", "REJECT", "로컬 위치 확인", "주장 충돌"),
+            ("script", "HOLD", "인용 불가", "산술 확인"),
+        ):
+            with self.subTest(case=case):
+                report = run_synthetic_guard_case(case)
+                nodes = build_judge_evidence_trace(report)
+                self.assertEqual(len(nodes), 6)
+                self.assertEqual(nodes[1]["상태"], citation)
+                self.assertEqual(nodes[2]["상태"], numeric)
+                self.assertEqual(nodes[4]["상태"], decision)
+                self.assertEqual(nodes[5]["상태"], "로컬 무결")
+                self.assertFalse(report["limits"]["external_source_authenticated"])
+                html = render_judge_evidence_trace_html(report)
+                self.assertIn("pi-trace-grid", html)
+                self.assertEqual(html.count('class="pi-trace-node '), 6)
+                self.assertIn(decision, unescape(html))
+                self.assertNotIn("<script", html.lower())
+                self.assertNotIn("https://", html)
+                self.assertNotIn("APPROVE", html)
+
+    def test_judge_trace_rejects_forged_authenticated_report(self):
+        from proofinvest.local_sec_guard_ui import build_judge_evidence_trace
+        report = run_synthetic_guard_case("matched")
+        report["limits"]["external_source_authenticated"] = True
+        with self.assertRaisesRegex(ValueError, "SYNTHETIC_EXPORT_BLOCKED"):
+            build_judge_evidence_trace(report)
+
     def test_streamlit_comparison_click_shows_real_matrix(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"
