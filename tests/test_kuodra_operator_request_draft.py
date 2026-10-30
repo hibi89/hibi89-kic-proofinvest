@@ -37,6 +37,23 @@ class OperatorDraftTests(unittest.TestCase):
     def draft(self, **changes):
         return build_operator_request_draft(self.zip, **(self.options | changes))
 
+    def test_path_objects_and_literal_strings_are_both_supported(self):
+        native = self.draft()
+        textual = build_operator_request_draft(
+            str(self.zip), **(self.options | {"audit_db": str(self.db)})
+        )
+        self.assertEqual(native["status"], "ready_for_operator_review")
+        self.assertEqual(textual["operator_request"],
+                         native["operator_request"])
+        for bad in (None, 10, [], {}):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    build_operator_request_draft(
+                        bad, **self.options
+                    )["reason_code"],
+                    "INVALID_OPERATOR_DRAFT_INPUT",
+                )
+
     def test_draft_pins_actual_preview_sources_and_never_executes(self):
         before = self.zip.read_bytes()
         with patch("urllib.request.build_opener",

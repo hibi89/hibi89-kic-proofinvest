@@ -48,8 +48,8 @@ def build_operator_request_draft(
     Read the ZIP again after P13 preview, compare actual decoded source
     fingerprints and pin all three digests into the future P14 request.
     """
-    if (type(bundle_path) not in (str, Path)
-            or type(audit_db) not in (str, Path)
+    if (not isinstance(bundle_path, (str, Path))
+            or not isinstance(audit_db, (str, Path))
             or type(needle) is not str or not 8 <= len(needle) <= 128
             or not needle.isascii()
             or any(ord(ch) < 32 or ord(ch) > 126 for ch in needle)):
