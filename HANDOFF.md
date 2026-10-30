@@ -1,15 +1,15 @@
-## 2026-10-31 KST — KUODRA P15 CI failure triage and minimal Path type fix (CI pending)
+## 2026-10-31 KST — KUODRA P15 Python Path fix verified; 3/3 CI successful
 
 1. Evidence: P15 code SHA f85cdf683879682ed54b5bdc6a7eb98a1c415f7d Actions #41106628583 Python 815 executed / 9 failures + 1 error, Windows SQLite SUCCESS; Chromium outcome separately inspect. All 10 P15 failures derive from rejecting concrete PosixPath for operator bundle/audit paths at input type guard.
 2. Root cause: Python pathlib.Path is a factory, but type(Path(...)) is PosixPath/WindowsPath; testing exact type membership against Path incorrectly blocks valid path instances. In tests setUp, self.zip and self.db are valid Path objects. Existing P13/P14 tests are unaffected.
-3. Fix: Replace the two exact-type membership checks with isinstance(value, (str, Path)); preserve strict literal needle validation and all P13 integrity/P14 source pin/consent/write policies. Add separate Path + str + invalid input regression.
+3. Fix verified: replaced both exact-type membership checks with isinstance(value, (str, Path)); retained all P13 integrity/P14 source pin/consent/write policies and added Path + str + invalid input regression. Repair source SHA 034b8bcc0d21fdcb2e0e154e57973ac022f83c88, Actions #41106908403 SUCCESS 3/3: Python 816 executed, 0 failures/errors/skips; Windows SQLite SUCCESS; Chromium real offline-browser SUCCESS.
 4. Scope: Minimal single module plus one test and HANDOFF/STATUS; no new API, live SEC/LLM, SQLite user files, Guard policy or DL/DAKER modifications. First failed run is retained as evidence; do not rerun unchanged source.
-5. Next: Check exact repair commit 3-job CI and Python test totals before claiming success. Baseline P14 source 39f62d3c Actions #41105748771 full 3/3 success.
+5. Next: P15 operator request draft is verified offline only. Test against an owner-provided authentic saved ZIP locally or develop further conservative source-format support; genuine SEC requests/local retention still need explicit approval. Baseline P14 source 39f62d3c Actions #41105748771 3/3 success.
 6. Recovery: previous P15 source f85cdf68 is known bad on Python; ordinary revert only, no force push. P14 code remains unaffected.
 7. Repo: hibi89/hibi89-kic-proofinvest lead/kic; parent f85cdf683879682ed54b5bdc6a7eb98a1c415f7d.
 8. Test environment: GitHub Actions Python3.11/Windows/Chromium; local git clone unavailable due sandbox DNS; downstream CI is authoritative.
 9. External blockers unchanged: genuine SEC HTTP/retention approval, real Gemini, licensed series, measured ML/DL, public Production/browser.
-10. Checkpoint: 2026-10-31 KST, exact P15 Python failure log reviewed and code correction prepared; repaired CI pending.
+10. Checkpoint: 2026-10-31 KST, first CI failure evidence retained and repair exact-source 3/3 SUCCESS verified. This documentation successor does not change runtime and is not a new functional test.
 
 ## 2026-10-31 KST — KUODRA P15 offline operator-selected pinned request draft (CI pending)
 
