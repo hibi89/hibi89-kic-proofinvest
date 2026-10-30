@@ -308,24 +308,44 @@ def render_synthetic_guard_ui(st) -> None:
         "원본은 로컬 합성 데이터이며, 실행 후 임시 DB는 삭제됩니다."
     )
 
-    st.markdown("#### 심사위원을 위한 3가지 판단 사례")
-    s1, s2, s3 = st.columns(3)
-    with s1:
-        with st.container(border=True):
-            st.caption("01 / 수치 일치")
-            st.metric("예상 Guard 판정", "HOLD")
-            st.caption("산술 일치만으로 외부 출처를 인증할 수 없음")
-    with s2:
-        with st.container(border=True):
-            st.caption("02 / 성장률 충돌")
-            st.metric("예상 Guard 판정", "REJECT")
-            st.caption("인용된 주장과 재계산 결과가 불일치")
-    with s3:
-        with st.container(border=True):
-            st.caption("03 / 스크립트 인용")
-            st.metric("예상 Guard 판정", "HOLD")
-            st.caption("보이는 본문에 없는 인용은 근거로 사용 불가")
-    st.caption("실행 전 정책 예상 결과입니다. 버튼을 눌러야 실제 파이프라인과 임시 SQLite 검증이 실행됩니다.")
+    st.markdown(
+        """
+<div class="pi-judge-hero">
+  <div class="pi-judge-kicker">THE EVIDENCE-FIRST DECISION</div>
+  <h2>숫자가 맞아도, 근거가 부족하면 승인하지 않는다.</h2>
+  <p>ProofInvest는 원문 근거와 수치를 교차 검증하고, 불확실성을
+  HOLD 또는 REJECT로 남깁니다. 아래는 실제 SEC 조회가 아닌
+  합성 데이터 기반 시연입니다.</p>
+</div>
+<div class="pi-judge-grid">
+  <div class="pi-judge-card">
+    <div class="step">CASE 01 / MATCH</div>
+    <h3>숫자는 일치</h3>
+    <span class="decision">HOLD</span>
+    <p>산술 일치만으로 발행사 출처나 Risk 근거를 인증할 수 없습니다.</p>
+  </div>
+  <div class="pi-judge-card">
+    <div class="step">CASE 02 / CONFLICT</div>
+    <h3>주장과 계산 불일치</h3>
+    <span class="decision reject">REJECT</span>
+    <p>성장률 주장이 충돌하면 임의 보정하거나 승인하지 않습니다.</p>
+  </div>
+  <div class="pi-judge-card">
+    <div class="step">CASE 03 / CITATION</div>
+    <h3>보이는 원문 근거 없음</h3>
+    <span class="decision">HOLD</span>
+    <p>스크립트 안의 숫자를 실제 본문 인용으로 인정하지 않습니다.</p>
+  </div>
+</div>
+<div class="pi-judge-steps">SOURCE BYTES → NUMERIC CHECK → RISK REVIEW →
+  GUARD DECISION → SQLITE AUDIT → EXPORT</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "위 세 판정은 실행 전 안내용 예상 결과입니다. "
+        "시나리오 검증 또는 3개 일괄 비교를 눌러야 실제 로컬 코드가 실행됩니다."
+    )
 
     with st.container(border=True):
         st.markdown("#### 01 / 검증할 상황 선택")
