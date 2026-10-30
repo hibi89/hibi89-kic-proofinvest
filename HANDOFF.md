@@ -1,28 +1,28 @@
-## 2026-10-31 KST — KUODRA P28 offline annual operating cashflow + capex (CI pending)
+## 2026-10-31 KST — KUODRA P28 offline annual operating cashflow + capex (CI 3/3 SUCCESS)
 
 1. Scope: add a meaningful research-side operating cash flow and capital expenditure crosscheck missing from the 10-K annual finance panel. No source authentication, investment grade risk score, trade, external API, or new cost.
 2. Designs compared: (A) broad cashflow/stock forecast with new feeds/model and historical dataset (high data/rights costs, premature), (B) bounded annual US-GAAP CompanyFacts CFO and property-plant-equipment cash outflows in exact same issuer/10-K/period/as-of and filing date (selected, zero added provider cost). FCF proxy = annual operating cashflow minus capex payments, explicitly NON-GAAP and unverified; missing capex gives CFO only, no imputed FCF.
 3. Data and guards: new proofinvest/kuodra_sec_cashflow.py validates exact 10-digit CIK + accession, 10-K, annual 330–380d period, filing/as-of chronology, USD-only, bounded integer, duplicates, same start/date. Quarter rows cannot contaminate annual. Source bytes hashed but not independently authenticated. Errors -> unavailable; Guard policy unmodified.
 4. Integration: proofinvest/local_sec_guard_report.py attaches descriptive cashflow, kuodra_capture_replay.py passes it through, local_sec_html_report.py renders escaped non-script section and non-GAAP explanation. No auto-approval or adjustment to deterministic HOLD/REJECT, no new SQLite schema.
-5. Tests: 10 offline cases in tests/test_kuodra_sec_cashflow.py (full year, negative CFO, missing capex, wrong accession, quarterly rows, ambiguous/mixed units, booleans/invalid capex, late filing/CIK, cross-period/filed mismatch, Guard→SQLite→HTML no network). P28 CI pending. P27 SOURCE c53d76c12fe571d20409221f8437e65014fe8197 [Actions #41121469409](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41121469409) all 3 jobs success and Python 925 executed /0 fail/0 error/0 skip, Windows SQLite PASS, Chromium PASS, exact SHA check PASS. Previously docs said pending; now verified.
+5. Tests: 10 offline cases in tests/test_kuodra_sec_cashflow.py (full year, negative CFO, missing capex, wrong accession, quarterly rows, ambiguous/mixed units, booleans/invalid capex, late filing/CIK, cross-period/filed mismatch, Guard→SQLite→HTML no network). P28 runtime SHA 6bdd0d75b8bf875e65fdcc9568cbd79b9c1485f7 [CI #41122656013](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41122656013) completed SUCCESS 3/3. Python 935 tests executed, 0 failures/errors/skips, exact source SHA check PASS; Windows SQLite PASS and Chromium PASS. P27 SOURCE c53d76c12fe571d20409221f8437e65014fe8197 [Actions #41121469409](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41121469409) all 3 jobs success and Python 925 executed /0 fail/0 error/0 skip, Windows SQLite PASS, Chromium PASS, exact SHA check PASS. Previously docs said pending; now verified.
 6. Repository hibi89/hibi89-kic-proofinvest lead/kic. P28 code and docs in one feature commit. No raw SEC original/secret uploaded, no Git history rewritten. Recovery: ordinary revert.
 7. Limitations: real 10-K cashflow tag availability/issuer SEC authenticity, data rights, external Gemini and production remain UNVERIFIED. FCF simplification excludes leases/acquisitions/asset sales and is not comprehensive liquidity risk.
-8. Current status: P27 verified; P28 functional implementation CI PENDING. Source SHA and actual CI evidence must be written after complete.
+8. Status: P27 and P28 runtime functional units CI VERIFIED. Real issuer SEC originals, cash-flow fact compatibility, data licensing, Gemini live, and Production remain UNVERIFIED. Green CI covers synthetic/offline and browser demo only.
 9. Next: validate P28 CI; fix observed failures minimally; owner-authorized genuine SEC raw input necessary for real validation. No automatic live calls.
-10. KST checkpoint: 2026-10-31.
+10. KST checkpoint: 2026-10-31. Latest verified functional SHA 6bdd0d75b8bf875e65fdcc9568cbd79b9c1485f7. Documentation-only successor changes no runtime.
 
-## 2026-10-31 KST — KUODRA P27 same-day SEC filing anti-lookahead (CI pending)
+## 2026-10-31 KST — KUODRA P27 same-day SEC filing anti-lookahead (CI 3/3 SUCCESS)
 
 1. Goal: close P26 as-of leak where filingDate alone admits a candidate accepted after the self-reported source collection instant.
 2. Designs: day-only eligibility (cheap but historical leakage), universal timezone requirement (would drop many timezone-less SEC dates), and hybrid strict comparison (selected). Compare only explicit timezone-aware SEC acceptance instants to UTC self-reported collection. If acceptance time is missing/naive, WITHHOLD SAME-DAY candidates; prior-day results retain a "day-only unverified" label. No timezone inference.
 3. Code: proofinvest/kuodra_capital_filing_watch.py validates aligned acceptanceDateTime column, rejects malformed values, prevents known future acceptance, adds per-candidate availability_basis and two omitted counts. local_sec_html_report.py displays omissions while preserving script-free escaping, other-filer coverage limitations and Guard HOLD/REJECT.
 4. Tests: seven additional offline Python cases for same-day late acceptance, timezone-less SEC clock, missing acceptance column, offset-aware comparison, malformed values/shape, and Guard→SQLite→HTML end-to-end no lookahead/no HTTP.
 5. Baseline: P26 runtime 043e4f106ad0326fdab2fa00438ec41d774d756b [CI #41120330877](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41120330877) 3/3 SUCCESS, Python 918/0/0/0; docs HEAD 4bb403aba02158fd7b45d91b5bafe4c26c5240b9.
-6. Exact P27 SHA and CI pending. No external SEC/Gemini/data transfers, user files or Production touched.
+6. P27 SHA c53d76c12fe571d20409221f8437e65014fe8197 [CI #41121469409](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41121469409) completed SUCCESS 3/3: Python 925 executed, 0 failures/errors/skips; Windows SQLite PASS, Chromium PASS; exact SHA check PASS. No external SEC/Gemini/data transfers, user files or Production touched.
 7. A local owner-supplied collection clock is not authenticated even when date comparisons pass. Full SEC original/other-CIK ownership remain unverified; a candidate form never proves issuance or beneficial ownership.
 8. Recovery: normal Git revert on lead/kic; no force push, no secrets or raw original stored.
-9. Next: measure CI, fix only evidenced errors, then require permitted genuine SEC originals and rights for real-data E2E.
-10. Checkpoint: 2026-10-31 KST, P27 implementation pending exact CI.
+9. Next: P27 CI closed successfully. Lawful original SEC documents and rights remain the real-data E2E gate; do not claim issuer provenance from self-reported UTC time.
+10. Checkpoint: 2026-10-31 KST, P27 CI 3/3 SUCCESS and Python 925/0/0/0.
 
 ## 2026-10-31 KST — KUODRA P26 issuer Submissions capital/owner metadata follow-up (CI 3/3 SUCCESS)
 
