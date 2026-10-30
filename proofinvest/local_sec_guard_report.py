@@ -56,6 +56,8 @@ def review_local_sec_with_guard(
     audit_db_path: str | Path,
     run_id: str,
     claimed_growth_pct: str | None = None,
+    history_page_json: bytes | None = None,
+    history_page_name: str | None = None,
     reviewer: str | None = None,
     action: str | None = None,
     reason: str | None = None,
@@ -85,6 +87,8 @@ def review_local_sec_with_guard(
         collected_at=collected_at, current_end=current_end,
         prior_end=prior_end, needle=needle,
         claimed_growth_pct=claimed_growth_pct,
+        history_page_json=history_page_json,
+        history_page_name=history_page_name,
     )
     if (packet.get("schema") != "proofinvest.offline-local-sec-review.v1"
             or packet.get("status") != "reviewable_untrusted_local_evidence"
@@ -126,6 +130,7 @@ def review_local_sec_with_guard(
         "accession": packet["issuer"]["accession"],
         "as_of": packet["issuer"]["as_of"],
         "submissions_sha256": source["submissions_sha256"],
+        "history_page_sha256": source["history_page_sha256"],
         "companyfacts_sha256": source["companyfacts_sha256"],
         "original_sha256": source["archived_filing_sha256"],
         "source_span": {
@@ -156,6 +161,8 @@ def review_local_sec_with_guard(
         "issuer": packet["issuer"],
         "source": {
             "submissions_sha256": source["submissions_sha256"],
+            "history_page_sha256": source["history_page_sha256"],
+            "source_index_kind": source["source_index_kind"],
             "companyfacts_sha256": source["companyfacts_sha256"],
             "archived_original_sha256": source["archived_filing_sha256"],
             "evidence_link_status": source["link_status"],
@@ -196,6 +203,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--acknowledge-local-audit-persistence",
                         action="store_true", required=True)
     parser.add_argument("--claimed-growth-pct")
+    parser.add_argument("--history-page-json", type=Path)
+    parser.add_argument("--history-page-name")
     parser.add_argument("--report-html", type=Path, help="Explicit new local HTML report; never overwrites")
     parser.add_argument("--reviewer")
     parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
@@ -208,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
         input_locations = {
             path.expanduser().resolve(strict=False)
             for path in (args.submissions_json, args.companyfacts_json,
-                         args.original_file)
+                         args.original_file) + ((args.history_page_json,) if args.history_page_json is not None else ())
         }
         audit_location = args.audit_db.expanduser().resolve(strict=False)
         html_location = (
@@ -238,6 +247,9 @@ def main(argv: list[str] | None = None) -> int:
             prior_end=args.prior_end, needle=args.needle,
             run_id=args.run_id, audit_db_path=args.audit_db,
             claimed_growth_pct=args.claimed_growth_pct,
+            history_page_json=(_read_regular_local(args.history_page_json, MAX_JSON_BYTES)
+                               if args.history_page_json is not None else None),
+            history_page_name=args.history_page_name,
             reviewer=args.reviewer, action=args.action, reason=args.reason,
         )
     except (ValueError, OSError, TypeError, OverflowError, RecursionError,

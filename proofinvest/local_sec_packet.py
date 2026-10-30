@@ -22,6 +22,7 @@ from disclosure_lightning.core import (
 from disclosure_lightning.originals import (
     MAX_FILING_BYTES, locate_original, persist_original,
 )
+from proofinvest.kuodra_history import index_pinned_history, assess_history_verdict
 from proofinvest.dl_bridge import (
     assess_dl_sec_handoff, assess_dl_original_handoff,
 )
@@ -85,6 +86,8 @@ def build_local_sec_review_packet(
     original_filing: bytes, cik: str, accession: str, as_of: str,
     collected_at: str, current_end: str, prior_end: str,
     needle: str, claimed_growth_pct: str | None = None,
+    history_page_json: bytes | None = None,
+    history_page_name: str | None = None,
 ) -> dict[str, Any]:
     """Join locally supplied untrusted files; reject mismatched/uncertain chains.
 
@@ -108,11 +111,22 @@ def build_local_sec_review_packet(
         raise ValueError("INVALID_CLAIM")
 
     # DL verifies UTC collected_at <= as_of, per-filing date and pinned URL.
-    index = index_submissions(
-        submissions_json, cik=cik, as_of=as_of,
-        forms=frozenset({"10-K"}), provenance="OFFLINE_UNVERIFIED",
-        collected_at=collected_at,
-    )
+    if (history_page_json is None) != (history_page_name is None):
+        raise ValueError("HISTORY_PAGE_AND_NAME_REQUIRED_TOGETHER")
+    if history_page_json is None:
+        index = index_submissions(
+            submissions_json, cik=cik, as_of=as_of,
+            forms=frozenset({"10-K"}), provenance="OFFLINE_UNVERIFIED",
+            collected_at=collected_at,
+        )
+        index_raw = submissions_json
+    else:
+        index = index_pinned_history(
+            base_raw=submissions_json, history_raw=history_page_json,
+            page_name=history_page_name, cik=cik, as_of=as_of,
+            collected_at=collected_at,
+        )
+        index_raw = history_page_json
     # A filing absent as-of is unavailable, never guessed or substituted.
     candidates = [record for record in index["filings"]
                   if record.get("accession") == accession]
@@ -131,7 +145,8 @@ def build_local_sec_review_packet(
             or verdict.get("source_rights_verified") is not False):
         raise ValueError("FORGED_FINANCIAL_AUTHENTICATION")
 
-    link = assess_dl_sec_handoff(index, verdict)
+    link = (assess_dl_sec_handoff(index, verdict) if history_page_json is None
+            else assess_history_verdict(index, verdict))
     if (link.get("status") != "linked_metadata_only"
             or link.get("trace_linked") is not True
             or link.get("authenticated_external_source") is not False
@@ -140,7 +155,7 @@ def build_local_sec_review_packet(
 
     with TemporaryDirectory(prefix="proofinvest-offline-review-") as directory:
         db_path = Path(directory) / "evidence.sqlite3"
-        inserted = save_index(db_path, submissions_json, index)
+        inserted = save_index(db_path, index_raw, index)
         receipt = locate_original(db_path, cik=cik, accession=accession)
         original_receipt = persist_original(
             db_path=db_path, receipt=receipt, raw=original_filing,
@@ -193,9 +208,13 @@ def build_local_sec_review_packet(
             "filing_date": link["filing_date"],
         },
         "source": {
-            "submissions_uri_not_fetched": index["source_uri"],
+            "submissions_uri_not_fetched": f"https://data.sec.gov/submissions/CIK{cik}.json",
+            "history_uri_not_fetched": (index["source_uri"] if history_page_json is not None else None),
             "filing_uri_not_fetched": link["filing_source_uri"],
-            "submissions_sha256": index["source_sha256"],
+            "submissions_sha256": hashlib.sha256(submissions_json).hexdigest(),
+            "history_page_sha256": (index["source_sha256"] if history_page_json is not None else None),
+            "history_page_name": history_page_name,
+            "source_index_kind": ("PINNED_HISTORY" if history_page_json is not None else "RECENT"),
             "companyfacts_sha256": hashlib.sha256(companyfacts_json).hexdigest(),
             "archived_filing_sha256": original_receipt["filing_sha256"],
             "saved_original_bytes": original_receipt["filing_bytes"],
@@ -260,6 +279,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--needle", required=True,
                         help="One unique 4-128 character ASCII literal.")
     parser.add_argument("--claimed-growth-pct", default=None)
+    parser.add_argument("--history-page-json", type=Path)
+    parser.add_argument("--history-page-name")
     args = parser.parse_args(argv)
     try:
         packet = build_local_sec_review_packet(
@@ -270,6 +291,9 @@ def main(argv: list[str] | None = None) -> int:
             as_of=args.as_of, collected_at=args.collected_at,
             current_end=args.current_end, prior_end=args.prior_end,
             needle=args.needle, claimed_growth_pct=args.claimed_growth_pct,
+            history_page_json=(_read_regular_local(args.history_page_json, MAX_JSON_BYTES)
+                               if args.history_page_json is not None else None),
+            history_page_name=args.history_page_name,
         )
     except (ValueError, OSError, TypeError, OverflowError, RecursionError) as exc:
         # Error type only; do not leak filesystem paths, filing text or private payloads.
