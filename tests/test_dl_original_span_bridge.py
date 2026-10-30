@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -120,7 +121,7 @@ class KicOriginalSourceSpanTests(unittest.TestCase):
 
     def test_database_byte_tampering_is_detected_on_read(self):
         receipt = self.save()
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             db.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? WHERE sha256=?",
                 (b"TAMPERED", receipt["filing_sha256"]),

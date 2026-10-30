@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -83,7 +84,7 @@ class LocalSecGuardReportTests(unittest.TestCase):
             review_local_sec_with_guard(**(args | {
                 "original_filing": args["original_filing"] + b" "
             }))
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(
                 conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0], 1
             )
@@ -172,7 +173,7 @@ class LocalSecGuardReportTests(unittest.TestCase):
                                 text=True, timeout=30, check=False)
         self.assertEqual(second.returncode, 0, second.stderr[:300])
         self.assertTrue(json.loads(second.stdout)["audit"]["replayed"])
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             count = conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0]
         self.assertEqual(count, 1)
 

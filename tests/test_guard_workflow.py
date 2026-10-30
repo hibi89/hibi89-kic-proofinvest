@@ -1,6 +1,7 @@
 """End-to-end offline Guard workflow tests."""
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from proofinvest.guard_workflow import run_guard_review
@@ -50,7 +51,7 @@ class GuardWorkflowTests(unittest.TestCase):
             )
         if self.db.exists():
             import sqlite3
-            with sqlite3.connect(self.db) as conn:
+            with closing(sqlite3.connect(self.db)) as conn, conn:
                 existing = conn.execute(
                     "SELECT name FROM sqlite_master WHERE name='guard_run_registry'"
                 ).fetchone()

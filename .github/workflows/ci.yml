@@ -145,6 +145,15 @@ jobs:
         run: |
           python -B -m unittest discover -s tests -p "test_manual_case_demo.py" -v
           python -B -m unittest discover -s tests -p "test_agent_controller.py" -v
+      - name: More Windows SQLite lifecycle regression suites
+        run: |
+          python -B -m unittest discover -s tests -p "test_dl_metadata_versions.py" -v
+          python -B -m unittest discover -s tests -p "test_dl_original_span_bridge.py" -v
+          python -B -m unittest discover -s tests -p "test_guard_audit.py" -v
+          python -B -m unittest discover -s tests -p "test_guard_registry_link.py" -v
+          python -B -m unittest discover -s tests -p "test_guard_review.py" -v
+          python -B -m unittest discover -s tests -p "test_guard_workflow.py" -v
+          python -B -m unittest discover -s tests -p "test_local_sec_guard_report.py" -v
 
   browser:
     name: Chromium Guard click-through (offline evidence)

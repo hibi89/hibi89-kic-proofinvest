@@ -7,6 +7,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from disclosure_lightning import core
@@ -72,13 +73,13 @@ class DlVersionHistoryTests(unittest.TestCase):
         versions = core.list_filing_versions(self.db, cik=CIK, accession=ACCESSION)
         self.assertEqual(len(versions), 1)
         self.assertEqual(versions[0]["observed_in_snapshots"], 2)
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute(
                 "SELECT COUNT(*) FROM observations").fetchone()[0], 2)
 
     def test_existing_sqlite_without_version_tables_migrates_in_place(self):
         core.save_index(self.db, RAW, indexed(RAW))
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("DROP TABLE filing_version_observations")
             conn.execute("DROP TABLE filing_metadata_versions")
         newraw = revised_input()

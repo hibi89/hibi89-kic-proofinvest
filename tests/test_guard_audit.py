@@ -2,6 +2,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from proofinvest.guard_agent import evaluate_guard
@@ -36,7 +37,7 @@ class GuardAuditTests(unittest.TestCase):
 
     def test_tamper_detected(self):
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute("UPDATE guard_audit_events SET payload_json='{}'")
         self.assertFalse(self.store.verify_chain())
         with self.assertRaises(ValueError):
@@ -46,7 +47,7 @@ class GuardAuditTests(unittest.TestCase):
         import json
         from proofinvest.guard_audit import _canonical, _digest
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             payload = json.loads(conn.execute(
                 "SELECT payload_json FROM guard_audit_events WHERE run_id='demo-1'"
             ).fetchone()[0])
@@ -65,7 +66,7 @@ class GuardAuditTests(unittest.TestCase):
 
     def test_blob_payload_fails_closed_without_exception(self):
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute(
                 "UPDATE guard_audit_events SET payload_json=? WHERE run_id=?",
                 (sqlite3.Binary(b"invalid-binary-payload"), "demo-1"),
@@ -76,7 +77,7 @@ class GuardAuditTests(unittest.TestCase):
 
     def test_blob_hash_fails_closed_without_exception(self):
         self.store.record_decision("demo-1", self.request, self.decision)
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute(
                 "UPDATE guard_audit_events SET event_hash=? WHERE run_id=?",
                 (sqlite3.Binary(b"corrupt-hash"), "demo-1"),

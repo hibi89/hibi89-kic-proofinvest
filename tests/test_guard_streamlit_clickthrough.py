@@ -9,6 +9,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -49,13 +50,13 @@ class GuardStreamlitClickthroughTests(unittest.TestCase):
         self.assertTrue(self.db.is_file())
         self.assertTrue(any("로컬 감사 기록 저장 완료" in x.value for x in at.success))
         self.assertTrue(GuardAuditStore(self.db).verify_chain())
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0], 1)
 
         at.button(key="guard_sec_record").click().run(timeout=15)
         self.assertFalse(at.exception)
         self.assertTrue(any("중복 저장 없음" in x.value for x in at.success))
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0], 1)
 
         at.button(key="guard_audit_history").click().run(timeout=15)
@@ -73,7 +74,7 @@ class GuardStreamlitClickthroughTests(unittest.TestCase):
         self.assertTrue(any("모의 검토 기록 저장 완료" in x.value for x in at.success))
         self.assertTrue(GuardAuditStore(self.db).verify_chain())
         self.assertTrue(GuardReviewStore(self.db).verify_reviews())
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0], 1)
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM guard_human_reviews").fetchone()[0], 1)
             action, reviewer = conn.execute(

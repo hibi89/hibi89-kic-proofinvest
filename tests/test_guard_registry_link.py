@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from proofinvest.guard_agent import evaluate_guard
@@ -21,7 +22,7 @@ class RegistryLinkContract(unittest.TestCase):
             )
             store.record_decision("one", {"claim": "original"}, decision)
             self.assertTrue(store.verify_chain())
-            with sqlite3.connect(path) as conn:
+            with closing(sqlite3.connect(path)) as conn, conn:
                 conn.execute("UPDATE guard_run_registry SET request_hash=? WHERE run_id=?",
                              ("0" * 64, "one"))
             self.assertFalse(store.verify_chain())
