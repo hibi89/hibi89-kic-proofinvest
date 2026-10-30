@@ -464,6 +464,30 @@ def render_synthetic_guard_ui(st) -> None:
         + '</strong> — ' + desc + '</div>',
         unsafe_allow_html=True,
     )
+    # A judge can see the actionable human handoff without guessing what
+    # an unverified result should mean. These are static instructions for
+    # fictional cases, NOT approval, investment advice, or an autonomous step.
+    human_next_steps = {
+        "matched": (
+            "다음 조치 / 출처 독립 확인",
+            "재무 수치가 일치하더라도 발행사 원본과 사용 권리, "
+            "부채·자본 Risk 근거를 별도로 검토해야 합니다.",
+        ),
+        "conflict": (
+            "다음 조치 / 성장률 주장 재검증",
+            "원문에 기록된 두 기간의 수치를 재확인하고 주장 입력을 "
+            "검토할 때까지 승인하지 않습니다.",
+        ),
+        "script": (
+            "다음 조치 / 본문 인용 근거 요청",
+            "HTML 스크립트 안의 문자열은 인용 증거로 인정하지 않고 "
+            "사용자가 볼 수 있는 원문 텍스트 근거를 요청합니다.",
+        ),
+    }
+    action_title, action_detail = human_next_steps[SCENARIOS[choice]]
+    st.subheader(action_title)
+    st.info(action_detail)
+    st.caption("검증 코드: " + ", ".join(guard["reason_codes"]))
 
     with st.container(border=True):
         st.markdown("#### 03 / 실제 모듈 실행 추적")
