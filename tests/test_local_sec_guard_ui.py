@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from proofinvest.local_sec_guard_ui import run_synthetic_guard_case
+from proofinvest.local_sec_guard_ui import run_synthetic_guard_case, export_synthetic_guard_json
 
 
 class LocalSecGuardUiTests(unittest.TestCase):
@@ -32,6 +32,34 @@ class LocalSecGuardUiTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "INVALID_SYNTHETIC_CASE"):
                 run_synthetic_guard_case("unapproved")
         action.assert_not_called()
+
+    def test_export_is_explicitly_synthetic_and_never_authenticated(self):
+        import json
+        report = run_synthetic_guard_case("matched")
+        receipt = json.loads(export_synthetic_guard_json(report))
+        self.assertEqual(receipt["evidence_class"], "SYNTHETIC_ONLY_UNVERIFIED")
+        self.assertFalse(receipt["external_source_authenticated"])
+        self.assertTrue(receipt["not_investment_advice"])
+        self.assertEqual(receipt["report"]["guard"]["decision"], "HOLD")
+
+    def test_export_rejects_forged_production_and_approval_flags(self):
+        from copy import deepcopy
+        report = run_synthetic_guard_case("matched")
+        candidates = [
+            {"limits": {**report["limits"], "external_source_authenticated": True}},
+            {"limits": {**report["limits"], "extra_certified": True}},
+            {"mode": "PRODUCTION_VERIFIED"},
+            {"issuer": {**report["issuer"], "cik": "0000320193"}},
+            {"guard": {**report["guard"], "decision": "APPROVE"}},
+            {"audit_chain_valid": False},
+            {"human_review": {"action": "AUTHORIZE_SIMULATION"}},
+        ]
+        for item in candidates:
+            with self.subTest(item=item):
+                modified = deepcopy(report)
+                modified.update(item)
+                with self.assertRaisesRegex(ValueError, "SYNTHETIC_EXPORT_BLOCKED"):
+                    export_synthetic_guard_json(modified)
 
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest

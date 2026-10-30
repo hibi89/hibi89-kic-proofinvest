@@ -64,6 +64,51 @@ def run_synthetic_guard_case(case: str) -> dict[str, Any]:
     return report
 
 
+def export_synthetic_guard_json(report: dict[str, Any]) -> bytes:
+    """Bounded unverified synthetic report only, never an issuer certificate."""
+    required_limits = {
+        "external_source_authenticated",
+        "source_rights_verified",
+        "live_api_called",
+        "ai_agent_executed",
+        "trade_executed",
+        "simulation_authorized",
+        "official_contest_submission",
+    }
+    if (type(report) is not dict
+            or report.get("schema") != "proofinvest.local-sec-guard-report.v1"
+            or report.get("mode") != "OFFLINE_USER_SUPPLIED_UNAUTHENTICATED"
+            or not isinstance(report.get("issuer"), dict)
+            or report["issuer"].get("cik") != SYNTHETIC_CIK
+            or report["issuer"].get("accession") != SYNTHETIC_ACCESSION
+            or not isinstance(report.get("guard"), dict)
+            or report["guard"].get("decision") not in ("HOLD", "REJECT")
+            or report.get("audit_chain_valid") is not True
+            or report.get("human_review_integrity_valid") is not True
+            or report.get("human_review") is not None
+            or type(report.get("limits")) is not dict
+            or set(report["limits"]) != required_limits
+            or any(value is not False for value in report["limits"].values())):
+        raise ValueError("SYNTHETIC_EXPORT_BLOCKED")
+    payload = {
+        "schema": "proofinvest.synthetic-sec-guard-export.v1",
+        "evidence_class": "SYNTHETIC_ONLY_UNVERIFIED",
+        "external_source_authenticated": False,
+        "not_investment_advice": True,
+        "report": report,
+    }
+    try:
+        encoded = (json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            allow_nan=False,
+        ) + "\n").encode("utf-8")
+    except (TypeError, ValueError, UnicodeError, OverflowError) as exc:
+        raise ValueError("SYNTHETIC_EXPORT_BLOCKED") from exc
+    if len(encoded) > 65536:
+        raise ValueError("SYNTHETIC_EXPORT_TOO_LARGE")
+    return encoded
+
+
 def render_synthetic_guard_ui(st) -> None:
     st.title("ProofInvest — SEC 근거부터 Guard 감사까지")
     st.warning(
@@ -115,4 +160,16 @@ def render_synthetic_guard_ui(st) -> None:
             },
             "limitations": report["limits"],
         })
+    try:
+        safe_export = export_synthetic_guard_json(report)
+    except ValueError:
+        st.error("안전 검사에 실패하여 합성 파일 내보내기를 차단했습니다.")
+        return
+    st.download_button(
+        "합성 감사 JSON 다운로드 (실제 공시 아님)",
+        data=safe_export,
+        file_name="proofinvest_SYNTHETIC_SEC_GUARD_UNVERIFIED.json",
+        mime="application/json",
+        key="sec_guard_synthetic_export",
+    )
     st.warning("감사 해시 일치는 원문 진위/사용권리/투자 적격성 검증이 아닙니다.")

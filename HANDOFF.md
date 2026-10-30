@@ -1,3 +1,5 @@
+2026-10-30 KST update: feature export_synthetic_guard_json in proofinvest/local_sec_guard_ui.py yields a downloadable strictly synthetic-only JSON report after explicit local execution. Rejects authentic/production/trading claims and wrong CIK, ensures hash-chain flag. Two new tests. No dependency or external requests. Source code and test commit on lead/kic; confirm new SHA exact CI before claiming working UI. Preliminary Nov12 official seven-section <=10-page PDF and owner DAKER authorization remain independent. Prior parent d40342d32db78ee85fdefc360cf46f2a93049b79 is rollback.
+
 ## 2026-10-30 KST — Real Chromium smoke expanded to synthetic SEC→Guard 3-case UI
 
 1. Objective: Test recently added judge-facing SEC evidence→Verification→Risk→Guard→SQLite view with real browser interactions rather than unit assertions alone.
