@@ -201,6 +201,76 @@ def run(output: Path) -> dict:
                             path=str(output / "mock-llm-proposal-blocked.png"),
                             full_page=True,
                         )
+
+                        # New integrated SEC -> Verification -> Risk -> Guard
+                        # view: run ACTUAL synthetic local inputs, Guard and
+                        # disposable SQLite in Chromium, not static mock text.
+                        picker = page.get_by_role("combobox", name="자료 유형")
+                        picker.click()
+                        picker.fill("SEC→Guard 감사 연결")
+                        page.get_by_role(
+                            "option", name="SEC→Guard 감사 연결 — 합성 오프라인"
+                        ).click(timeout=10000)
+                        expect(page.get_by_text(
+                            "ProofInvest — SEC 근거부터 Guard 감사까지"
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "실행 전에는 DB를 만들지 않습니다.", exact=False
+                        )).to_be_visible(timeout=15000)
+
+                        execute = page.get_by_role(
+                            "button", name="합성 SEC→Guard 검증 실행"
+                        )
+                        execute.click()
+                        expect(page.get_by_text(
+                            "Guard 판정", exact=True
+                        )).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "HOLD", exact=True
+                        ).first).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "untrusted_html_text_node_literal_located",
+                            exact=False
+                        ).first).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "sec-guard-synthetic-hold.png"),
+                            full_page=True,
+                        )
+
+                        scenario = page.get_by_role(
+                            "combobox", name="검증 시나리오"
+                        )
+                        scenario.click()
+                        scenario.fill("주장 불일치")
+                        page.get_by_role(
+                            "option", name="주장 불일치 → REJECT"
+                        ).click(timeout=10000)
+                        execute.click()
+                        expect(page.get_by_text(
+                            "REJECT", exact=True
+                        ).first).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "sec-guard-synthetic-reject.png"),
+                            full_page=True,
+                        )
+
+                        scenario.click()
+                        scenario.fill("스크립트에만 있는 인용")
+                        page.get_by_role(
+                            "option", name="스크립트에만 있는 인용 → HOLD"
+                        ).click(timeout=10000)
+                        execute.click()
+                        expect(page.get_by_text(
+                            "HOLD", exact=True
+                        ).first).to_be_visible(timeout=15000)
+                        expect(page.get_by_text(
+                            "HTML 인용 검증: unavailable",
+                            exact=False
+                        )).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "sec-guard-synthetic-script.png"),
+                            full_page=True,
+                        )
                     finally:
                         browser.close()
 
@@ -235,6 +305,18 @@ def run(output: Path) -> dict:
                     "trade_executed": False,
                     "screenshot": "guard-browser-clickthrough.png",
                     "router_screenshot": "intent-router-browser.png",
+                    "sec_guard_synthetic_only": True,
+                    "sec_guard_source_authenticated": False,
+                    "sec_guard_trade_executed": False,
+                    "sec_guard_scenarios": [
+                        {"case": "matched", "guard": "HOLD",
+                         "screenshot": "sec-guard-synthetic-hold.png"},
+                        {"case": "conflict", "guard": "REJECT",
+                         "screenshot": "sec-guard-synthetic-reject.png"},
+                        {"case": "script_only_literal", "guard": "HOLD",
+                         "html_text_node_status": "unavailable",
+                         "screenshot": "sec-guard-synthetic-script.png"},
+                    ],
                     "router_status": "REJECT",
                     "router_intent": "GROWTH_CHECK",
                     "mock_llm_api_calls": 0,

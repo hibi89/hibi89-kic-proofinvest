@@ -1,3 +1,16 @@
+## 2026-10-30 KST — Real Chromium smoke expanded to synthetic SEC→Guard 3-case UI
+
+1. Objective: Test recently added judge-facing SEC evidence→Verification→Risk→Guard→SQLite view with real browser interactions rather than unit assertions alone.
+2. Implemented: \`scripts/guard_browser_smoke.py\` continues existing manually curated SEC Guard audit and routing/mocked proposal tests, then uses Playwright to select \`SEC→Guard 감사 연결 — 합성 오프라인\`, click matching case and assert HOLD + text-node evidence, change to conflicting claim and assert REJECT, then script-only citation and assert HOLD + unavailable source text-node. Three screenshots and machine-readable cases are archived via CI.
+3. Authored tests/evidence: Browser script and \`.github/workflows/ci.yml\` artifact path updates; test unexecuted for current SHA, exact Actions Python + Chromium results needed. Prior \`c7f77a32\` #41004019937 Python PASS and Chromium FAIL in collapsed-expander visibility, already fixed at \`9de313bb\`; \`9de313bb\` CI still pending at last inspection.
+4. Current blockers: exact CI source check and screenshots; public synthetic path does not establish issuer/authenticated SEC data; real SEC user permission and source rights unresolved; private organizer <=10-page PDF and DAKER final submission are independent.
+5. Logs/errors: Prior failure showed review success DOM present but hidden after Streamlit rerender. Replaced prior flaky visible criterion with SQLite persisted review count/action/hash integrity. Browser still checks audit/history and all earlier steps.
+6. Repo/branch/files: \`hibi89/hibi89-kic-proofinvest@lead/kic\`, parent \`9de313bbc4743d53d6c35767bdcbcd9546810256\`. Updated \`scripts/guard_browser_smoke.py\`, \`.github/workflows/ci.yml\`, \`HANDOFF.md\`, \`STATUS.md\` in new commit.
+7. Run/commands: \`python -B -m scripts.guard_browser_smoke /tmp/kic-guard-browser\` on CI runner with installed Chromium, and \`python -B -m scripts.verify_local --full\` for Python/AppTest. Do not request live SEC or LLM. New screenshots: \`sec-guard-synthetic-hold.png\`, \`sec-guard-synthetic-reject.png\`, \`sec-guard-synthetic-script.png\`.
+8. Data/backup: No private originals, sensitive DB, data migration, real SEC response, API credentials, or official PDF used. Parent SHA is rollback. Temporary SQLite only in user-supplied CI HOME/ephemeral synthetic action; no outbound third-party.
+9. Next: Inspect exact new CI; fix only reproduced failure; verify browser receipts/screenshot visibility and packaging. Leave DAKER submission unchanged pending explicit owner sign-off.
+10. Status as-of 2026-10-30 KST: code authored and committed but runtime CI/Production unverified.
+
 ## 2026-10-30 KST — Browser review E2E failure investigated and fixed
 
 1. Goal: repair exact failed CI gate without bypassing persisted evidence validation.

@@ -130,6 +130,9 @@ jobs:
             /tmp/kic-guard-browser/intent-router-browser.png
             /tmp/kic-guard-browser/mock-llm-proposal-accepted.png
             /tmp/kic-guard-browser/mock-llm-proposal-blocked.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-hold.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-reject.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-script.png
             /tmp/kic-guard-browser/guard-browser-evidence.json
           if-no-files-found: error
           retention-days: 14
