@@ -271,6 +271,74 @@ def run(output: Path) -> dict:
                             path=str(output / "sec-guard-synthetic-script.png"),
                             full_page=True,
                         )
+
+                        # Judge downloads the actual synthetic HTML result:
+                        # inspect bytes in Chromium rather than just asserting
+                        # that a button exists. No user inputs or live SEC.
+                        with page.expect_download(timeout=20000) as got_html:
+                            page.get_by_role(
+                                "button", name="오프라인 HTML 보고서"
+                            ).click()
+                        html_receipt = got_html.value
+                        if html_receipt.suggested_filename != (
+                                "proofinvest_SYNTHETIC_SEC_GUARD_REVIEW.html"):
+                            raise AssertionError("Unexpected synthetic HTML filename")
+                        html_path = output / "sec-guard-browser-downloaded-script.html"
+                        html_receipt.save_as(str(html_path))
+                        html = html_path.read_text(encoding="utf-8")
+                        if (len(html_path.read_bytes()) > 90000
+                                or "UNVERIFIED LOCAL FILES" not in html
+                                or "unavailable" not in html
+                                or "HOLD" not in html
+                                or "<script" in html.lower()
+                                or "https://" in html):
+                            raise AssertionError("Unsafe synthetic HTML download")
+
+                        # Run all three scenarios through the same Streamlit
+                        # screen; validate an ACTUAL browser-downloaded JSON
+                        # matrix containing the 3 guarded decisions.
+                        page.get_by_role(
+                            "button", name="3개 시나리오 일괄 비교"
+                        ).click()
+                        expect(page.get_by_text(
+                            "3가지 사례 · 로컬 실제 코드 실행 비교"
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_role(
+                            "button", name="합성 비교 매트릭스 JSON"
+                        )).to_be_visible(timeout=15000)
+                        page.screenshot(
+                            path=str(output / "sec-guard-compare-browser.png"),
+                            full_page=True,
+                        )
+                        with page.expect_download(timeout=20000) as got_matrix:
+                            page.get_by_role(
+                                "button", name="합성 비교 매트릭스 JSON"
+                            ).click()
+                        matrix_receipt = got_matrix.value
+                        if matrix_receipt.suggested_filename != (
+                                "proofinvest_SYNTHETIC_COMPARISON.json"):
+                            raise AssertionError("Unexpected comparison filename")
+                        matrix_path = output / "sec-guard-compare-browser.json"
+                        matrix_receipt.save_as(str(matrix_path))
+                        if matrix_path.stat().st_size > 8192:
+                            raise AssertionError("Oversize synthetic compare download")
+                        with matrix_path.open("r", encoding="utf-8") as receipt:
+                            matrix = json.load(receipt)
+                        if (matrix.get("schema") != "proofinvest.synthetic-guard-compare.v1"
+                                or matrix.get("evidence_class") !=
+                                "SYNTHETIC_ONLY_UNVERIFIED"
+                                or any(matrix.get(flag) is not False for flag in (
+                                    "source_authenticated", "live_api_called",
+                                    "trade_executed", "official_contest_submission"))
+                                or not isinstance(matrix.get("cases"), list)
+                                or len(matrix["cases"]) != 3
+                                or [row["Guard"] for row in matrix["cases"]]
+                                != ["HOLD", "REJECT", "HOLD"]
+                                or matrix["cases"][-1]["원문 인용"] != "사용 불가"
+                                or any(row["실거래"] != "없음" or
+                                       row["SQLite 감사"] != "PASS"
+                                       for row in matrix["cases"])):
+                            raise AssertionError("Browser comparison contract invalid")
                     finally:
                         browser.close()
 
@@ -306,6 +374,12 @@ def run(output: Path) -> dict:
                     "screenshot": "guard-browser-clickthrough.png",
                     "router_screenshot": "intent-router-browser.png",
                     "sec_guard_synthetic_only": True,
+                    "synthetic_html_download_verified": True,
+                    "synthetic_html_download": "sec-guard-browser-downloaded-script.html",
+                    "synthetic_comparison_download_verified": True,
+                    "synthetic_comparison_download": "sec-guard-compare-browser.json",
+                    "synthetic_comparison_screenshot": "sec-guard-compare-browser.png",
+                    "synthetic_comparison_decisions": ["HOLD", "REJECT", "HOLD"],
                     "sec_guard_source_authenticated": False,
                     "sec_guard_trade_executed": False,
                     "sec_guard_scenarios": [

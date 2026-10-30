@@ -146,6 +146,9 @@ jobs:
             /tmp/kic-guard-browser/sec-guard-synthetic-hold.png
             /tmp/kic-guard-browser/sec-guard-synthetic-reject.png
             /tmp/kic-guard-browser/sec-guard-synthetic-script.png
+            /tmp/kic-guard-browser/sec-guard-browser-downloaded-script.html
+            /tmp/kic-guard-browser/sec-guard-compare-browser.png
+            /tmp/kic-guard-browser/sec-guard-compare-browser.json
             /tmp/kic-guard-browser/guard-browser-evidence.json
           if-no-files-found: error
           retention-days: 14
