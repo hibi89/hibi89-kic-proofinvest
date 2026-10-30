@@ -185,11 +185,16 @@ def run(output: Path) -> dict:
                         model_picker = page.get_by_role(
                             "combobox", name="모의 모델 응답"
                         )
+                        # This is a four-item form selectbox: no filtering is
+                        # needed. Typing into its searchable combobox can
+                        # transiently rebuild/close the Streamlit popup before
+                        # Playwright clicks the intended option.
                         model_picker.click()
-                        model_picker.fill("불일치 제안")
-                        page.get_by_role(
-                            "option", name="불일치 제안: SOURCE_REVIEW"
-                        ).click(timeout=10000)
+                        mismatch_option = page.get_by_role(
+                            "option", name="불일치 제안: SOURCE_REVIEW", exact=True
+                        )
+                        expect(mismatch_option).to_be_visible(timeout=10000)
+                        mismatch_option.click()
                         page.get_by_role(
                             "button", name="모의 LLM 제안 검증"
                         ).click()
