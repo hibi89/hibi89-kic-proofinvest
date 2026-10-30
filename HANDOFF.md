@@ -1,3 +1,16 @@
+## 2026-10-30 KST — STREAMLIT SYNTHETIC SEC→GUARD HANDOFF
+
+1. Objective: Connect proven-by-source existing offline SEC→Guard command to a usable judge-facing Streamlit view without pretending external authenticity or shipping a new backend.
+2. Changes: `proofinvest/local_sec_guard_ui.py` supplies three real executable synthetic cases (numeric match HOLD, conflict REJECT, script-only quote HOLD). `streamlit_app.py` gains optional full-repo mode, no change in default synthetic view. Temporary audit DB is disposed after verified chain execution.
+3. Tests: New `tests/test_local_sec_guard_ui.py` has four authored tests with no HTTP, unknown scenario rejection, Streamlit AppTest idle and actual click. Tests not claimed PASS until exact new source SHA CI succeeds.
+4. CI at writing: Previous `a1ee4985` Actions #41004580498 queued, no confirmed failure or result; this source commit CI yet to begin. Guard and HTML text-node previous commit `50f8ea09` CI success only applies to earlier SHA.
+5. Scope and limitations: synthetic demo only; never infer SEC authenticity, rights, risk eligibility, real AI Agent, investment authorization or production operation. No UI file uploads, no real financial data or user database.
+6. Repo and branch: `hibi89/hibi89-kic-proofinvest@lead/kic`, parent `a1ee4985fb3a267c9cc9c47901242896dd1ab7c3`. Files `streamlit_app.py`, `proofinvest/local_sec_guard_ui.py`, `tests/test_local_sec_guard_ui.py`, `HANDOFF.md`, `STATUS.md`. Immutable SHA of new commit in Git log.
+7. Runtime: `python -m streamlit run streamlit_app.py`, source selector `SEC→Guard 감사 연결 — 합성 오프라인`, choose case, click. Full `python -B -m scripts.verify_local --full`; CI Chromium browser and Python unit tests required for this SHA.
+8. Data/backups: Git parent SHA is rollback; no SEC input archives, secrets, contact UA, private official PDF/PPTX, DAKER credentials, live calls, user DB, or Production changes.
+9. Next gate: exact CI success/failure for recent source, fix genuine runtime regression if any; design polish after tests. Official preliminary <=10 pages PDF Nov12 10:00 KST requires user signoff and separate DAKER submission.
+10. Date/status: 2026-10-30 KST. Code authored/committed, CI and deployed UI **unverified**.
+
 ## 2026-10-30 KST — Real CLI subprocess regression gate
 
 1. **Goal and constraints:** Confirm executable entrypoint for previously added local SEC triple-source → Verification → untrusted Risk → Guard → SQLite audit → report, with no external network, live investment action, source certification or DAKER submission.

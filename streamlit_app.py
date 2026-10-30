@@ -16,6 +16,7 @@ _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (202
 _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
+_SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -559,7 +560,14 @@ def render_app(st) -> None:
     router_file = Path(__file__).resolve().parent / "proofinvest/intent_router_ui.py"
     if router_file.is_file():
         available_sources.append(_SOURCE_INTENT_ROUTER)
+    sec_guard_ui = Path(__file__).resolve().parent / "proofinvest/local_sec_guard_ui.py"
+    if sec_guard_ui.is_file():
+        available_sources.append(_SOURCE_SEC_GUARD)
     source = st.selectbox("자료 유형", available_sources)
+    if source == _SOURCE_SEC_GUARD:
+        from proofinvest.local_sec_guard_ui import render_synthetic_guard_ui
+        render_synthetic_guard_ui(st)
+        return
     if source == _SOURCE_INTENT_ROUTER:
         from proofinvest.intent_router_ui import render_router
         render_router(st)
