@@ -40,6 +40,9 @@ def verify_candidate(
     path = Path(path).expanduser()
     if path.is_symlink():
         raise ValueError("Symlinked PDF not allowed")
+    # Windows opening a directory may fail before fstat: refuse it explicitly.
+    if path.is_dir():
+        raise ValueError("PDF must be an ordinary file")
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(path, flags)
