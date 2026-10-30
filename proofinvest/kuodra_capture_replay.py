@@ -132,6 +132,7 @@ def replay_saved_capture(
         "original_capture_hashes_match": True,
         "verification": report["verification"],
         "risk": report["risk"],
+        "balance_sheet": report["balance_sheet"],
         "guard": report["guard"],
         "audit": report["audit"],
         "audit_chain_valid": report["audit_chain_valid"],

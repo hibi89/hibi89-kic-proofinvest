@@ -18,6 +18,7 @@ from .guard_audit import GuardAuditStore
 from .guard_review import GuardReviewStore
 from .guard_workflow import run_guard_review
 from .local_risk_screen import screen_local_evidence
+from .kuodra_sec_balance import review_sec_balance_sheet
 from .local_sec_packet import (
     _MAX_FILE_BYTES,
     _read_regular_local,
@@ -96,6 +97,16 @@ def review_local_sec_with_guard(
             or any(value is not False for value in packet["attestations"].values())):
         raise ValueError("LOCAL_SOURCE_TRUST_CONTRACT_INVALID")
     financial = packet["financial"]
+    # Separate descriptive SEC balance-sheet view. This is untrusted data,
+    # never a verified Risk input, never a Guard policy change.
+    balance_sheet = review_sec_balance_sheet(
+        companyfacts_json, cik=cik, accession=accession,
+        period_end=current_end, as_of=as_of,
+    )
+    if (balance_sheet["source_authenticated"] is not False
+            or balance_sheet["risk_authenticated"] is not False
+            or balance_sheet["guard_policy_modified"] is not False):
+        raise ValueError("SEC_BALANCE_TRUST_CONTRACT_FAILURE")
     source = packet["source"]
     text_node = source["html_text_node_literal_check"]
     text_ok = (
@@ -171,6 +182,7 @@ def review_local_sec_with_guard(
         },
         "verification": financial,
         "risk": local_risk,
+        "balance_sheet": balance_sheet,
         "guard": result["guard"],
         "human_review": result["review"],
         "audit": result["audit"],

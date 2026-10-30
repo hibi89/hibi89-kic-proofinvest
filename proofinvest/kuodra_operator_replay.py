@@ -101,7 +101,7 @@ def _result(reason: str, *, status: str = "blocked") -> dict[str, Any]:
         "selected_intent": None, "model_proposal_accepted": False,
         "local_tool_attempts": 0, "max_local_tool_attempts": 1,
         "external_tool_calls": 0, "network_calls": 0,
-        "guard": None, "verification": None, "audit": None,
+        "guard": None, "verification": None, "balance_sheet": None, "audit": None,
         "audit_written": False, "source_authenticated": False,
         "source_rights_verified": False, "ai_agent_executed": False,
         "live_model_called": False, "live_sec_called": False,
@@ -170,6 +170,7 @@ def run_offline_proposal_replay(
         return result
     result.update(status="completed", reason_code="OFFLINE_GUARD_AUDIT_RECORDED",
                   verification=report["verification"], guard=report["guard"],
+                  balance_sheet=report["balance_sheet"],
                   audit=report["audit"], audit_written=True)
     return result
 
