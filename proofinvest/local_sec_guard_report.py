@@ -196,10 +196,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--acknowledge-local-audit-persistence",
                         action="store_true", required=True)
     parser.add_argument("--claimed-growth-pct")
+    parser.add_argument("--report-html", type=Path, help="Explicit new local HTML report; never overwrites")
     parser.add_argument("--reviewer")
     parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
     parser.add_argument("--reason")
     args = parser.parse_args(argv)
+    # Do not touch the Guard audit if an optional HTML output destination
+    # is already occupied or invalid. open('xb') additionally closes races.
+    if args.report_html is not None:
+        output = args.report_html.expanduser()
+        if (output.is_symlink() or output.exists()
+                or not output.parent.is_dir()):
+            parser.exit(2, "Local SEC Guard report blocked: HTML_DESTINATION_UNAVAILABLE\n")
     try:
         report = review_local_sec_with_guard(
             submissions_json=_read_regular_local(args.submissions_json, MAX_JSON_BYTES),
@@ -215,6 +223,14 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError, TypeError, OverflowError, RecursionError,
             sqlite3.DatabaseError) as exc:
         parser.exit(2, f"Local SEC Guard report blocked: {type(exc).__name__}\n")
+    if args.report_html is not None:
+        from .local_sec_html_report import render_local_sec_html
+        try:
+            html_payload = render_local_sec_html(report)
+            with args.report_html.expanduser().open("xb") as output:
+                output.write(html_payload)
+        except (ValueError, TypeError, OverflowError, OSError) as exc:
+            parser.exit(2, "Local SEC Guard HTML blocked: " + type(exc).__name__ + "\n")
     print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
     return 0
 
