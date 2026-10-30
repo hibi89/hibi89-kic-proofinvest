@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P19 saved-source compatibility diagnostic (CI pending)
+
+1. Goal: Prepare for genuine SEC ZIP acceptance without asserting synthetic source authenticity or performing unapproved SEC 3GETs, model calls, local audit persistence or raw source publication. Verified repo source ZIP exists only in test fixtures; no authentic 3-source captured bundle supplied.
+2. Alternatives: (A) blindly call public SEC GETs and persist original (requires specific owner approval and contact/rights, rejected); (B) overinterpret optional strict iXBRL match as mandatory (ordinary SEC HTML false negatives); (C) safe offline compatibility-matrix CLI of owner-supplied saved 3-source ZIP (selected, no provider costs or transport).
+3. Flow: new proofinvest/kuodra_capture_compatibility.py loads P13 period preview, checks actual raw ZIP source SHA256 independently in second bounded read (detects swapped valid same-identity ZIP), reconfirms selected annual revenue concept/filing date per period, reports P18 strict iXBRL XHTML check as OPTIONAL, and tells whether original is strict UTF-8. Emits bounded safe candidate COUNT only, never original literal, issuer entity names or HTML.
+4. Tests: 12 new offline mock tests: read-only/zero model and DB, non-XHTML supplemental unavailability, strict iXBRL success, Revenues fallback, malformed UTF-8 blocked, no suggested quote manual selection, corrupt ZIP, missing fiscal periods, ZIP swap race, CLI no snippet, input rejection and missing file exit. Exact P19 source CI PENDING; P18 code d05cfb74e2383199bffb9c5d47303747040c9d5b #41109866202 SUCCESS 3/3 Python846/0.
+5. Boundaries: zero new live SEC, zero credential use, no Library/GitHub raw original, no audits/production changes, no investment/trade action. Local SHA, clock and numeric packet remain self-reported source, NOT authenticated SEC.
+6. Status: implement/commit diagnostic CLI and tests; no genuine 10-K ZIP validation claimed until owner supplies already-licensed saved source. A pass on synthetic ZIP is not external data validation; guard remains HOLD/REJECT.
+7. Repo/recovery: hibi89/hibi89-kic-proofinvest lead/kic, parent 54884eefb611f61084420ec114eaea54da05fb3d. New module/tests and top HANDOFF/STATUS, usual git revert, no force push or original mutation.
+8. Environment: GitHub Python3.11 offline full verifier, Windows SQLite, Chromium. Command python -m proofinvest.kuodra_capture_compatibility --capture-zip <OWNER_HELD_ZIP>, prints JSON, no writes; exit 0 for operator review, 2 if blocked.
+9. Next: check exact P19 CI and repair only observed failures. For true external source acceptance, user must approve contact User-Agent and 3 SEC HTTPS requests + local retention, or supply permitted pre-existing saved capture ZIP. Gemini paid keys/cost and Production separately gated.
+10. Checkpoint: 2026-10-31 KST P19 prepared; source SHA/CI to be established upon push.
+
 ## 2026-10-31 KST — KUODRA P18 selected SEC revenue concept / iXBRL encoding compatibility (CI 3/3 verified)
 
 1. Objective: Preserve strict P12 selected revenue taxonomy through iXBRL crosscheck. Existing inline iXBRL reviewer hardcoded RevenueFromContractWithCustomerExcludingAssessedTax despite upstream validated fallback Revenues/SalesRevenueNet; also XML parser could accept non-UTF8 declarations that disagree with exact UTF8 source-literal locators.
