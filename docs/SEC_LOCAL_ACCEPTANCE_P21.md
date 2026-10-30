@@ -1,33 +1,22 @@
-# KUODRA P21 — Windows local SEC three-file acceptance
+# P21: 로컬 SEC 원본 직접 검사 — 검증된 Python 방식
 
-This is an **offline read-only** check of already obtained SEC-shaped inputs. It does **not** collect any SEC data; it does not persist copies, a receipt, screenshots, an audit SQLite database or any API key. It does not independently authenticate an issuer. Do not upload original filings to a public GitHub branch.
+PowerShell 실행 래퍼는 실제 Windows CI에서 두 번 실패하여 제거했습니다. **실제 SEC 원본 3종 세트는 아직 확보되지 않아 미검증입니다.** 검증된 P20 Python 백엔드를 별도 변환·저장 없이 직접 호출합니다.
 
-## Prepare
+기존 KIC `lead/kic` 저장소에서 `git pull --ff-only` 하고 Python 3.11을 확인하세요. 이미 적법하게 확보한 **원본 그대로의** `submissions.json`, SEC 전체 `companyfacts.json`, 동일 accession의 10-K 원본 HTML 파일이 필요합니다. 전체 CompanyFacts 대신 수동 발췌 JSON을 사용해 실제 원본 검증이라 주장하지 않습니다.
 
-In the existing `lead/kic` checkout, run `git pull --ff-only` and check Python 3.11 is on PATH (`python --version`). Put the three independently obtained files in one local folder:
-
-- `submissions.json` — unchanged Submissions JSON for the issuer CIK.
-- `companyfacts.json` — unchanged **full** CompanyFacts JSON, not the single-concept CompanyConcept response or a curated report.
-- `original.html` — unchanged issuer 10-K filing HTML for the selected accession; filename can be overridden with `-OriginalFile`.
-
-Know the 10-digit CIK, `##########-##-######` accession, desired historical `-AsOf` date, and the **actual known collection/observation UTC timestamp**. A made-up historical `-CollectedAt` is not evidence. If collection time is unknown, report it as unknown and DO NOT fabricate one; this CLI requires an explicit timestamp to test the existing historical as-of gate. All source paths remain local. Real data cannot pass unless it meets existing strict source/period checks.
-
-## PowerShell invocation (repository root)
+PowerShell에서 파일 위치와 **확인된 실제** 메타데이터로 자리표시자를 바꿔 실행합니다.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\verify_sec_local.ps1 `
-  -SourceDirectory "C:\SEC-local" `
-  -Cik "0000000001" `
-  -Accession "0000000001-25-000001" `
-  -AsOf "2025-10-16" `
-  -CollectedAt "2025-10-16T12:00:00Z" `
-  -OriginalFile "filing-10k.htm"
+python -B -m proofinvest.kuodra_loose_sec_compatibility `
+  --submissions "C:\SEC-local\submissions.json" `
+  --companyfacts "C:\SEC-local\companyfacts.json" `
+  --original "C:\SEC-local\original.html" `
+  --cik "CIK_10_DIGITS" `
+  --accession "ACCESSION_20_CHARS" `
+  --as-of "YYYY-MM-DD" `
+  --collected-at "YYYY-MM-DDTHH:MM:SSZ"
 ```
 
-**The illustrative CIK, accession and timestamp in this command are synthetic test values, NOT a real issuer. Replace them with verified locally held metadata.** Use `-SubmissionsFile`, `-CompanyFactsFile` and `-OriginalFile` when local filenames differ; these options accept filenames only, not directory traversal. Spaces and Korean characters in the parent folder path should be passed inside double quotes.
+**`--collected-at`은 실제로 확인한 SEC 원본 관측 UTC 시각**이어야 합니다. 알지 못한다면 임의로 과거 시각을 꾸며 입력하지 마세요. 이 도구의 결과는 원본 파일 내용과 경로를 새 파일/DB로 저장하지 않으며 SEC HTTP·Gemini·거래 실행을 하지 않습니다. JSON `status=operator_review_required`와 exit 0은 형식 검토 후보일 뿐 원본 진위·수집 시각·권리·실제 HTML과 accession의 연결 증명이 아닙니다. `status=blocked` 또는 exit 2이면 JSON `reason_code`를 확인합니다. 로그를 공유할 때는 원본 내용·경로·민감정보를 포함하지 마세요.
 
-The command prints JSON to the console only: `status=operator_review_required` with fiscal pair candidates, SHA-256 and optional iXBRL compatibility, or `status=blocked` and a reason code. Exit 0 indicates **only** reviewable untrusted local structure; exit 2 means blocked. No trade or recommendation is authorized. If supplying results in chat, copy only the JSON **after inspecting it**, not the source contents, private path, user contact or confidential data.
-
-## What does not constitute success
-
-An independent source provenance/right-to-use check, authentic original-to-accession linkage, actual browser render visibility, Gemini live proposal, investor-risk verification, and Production remain outside this test. P21 CI uses synthetic fixtures on hosted Windows; a real SEC trio is still a separate owner-led acceptance gate. There is **no requirement to run this** until the three source files have been obtained through permitted means.
+P20 원래 소스 [CI #41112337291](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41112337291) 871 Python tests/3 jobs PASS(합성). P21 PowerShell 래퍼는 실실행 FAIL 후 철회. 실제 SEC 3회 요청과 로컬 저장은 별도 승인 후에만 가능하며, Gemini 실연동과 Production은 미검증입니다.

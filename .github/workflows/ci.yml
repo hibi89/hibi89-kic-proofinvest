@@ -136,9 +136,6 @@ jobs:
           python -B -m unittest discover -s tests -p "test_disclosure_lightning.py" -v
           python -B -m unittest discover -s tests -p "test_disclosure_lightning_originals.py" -v
 
-      - name: P21 read-only SEC file launcher on actual Windows PowerShell (synthetic only)
-        run: python -B -m unittest discover -s tests -p "test_kuodra_windows_local_runner.py" -v
-
       - name: Assert reviewed evidence is excluded from Windows newline conversion
         shell: pwsh
         run: |
