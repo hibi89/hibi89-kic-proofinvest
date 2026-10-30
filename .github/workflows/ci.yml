@@ -95,6 +95,19 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Build and strictly verify THREE synthetic SEC-to-Guard judge cases
+        run: |
+          mkdir -p /tmp/kic-sec-guard-judge
+          python -B -m scripts.sec_guard_judge_pack build /tmp/kic-sec-guard-judge/proofinvest-SYNTHETIC-judge.zip
+          python -B -m scripts.sec_guard_judge_pack verify /tmp/kic-sec-guard-judge/proofinvest-SYNTHETIC-judge.zip
+      - name: Archive PUBLIC SYNTHETIC SEC-to-Guard judge bundle (NO private inputs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-sec-guard-synthetic-judge-pack
+          path: /tmp/kic-sec-guard-judge/proofinvest-SYNTHETIC-judge.zip
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Bounded rule-based workflow controller (NO AI/remote API)
         run: |
           python -m proofinvest.agent_controller --claim 16.20 > /tmp/kic-offline-controller-matched.json
