@@ -121,6 +121,26 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             or not isinstance(audit.get("event_hash"), str)
             or _SHA.fullmatch(audit["event_hash"]) is None):
         raise ValueError("HTML_REPORT_INTEGRITY_BLOCKED")
+    shares = report.get("share_capital")
+    if shares is not None and (
+            type(shares) is not dict
+            or shares.get("status") not in ("unavailable", "reviewed_unverified")
+            or shares.get("source_authenticated") is not False
+            or shares.get("guard_policy_modified") is not False
+            or shares.get("shares_change_is_not_dilution_or_issuance") is not True):
+        raise ValueError("HTML_SHARES_TRUST_CONTRACT_FAILURE")
+    share_section = ""
+    if shares is not None:
+        count = (shares["shares_outstanding"] if shares["status"] == "reviewed_unverified"
+                 else "NOT_AVAILABLE")
+        basis = shares["basis"] if shares["basis"] is not None else "UNKNOWN"
+        share_section = (
+            '<section><h2>02A / 발행주식 수 · 제한적 검토</h2><p>'
+            + _field(count) + ' shares</p><p>기준: ' + _field(basis)
+            + ' / ' + _field(shares["reason_code"]) + '</p>'
+            '<p>주식 수 변화는 주식분할·신규 발행·희석 또는 '
+            '주요 주주 지분변화를 입증하지 않습니다. 원본은 미인증.</p></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     names = (
@@ -165,6 +185,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>현재 연도 · USD</th><td>' + _field(fin["current_amount"]) + '</td></tr>'
         '<tr><th>사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
+        + share_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

@@ -1,3 +1,16 @@
+## 2026-10-31 KST KUODRA P25 share capital descriptive snapshot (CI pending)
+
+1. Goal: fill previously missing SEC supported share count and limited change review. NO ownership/issuance/stock split adjusted dilution claims without true underlying filings.
+2. Designs: broad beneficial ownership multi-form parser (unsupported source and scope), or same-accession annual SEC CompanyFacts US-GAAP shares snapshot/optional exact prior + separate DEI cover snapshot (selected, zero new provider costs).
+3. Flow: new kuodra_sec_shares.py accepts exact CIK/10-K accession/as-of/instant units=shares; bound row counts, no mixed units, no future/ambiguous share values. US-GAAP fiscal snapshot plus optional two dates one filing share-change pct; DEI only distinct cover date and no growth; missing/invalid->unavailable. Explicit unverified, not issuance/ownership.
+4. Integration: local_sec_guard_report emits optional descriptive share_capital separately from financial risk/Guard, kuodra_capture_replay surfaces it, local_sec_html_report renders no-script section with legal/provenance caveats. Existing Guard HOLD/REJECT and opt-in SQLite untouched.
+5. Tests: 10 new synthetic/offline tests for fiscal & cover, missing/mixed units, duplicates/invalid/future/CIK, Guard/SQLite/HTML without network. Exact P25 CI pending. Existing P24 source c687c3701c35bbbc2dccc78a6c95bbb124aae245 CI #41117766157 Python898 and 3/3 success, docs HEAD e4d01501758bffc7d3c755a30a9fecfdead57b6c.
+6. Repo paths: hibi89/hibi89-kic-proofinvest lead/kic, source module, Guard, capture replay, HTML, tests, HANDOFF/STATUS; rollback via ordinary Git revert, no original mutation or new deployment.
+7. Unverified: authentic SEC 3-source files unavailable, historical split/ownership and real DEI tag placement require true source; no SEC HTTP/Gemini, rights verification or Production.
+8. P25 functional completion requires exact CI success and no observed regression. Do not claim new live finance feed or source authentication.
+9. Next: real lawful SEC source acceptance via local read-only P20 and SHA-pinned Guard with operator consent, or separate approval for SEC contact/retention. Additional ownership filings require separate source/rights design.
+10. Checkpoint: 2026-10-31 KST, CI pending.
+
 ## 2026-10-31 KST — KUODRA P24 original DEI identity self-claim crosscheck (CI 3/3 PASS)
 
 1. Objective: prevent user-supplied 10-K HTML with an explicit contradictory Inline XBRL DEI entity CIK/document type from slipping through otherwise valid Submissions+CompanyFacts arithmetic into Guard/SQLite. No evidence in scope proves a raw SEC original belongs to an accession, so this only checks disclosed self-claims and does NOT upgrade trust.
