@@ -130,6 +130,62 @@ jobs:
       - name: Guard inspector Windows file-lock regression (stdlib only)
         run: python -B -m unittest discover -s tests -p "test_guard_audit_inspector.py" -v
 
+      - name: Assert reviewed evidence is excluded from Windows newline conversion
+        shell: pwsh
+        run: |
+          $evidence = "docs/evidence/samsung_2024_cfs_revenue.json"
+          $attr = git check-attr text -- $evidence
+          if ($attr -notmatch ': text: unset  browser:
+    name: Chromium Guard click-through (offline evidence)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install local UI and Chromium testing dependencies
+        run: |
+          python -m pip install -r requirements-ui.txt playwright
+          python -m playwright install --with-deps chromium
+      - name: Click through actual browser UI and verify SQLite
+        run: |
+          python -B -m scripts.guard_browser_smoke /tmp/kic-guard-browser
+      - name: Archive actual browser screenshot and machine-readable receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-guard-browser-evidence
+          path: |
+            /tmp/kic-guard-browser/guard-browser-clickthrough.png
+            /tmp/kic-guard-browser/intent-router-browser.png
+            /tmp/kic-guard-browser/mock-llm-proposal-accepted.png
+            /tmp/kic-guard-browser/mock-llm-proposal-blocked.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-hold.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-reject.png
+            /tmp/kic-guard-browser/sec-guard-synthetic-script.png
+            /tmp/kic-guard-browser/sec-guard-browser-downloaded-script.html
+            /tmp/kic-guard-browser/sec-guard-compare-browser.png
+            /tmp/kic-guard-browser/sec-guard-compare-browser.json
+            /tmp/kic-guard-browser/sec-guard-browser-judge-pack.zip
+            /tmp/kic-guard-browser/guard-audit-snapshot-inspection.json
+            /tmp/kic-guard-browser/guard-browser-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Archive bounded local server diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofinvest-guard-browser-debug
+          path: /tmp/kic-guard-browser/streamlit-server.log
+          if-no-files-found: ignore
+          retention-days: 3
+) { throw "Reviewed evidence must be -text: $attr" }
+          git -c core.autocrlf=true restore --source=HEAD --worktree -- $evidence
+      - name: Verify exact issuer Git blob and offline controller on Windows
+        run: |
+          python -B -m unittest discover -s tests -p "test_manual_case_demo.py" -v
+          python -B -m unittest discover -s tests -p "test_agent_controller.py" -v
+
   browser:
     name: Chromium Guard click-through (offline evidence)
     runs-on: ubuntu-latest

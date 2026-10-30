@@ -67,6 +67,8 @@ def main(argv=None) -> int:
             command.extend([*TARGETS,"-v"])
         env=os.environ.copy()
         env["PYTHONDONTWRITEBYTECODE"]="1"
+        # On Windows, force UTF-8 traceback output into the UTF-8 log.
+        env["PYTHONIOENCODING"]="utf-8"
         # No real services, credentials, DB, or network are required by these tests.
         testlog=output/"tests.log"
         with testlog.open("x",encoding="utf-8") as log:
@@ -97,7 +99,7 @@ def main(argv=None) -> int:
                 if stop>=0:
                     section=section[:stop]
                 print("Unittest failure diagnostic:\n"+section[:2400],file=sys.stderr)
-            tail=re.search(r"(?m)^FAILED \\([^\n]+\\)$",text)
+            tail=re.search(r"(?m)^FAILED \([^\n]+\)$",text)
             if tail:
                 print(tail.group(0),file=sys.stderr)
             if not markers:
