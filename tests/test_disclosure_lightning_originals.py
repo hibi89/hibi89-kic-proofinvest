@@ -59,7 +59,7 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(outcome["filing_sha256"], hashlib.sha256(CONTENT).hexdigest())
         self.assertFalse(outcome["authenticated_external_source"])
         self.assertFalse(outcome["original_filing_retrieved"])
-        with sqlite3.connect(self.db) as db:
+        with contextlib.closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT file_bytes FROM original_filing_receipts"
             ).fetchone()[0], CONTENT)
@@ -74,7 +74,7 @@ class OriginalFilingTests(unittest.TestCase):
         self.assertEqual(originals.list_originals(
             db_path=self.db, cik=C, accession=A
         )[0]["filing_sha256"], first["filing_sha256"])
-        with sqlite3.connect(self.db) as db:
+        with contextlib.closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT count(*) FROM original_filing_receipts").fetchone()[0], 1)
 
@@ -86,7 +86,7 @@ class OriginalFilingTests(unittest.TestCase):
         items = originals.list_originals(db_path=self.db, cik=C, accession=A)
         self.assertEqual({r["filing_sha256"] for r in items},
                          {original["filing_sha256"], updated["filing_sha256"]})
-        with sqlite3.connect(self.db) as db:
+        with contextlib.closing(sqlite3.connect(self.db)) as db, db:
             raws = {row[0] for row in db.execute(
                 "SELECT file_bytes FROM original_filing_receipts")}
         self.assertEqual(raws, {CONTENT, b"<html>CHANGED SYNTHETIC</html>"})
@@ -239,7 +239,7 @@ class OriginalFilingTests(unittest.TestCase):
 
     def test_corrupted_original_blob_fails_closed_when_read(self):
         saved = self.save()
-        with sqlite3.connect(self.db) as conn:
+        with contextlib.closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "UPDATE original_filing_receipts SET file_bytes=? "
                 "WHERE issuer_cik=? AND accession=? AND sha256=?",

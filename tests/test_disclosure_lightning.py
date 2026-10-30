@@ -68,7 +68,8 @@ class DisclosureLightningTests(unittest.TestCase):
         self.assertEqual(first["observation_id"], second["observation_id"])
         self.assertEqual(second["status"], "REUSED")
         self.assertEqual(second["new_filings"], 0)
-        with sqlite3.connect(self.db) as db:
+        # A sqlite3 transaction context does not release OS file handles.
+        with contextlib.closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 1)
             self.assertEqual(db.execute("SELECT count(*) FROM filings").fetchone()[0], 3)
             self.assertEqual(db.execute("SELECT response FROM observations").fetchone()[0], self.raw)
@@ -85,7 +86,8 @@ class DisclosureLightningTests(unittest.TestCase):
         outcome = core.save_index(self.db, raw2, changed)
         self.assertEqual(outcome["new_filings"], 0)
         self.assertEqual(before, {x["accession"]: x for x in core.list_filings(self.db, cik=CIK)})
-        with sqlite3.connect(self.db) as db:
+        # A sqlite3 transaction context does not release OS file handles.
+        with contextlib.closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute("SELECT count(*) FROM observations").fetchone()[0], 2)
             self.assertEqual(db.execute("SELECT count(*) FROM filing_observations").fetchone()[0], 6)
 

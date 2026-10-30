@@ -129,6 +129,10 @@ jobs:
           python-version: '3.11'
       - name: Guard inspector Windows file-lock regression (stdlib only)
         run: python -B -m unittest discover -s tests -p "test_guard_audit_inspector.py" -v
+      - name: Offline Disclosure Lightning index and original-file Windows lock regressions
+        run: |
+          python -B -m unittest discover -s tests -p "test_disclosure_lightning.py" -v
+          python -B -m unittest discover -s tests -p "test_disclosure_lightning_originals.py" -v
 
       - name: Assert reviewed evidence is excluded from Windows newline conversion
         shell: pwsh
