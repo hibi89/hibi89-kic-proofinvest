@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+from html.parser import HTMLParser
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -17,10 +19,116 @@ from .kuodra_capture_replay import _capture_instant
 from .local_sec_packet import _json_object, _MAX_FILE_BYTES
 from .sec_capture_bundle import _read_checked_capture_bundle
 from .sec_companyfacts import MAX_AMOUNT, MAX_ROWS, REVENUE_TAGS, _date, verify_sec_annual_revenue
+from .visible_text_evidence import confirm_html_text_node_literal, IGNORED, MAX_BYTES
 
 _MAX_PERIOD_ENDS = 64
 _MAX_CANDIDATE_PAIRS = 80
 _MAX_RETURNED = 5
+
+
+_MAX_NEEDLE_SUGGESTIONS = 5
+_MAX_NODE_CANDIDATES = 256
+_MAX_TEXT_NODES = 4000
+_NEEDLE_PATTERNS = (
+    re.compile(r"\b(?:total revenue|net sales|operating income|net income|revenue)\b(?:[ A-Za-z0-9_/-]{6,48})?", re.IGNORECASE | re.ASCII),
+    re.compile(r"\b[A-Z][A-Z0-9_]{11,80}\b", re.ASCII),
+    re.compile(r"\b[A-Za-z][A-Za-z0-9_ -]{11,76}\b", re.ASCII),
+)
+
+
+class _CandidateTextNodes(HTMLParser):
+    """Collect bounded ASCII strings from raw HTML text nodes, excluding scripts."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.ignored: list[str] = []
+        self.invalid = False
+        self.seen_nodes = 0
+        self.candidates: list[list[str]] = [[], [], []]
+
+    def handle_starttag(self, tag, attrs):
+        if tag in IGNORED:
+            if len(self.ignored) >= 128:
+                self.invalid = True
+            else:
+                self.ignored.append(tag)
+
+    def handle_endtag(self, tag):
+        if self.ignored and tag == self.ignored[-1]:
+            self.ignored.pop()
+
+    def handle_startendtag(self, tag, attrs):
+        # A self-closing ignored element has no text content.
+        return
+
+    def handle_data(self, data):
+        if self.invalid or self.ignored or not data:
+            return
+        self.seen_nodes += 1
+        if self.seen_nodes > _MAX_TEXT_NODES:
+            self.invalid = True
+            return
+        if len(data) > 20_000:
+            # Don't suggest snippets from giant unstructured text nodes.
+            return
+        for i, pattern in enumerate(_NEEDLE_PATTERNS):
+            if len(self.candidates[i]) >= _MAX_NODE_CANDIDATES:
+                continue
+            for found in pattern.finditer(data):
+                candidate = found.group().strip()
+                if 8 <= len(candidate) <= 128 and candidate.isascii():
+                    self.candidates[i].append(candidate)
+                    if len(self.candidates[i]) >= _MAX_NODE_CANDIDATES:
+                        break
+
+
+def _candidate_needle_receipts(original: bytes) -> list[dict[str, Any]]:
+    """Offer only exact, unique raw byte spans that pass the existing text gate.
+
+    Returned candidate literal strings are LOCAL raw-derived disclosure: use
+    only after explicit CLI opt-in. They are never source-authentication.
+    """
+    if type(original) is not bytes or not 0 < len(original) <= MAX_BYTES:
+        return []
+    try:
+        document = original.decode("utf-8")
+    except UnicodeDecodeError:
+        return []
+    scan = _CandidateTextNodes()
+    try:
+        scan.feed(document)
+        scan.close()
+    except (ValueError, RecursionError, OverflowError, AssertionError):
+        return []
+    if scan.invalid or scan.ignored:
+        return []
+    selected = []
+    used: set[str] = set()
+    for tier in scan.candidates:
+        for literal in tier:
+            if literal in used:
+                continue
+            used.add(literal)
+            token = literal.encode("ascii")
+            offset = original.find(token)
+            if offset < 0 or original.find(token, offset + 1) != -1:
+                continue
+            verdict = confirm_html_text_node_literal(
+                original, needle=literal,
+                expected_start=offset, expected_end=offset+len(token)
+            )
+            if verdict.get("exact_raw_byte_span_verified") is not True:
+                continue
+            selected.append({
+                "needle": literal,
+                "start_byte": offset,
+                "end_byte_exclusive": offset + len(token),
+                "text_node_only_not_rendered_visibility": True,
+                "source_authenticated": False,
+            })
+            if len(selected) >= _MAX_NEEDLE_SUGGESTIONS:
+                return selected
+    return selected
 
 
 def _result(reason: str) -> dict[str, Any]:
@@ -51,13 +159,17 @@ def _result(reason: str) -> dict[str, Any]:
     }
 
 
-def inspect_saved_capture_periods(bundle_path: str | Path) -> dict[str, Any]:
+def inspect_saved_capture_periods(
+    bundle_path: str | Path, *, show_local_needle_candidates: bool = False,
+) -> dict[str, Any]:
     """List at most five operator-review candidates from one locally verified ZIP.
 
     Reuses the actual annual revenue verifier to avoid proposing combinations
     that are not accepted by the Guard replay. Only the manifest's self-
     reported capture day is used; no present-day backdating or remote fetch.
     """
+    if type(show_local_needle_candidates) is not bool:
+        raise ValueError("INVALID_EXPLICIT_NEEDLE_DISCLOSURE_FLAG")
     result = _result("CAPTURE_ZIP_UNVERIFIABLE")
     verdict, raws, receipt = _read_checked_capture_bundle(
         Path(bundle_path).expanduser()
@@ -178,6 +290,11 @@ def inspect_saved_capture_periods(bundle_path: str | Path) -> dict[str, Any]:
         period_candidates=accepted[:_MAX_RETURNED],
         candidates_truncated=len(accepted) > _MAX_RETURNED,
     )
+    if show_local_needle_candidates:
+        result["local_needle_candidates"] = _candidate_needle_receipts(
+            raws["original_filing"]
+        )
+        result["needle_candidates_are_untrusted_text_only"] = True
     return result
 
 
@@ -186,9 +303,13 @@ def main(argv: list[str] | None = None) -> int:
         description="Read-only local SEC ZIP preflight; zero DB/network/LLM writes."
     )
     parser.add_argument("--capture-zip", type=Path, required=True)
+    parser.add_argument("--show-local-needle-candidates", action="store_true",
+                        help="Explicitly print up to 5 local HTML text snippets; never source certification")
     args = parser.parse_args(argv)
     try:
-        report = inspect_saved_capture_periods(args.capture_zip)
+        report = inspect_saved_capture_periods(
+            args.capture_zip, show_local_needle_candidates=args.show_local_needle_candidates
+        )
     except (OSError, TypeError, KeyError, ValueError,
             OverflowError, RecursionError):
         report = _result("CAPTURE_ZIP_PREVIEW_FAILED")

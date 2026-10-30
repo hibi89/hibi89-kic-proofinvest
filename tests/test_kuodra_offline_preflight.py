@@ -19,13 +19,14 @@ from proofinvest.sec_capture_bundle import save_local_capture_bundle
 from proofinvest.sec_companyfacts import TAG
 
 
-def make_zip(path: Path, *, facts=None, submissions=None, timestamps=None):
+def make_zip(path: Path, *, facts=None, submissions=None, timestamps=None,
+             original=None):
     raws = {
         "submissions": submissions if submissions is not None else synthetic_submissions(),
         "companyfacts": json.dumps(
             facts if facts is not None else synthetic_companyfacts()
         ).encode("utf-8"),
-        "original_filing": SYNTHETIC_HTML,
+        "original_filing": original if original is not None else SYNTHETIC_HTML,
     }
     recorded = timestamps or [
         "2025-10-16T12:00:00Z",
@@ -183,6 +184,75 @@ class OfflinePreflightTests(unittest.TestCase):
         report = inspect_saved_capture_periods(new)
         self.assertEqual(report["status"], "blocked")
         self.assertEqual(report["reason_code"], "INVALID_TARGET_ANNUAL_FACT")
+
+    def test_explicit_candidate_preview_finds_exact_unique_visible_text(self):
+        report = inspect_saved_capture_periods(
+            self.bundle, show_local_needle_candidates=True,
+        )
+        self.assertEqual(report["status"], "review_candidates_available")
+        choices = report["local_needle_candidates"]
+        self.assertTrue(choices)
+        found = [x for x in choices if x["needle"] == "TEST_LITERAL_SOURCE_SPAN"]
+        self.assertEqual(len(found), 1)
+        item = found[0]
+        self.assertEqual(
+            SYNTHETIC_HTML[item["start_byte"]:item["end_byte_exclusive"]],
+            item["needle"].encode("ascii"),
+        )
+        self.assertTrue(item["text_node_only_not_rendered_visibility"])
+        self.assertFalse(item["source_authenticated"])
+        self.assertFalse(self.db.exists())
+
+    def test_default_preview_does_not_copy_original_needle_text(self):
+        r = inspect_saved_capture_periods(self.bundle)
+        self.assertNotIn("local_needle_candidates", r)
+        self.assertNotIn("TEST_LITERAL_SOURCE_SPAN", json.dumps(r))
+
+    def test_script_only_candidate_never_suggested(self):
+        raw = (b"<html><body><script>PRIVATE_SCRIPT_ONLY_TOKEN_98765"
+               b"</script><p>Public test paragraph in text body.</p></body></html>")
+        src = self.root / "script.zip"
+        make_zip(src, original=raw)
+        out = inspect_saved_capture_periods(
+            src, show_local_needle_candidates=True,
+        )
+        self.assertEqual(out["status"], "review_candidates_available")
+        literals = [x["needle"] for x in out["local_needle_candidates"]]
+        self.assertTrue(all("PRIVATE_SCRIPT_ONLY_TOKEN" not in x for x in literals))
+        self.assertFalse(self.db.exists())
+
+    def test_ambiguous_duplicate_literal_not_offered(self):
+        original = (b"<html><body><p>TEST_LITERAL_SOURCE_SPAN</p>"
+                    b"<p>TEST_LITERAL_SOURCE_SPAN</p></body></html>")
+        src = self.root / "duplicate.zip"
+        make_zip(src, original=original)
+        result = inspect_saved_capture_periods(
+            src, show_local_needle_candidates=True,
+        )
+        self.assertEqual(result["status"], "review_candidates_available")
+        self.assertNotIn("TEST_LITERAL_SOURCE_SPAN",
+                         [x["needle"] for x in result["local_needle_candidates"]])
+
+    def test_cli_opt_in_shows_candidates_but_never_creates_audit(self):
+        import io
+        from contextlib import redirect_stdout
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main([
+                "--capture-zip", str(self.bundle),
+                "--show-local-needle-candidates",
+            ])
+        self.assertEqual(code, 0)
+        parsed = json.loads(output.getvalue())
+        self.assertEqual(parsed["status"], "review_candidates_available")
+        self.assertIn("local_needle_candidates", parsed)
+        self.assertFalse(self.db.exists())
+
+    def test_bad_needle_preview_flag_fails_closed(self):
+        with self.assertRaises(ValueError):
+            inspect_saved_capture_periods(
+                self.bundle, show_local_needle_candidates="yes",
+            )
 
     def test_original_text_not_in_json_summary(self):
         report = inspect_saved_capture_periods(self.bundle)
