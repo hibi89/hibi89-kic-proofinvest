@@ -79,7 +79,7 @@ class KuodraMacroTests(unittest.TestCase):
         row = observation("US_CPI_YOY")
         row["unit"] = "index_points"
         self.assertEqual(state(review(exposures=[exposure("US_CPI_YOY")],
-                                      observations=[row]))["reason_code"],
+                                      observations=[row]), "US_CPI_YOY")["reason_code"],
                          "UNIT_OR_BENCHMARK_MISMATCH")
 
     def test_future_vintage_and_collection_rejected(self):
