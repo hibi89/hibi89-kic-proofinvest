@@ -9,6 +9,8 @@ import re
 from typing import Any, Mapping
 
 TAG = "RevenueFromContractWithCustomerExcludingAssessedTax"
+# Alternative total-revenue concepts, not components and not additive.
+REVENUE_TAGS = (TAG, "Revenues", "SalesRevenueNet")
 MAX_ROWS = 10_000
 MAX_AMOUNT = 10**17
 
@@ -36,12 +38,12 @@ def _out(reason: str, **extra: Any) -> dict[str, Any]:
     }
 
 
-def verify_sec_annual_revenue(
+def _verify_one_revenue_concept(
     companyfacts: Any, *, cik: str, accession: str,
     current_end: str, prior_end: str, as_of: str,
-    claimed_growth_pct: str | None = None,
+    claimed_growth_pct: str | None = None, concept: str = TAG,
 ) -> dict[str, Any]:
-    """Compare annual USD values from one SEC 10-K accession, available as-of.
+    """Compare annual USD values of ONE SEC concept from ONE 10-K, as-of.
 
     Supplied JSON is untrusted; syntactically valid SEC links do NOT authenticate
     its source. This function performs no network, model or trading action.
@@ -65,7 +67,7 @@ def verify_sec_annual_revenue(
         return _out("CIK_MISMATCH")
     root = companyfacts.get("facts")
     usgaap = root.get("us-gaap") if isinstance(root, Mapping) else None
-    tag = usgaap.get(TAG) if isinstance(usgaap, Mapping) else None
+    tag = usgaap.get(concept) if isinstance(usgaap, Mapping) else None
     units = tag.get("units") if isinstance(tag, Mapping) else None
     rows = units.get("USD") if isinstance(units, Mapping) else None
     if not isinstance(rows, list) or len(rows) > MAX_ROWS:
@@ -129,7 +131,93 @@ def verify_sec_annual_revenue(
         "cik": cik, "accession": accession, "as_of": as_of,
         "annual_period_ends": [prior_end, current_end],
         "filing_date": current[2].isoformat(),
+        "revenue_concept": concept,
     }
+
+
+def _target_concept_rows(tag: Any, *, accession: str,
+                         current_end: str, prior_end: str) -> bool:
+    """Whether an incomplete alternative claims this accession/period.
+
+    Do not silently ignore a partial same-filing concept in favor of another.
+    """
+    if not isinstance(tag, Mapping):
+        return True
+    units = tag.get("units")
+    if not isinstance(units, Mapping) or set(units) != {"USD"}:
+        return True
+    rows = units.get("USD")
+    if not isinstance(rows, list):
+        return True
+    for row in rows:
+        if not isinstance(row, Mapping):
+            return True
+        if (row.get("accn") == accession and row.get("form") == "10-K"
+                and row.get("end") in (current_end, prior_end)):
+            return True
+    return False
+
+
+def verify_sec_annual_revenue(
+    companyfacts: Any, *, cik: str, accession: str,
+    current_end: str, prior_end: str, as_of: str,
+    claimed_growth_pct: str | None = None,
+) -> dict[str, Any]:
+    """Select exactly one allowlisted total-revenue concept, fail closed.
+
+    All complete concepts for this ONE accession must agree on both annual
+    amounts and filing date. A partial/invalid concept on these same periods
+    blocks the fallback; we never combine periods or components across tags.
+    Earlier single-concept behavior and claim thresholds are preserved.
+    """
+    args = dict(cik=cik, accession=accession, current_end=current_end,
+                prior_end=prior_end, as_of=as_of)
+    usgaap = None
+    if isinstance(companyfacts, Mapping):
+        facts = companyfacts.get("facts")
+        if isinstance(facts, Mapping):
+            candidate = facts.get("us-gaap")
+            if isinstance(candidate, Mapping):
+                usgaap = candidate
+    present = [concept for concept in REVENUE_TAGS
+               if usgaap is not None and concept in usgaap]
+    if not present:
+        return _verify_one_revenue_concept(
+            companyfacts, **args, claimed_growth_pct=claimed_growth_pct
+        )
+    reviewed = {
+        concept: _verify_one_revenue_concept(companyfacts, **args, concept=concept)
+        for concept in present
+    }
+    # An explicit primary tag must not be silently overridden by a fallback
+    # when it is invalid or incomplete for the selected issuer.
+    if TAG in reviewed and reviewed[TAG]["status"] != "calculated_unverified":
+        return _verify_one_revenue_concept(
+            companyfacts, **args, concept=TAG,
+            claimed_growth_pct=claimed_growth_pct
+        )
+    good = [c for c in present if reviewed[c]["status"] == "calculated_unverified"]
+    if not good:
+        return reviewed[present[0]]
+    chosen = good[0]
+    chosen_facts = reviewed[chosen]
+    for concept in present:
+        if concept == chosen:
+            continue
+        alternative = reviewed[concept]
+        if alternative["status"] == "calculated_unverified":
+            if any(alternative.get(key) != chosen_facts.get(key) for key in
+                   ("current_usd", "prior_usd", "filing_date")):
+                return _out("REVENUE_CONCEPT_CONFLICT")
+        elif _target_concept_rows(
+            usgaap[concept], accession=accession,
+            current_end=current_end, prior_end=prior_end,
+        ):
+            return _out("REVENUE_CONCEPT_INCOMPLETE_OR_INVALID")
+    return _verify_one_revenue_concept(
+        companyfacts, **args, concept=chosen,
+        claimed_growth_pct=claimed_growth_pct,
+    )
 
 
 def run_curated_apple_demo(*, as_of: str = "2025-11-01",
