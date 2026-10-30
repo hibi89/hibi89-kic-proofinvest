@@ -199,6 +199,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: proofinvest-guard-browser-debug
-          path: /tmp/kic-guard-browser/streamlit-server.log
+          path: |
+            /tmp/kic-guard-browser/streamlit-server.log
+            /tmp/kic-guard-browser/mock-proposal-select-diagnostics.json
+            /tmp/kic-guard-browser/mock-proposal-menu-after-open.png
+            /tmp/kic-guard-browser/mock-proposal-select-trace.zip
           if-no-files-found: ignore
           retention-days: 3

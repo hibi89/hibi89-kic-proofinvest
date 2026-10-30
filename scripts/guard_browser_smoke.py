@@ -190,13 +190,55 @@ def run(output: Path) -> dict:
                         # option after clicking the input alone (CI ARIA log),
                         # so open the menu using the accessible button inside
                         # the group that owns this exact combobox.
-                        model_group = page.get_by_role("group").filter(has=model_picker)
-                        model_group.get_by_role("button", name="Open").click()
-                        mismatch_option = page.get_by_role(
-                            "option", name="불일치 제안: SOURCE_REVIEW", exact=True
+                        # Diagnose the post-submit Streamlit form selectbox
+                        # before changing the test contract. This captures
+                        # synthetic-only DOM/accessibility metadata on failure.
+                        def capture_selectbox(stage):
+                            return {
+                                "stage": stage,
+                                "picker": model_picker.evaluate(
+                                    """el => ({
+                                      value: el.value,
+                                      expanded: el.getAttribute('aria-expanded'),
+                                      controls: el.getAttribute('aria-controls'),
+                                      parent: el.parentElement?.outerHTML.slice(0, 2400)
+                                    })"""
+                                ),
+                                "active": page.evaluate(
+                                    "() => document.activeElement?.getAttribute('role')"
+                                ),
+                                "listboxes": page.get_by_role("listbox").count(),
+                                "options": page.get_by_role("option").all_text_contents(),
+                            }
+                        trace_path = output / "mock-proposal-select-trace.zip"
+                        diagnostics = []
+                        page.context.tracing.start(
+                            screenshots=True, snapshots=True, sources=False
                         )
-                        expect(mismatch_option).to_be_visible(timeout=10000)
-                        mismatch_option.click()
+                        try:
+                            diagnostics.append(capture_selectbox("before_open"))
+                            model_group = page.get_by_role("group").filter(has=model_picker)
+                            model_group.get_by_role("button", name="Open").click()
+                            diagnostics.append(capture_selectbox("after_open"))
+                            page.screenshot(
+                                path=str(output / "mock-proposal-menu-after-open.png")
+                            )
+                            mismatch_option = page.get_by_role(
+                                "option", name="불일치 제안: SOURCE_REVIEW", exact=True
+                            )
+                            try:
+                                expect(mismatch_option).to_be_visible(timeout=4000)
+                            except AssertionError:
+                                diagnostics.append(capture_selectbox("option_absent"))
+                                raise
+                            mismatch_option.click()
+                            diagnostics.append(capture_selectbox("after_selection"))
+                        finally:
+                            page.context.tracing.stop(path=str(trace_path))
+                            (output / "mock-proposal-select-diagnostics.json").write_text(
+                                json.dumps(diagnostics, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8",
+                            )
                         page.get_by_role(
                             "button", name="모의 LLM 제안 검증"
                         ).click()
