@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P17 iXBRL numeric source boundaries (CI pending)
+
+1. Goal: prevent off-screen Inline XBRL ix:hidden/header/resources/references/exclude numbers from being accepted as numeric local evidence; keep body ix:nonFraction byte-correct evidence and existing Decimal calculation, Guard and SQLite safety.
+2. Alternatives: independent numeric-only suppress list risks diverging from P16; shared P16 IGNORED allowlist plus fail-closed nesting selected. No external dependency or source rights changes.
+3. Flow: numeric_literal_anchor imports IGNORED+MAX_IGNORED_DEPTH, skips hidden text, rejects unclosed/unmatched suppressed HTML, allows self-closing metadata and visible body numbers. Local risk display stays descriptive, never Guard-eligible source authentication.
+4. Tests: 9 new synthetic cases: hidden-only, 5 suppression tags, visible UTF-8 offsets, hidden duplicates, unclosed/misnested, nested/self-closing, SEC packet preserved revenue + unavailable numeric, Guard SOURCE_REVIEW HOLD with valid explicit local SQLite. Exact P17 CI pending.
+5. Baseline: P16 source 2cbc9084388be7bc70ec8d0ea43d91ff108a5911 CI #41107839741 SUCCESS 3/3, Python 825/0/0/0. Latest P16 documentation head 06be0ac9a652e8bdfb8198e38c390b069537a0db, separate documentation CI was in progress at initial P17 check.
+6. Safety and original state: no SEC HTTP, Gemini, user database, credentials, private PDF, DAKER, or production modifications. Existing untrusted review remains HOLD/REJECT; no authenticity or accounting-meaning claims.
+7. Repository: hibi89/hibi89-kic-proofinvest lead/kic, parent 06be0ac9a652e8bdfb8198e38c390b069537a0db; numeric_literal_anchor.py, tests/test_kuodra_ixbrl_numeric_boundaries.py, HANDOFF.md, STATUS.md.
+8. Restore: ordinary revert of P17 feature commit; no force push, preserves prior source and CI history. New test DB disposable, no user data modification.
+9. Next: exact P17 Python/Windows/Chromium results; repair only measured error. Genuine source compatibility, live SEC/Gemini, licensed indicators, ML/DL, Production still unverified and need separate gates.
+10. KST checkpoint: 2026-10-31, P17 code prepared, source CI pending.
+
 ## 2026-10-31 KST — KUODRA P16 SEC iXBRL hidden text boundaries (CI 3/3 verified)
 
 1. Objective/requirements: Prevent original SEC Inline XBRL unrendered metadata from being offered as P13 evidence snippet or accepted by P15 source review, while retaining body ix:nonFraction textual evidence with byte-exact SHA/Guard checks. No real issuer/source authentication claim.

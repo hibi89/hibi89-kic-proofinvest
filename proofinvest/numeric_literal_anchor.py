@@ -11,11 +11,12 @@ from html.parser import HTMLParser
 import re
 from typing import Any
 
+from .visible_text_evidence import IGNORED, MAX_IGNORED_DEPTH
+
 # Reject partial numbers, decimal fragments, thousands separators, identifiers.
 _INTEGER = re.compile(r"(?:0|[1-9][0-9]{0,17})\Z", re.ASCII)
-_SUPPRESS = frozenset({
-    "script", "style", "head", "template", "noscript", "svg",
-})
+# Share the P16 source-text exclusion policy; this is not CSS visibility.
+_SUPPRESS = IGNORED
 _BOUNDARY = r"[0-9A-Za-z_.,+-]"
 _MAX_BYTES = 25_000_000
 
@@ -36,19 +37,28 @@ class _TextNumberScanner(HTMLParser):
         }
         self.found: dict[str, list[dict[str, int]]] = {label: [] for label in labels}
         self._suppress: list[str] = []
+        self._unsafe = False
 
     def handle_starttag(self, tag: str, attrs: Any) -> None:
         if tag in _SUPPRESS:
-            self._suppress.append(tag)
+            if len(self._suppress) >= MAX_IGNORED_DEPTH:
+                self._unsafe = True
+            else:
+                self._suppress.append(tag)
+
+    def handle_startendtag(self, tag: str, attrs: Any) -> None:
+        # A self-closing ignored iXBRL node cannot hide later body text.
+        return
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in _SUPPRESS and tag in self._suppress:
-            # Handle mildly malformed nesting; no skipped node is trusted.
-            pos = len(self._suppress) - 1 - self._suppress[::-1].index(tag)
-            del self._suppress[pos:]
+        if tag in _SUPPRESS:
+            if not self._suppress or tag != self._suppress[-1]:
+                self._unsafe = True
+            else:
+                self._suppress.pop()
 
     def handle_data(self, data: str) -> None:
-        if self._suppress:
+        if self._unsafe or self._suppress:
             return
         line, col = self.getpos()
         if line < 1 or line > len(self._lines):
@@ -86,8 +96,9 @@ def find_numeric_literals_in_html_text(
     """Find unique integer-looking USD values without inferring financial facts.
 
     Non-HTML or invalid UTF-8 is unavailable; numeric values in script, tag
-    attributes, comments and CSS do not count. Malformed HTML is not repaired
-    or interpreted as issuer data, and no result is labeled financial proof.
+    attributes, comments, CSS or hidden iXBRL text do not count. Unbalanced
+    suppressed regions fail closed; browser visibility and source truth remain
+    unverified.
     """
     if (type(original) is not bytes or not 0 < len(original) <= _MAX_BYTES
             or not isinstance(prior_amount, str)
@@ -106,8 +117,10 @@ def find_numeric_literals_in_html_text(
     try:
         parser.feed(document)
         parser.close()
-    except (ValueError, OverflowError, RecursionError):
+    except (ValueError, OverflowError, RecursionError, AssertionError):
         return _unavailable("MALFORMED_HTML_FOR_LITERAL_REVIEW")
+    if parser._unsafe or parser._suppress:
+        return _unavailable("UNCERTAIN_SUPPRESSED_HTML_REGION")
     prior = parser.found[prior_amount]
     current = parser.found[current_amount]
     if not prior or not current:
