@@ -27,16 +27,46 @@ section.main > div.block-container { max-width: 1180px; padding-top: 1.9rem; }
 .pi-case--blocked { border-color: #dc5a5a; background: #fff0ee; color: #822e36; }
 .pi-disclaimer { background: #f1f5f9; color: #334155; border-radius: 8px;
   padding: .9rem 1rem; font-size: .85rem; margin: .65rem 0 1rem; }
+.pi-judge-hero { background: linear-gradient(112deg,#10283e,#174d59);
+ border:1px solid #335e69; border-radius:16px; color:#f3f9fb;
+ padding:23px 27px; margin:.25rem 0 1rem; }
+.pi-judge-kicker {color:#76e5d7; font-weight:750; letter-spacing:.12em;
+ font-size:.71rem; margin-bottom:7px;}
+.pi-judge-hero h2 {color:#fff; font-size:1.33rem; font-weight:800;
+ margin:0 0 8px; line-height:1.4;}
+.pi-judge-hero p {color:#d7e8ed; font-size:.89rem; margin:0; line-height:1.55;}
+.pi-judge-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:12px; margin:.75rem 0;}
+.pi-judge-card {background:#f8fbfd; border:1px solid #d4e0e7;
+ border-radius:12px; padding:17px 18px; min-height:151px;}
+.pi-judge-card .step {font-size:.73rem; font-weight:750; color:#536981;}
+.pi-judge-card h3 {font-size:.94rem; font-weight:750; color:#1b334b;
+ margin:7px 0 9px;}
+.pi-judge-card .decision {font-size:.77rem; font-weight:800;
+ padding:3px 8px; border:1px solid #72cdbf; color:#087267;
+ border-radius:6px; display:inline-block;}
+.pi-judge-card .decision.reject {color:#b33341; border-color:#f1b2b7;}
+.pi-judge-card p {margin:9px 0 0; font-size:.78rem;
+ line-height:1.5; color:#506980;}
+.pi-judge-steps {border-top:1px solid #d5e1ea; padding:12px 0 3px;
+ margin-bottom:.65rem; font-size:.78rem; font-weight:700;
+ letter-spacing:.01em; color:#386079; overflow-wrap:anywhere;}
 @media (prefers-color-scheme: dark) {
   .pi-section { color: #e2e8f0; border-color: #475569; }
   .pi-eyebrow { color: #5eead4; }
   .pi-case { background: #123e3e; color: #ccfbf1; }
   .pi-case--blocked { background: #4b1e25; color: #ffe4e6; }
   .pi-disclaimer { background: #253447; color: #e2e8f0; }
+  .pi-judge-card {background:#19334c; border-color:#3b5971;}
+  .pi-judge-card h3 {color:#e9f4fb;}
+  .pi-judge-card .step,.pi-judge-card p,.pi-judge-steps {color:#b8cfe0;}
 }
 @media (max-width: 650px) {
   section.main > div.block-container { padding-left: .85rem; padding-right: .85rem; }
   .pi-shell { padding: 13px 15px; }
+  .pi-judge-grid {grid-template-columns:1fr;}
+  .pi-judge-hero {padding:17px 18px;}
+  .pi-judge-card {min-height:auto;}
 }
 </style>
 <div class="pi-shell">
