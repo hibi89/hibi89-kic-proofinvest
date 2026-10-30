@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -64,7 +65,10 @@ class GuardAuditStore:
         request_hash = hashlib.sha256(_canonical(dict(request))).hexdigest()
         event_payload = {"request_hash": request_hash, "decision": dict(decision)}
         payload_json = _canonical(event_payload).decode("utf-8")
-        with self._connect() as conn:
+        # A sqlite3.Connection context manager commits/rolls back but does NOT
+        # close the handle. Close explicitly, including on exceptions, so
+        # Windows can remove/rename temporary audit databases immediately.
+        with closing(self._connect()) as conn, conn:
             conn.execute("BEGIN IMMEDIATE")
             existing = conn.execute(
                 "SELECT request_hash, decision, event_id FROM guard_run_registry WHERE run_id=?",

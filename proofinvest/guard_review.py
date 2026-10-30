@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,7 +28,9 @@ class GuardReviewStore:
         from .guard_audit import GuardAuditStore
         store = GuardAuditStore(self.path)
         # Use a single transaction for chain check, eligibility and review insertion.
-        with store._connect() as conn:
+        # Transaction scope alone does not close sqlite3.Connection. Keep
+        # commit/rollback semantics but release Windows OS file locks too.
+        with closing(store._connect()) as conn, conn:
             conn.execute("BEGIN IMMEDIATE")
             if not store.verify_chain(conn=conn) or not self.verify_reviews(conn=conn):
                 raise ValueError("Audit or review integrity invalid")

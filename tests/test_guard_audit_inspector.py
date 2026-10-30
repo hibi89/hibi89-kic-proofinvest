@@ -54,6 +54,18 @@ class GuardAuditSnapshotInspectorTests(unittest.TestCase):
         self.assertFalse(summary["trade_executed"])
         self.assertFalse(summary["raw_record_content_exported"])
 
+    def test_completed_review_and_inspector_release_file_handles(self):
+        """Windows regression: file must be renamable immediately after use."""
+        original_sha = hashlib.sha256(self.path.read_bytes()).hexdigest()
+        receipt = inspect_guard_snapshot(self.path)
+        self.assertEqual(receipt["database_sha256"], original_sha)
+        moved = self.path.with_name("audit-renamed.sqlite")
+        self.path.rename(moved)
+        self.assertFalse(self.path.exists())
+        self.assertEqual(hashlib.sha256(moved.read_bytes()).hexdigest(), original_sha)
+        moved.rename(self.path)
+        self.assertEqual(inspect_guard_snapshot(self.path)["audit_events"], 1)
+
     def test_receipt_never_includes_review_text_or_local_paths(self):
         summary = inspect_guard_snapshot(self.path)
         dumped = json.dumps(summary, ensure_ascii=False)
