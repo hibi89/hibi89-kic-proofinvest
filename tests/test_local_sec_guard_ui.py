@@ -144,6 +144,42 @@ class LocalSecGuardUiTests(unittest.TestCase):
                 self.assertIn("UNVERIFIED LOCAL FILES", html)
                 self.assertNotIn("<script", html.lower())
 
+    def test_comparison_runs_all_three_actual_guard_paths(self):
+        import json
+        from proofinvest.local_sec_guard_ui import (
+            build_synthetic_case_comparison, export_synthetic_comparison_json,
+        )
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NETWORK_BLOCKED")) as outbound:
+            cases = build_synthetic_case_comparison()
+        outbound.assert_not_called()
+        self.assertEqual([x["Guard"] for x in cases], ["HOLD", "REJECT", "HOLD"])
+        self.assertEqual(cases[2]["원문 인용"], "사용 불가")
+        self.assertTrue(all(row["SQLite 감사"] == "PASS" for row in cases))
+        payload = json.loads(export_synthetic_comparison_json(cases))
+        self.assertEqual(payload["evidence_class"], "SYNTHETIC_ONLY_UNVERIFIED")
+        self.assertFalse(payload["live_api_called"])
+        self.assertFalse(payload["trade_executed"])
+
+    def test_comparison_export_refuses_forged_approval(self):
+        from proofinvest.local_sec_guard_ui import (
+            build_synthetic_case_comparison, export_synthetic_comparison_json,
+        )
+        cases = build_synthetic_case_comparison()
+        cases[0]["Guard"] = "APPROVE"
+        with self.assertRaisesRegex(ValueError, "SYNTHETIC_COMPARISON_EXPORT_BLOCKED"):
+            export_synthetic_comparison_json(cases)
+
+    def test_streamlit_comparison_click_shows_real_matrix(self):
+        from streamlit.testing.v1 import AppTest
+        file = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        at = AppTest.from_file(str(file)).run(timeout=20)
+        at.selectbox[0].set_value("SEC→Guard 감사 연결 — 합성 오프라인").run(timeout=20)
+        at.button[1].click().run(timeout=40)
+        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+        self.assertTrue(any("로컬 실제 코드 실행 비교" in x.value
+                            for x in at.subheader))
+
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"

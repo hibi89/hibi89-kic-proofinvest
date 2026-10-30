@@ -220,6 +220,78 @@ def export_synthetic_guard_markdown(report: dict[str, Any]) -> bytes:
     return result
 
 
+def build_synthetic_case_comparison() -> list[dict[str, Any]]:
+    """Execute all three actual local Guard paths only on explicit user click."""
+    rows: list[dict[str, Any]] = []
+    expected = {
+        "matched": ("calculated_unverified", "HOLD",
+                    "untrusted_html_text_node_literal_located"),
+        "conflict": ("conflict", "REJECT",
+                     "untrusted_html_text_node_literal_located"),
+        "script": ("calculated_unverified", "HOLD", "unavailable"),
+    }
+    for label, case in SCENARIOS.items():
+        report = run_synthetic_guard_case(case)
+        # Reuse the single-case strict export contract before adding the row.
+        export_synthetic_guard_json(report)
+        financial, decision, citation = expected[case]
+        if (report["verification"]["status"] != financial
+                or report["guard"]["decision"] != decision
+                or report["source"]["html_text_node_status"] != citation
+                or report["audit_chain_valid"] is not True
+                or report["guard"]["trade_executed"] is not False):
+            raise ValueError("SYNTHETIC_COMPARISON_CASE_MISMATCH")
+        rows.append({
+            "사례": label,
+            "매출 검산": financial,
+            "원문 인용": "로컬 바이트 확인" if citation != "unavailable" else "사용 불가",
+            "Risk": report["risk"]["status"],
+            "Guard": decision,
+            "SQLite 감사": "PASS",
+            "실거래": "없음",
+        })
+    if len(rows) != 3:
+        raise ValueError("SYNTHETIC_COMPARISON_INCOMPLETE")
+    return rows
+
+
+def export_synthetic_comparison_json(rows: list[dict[str, Any]]) -> bytes:
+    """Provide a bounded public summary; no user-supplied source bytes."""
+    required = {"사례", "매출 검산", "원문 인용", "Risk",
+                "Guard", "SQLite 감사", "실거래"}
+    if (type(rows) is not list or len(rows) != 3
+            or any(type(row) is not dict or set(row) != required
+                   or row["SQLite 감사"] != "PASS"
+                   or row["실거래"] != "없음" for row in rows)
+            or [row["사례"] for row in rows] != list(SCENARIOS)):
+        raise ValueError("SYNTHETIC_COMPARISON_EXPORT_BLOCKED")
+    expected_decisions = ("HOLD", "REJECT", "HOLD")
+    expected_states = ("calculated_unverified", "conflict", "calculated_unverified")
+    expected_citations = ("로컬 바이트 확인", "로컬 바이트 확인", "사용 불가")
+    if any(row["Guard"] != expected_decisions[i]
+           or row["매출 검산"] != expected_states[i]
+           or row["원문 인용"] != expected_citations[i]
+           or row["Risk"] not in ("reviewed_unverified", "unavailable")
+           for i, row in enumerate(rows)):
+        raise ValueError("SYNTHETIC_COMPARISON_EXPORT_BLOCKED")
+    payload = {
+        "schema": "proofinvest.synthetic-guard-compare.v1",
+        "evidence_class": "SYNTHETIC_ONLY_UNVERIFIED",
+        "source_authenticated": False,
+        "live_api_called": False,
+        "trade_executed": False,
+        "official_contest_submission": False,
+        "cases": rows,
+    }
+    content = (json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        allow_nan=False,
+    ) + "\n").encode("utf-8")
+    if len(content) > 8192:
+        raise ValueError("SYNTHETIC_COMPARISON_EXPORT_OVERSIZED")
+    return content
+
+
 def render_synthetic_guard_ui(st) -> None:
     """Judge-first overview, with every decision backed by the real offline path."""
     st.title("ProofInvest — SEC 근거부터 Guard 감사까지")
@@ -240,12 +312,39 @@ def render_synthetic_guard_ui(st) -> None:
         st.markdown("#### 01 / 검증할 상황 선택")
         st.caption("서로 다른 3가지 수치·인용 상태에서 Guard가 어떻게 판단하는지 비교합니다.")
         choice = st.selectbox("검증 시나리오", list(SCENARIOS), key="sec_guard_case")
-        clicked = st.button(
-            "합성 SEC→Guard 검증 실행",
-            key="sec_guard_execute",
-            type="primary",
-            use_container_width=True,
+        first, second = st.columns(2)
+        with first:
+            clicked = st.button(
+                "합성 SEC→Guard 검증 실행",
+                key="sec_guard_execute",
+                type="primary",
+                use_container_width=True,
+            )
+        with second:
+            compare_clicked = st.button(
+                "3개 시나리오 일괄 비교",
+                key="sec_guard_compare",
+                use_container_width=True,
+            )
+    if compare_clicked:
+        try:
+            comparison = build_synthetic_case_comparison()
+            comparison_json = export_synthetic_comparison_json(comparison)
+        except (ValueError, OSError, KeyError, TypeError, OverflowError):
+            st.error("비교 시나리오의 실제 실행·감사 검증 실패로 결과를 차단했습니다.")
+            return
+        st.subheader("3가지 사례 · 로컬 실제 코드 실행 비교")
+        st.dataframe(comparison, use_container_width=True, hide_index=True)
+        st.download_button(
+            "합성 비교 매트릭스 JSON",
+            data=comparison_json,
+            mime="application/json",
+            file_name="proofinvest_SYNTHETIC_COMPARISON.json",
+            key="sec_guard_comparison_export",
+            on_click="ignore",
         )
+        st.warning("세 사례 모두 가상 SEC 형식 자료이며, 실제 투자 적격성·출처 인증을 뜻하지 않습니다.")
+        return
     if not clicked:
         st.info("실행 전에는 DB를 만들지 않습니다. 파일 업로드·외부 호출 없음.")
         st.markdown(
