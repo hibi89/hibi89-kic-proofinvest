@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P27 same-day SEC filing anti-lookahead (CI pending)
+
+1. Goal: close P26 as-of leak where filingDate alone admits a candidate accepted after the self-reported source collection instant.
+2. Designs: day-only eligibility (cheap but historical leakage), universal timezone requirement (would drop many timezone-less SEC dates), and hybrid strict comparison (selected). Compare only explicit timezone-aware SEC acceptance instants to UTC self-reported collection. If acceptance time is missing/naive, WITHHOLD SAME-DAY candidates; prior-day results retain a "day-only unverified" label. No timezone inference.
+3. Code: proofinvest/kuodra_capital_filing_watch.py validates aligned acceptanceDateTime column, rejects malformed values, prevents known future acceptance, adds per-candidate availability_basis and two omitted counts. local_sec_html_report.py displays omissions while preserving script-free escaping, other-filer coverage limitations and Guard HOLD/REJECT.
+4. Tests: seven additional offline Python cases for same-day late acceptance, timezone-less SEC clock, missing acceptance column, offset-aware comparison, malformed values/shape, and Guard→SQLite→HTML end-to-end no lookahead/no HTTP.
+5. Baseline: P26 runtime 043e4f106ad0326fdab2fa00438ec41d774d756b [CI #41120330877](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41120330877) 3/3 SUCCESS, Python 918/0/0/0; docs HEAD 4bb403aba02158fd7b45d91b5bafe4c26c5240b9.
+6. Exact P27 SHA and CI pending. No external SEC/Gemini/data transfers, user files or Production touched.
+7. A local owner-supplied collection clock is not authenticated even when date comparisons pass. Full SEC original/other-CIK ownership remain unverified; a candidate form never proves issuance or beneficial ownership.
+8. Recovery: normal Git revert on lead/kic; no force push, no secrets or raw original stored.
+9. Next: measure CI, fix only evidenced errors, then require permitted genuine SEC originals and rights for real-data E2E.
+10. Checkpoint: 2026-10-31 KST, P27 implementation pending exact CI.
+
 ## 2026-10-31 KST — KUODRA P26 issuer Submissions capital/owner metadata follow-up (CI 3/3 SUCCESS)
 
 1. Objective: complement P25 share counts with issuer's existing SEC Submissions metadata leads without fabricating issuance, dilution or beneficial owner facts. Issuer CIK index cannot exhaust holder Form SC 13D/G and insider Forms 3/4/5 filed under other CIKs.

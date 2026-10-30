@@ -8,6 +8,7 @@ target issuer's Submissions. Their absence here never establishes absence.
 from __future__ import annotations
 
 from hashlib import sha256
+from datetime import datetime, timezone
 import re
 from typing import Any, Mapping
 
@@ -41,6 +42,27 @@ _FORMS = {
 _MAX_SHOW = 8
 
 
+def _acceptance_availability(raw: Any, observation: datetime) -> str:
+    """Compare a filing acceptance instant only if its timezone is explicit.
+
+    SEC date-times without a timezone cannot safely be interpreted as UTC.
+    """
+    if raw is None or raw == "":
+        return "time_unavailable"
+    if type(raw) is not str or not 10 <= len(raw) <= 50 or not raw.isascii():
+        raise ValueError("ACCEPTANCE_TIME_INVALID")
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("ACCEPTANCE_TIME_INVALID") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        if parsed.date() > observation.date():
+            return "after_observation"
+        return "time_unavailable"
+    return ("known_before_observation" if parsed.astimezone(timezone.utc) <= observation
+            else "after_observation")
+
+
 def _out(reason: str, raw: bytes | None = None) -> dict[str, Any]:
     return {
         "schema": "kuodra.issuer-capital-filing-watch.v1",
@@ -49,6 +71,9 @@ def _out(reason: str, raw: bytes | None = None) -> dict[str, Any]:
         "candidates": [],
         "total_matching_recent_metadata": 0,
         "display_truncated": False,
+        "same_day_without_comparable_acceptance_omitted": 0,
+        "accepted_after_observation_omitted": 0,
+        "accepted_time_comparison_is_self_reported": True,
         "issuer_recent_window_only": True,
         "issuer_recent_window_may_omit_history": True,
         "other_filers_cik_not_queried": True,
@@ -98,9 +123,17 @@ def review_issuer_capital_filing_watch(
         result["reason_code"] = "RECENT_FILING_COLUMNS_INVALID"
         return result
     a, forms, days, docs = columns
+    accepted = recent.get("acceptanceDateTime")
+    if accepted is not None and (
+            type(accepted) is not list or len(accepted) != len(a)):
+        result["reason_code"] = "RECENT_ACCEPTANCE_COLUMNS_INVALID"
+        return result
     seen: set[str] = set()
     matches: list[dict[str, str]] = []
     observed_day = parse_day(observation[:10])
+    observed_instant = datetime.fromisoformat(observation.replace("Z", "+00:00"))
+    unresolved_same_day = 0
+    later_acceptance = 0
     for i, form in enumerate(forms):
         if form not in _FORMS:
             continue
@@ -118,11 +151,30 @@ def review_issuer_capital_filing_watch(
             return result
         if filed > cutoff or filed > observed_day:
             continue
+        try:
+            availability = _acceptance_availability(
+                accepted[i] if accepted is not None else None,
+                observed_instant,
+            )
+        except ValueError:
+            result["reason_code"] = "RECENT_ACCEPTANCE_TIME_INVALID"
+            return result
+        if availability == "after_observation":
+            later_acceptance += 1
+            continue
+        if availability == "time_unavailable" and filed == observed_day:
+            unresolved_same_day += 1
+            continue
         matches.append({
             "form": form, "accession": accession,
             "filed_at": filed.isoformat(),
             "review_class": _FORMS[form],
             "document_not_fetched": "true",
+            "availability_basis": (
+                "EXPLICIT_ACCEPTANCE_NOT_LATER_THAN_REPORTED_COLLECTION"
+                if availability == "known_before_observation"
+                else "PRIOR_FILING_DAY_ONLY_ACCEPTANCE_INSTANT_UNVERIFIED"
+            ),
         })
     matches.sort(key=lambda x: (x["filed_at"], x["accession"]), reverse=True)
     result.update(
@@ -133,5 +185,7 @@ def review_issuer_capital_filing_watch(
         candidates=matches[:_MAX_SHOW],
         total_matching_recent_metadata=len(matches),
         display_truncated=len(matches) > _MAX_SHOW,
+        same_day_without_comparable_acceptance_omitted=unresolved_same_day,
+        accepted_after_observation_omitted=later_acceptance,
     )
     return result

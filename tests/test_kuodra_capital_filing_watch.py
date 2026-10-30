@@ -101,6 +101,86 @@ class CapitalFilingsTests(unittest.TestCase):
         self.assertEqual(x["total_matching_recent_metadata"],0)
         self.assertTrue(x["other_filers_cik_not_queried"])
 
+
+    def test_same_day_acceptance_after_collection_is_not_historical(self):
+        d=json.loads(make([("8-K","2025-10-16"),("S-3","2025-10-16")]))
+        d["filings"]["recent"]["acceptanceDateTime"][-2]="2025-10-16T12:01:00Z"
+        d["filings"]["recent"]["acceptanceDateTime"][-1]="2025-10-16T11:59:00Z"
+        r=inspect(json.dumps(d).encode())
+        self.assertEqual(r["total_matching_recent_metadata"],1)
+        self.assertEqual(r["accepted_after_observation_omitted"],1)
+        self.assertEqual(r["candidates"][0]["form"],"S-3")
+        self.assertEqual(r["candidates"][0]["availability_basis"],
+                         "EXPLICIT_ACCEPTANCE_NOT_LATER_THAN_REPORTED_COLLECTION")
+
+    def test_naive_same_day_acceptance_is_never_interpreted_as_utc(self):
+        d=json.loads(make([("8-K","2025-10-16"),("S-3","2025-10-15")]))
+        d["filings"]["recent"]["acceptanceDateTime"][-2]="2025-10-16T11:00:00"
+        d["filings"]["recent"]["acceptanceDateTime"][-1]="2025-10-15T10:00:00"
+        r=inspect(json.dumps(d).encode())
+        self.assertEqual(r["total_matching_recent_metadata"],1)
+        self.assertEqual(r["same_day_without_comparable_acceptance_omitted"],1)
+        self.assertEqual(r["candidates"][0]["form"],"S-3")
+        self.assertEqual(r["candidates"][0]["availability_basis"],
+                         "PRIOR_FILING_DAY_ONLY_ACCEPTANCE_INSTANT_UNVERIFIED")
+
+    def test_no_acceptance_column_does_not_prove_same_day(self):
+        d=json.loads(make([("8-K","2025-10-16"),("S-3","2025-10-15")]))
+        d["filings"]["recent"].pop("acceptanceDateTime")
+        r=inspect(json.dumps(d).encode())
+        self.assertEqual(r["total_matching_recent_metadata"],1)
+        self.assertEqual(r["same_day_without_comparable_acceptance_omitted"],1)
+
+    def test_timezone_offsets_compare_as_real_instants(self):
+        d=json.loads(make([("8-K","2025-10-16"),("S-3","2025-10-16")]))
+        d["filings"]["recent"]["acceptanceDateTime"][-2]="2025-10-16T13:59:00+02:00"
+        d["filings"]["recent"]["acceptanceDateTime"][-1]="2025-10-16T15:00:00+02:00"
+        r=inspect(json.dumps(d).encode())
+        self.assertEqual(r["total_matching_recent_metadata"],1)
+        self.assertEqual(r["candidates"][0]["form"],"8-K")
+        self.assertEqual(r["accepted_after_observation_omitted"],1)
+
+    def test_malformed_acceptance_field_blocks_report(self):
+        for val in ("2025-10-16Tbad",True,{"untrusted":1}):
+            with self.subTest(value=val):
+                d=json.loads(make([("8-K","2025-10-15")]))
+                d["filings"]["recent"]["acceptanceDateTime"][-1]=val
+                r=inspect(json.dumps(d).encode())
+                self.assertEqual(r["status"],"unavailable")
+                self.assertEqual(r["reason_code"],"RECENT_ACCEPTANCE_TIME_INVALID")
+
+    def test_bad_acceptance_column_length_or_type_blocks(self):
+        for val in ("2025-10-15T11:00:00Z",["too-short"]):
+            with self.subTest(value=val):
+                d=json.loads(make([("8-K","2025-10-15")]))
+                d["filings"]["recent"]["acceptanceDateTime"]=val
+                r=inspect(json.dumps(d).encode())
+                self.assertEqual(r["reason_code"],"RECENT_ACCEPTANCE_COLUMNS_INVALID")
+
+    def test_guard_html_excludes_later_acceptance_with_no_policy_change(self):
+        with tempfile.TemporaryDirectory(prefix="kuodra-p27-") as temp:
+            d=json.loads(make([("8-K","2025-10-16")]))
+            d["filings"]["recent"]["acceptanceDateTime"][-1]="2025-10-16T14:00:00Z"
+            db=Path(temp)/"audit.sqlite"
+            with patch("urllib.request.build_opener",side_effect=AssertionError("NO_HTTP")) as net:
+                report=review_local_sec_with_guard(
+                    submissions_json=json.dumps(d).encode(),
+                    companyfacts_json=json.dumps(synthetic_companyfacts()).encode(),
+                    original_filing=SYNTHETIC_HTML,cik=SYNTHETIC_CIK,
+                    accession=SYNTHETIC_ACCESSION,as_of=AS_OF,
+                    collected_at=COLLECTED_AT,current_end="2025-09-30",
+                    prior_end="2024-09-30",needle=PHRASE,
+                    audit_db_path=db,run_id="p27-no-lookahead",
+                )
+            net.assert_not_called()
+            self.assertEqual(report["capital_filing_watch"]["total_matching_recent_metadata"],0)
+            self.assertEqual(report["capital_filing_watch"]["accepted_after_observation_omitted"],1)
+            self.assertEqual(report["guard"]["decision"],"HOLD")
+            self.assertTrue(GuardAuditStore(db).verify_chain())
+            page=render_local_sec_html(report).decode()
+            self.assertIn("수집시각 이후 제외",page)
+            self.assertFalse(report["limits"]["external_source_authenticated"])
+
     def test_guard_sqlite_html_and_no_network(self):
         with tempfile.TemporaryDirectory(prefix="kuodra-p26-") as temp:
             db=Path(temp)/"audit.sqlite"

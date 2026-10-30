@@ -168,6 +168,10 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<p>' + _field(capital_watch["status"])
             + ' / 검색된 최근 메타데이터 수: '
             + _field(capital_watch["total_matching_recent_metadata"])
+            + '</p><p>당일 접수시각 불명 보류: '
+            + _field(capital_watch["same_day_without_comparable_acceptance_omitted"])
+            + ' · 수집시각 이후 제외: '
+            + _field(capital_watch["accepted_after_observation_omitted"])
             + '</p><ul>' + (items or "<li>검색 범위에서 미발견</li>")
             + '</ul><p>원문·타인 CIK의 13D/13G/내부자 신고 및 이전 '
             '페이지를 검색하지 않았습니다. 미발견은 발행·희석·지분변화 '
