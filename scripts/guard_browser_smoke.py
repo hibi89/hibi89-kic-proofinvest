@@ -44,7 +44,7 @@ def _ready() -> None:
 
 
 def run(output: Path) -> dict:
-    from playwright.sync_api import sync_playwright, expect
+    from playwright.sync_api import sync_playwright, expect, TimeoutError as PlaywrightTimeoutError
 
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="kic-guard-browser-home-") as home:
@@ -143,14 +143,23 @@ def run(output: Path) -> dict:
                         page.screenshot(path=str(output / "guard-browser-clickthrough.png"), full_page=True)
                         # Exercise the separate deterministic question router
                         # in a real Chromium session, never a live LLM agent.
-                        # Search the selectbox rather than assuming all
-                        # options are mounted (Streamlit virtualizes its menu).
+                        # Streamlit 1.66 may unmount a dropdown after
+                        # editing its searchable combobox, even with only a
+                        # few candidates. Prefer the visible unfiltered option
+                        # first. Search only if the menu actually virtualized
+                        # that option; do not silently change the selection.
                         picker = page.get_by_role("combobox", name="자료 유형")
+                        option = page.get_by_role(
+                            "option", name="질문별 로컬 도구 선택 — 규칙 기반 시연",
+                            exact=True,
+                        )
                         picker.click()
-                        picker.fill("질문별 로컬 도구 선택")
-                        page.get_by_role(
-                            "option", name="질문별 로컬 도구 선택 — 규칙 기반 시연"
-                        ).click(timeout=10000)
+                        try:
+                            option.wait_for(state="visible", timeout=3000)
+                        except PlaywrightTimeoutError:
+                            picker.fill("질문별 로컬 도구 선택")
+                            option.wait_for(state="visible", timeout=10000)
+                        option.click(timeout=10000)
                         expect(page.get_by_text(
                             "ProofInvest — 질문별 로컬 도구 선택"
                         )).to_be_visible(timeout=15000)
