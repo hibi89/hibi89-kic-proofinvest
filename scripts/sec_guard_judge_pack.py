@@ -1,6 +1,6 @@
 """Reproducible synthetic-only SEC→Guard judge evidence ZIP.
 
-Six bounded files and a SHA256 manifest, all re-generated from existing
+Nine bounded files and a SHA256 manifest, all re-generated from existing
 three-scenario offline code. Not a real SEC filing, DAKER submission, or
 authenticated agent. ZIP is never extracted to user paths.
 """
@@ -18,6 +18,7 @@ from proofinvest.local_sec_guard_ui import (
     export_synthetic_guard_markdown,
     run_synthetic_guard_case,
 )
+from proofinvest.local_sec_html_report import render_local_sec_html
 
 SCHEMA = "proofinvest.synthetic-sec-guard-judge-pack.v1"
 MANIFEST = "SYNTHETIC_JUDGE_MANIFEST.json"
@@ -60,8 +61,10 @@ def build_bytes() -> bytes:
             raise ValueError("UNSAFE_SYNTHETIC_JUDGE_CASE")
         json_name = case + ".json"
         md_name = case + ".md"
+        html_name = case + ".html"
         payload[json_name] = export_synthetic_guard_json(result)
         payload[md_name] = export_synthetic_guard_markdown(result)
+        payload[html_name] = render_local_sec_html(result)
     if any(not data or len(data) > MAX_FILE_BYTES for data in payload.values()):
         raise ValueError("SYNTHETIC_JUDGE_FILE_NOT_BOUNDED")
     manifest = {

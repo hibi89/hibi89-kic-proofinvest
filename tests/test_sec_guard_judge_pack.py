@@ -1,4 +1,4 @@
-"""Public synthetic judge pack: 3 real code paths, 6 files and immutable ZIP."""
+"""Public synthetic judge pack: 3 real code paths, 9 files and immutable ZIP."""
 from __future__ import annotations
 
 import io
@@ -24,11 +24,11 @@ class SecGuardJudgePackTests(unittest.TestCase):
         net.assert_not_called()
         self.assertEqual(result["schema"], SCHEMA)
         self.assertEqual(result["cases"], 3)
-        self.assertEqual(result["files"], 6)
+        self.assertEqual(result["files"], 9)
         self.assertFalse(result["external_source_authenticated"])
         with zipfile.ZipFile(io.BytesIO(raw)) as z:
             names = set(z.namelist())
-            self.assertEqual(len(names), 7)
+            self.assertEqual(len(names), 10)
             manifest = json.loads(z.read(MANIFEST))
             self.assertEqual(manifest["evidence_class"],
                              "SYNTHETIC_ONLY_UNVERIFIED")
@@ -38,6 +38,30 @@ class SecGuardJudgePackTests(unittest.TestCase):
                 self.assertIn("SYNTHETIC / UNVERIFIED", text)
                 self.assertIn(receipt["report"]["audit"]["event_hash"], text)
                 self.assertIn(case + ".md", manifest["file_list"])
+                page = z.read(case + ".html").decode("utf-8")
+                self.assertIn('Content-Security-Policy', page)
+                self.assertIn('UNVERIFIED LOCAL FILES', page)
+                self.assertIn(receipt["report"]["audit"]["event_hash"], page)
+                self.assertIn(
+                    receipt["report"]["source"]["archived_original_sha256"], page
+                )
+                self.assertNotIn("<script", page.lower())
+                self.assertNotIn("https://", page)
+                self.assertIn(case + ".html", manifest["file_list"])
+
+    def test_html_reports_show_distinct_hold_reject_and_unavailable_states(self):
+        archive = build_bytes()
+        with zipfile.ZipFile(io.BytesIO(archive)) as z:
+            for case, expect in (
+                ("matched", 'class="state"'),
+                ("conflict", 'class="state reject"'),
+                ("script", "unavailable"),
+            ):
+                with self.subTest(case=case):
+                    page = z.read(case + ".html").decode("utf-8")
+                    self.assertIn(expect, page)
+                    self.assertIn("실거래 불가", page)
+                    self.assertIn("UNVERIFIED LOCAL FILES", page)
 
     def test_any_byte_tampering_fails_exact_archive_check(self):
         orig = build_bytes()
