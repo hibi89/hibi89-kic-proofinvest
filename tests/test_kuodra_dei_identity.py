@@ -57,6 +57,18 @@ class DEIOriginalIdentityTests(unittest.TestCase):
         self.assertEqual(r["status"], "conflict")
         self.assertEqual(r["reason_code"], "DEI_DUPLICATE_CONFLICTING_CLAIMS")
 
+    def test_unrelated_ix_nonnumeric_facts_do_not_block_valid_filing(self):
+        unrelated = (
+            b'<ix:nonNumeric name="dei:DocumentPeriodEndDate">2025-09-30</ix:nonNumeric>'
+            b'<ix:nonNumeric name="dei:EntityRegistrantName">Test issuer</ix:nonNumeric>'
+            b'<ix:nonNumeric name="us-gaap:EntityCommonStockSharesOutstanding">100</ix:nonNumeric>'
+        )
+        self.assertEqual(inspect(unrelated)["status"], "unavailable")
+        self.assertEqual(
+            inspect(unrelated + FACT_CIK + FACT_TYPE)["status"],
+            "self_claims_consistent_unverified",
+        )
+
     def test_script_fake_dei_markup_cannot_be_parsed_as_fact(self):
         html = b"<script>" + FACT_CIK + b"</script>"
         self.assertEqual(inspect(html)["status"], "unavailable")

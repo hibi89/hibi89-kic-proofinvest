@@ -56,8 +56,9 @@ class _ClaimScanner(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if self.active is None:
-            if tag == "ix:nonnumeric":
-                self.ambiguous = True
+            # Non-target inline facts (dei:DocumentPeriodEndDate, etc.)
+            # are abundant in real EDGAR HTML. Their closing tags are not
+            # a DEI identity ambiguity. Only an active TARGET is reviewed.
             return
         if tag != "ix:nonnumeric":
             self.ambiguous = True
