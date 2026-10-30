@@ -93,7 +93,7 @@ class _LiteralTextNodes(HTMLParser):
             if index < 0:
                 break
             pos = start + len(data[:index].encode("utf-8"))
-            self.matches.append((pos, pos + len(self.literal.encode("ascii"))))
+            self.matches.append((pos, pos + len(self.literal.encode("utf-8"))))
             offset = index + 1
 
 
@@ -114,6 +114,37 @@ def confirm_html_text_node_literal(
         return _unavailable("INVALID_TEXT_NODE_INPUT")
     if original[expected_start:expected_end] != needle.encode("ascii"):
         return _unavailable("PINNED_LITERAL_BYTE_SPAN_MISMATCH")
+    return _scan_exact_text_node(original, needle, expected_start, expected_end)
+
+
+def confirm_filing_exposure_text_node(
+    original: bytes, *, needle: str, expected_start: int, expected_end: int,
+) -> dict[str, Any]:
+    """Review a bounded UTF-8 filing exposure as a unique eligible text node.
+
+    Unlike the legacy narrow ASCII source-quote API, macro exposure labels can
+    be Unicode and up to 1 KiB. This is only a text-node/byte-span check:
+    CSS visibility, SEC provenance and economic causality remain UNVERIFIED.
+    """
+    if (type(original) is not bytes or not 0 < len(original) <= MAX_BYTES
+            or type(needle) is not str or not 8 <= len(needle) <= 1024
+            or not needle.strip()
+            or type(expected_start) is not int or type(expected_end) is not int
+            or not 0 <= expected_start < expected_end <= len(original)):
+        return _unavailable("INVALID_TEXT_NODE_INPUT")
+    try:
+        encoded = needle.encode("utf-8")
+    except UnicodeEncodeError:
+        return _unavailable("INVALID_TEXT_NODE_INPUT")
+    if (len(encoded) > 1024 or b"\x00" in encoded
+            or original[expected_start:expected_end] != encoded):
+        return _unavailable("PINNED_LITERAL_BYTE_SPAN_MISMATCH")
+    return _scan_exact_text_node(original, needle, expected_start, expected_end)
+
+
+def _scan_exact_text_node(
+    original: bytes, needle: str, expected_start: int, expected_end: int,
+) -> dict[str, Any]:
     try:
         document = original.decode("utf-8")
     except UnicodeDecodeError:

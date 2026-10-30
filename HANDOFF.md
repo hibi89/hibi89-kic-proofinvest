@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P23 visible SEC exposure gate for macro cards (CI pending)
+
+1. Goal: make issuer-specific macro/sector cards depend on an actual eligible SEC HTML text-node span, not only exact raw byte equality that formerly accepted script/style/comment/attribute/head/ix:hidden/exclude tokens.
+2. Options: (A) new custom markup stripper and duplicate parser risks drift with P16 source evidence; (B) reuse P16 HTMLParser text-node/ignored-iXBRL policy with a dedicated Unicode/long-quote entry point (selected, zero external dependencies). No change to rule-based Guard or SEC/industry rights rules.
+3. Flow: proofinvest.visible_text_evidence extends its existing scanner to UTF8 byte lengths, retains old ASCII source-quote API, adds confirm_filing_exposure_text_node for <=1024-byte Unicode candidate (only text-node check, NOT CSS/browser visibility/provenance). proofinvest.kuodra_macro now gates exposure selection on strict source text-node plus exact byte offsets and original source SHA before metadata cards, checks duplicates, and reports separate text-node vs browser-visibility signals. No ML, 11 feeds, rights cert, actual API or trading asserted.
+4. Tests: 9 offline cases in tests/test_kuodra_macro_text_node_boundaries.py cover script, style, attribute, comment, head, 5 iXBRL suppressed tags, visible body ix:nonFraction, UTF8 Korean quote/byte offsets, long 128–1024 quote, duplicated visible text and malformed hidden, hidden+body exact location, invalid UTF8/surrogate, and saved 3-source ZIP→ Guard/SQLite HOLD with hidden macro card suppressed.
+5. Last verified baseline: P22 code c84db644bad525e2adbcc1905fa4a024e070e0b9 CI #41115883865 SUCCESS 3/3 Python878/0/0/0 and Windows/Chromium success; docs HEAD d8a10c5433cb7f414d8f1b90230f61645130f469.
+6. Safety: no SEC HTTP/Gemini, no raw 10-K upload, no local owner data or deployment modification; all new test data synthetic, temporary SQLite only. Hidden exposure metadata now blocks a context card but does not authorize/refuse financial claims or alter deterministic Guard policy. Preserve original P16 signed-off ASCII evidence behavior.
+7. Repo: hibi89/hibi89-kic-proofinvest lead/kic, paths proofinvest/visible_text_evidence.py, proofinvest/kuodra_macro.py, tests/test_kuodra_macro_text_node_boundaries.py, HANDOFF.md and STATUS.md. Ordinary Git revert if regression; no force push.
+8. Status: new feature source SHA and exact CI are pending verification. The 11 common macro series are candidate metadata, NOT live data feeds, licenses or causal research.
+9. Next: observe exact P23 CI and fix only measured failures. True issuer SEC + macro release vintage/rights need owner-provided lawful original or explicit authorized acquisition; Gemini and Production remain separate.
+10. Checkpoint KST: 2026-10-31, P23 authored, CI PENDING.
+
 ## 2026-10-31 KST — KUODRA P22 P20→Guard operator source digest binding (CI 3/3 SUCCESS)
 
 1. Goal: Close the P20 untrusted local preview → separately invoked offline Guard/SQLite evidence swap gap. P20 already emits three exact file SHA-256, but direct local_sec_guard_report previously accepted newer different file bytes even after operator preview without a binding.

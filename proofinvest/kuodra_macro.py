@@ -14,6 +14,8 @@ from typing import Any, Mapping
 from urllib.parse import urlsplit
 import re
 
+from .visible_text_evidence import confirm_filing_exposure_text_node
+
 # Eleven approved CANDIDATES, not eleven downloaded feeds.
 CANDIDATES = {
     "SP500": "index_points",
@@ -178,6 +180,8 @@ def review_macro_context(
     cutoff = datetime.combine(day, time.max, timezone.utc)
     eligible_exposures: dict[str, dict[str, Any]] = {}
     exposure_count: dict[str, int] = {}
+    text_node_rejected: set[str] = set()
+    quote_review_cache: dict[tuple[str, int, int], bool] = {}
     for row in exposures:
         if not isinstance(row, dict) or row.get("series_id") not in CANDIDATES:
             raise ValueError("MACRO_EXPOSURE_UNKNOWN_SERIES")
@@ -188,8 +192,30 @@ def review_macro_context(
         if (type(start) is not int or type(end) is not int
                 or start < 0 or end > len(original_filing) or not 8 <= end - start <= 1024
                 or not _bounded_text(quote, 8, 1024)
-                or not _bounded_text(row.get("rationale"), 8, 300)
-                or original_filing[start:end] != quote.encode("utf-8")):
+                or not _bounded_text(row.get("rationale"), 8, 300)):
+            continue
+        try:
+            literal_bytes = quote.encode("utf-8")
+        except UnicodeEncodeError:
+            continue
+        if original_filing[start:end] != literal_bytes:
+            continue
+        # Exact bytes alone may be a script, comment, attribute, head or
+        # hidden ix:nonFraction. Reuse the conservative P16 text-node parser.
+        key = (quote, start, end)
+        if key not in quote_review_cache:
+            checked = confirm_filing_exposure_text_node(
+                original_filing, needle=quote, expected_start=start,
+                expected_end=end,
+            )
+            quote_review_cache[key] = (
+                checked.get("status") == "untrusted_html_text_node_literal_located"
+                and checked.get("exact_raw_byte_span_verified") is True
+                and checked.get("source_authenticated") is False
+                and checked.get("rendered_visibility_verified") is False
+            )
+        if not quote_review_cache[key]:
+            text_node_rejected.add(sid)
             continue
         eligible_exposures[sid] = row
 
@@ -207,7 +233,9 @@ def review_macro_context(
         if exposure_count.get(sid, 0) > 1:
             reason = "DUPLICATE_EXPOSURE"
         elif ex is None:
-            reason = "NO_EXACT_FILING_EXPOSURE"
+            reason = ("EXPOSURE_NOT_IN_ELIGIBLE_HTML_TEXT_NODE"
+                      if sid in text_node_rejected
+                      else "NO_EXACT_FILING_EXPOSURE")
         elif len(rows) > 1:
             reason = "AMBIGUOUS_OBSERVATION_VINTAGES"
         elif not rows:
@@ -229,6 +257,8 @@ def review_macro_context(
             "original_exposure_span": [ex["start_byte"], ex["end_byte_exclusive"]],
             "exposure_literal": ex["literal"], "review_rationale": ex["rationale"],
             "metadata_eligible_only": True,
+            "exposure_exact_html_text_node_verified": True,
+            "exposure_browser_visibility_verified": False,
             "raw_observation_sha256_verified": sid in verified_raw_ids,
         })
         checks.append({"series_id": sid, "status": "METADATA_ELIGIBLE_UNVERIFIED",
