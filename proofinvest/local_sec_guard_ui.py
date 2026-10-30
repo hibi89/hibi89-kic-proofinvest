@@ -292,6 +292,61 @@ def export_synthetic_comparison_json(rows: list[dict[str, Any]]) -> bytes:
     return content
 
 
+def build_judge_evidence_trace(report: dict[str, Any]) -> tuple[dict[str, str], ...]:
+    """Use already-validated synthetic results for a bounded judge timeline.
+
+    This is a presentation projection, not a second decision engine. It
+    never upgrades local hashes, arithmetic, or Guard outcomes to issuer
+    authentication, real agent execution, a recommendation, or a trade.
+    """
+    export_synthetic_guard_json(report)  # Fail closed on forged results.
+    source = report["source"]
+    financial = report["verification"]
+    decision = report["guard"]["decision"]
+    citation_ok = source["exact_raw_byte_span_verified"] is True
+    numeric_conflict = financial["status"] == "conflict"
+    nodes = (
+        ("01", "원문 바이트", "SHA 기록", "로컬 입력 원본 3종의 지문만 확인", "neutral"),
+        ("02", "본문 인용", "로컬 위치 확인" if citation_ok else "인용 불가",
+         "화면에 보이는 텍스트 위치" if citation_ok else "스크립트 내부 문자열 제외",
+         "neutral" if citation_ok else "blocked"),
+        ("03", "재무 검산", "주장 충돌" if numeric_conflict else "산술 확인",
+         "가상 수치·성장률 비교만 수행",
+         "blocked" if numeric_conflict else "neutral"),
+        ("04", "위험 근거", "독립 인증 없음",
+         "발행사·재무 원문 신뢰성 확인 전 Risk 승인 불가", "blocked"),
+        ("05", "Guard 정책", decision,
+         "불확실성은 승인으로 바꾸지 않음", "blocked" if decision == "REJECT" else "hold"),
+        ("06", "감사 체인", "로컬 무결",
+         "임시 SQLite 해시 체인 검사, 원문 진위 보장 아님", "neutral"),
+    )
+    return tuple(
+        {"순서": no, "단계": title, "상태": status,
+         "검증 범위": note, "표시": tone}
+        for no, title, status, note, tone in nodes
+    )
+
+
+def render_judge_evidence_trace_html(report: dict[str, Any]) -> str:
+    """Static escaped HTML only; no scripts, external assets or user paths."""
+    from html import escape
+
+    nodes = build_judge_evidence_trace(report)
+    cards = []
+    for node in nodes:
+        tone = node["표시"]
+        if tone not in ("neutral", "hold", "blocked"):
+            raise ValueError("SYNTHETIC_TRACE_STYLE_BLOCKED")
+        cards.append(
+            '<div class="pi-trace-node pi-trace-' + tone + '">'
+            '<span class="pi-trace-number">' + escape(node["순서"]) + '</span>'
+            '<span class="pi-trace-title">' + escape(node["단계"]) + '</span>'
+            '<strong>' + escape(node["상태"]) + '</strong>'
+            '<p>' + escape(node["검증 범위"]) + '</p></div>'
+        )
+    return '<div class="pi-trace-grid">' + "".join(cards) + "</div>"
+
+
 def render_synthetic_guard_ui(st) -> None:
     """Judge-first overview, with every decision backed by the real offline path."""
     st.title("ProofInvest — SEC 근거부터 Guard 감사까지")
@@ -490,27 +545,30 @@ def render_synthetic_guard_ui(st) -> None:
     st.caption("검증 코드: " + ", ".join(guard["reason_codes"]))
 
     with st.container(border=True):
-        st.markdown("#### 03 / 실제 모듈 실행 추적")
-        st.dataframe(
-            [
-                {"단계": "Research", "검증 상태": source["evidence_link_status"],
-                 "의미": "원문 바이트·SHA 연결 (진위 미확인)"},
-                {"단계": "Verification", "검증 상태": fin["reason_code"],
-                 "의미": "가상 매출 수치의 산술 비교"},
-                {"단계": "Risk", "검증 상태": risk["status"],
-                 "의미": "인증된 부채·자본 근거 부족"},
-                {"단계": "Guard", "검증 상태": guard["decision"],
-                 "의미": "승인·거래를 허용하지 않음"},
-                {"단계": "Audit", "검증 상태": "PASS" if report["audit_chain_valid"] else "BLOCKED",
-                 "의미": "임시 SQLite 체인 무결성"},
-            ],
-            use_container_width=True,
-            hide_index=True,
-        )
-        st.caption(
-            "HTML 인용 검증: " + source["html_text_node_status"]
-            + " · 원문 SHA256: " + source["archived_original_sha256"]
-        )
+        st.markdown("#### 03 / 검증 근거 흐름")
+        st.caption("아래 6단계는 방금 실행한 합성 데이터 결과에서 생성합니다. 외부 원문 인증은 없습니다.")
+        st.markdown(render_judge_evidence_trace_html(report), unsafe_allow_html=True)
+        with st.expander("기술 검증값 · 원문 바이트 및 정책 근거", expanded=False):
+            st.dataframe(
+                [
+                    {"단계": "Research", "검증 상태": source["evidence_link_status"],
+                     "의미": "원문 바이트·SHA 연결 (진위 미확인)"},
+                    {"단계": "Verification", "검증 상태": fin["reason_code"],
+                     "의미": "가상 매출 수치의 산술 비교"},
+                    {"단계": "Risk", "검증 상태": risk["status"],
+                     "의미": "인증된 부채·자본 근거 부족"},
+                    {"단계": "Guard", "검증 상태": guard["decision"],
+                     "의미": "승인·거래를 허용하지 않음"},
+                    {"단계": "Audit", "검증 상태": "PASS" if report["audit_chain_valid"] else "BLOCKED",
+                     "의미": "임시 SQLite 체인 무결성"},
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.caption(
+                "HTML 인용 검증: " + source["html_text_node_status"]
+                + " · 원문 SHA256: " + source["archived_original_sha256"]
+            )
 
     c1, c2 = st.columns(2)
     with c1:
