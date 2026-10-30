@@ -1,15 +1,15 @@
-## 2026-10-31 KST — KUODRA P14 operator-pinned SEC raw source digests (CI pending)
+## 2026-10-31 KST — KUODRA P14 operator-pinned SEC raw source digests (CI verified)
 
 1. Objective: Bind P13 read-only ZIP preview raw SHA-256 fingerprints to exact SEC bytes used by P5/P7, rejecting internally valid same-issuer/accession/as-of replacement before Guard/SQLite.
 2. Options: Path/issuer-only recheck misses consistent same-identity swaps; optional strict three-digest actual-raw-bytes equality chosen, maintaining legacy operator-request compatibility.
 3. Data flow: P13 inspect_saved_capture_periods source_sha256 -> P5 operator_request expected_source_sha256 -> P2 verified ZIP load -> actual raw SHA-256 comparison before Guard/SQLite. Strict lowercase 64-hex and three exact keys. No manifest-only trust.
-4. Tests: 5 new offline direct and operator tests (positive, swapped fully valid ZIP, invalid pins); exact P13 code 9499de6f5d1478366dcc1e09be699386a615cda3 run #41104389898 SUCCESS 3/3 Python/Windows/Chromium. P14 exact CI PENDING.
-5. Status: P14 source prepared, CI unverified. Real SEC GET, Gemini, industry rights/feeds, measured ML/DL, public Production and contest submission remain missing or unverified; no whole-product completion assertion.
+4. Tests: 5 new offline direct and operator tests (positive, swapped fully valid ZIP, invalid pins); exact P13 code 9499de6f5d1478366dcc1e09be699386a615cda3 run #41104389898 SUCCESS 3/3 Python/Windows/Chromium. P14 exact code SHA 39f62d3c5e76d3edf7a462b2b8452f0925d2d880 Actions #41105748771 SUCCESS 3/3 Python/Windows SQLite/Chromium.
+5. Status: P14 source committed and 3/3 CI verified. Real SEC GET, Gemini, industry rights/feeds, measured ML/DL, public Production and contest submission remain missing or unverified; no whole-product completion assertion.
 6. Recovery: additive optional pinned-source contract; revert P14 feature commit normally if CI regression. No force push or Guard bypass. Unpinned legacy requests remain usable but not source-swap protected.
 7. Repo: hibi89/hibi89-kic-proofinvest lead/kic, parent 9499de6f5d1478366dcc1e09be699386a615cda3; proofinvest/kuodra_capture_replay.py, kuodra_operator_replay.py, matching tests, HANDOFF/STATUS.
 8. Execution/security: Python3.11 full verifier, Windows SQLite, Chromium; disposable synthetic test ZIP and DB. User source ZIP read-only, no live HTTP or private files, no DL/DAKER changes. Hash matching does not authenticate issuer, rights or financial truth.
 9. Next: Verify exact P14 3-job CI and failure logs if needed. Owner approval required for truthful SEC contact User-Agent, 3 genuine GETs and local retention, or paid/licensed APIs; no unauthorized outside calls.
-10. Checkpoint: 2026-10-31 KST. P13 exact CI verified success, P14 CI pending at source preparation; confirm remote SHA after push.
+10. Checkpoint: 2026-10-31 KST. P13 and P14 exact code CI independently confirmed SUCCESS; P14 documentation-only successor commit is not an additional functional verification.
 
 ## 2026-10-31 KST — KUODRA P13 opt-in local original text needle suggestions (CI pending)
 
