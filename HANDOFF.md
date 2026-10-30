@@ -1,4 +1,4 @@
-## 2026-10-31 KST — KUODRA P23 visible SEC exposure gate for macro cards (CI pending)
+## 2026-10-31 KST — KUODRA P23 visible SEC exposure gate for macro cards (CI 3/3 SUCCESS)
 
 1. Goal: make issuer-specific macro/sector cards depend on an actual eligible SEC HTML text-node span, not only exact raw byte equality that formerly accepted script/style/comment/attribute/head/ix:hidden/exclude tokens.
 2. Options: (A) new custom markup stripper and duplicate parser risks drift with P16 source evidence; (B) reuse P16 HTMLParser text-node/ignored-iXBRL policy with a dedicated Unicode/long-quote entry point (selected, zero external dependencies). No change to rule-based Guard or SEC/industry rights rules.
@@ -7,9 +7,9 @@
 5. Last verified baseline: P22 code c84db644bad525e2adbcc1905fa4a024e070e0b9 CI #41115883865 SUCCESS 3/3 Python878/0/0/0 and Windows/Chromium success; docs HEAD d8a10c5433cb7f414d8f1b90230f61645130f469.
 6. Safety: no SEC HTTP/Gemini, no raw 10-K upload, no local owner data or deployment modification; all new test data synthetic, temporary SQLite only. Hidden exposure metadata now blocks a context card but does not authorize/refuse financial claims or alter deterministic Guard policy. Preserve original P16 signed-off ASCII evidence behavior.
 7. Repo: hibi89/hibi89-kic-proofinvest lead/kic, paths proofinvest/visible_text_evidence.py, proofinvest/kuodra_macro.py, tests/test_kuodra_macro_text_node_boundaries.py, HANDOFF.md and STATUS.md. Ordinary Git revert if regression; no force push.
-8. Status: new feature source SHA and exact CI are pending verification. The 11 common macro series are candidate metadata, NOT live data feeds, licenses or causal research.
-9. Next: observe exact P23 CI and fix only measured failures. True issuer SEC + macro release vintage/rights need owner-provided lawful original or explicit authorized acquisition; Gemini and Production remain separate.
-10. Checkpoint KST: 2026-10-31, P23 authored, CI PENDING.
+8. Verified source SHA 90b5756f4b9d35939ef4a32ca40d6b5cbf565450 [Actions #41116700165](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41116700165) completed SUCCESS 3/3: Python 887 executed, 0 failures/errors/skips, Windows SQLite SUCCESS, Chromium SUCCESS. The 11 macro series remain candidate metadata, NOT live feeds or licensed causal evidence.
+9. Next: P23 CI complete; source-owner gate remains a real, lawfully obtained issuer 10-K and macro release vintage/rights with no synthetic false assurance. No further repetitive synthetic-only readiness gates; real SEC requests and retention require separate explicit approval. Gemini and Production remain separate.
+10. Checkpoint KST: 2026-10-31, exact P23 SHA CI 3/3 SUCCESS, Python 887/0/0/0. Later docs-only successor does not change runtime; real SEC/issuer/model/production still unverified.
 
 ## 2026-10-31 KST — KUODRA P22 P20→Guard operator source digest binding (CI 3/3 SUCCESS)
 
