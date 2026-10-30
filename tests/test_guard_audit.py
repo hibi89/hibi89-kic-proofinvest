@@ -63,6 +63,28 @@ class GuardAuditTests(unittest.TestCase):
             )
         self.assertFalse(self.store.verify_chain())
 
+    def test_blob_payload_fails_closed_without_exception(self):
+        self.store.record_decision("demo-1", self.request, self.decision)
+        with sqlite3.connect(self.path) as conn:
+            conn.execute(
+                "UPDATE guard_audit_events SET payload_json=? WHERE run_id=?",
+                (sqlite3.Binary(b"invalid-binary-payload"), "demo-1"),
+            )
+        self.assertFalse(self.store.verify_chain())
+        with self.assertRaises(ValueError):
+            self.store.record_decision("demo-2", self.request, self.decision)
+
+    def test_blob_hash_fails_closed_without_exception(self):
+        self.store.record_decision("demo-1", self.request, self.decision)
+        with sqlite3.connect(self.path) as conn:
+            conn.execute(
+                "UPDATE guard_audit_events SET event_hash=? WHERE run_id=?",
+                (sqlite3.Binary(b"corrupt-hash"), "demo-1"),
+            )
+        self.assertFalse(self.store.verify_chain())
+        with self.assertRaises(ValueError):
+            self.store.record_decision("demo-2", self.request, self.decision)
+
     def test_invalid_run_id(self):
         with self.assertRaises(ValueError):
             self.store.record_decision("../escape", self.request, self.decision)

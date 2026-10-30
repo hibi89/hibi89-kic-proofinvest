@@ -110,9 +110,22 @@ class GuardAuditStore:
             ).fetchall()
             previous = "0" * 64
             for event_id, run_id, seq, kind, payload, prev, digest in rows:
-                if seq != 1 or kind != "GUARD_DECISION" or prev != previous or (
-                    _digest(prev, payload.encode("utf-8")) != digest
-                ):
+                # SQLite TEXT affinity does not stop a corrupted row from
+                # containing BLOB values. Never crash an integrity check on
+                # tampered local data: reject it before hashing or JSON parsing.
+                if not all(isinstance(value, str) for value in
+                           (run_id, kind, payload, prev, digest)):
+                    return False
+                if (len(prev) != 64 or len(digest) != 64 or
+                        any(char not in "0123456789abcdef" for char in prev + digest)):
+                    return False
+                if seq != 1 or kind != "GUARD_DECISION" or prev != previous:
+                    return False
+                try:
+                    matches = _digest(prev, payload.encode("utf-8")) == digest
+                except (UnicodeError, ValueError):
+                    return False
+                if not matches:
                     return False
                 registry = conn.execute(
                     "SELECT request_hash, decision, event_id FROM guard_run_registry WHERE run_id=?",
