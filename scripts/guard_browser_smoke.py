@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import closing
 import sqlite3
 import subprocess
 import sys
@@ -123,7 +124,7 @@ def run(output: Path) -> dict:
                         # the actual SQLite review row was committed instead.
                         success_message = page.get_by_text("모의 검토 기록 저장 완료")
                         expect(success_message).to_have_count(1, timeout=15000)
-                        with sqlite3.connect(db) as review_conn:
+                        with closing(sqlite3.connect(db)) as review_conn:
                             review_rows = review_conn.execute(
                                 "SELECT COUNT(*) FROM guard_human_reviews"
                             ).fetchone()[0]
@@ -402,7 +403,7 @@ def run(output: Path) -> dict:
 
                 audit_ok = GuardAuditStore(db).verify_chain()
                 reviews_ok = GuardReviewStore(db).verify_reviews()
-                with sqlite3.connect(db) as conn:
+                with closing(sqlite3.connect(db)) as conn:
                     decisions = conn.execute(
                         "SELECT COUNT(*) FROM guard_audit_events"
                     ).fetchone()[0]
