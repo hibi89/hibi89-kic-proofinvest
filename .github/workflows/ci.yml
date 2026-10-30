@@ -177,6 +177,7 @@ jobs:
           name: proofinvest-guard-browser-evidence
           path: |
             /tmp/kic-guard-browser/guard-browser-clickthrough.png
+            /tmp/kic-guard-browser/judge-direct-link-before-run.png
             /tmp/kic-guard-browser/intent-router-browser.png
             /tmp/kic-guard-browser/mock-llm-proposal-accepted.png
             /tmp/kic-guard-browser/mock-llm-proposal-blocked.png
