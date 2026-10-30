@@ -1,4 +1,4 @@
-## 2026-10-31 KST — KUODRA P24 original DEI identity self-claim crosscheck (CI pending)
+## 2026-10-31 KST — KUODRA P24 original DEI identity self-claim crosscheck (CI 3/3 PASS)
 
 1. Objective: prevent user-supplied 10-K HTML with an explicit contradictory Inline XBRL DEI entity CIK/document type from slipping through otherwise valid Submissions+CompanyFacts arithmetic into Guard/SQLite. No evidence in scope proves a raw SEC original belongs to an accession, so this only checks disclosed self-claims and does NOT upgrade trust.
 2. Options: (A) assume the original's CIK/form from operator filenames (no original internal check, inexpensive but unsafe), (B) require strict XML/XHTML on every EDGAR document (rejects real ordinary HTML), (C) bounded stdlib HTMLParser matching only `ix:nonNumeric` name=dei:EntityCentralIndexKey / dei:DocumentType when actually present (selected; missing => unavailable, mismatched/ambiguous => fail-closed).
@@ -7,9 +7,9 @@
 5. Baseline: P23 source 90b5756f4b9d35939ef4a32ca40d6b5cbf565450 Actions #41116700165 Python 887 0 failures/errors/skips CI3/3 PASS; docs head 830acdac2e0686829dcaecce71d3f7726e3ecb97.
 6. Safety/approval: no real SEC GET, no Google/Gemini, no original storage/credentials, user DB edits or production changes. All new tests synthetic, temporary local SQLite in unit test. Preserve old metadata-only absence behavior, same Guard HOLD/REJECT. Only ordinary code/document changes to lead/kic.
 7. Files: new proofinvest/dei_identity_review.py, P20 kuodra_loose_sec_compatibility.py, local_sec_packet.py, tests/test_kuodra_dei_identity.py, HANDOFF.md and STATUS.md.
-8. Status: exact P24 source SHA/CI pending. A matched DEI self-claim is not source/origin/authenticity evidence; absence is reported as unavailable, not positive identity.
-9. Next: verify exact CI and fix observed issues, then real SEC owner supplied original needed to validate actual EDGAR HTML; Gemini and Production remain separate.
-10. Checkpoint: 2026-10-31 KST P24 code prepared; no real data authentication or release claim.
+8. Verification: code SHA c687c3701c35bbbc2dccc78a6c95bbb124aae245 [Actions #41117766157](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41117766157) completed SUCCESS 3/3. Python 898 executed, 0 failures/errors/skips; Windows SQLite PASS; Chromium PASS, exact-source SHA PASS. Initial P24 SHA e98d5a8ecab8963f11bdca435dd03f146c9939d4 needed one fix for unrelated ix:nonNumeric closers; correction c687c3 added regression and was fully tested. Matched DEI self-claims do not authenticate original-to-accession or source; absent DEI claims remain unavailable.
+9. Next: owner-permitted genuine SEC 3-source JSON+HTML required to assess real EDGAR format and metadata completeness, followed by true source/rights and access gates. Do not fetch/save actual SEC files without separate express permission. Gemini/Production remain unverified; no further synthetic-only completion claim.
+10. Checkpoint: 2026-10-31 KST P24 code c687c3701c35bbbc2dccc78a6c95bbb124aae245 3/3 SUCCESS, 898/898. Docs-only successor changes no runtime. Real SEC, source rights, live Gemini, Production remain UNVERIFIED.
 
 ## 2026-10-31 KST — KUODRA P23 visible SEC exposure gate for macro cards (CI 3/3 SUCCESS)
 
