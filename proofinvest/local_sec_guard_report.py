@@ -1,0 +1,223 @@
+"""Local caller-supplied SEC files -> deterministic checks -> Guard -> audit report.
+
+Explicit opt-in local SQLite persistence only. No SEC HTTP/LLM, no trades,
+issuer/source authentication, rights attestation or investment advice.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sqlite3
+import stat
+from pathlib import Path
+from typing import Any
+
+from disclosure_lightning.core import MAX_JSON_BYTES
+from disclosure_lightning.originals import MAX_FILING_BYTES
+from .guard_audit import GuardAuditStore
+from .guard_review import GuardReviewStore
+from .guard_workflow import run_guard_review
+from .local_risk_screen import screen_local_evidence
+from .local_sec_packet import (
+    _MAX_FILE_BYTES,
+    _read_regular_local,
+    build_local_sec_review_packet,
+)
+
+_REVIEW_ACTIONS = frozenset(("ACKNOWLEDGE", "REQUEST_EXCEPTION"))
+
+
+def _check_audit_path(path: str | Path) -> Path:
+    """Refuse obvious unsafe destinations; SQLite still needs local OS ACLs."""
+    if not isinstance(path, (str, Path)) or not str(path).strip():
+        raise ValueError("INVALID_AUDIT_DESTINATION")
+    candidate = Path(path).expanduser()
+    if str(candidate) == ":memory:" or candidate.is_symlink():
+        raise ValueError("AUDIT_DESTINATION_NOT_PERSISTENT_OR_SYMLINK")
+    if candidate.exists() and not stat.S_ISREG(candidate.stat().st_mode):
+        raise ValueError("AUDIT_DESTINATION_NOT_REGULAR")
+    if not candidate.parent.is_dir():
+        raise ValueError("AUDIT_PARENT_DIRECTORY_REQUIRED")
+    return candidate
+
+
+def review_local_sec_with_guard(
+    *,
+    submissions_json: bytes,
+    companyfacts_json: bytes,
+    original_filing: bytes,
+    cik: str,
+    accession: str,
+    as_of: str,
+    collected_at: str,
+    current_end: str,
+    prior_end: str,
+    needle: str,
+    audit_db_path: str | Path,
+    run_id: str,
+    claimed_growth_pct: str | None = None,
+    reviewer: str | None = None,
+    action: str | None = None,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Read three local inputs, emit a safe report and persist explicit audit.
+
+    No caller-provided numeric Risk is allowed to authorize a simulation.
+    Even structurally matching SEC-shaped facts are not authenticated. The
+    legacy Guard remains unchanged; this path can only HOLD or REJECT.
+    """
+    db_path = _check_audit_path(audit_db_path)
+    if action is not None and action not in _REVIEW_ACTIONS:
+        raise ValueError("LOCAL_SOURCE_CANNOT_AUTHORIZE_SIMULATION")
+    # Reject incomplete reviews before any local SQLite side effects.
+    wants_review = any(value is not None for value in (reviewer, action, reason))
+    if wants_review and not (
+        isinstance(reviewer, str) and 1 <= len(reviewer.strip()) <= 80
+        and isinstance(action, str) and action in _REVIEW_ACTIONS
+        and isinstance(reason, str) and 5 <= len(reason.strip()) <= 1000
+    ):
+        raise ValueError("INVALID_EXPLICIT_LOCAL_REVIEW")
+    packet = build_local_sec_review_packet(
+        submissions_json=submissions_json,
+        companyfacts_json=companyfacts_json,
+        original_filing=original_filing,
+        cik=cik, accession=accession, as_of=as_of,
+        collected_at=collected_at, current_end=current_end,
+        prior_end=prior_end, needle=needle,
+        claimed_growth_pct=claimed_growth_pct,
+    )
+    if (packet.get("schema") != "proofinvest.offline-local-sec-review.v1"
+            or packet.get("status") != "reviewable_untrusted_local_evidence"
+            or packet.get("mode") != "LOCAL_FILES_OFFLINE_UNAUTHENTICATED"
+            or any(value is not False for value in packet["attestations"].values())):
+        raise ValueError("LOCAL_SOURCE_TRUST_CONTRACT_INVALID")
+    financial = packet["financial"]
+    source = packet["source"]
+    text_node = source["html_text_node_literal_check"]
+    text_ok = (
+        text_node.get("status") == "untrusted_html_text_node_literal_located"
+        and text_node.get("exact_raw_byte_span_verified") is True
+        and text_node.get("source_authenticated") is False
+    )
+    local_risk = screen_local_evidence(
+        financial,
+        {
+            "original_sha256": source["archived_filing_sha256"],
+            "start_byte": source["span_start_byte"],
+            "end_byte_exclusive": source["span_end_byte_exclusive"],
+            "ixbrl_context": source["ixbrl_revenue_context_review"],
+            "numeric_literals": source["numeric_literal_crosscheck"],
+        },
+    )
+    # The local risk screen is informational, NOT approved financial risk
+    # data. It must never be passed as eligible risk to evaluate_guard.
+    if (local_risk.get("source_authenticated") is not False
+            or local_risk.get("trade_authorized") is not False
+            or local_risk.get("status") not in ("unavailable", "reviewed_unverified")):
+        raise ValueError("LOCAL_RISK_TRUST_CONTRACT_INVALID")
+    guard_status = financial["status"]
+    if not text_ok and guard_status != "conflict":
+        guard_status = "unavailable"
+    evidence = {
+        "status": guard_status,
+        "numeric_status": financial["status"],
+        "numeric_reason_code": financial["reason_code"],
+        "issuer_cik": packet["issuer"]["cik"],
+        "accession": packet["issuer"]["accession"],
+        "as_of": packet["issuer"]["as_of"],
+        "submissions_sha256": source["submissions_sha256"],
+        "companyfacts_sha256": source["companyfacts_sha256"],
+        "original_sha256": source["archived_filing_sha256"],
+        "source_span": {
+            "start_byte": source["span_start_byte"],
+            "end_byte_exclusive": source["span_end_byte_exclusive"],
+            "text_node_status": text_node["status"],
+        },
+        "current_usd": financial["current_amount"],
+        "prior_usd": financial["prior_amount"],
+        "growth_pct": financial["growth_pct"],
+        "source_authenticated": False,
+        "risk_authenticated": False,
+    }
+    result = run_guard_review(
+        evidence, run_id=run_id, database_path=db_path,
+        risk=None,
+        reviewer=reviewer, action=action, reason=reason,
+    )
+    if (result["guard"]["decision"] not in ("HOLD", "REJECT")
+            or result["guard"]["source_authenticated"] is not False
+            or result["trade_executed"] is not False
+            or not GuardAuditStore(db_path).verify_chain()
+            or not GuardReviewStore(db_path).verify_reviews()):
+        raise ValueError("GUARD_LOCAL_INTEGRITY_OR_POLICY_BLOCKED")
+    return {
+        "schema": "proofinvest.local-sec-guard-report.v1",
+        "mode": "OFFLINE_USER_SUPPLIED_UNAUTHENTICATED",
+        "issuer": packet["issuer"],
+        "source": {
+            "submissions_sha256": source["submissions_sha256"],
+            "companyfacts_sha256": source["companyfacts_sha256"],
+            "archived_original_sha256": source["archived_filing_sha256"],
+            "evidence_link_status": source["link_status"],
+            "html_text_node_status": text_node["status"],
+            "exact_raw_byte_span_verified": text_ok,
+        },
+        "verification": financial,
+        "risk": local_risk,
+        "guard": result["guard"],
+        "human_review": result["review"],
+        "audit": result["audit"],
+        "audit_chain_valid": True,
+        "human_review_integrity_valid": True,
+        "limits": {
+            "external_source_authenticated": False,
+            "source_rights_verified": False,
+            "live_api_called": False,
+            "ai_agent_executed": False,
+            "trade_executed": False,
+            "simulation_authorized": False,
+            "official_contest_submission": False,
+        },
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Opt-in local SEC triple-file to Guard audit; offline/untrusted only."
+    )
+    for option in ("submissions-json", "companyfacts-json", "original-file"):
+        parser.add_argument("--" + option, required=True, type=Path)
+    for option in (
+        "cik", "accession", "as-of", "collected-at",
+        "current-end", "prior-end", "needle", "run-id",
+    ):
+        parser.add_argument("--" + option, required=True)
+    parser.add_argument("--audit-db", required=True, type=Path)
+    parser.add_argument("--acknowledge-local-audit-persistence",
+                        action="store_true", required=True)
+    parser.add_argument("--claimed-growth-pct")
+    parser.add_argument("--reviewer")
+    parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
+    parser.add_argument("--reason")
+    args = parser.parse_args(argv)
+    try:
+        report = review_local_sec_with_guard(
+            submissions_json=_read_regular_local(args.submissions_json, MAX_JSON_BYTES),
+            companyfacts_json=_read_regular_local(args.companyfacts_json, _MAX_FILE_BYTES),
+            original_filing=_read_regular_local(args.original_file, MAX_FILING_BYTES),
+            cik=args.cik, accession=args.accession, as_of=args.as_of,
+            collected_at=args.collected_at, current_end=args.current_end,
+            prior_end=args.prior_end, needle=args.needle,
+            run_id=args.run_id, audit_db_path=args.audit_db,
+            claimed_growth_pct=args.claimed_growth_pct,
+            reviewer=args.reviewer, action=args.action, reason=args.reason,
+        )
+    except (ValueError, OSError, TypeError, OverflowError, RecursionError,
+            sqlite3.DatabaseError) as exc:
+        parser.exit(2, f"Local SEC Guard report blocked: {type(exc).__name__}\n")
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
