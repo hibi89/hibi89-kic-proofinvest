@@ -1,3 +1,12 @@
+## 2026-10-30 KST — synthetic export binds hashes and numeric facts
+
+Source: `hibi89/hibi89-kic-proofinvest@lead/kic`, parent `11f7cd06e22b6dcfdf8f1b446841ded5600258e8`.
+- Existing Streamlit synthetic judge JSON export allowed fixed CIK/status/false trust flags, but did not compare nested source SHA256 and numeric payload to actual immutable fixture data. Now fail closed on all three synthetic input digest mismatches, literal text-node scenario inconsistency, forged 100/200 USD figures, growth/status/reason mismatch, false guard/risk trust flags. No source authentication claimed.
+- Wrote two targeted regression tests: all 3 synthetic cases export, eight specific tampered reports rejected; test file `tests/test_local_sec_guard_ui.py`. Source `proofinvest/local_sec_guard_ui.py` updated using stdlib hashlib; no dependency.
+- CI exact source SHA to be checked after commit. At beginning of work previous `11f7cd06` Actions #41005856746 and several recent runs were QUEUED, not known to pass. Older `c7f77a32` Python PASS but Chromium FAIL already addressed in `9de313bb`, browser 3-case smoke added in `d40342d3`. Do not assume latest browser pass.
+- Reproduction: `python -B -m unittest tests.test_local_sec_guard_ui -v`, `python -B -m scripts.verify_local --full`, inspect GitHub Actions Python and Chromium jobs. Original source SHA3 not a real SEC authenticated proof; temp SQLite audit only.
+- No user uploads, real SEC API, production deploy, official PDF/PPTX write, payments, investment orders, or DAKER authenticated action. Safe rollback to parent.
+- Next: inspect newest completed Actions job logs and amend only reproduced failures; keep user approval for exact seven-section <=10-page PDF, due 2026-11-12 10:00 KST.
 2026-10-30 KST update: feature export_synthetic_guard_json in proofinvest/local_sec_guard_ui.py yields a downloadable strictly synthetic-only JSON report after explicit local execution. Rejects authentic/production/trading claims and wrong CIK, ensures hash-chain flag. Two new tests. No dependency or external requests. Source code and test commit on lead/kic; confirm new SHA exact CI before claiming working UI. Preliminary Nov12 official seven-section <=10-page PDF and owner DAKER authorization remain independent. Prior parent d40342d32db78ee85fdefc360cf46f2a93049b79 is rollback.
 
 ## 2026-10-30 KST — Real Chromium smoke expanded to synthetic SEC→Guard 3-case UI

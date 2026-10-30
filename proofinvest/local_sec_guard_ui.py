@@ -5,6 +5,7 @@ user DB, file upload, LLM, live source certification or transaction.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -89,6 +90,52 @@ def export_synthetic_guard_json(report: dict[str, Any]) -> bytes:
             or type(report.get("limits")) is not dict
             or set(report["limits"]) != required_limits
             or any(value is not False for value in report["limits"].values())):
+        raise ValueError("SYNTHETIC_EXPORT_BLOCKED")
+    # Identity flags by themselves do not bind the report to the fixed
+    # synthetic fixture. Cross-check hashes, arithmetic, and Guard decisions
+    # so a modified numeric or byte-source report cannot be exported as a
+    # reproduced judge demo. This is NOT real SEC source authentication.
+    expected_submissions = hashlib.sha256(synthetic_submissions()).hexdigest()
+    expected_facts = hashlib.sha256(json.dumps(
+        synthetic_companyfacts(), sort_keys=True,
+    ).encode("utf-8")).hexdigest()
+    script_only_html = (
+        b"<html><script>" + PHRASE.encode("ascii")
+        + b"</script><body>No evidence here</body></html>"
+    )
+    normal_source_hash = hashlib.sha256(SYNTHETIC_HTML).hexdigest()
+    script_source_hash = hashlib.sha256(script_only_html).hexdigest()
+    source = report.get("source")
+    verify = report.get("verification")
+    risk = report.get("risk")
+    guard = report.get("guard")
+    if not all(type(section) is dict for section in (source, verify, risk, guard)):
+        raise ValueError("SYNTHETIC_EXPORT_BLOCKED")
+    original_hash = source.get("archived_original_sha256")
+    script_only = original_hash == script_source_hash
+    if (source.get("submissions_sha256") != expected_submissions
+            or source.get("companyfacts_sha256") != expected_facts
+            or original_hash not in (normal_source_hash, script_source_hash)
+            or source.get("html_text_node_status") != (
+                "unavailable" if script_only
+                else "untrusted_html_text_node_literal_located"
+            )
+            or source.get("exact_raw_byte_span_verified") is not (not script_only)
+            or verify.get("prior_amount") != "100"
+            or verify.get("current_amount") != "200"
+            or verify.get("growth_pct") != "100.00"
+            or verify.get("status") not in ("calculated_unverified", "conflict")
+            or verify.get("reason_code") != (
+                "GROWTH_CLAIM_CONFLICT" if verify.get("status") == "conflict"
+                else "STRUCTURAL_NUMERIC_COMPARISON_ONLY"
+            )
+            or risk.get("source_authenticated") is not False
+            or risk.get("trade_authorized") is not False
+            or guard.get("decision") != (
+                "REJECT" if verify.get("status") == "conflict" else "HOLD"
+            )
+            or guard.get("source_authenticated") is not False
+            or guard.get("trade_executed") is not False):
         raise ValueError("SYNTHETIC_EXPORT_BLOCKED")
     payload = {
         "schema": "proofinvest.synthetic-sec-guard-export.v1",

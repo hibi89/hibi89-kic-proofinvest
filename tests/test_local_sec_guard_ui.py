@@ -61,6 +61,41 @@ class LocalSecGuardUiTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "SYNTHETIC_EXPORT_BLOCKED"):
                     export_synthetic_guard_json(modified)
 
+    def test_export_matches_original_fixture_hashes_and_rejects_changes(self):
+        from copy import deepcopy
+        import hashlib
+        from proofinvest.kic_dl_demo import synthetic_submissions
+        r = run_synthetic_guard_case("matched")
+        self.assertEqual(
+            r["source"]["submissions_sha256"],
+            hashlib.sha256(synthetic_submissions()).hexdigest(),
+        )
+        for patch in (
+            {"source": {**r["source"], "submissions_sha256": "0" * 64}},
+            {"source": {**r["source"], "archived_original_sha256": "f" * 64}},
+            {"source": {**r["source"], "companyfacts_sha256": "0" * 64}},
+            {"verification": {**r["verification"], "current_amount": "300"}},
+            {"verification": {**r["verification"], "growth_pct": "101.00"}},
+            {"verification": {**r["verification"], "status": "conflict"}},
+            {"guard": {**r["guard"], "source_authenticated": True}},
+            {"risk": {**r["risk"], "trade_authorized": True}},
+        ):
+            with self.subTest(patch=patch):
+                forged = deepcopy(r)
+                forged.update(patch)
+                with self.assertRaisesRegex(ValueError, "SYNTHETIC_EXPORT_BLOCKED"):
+                    export_synthetic_guard_json(forged)
+
+    def test_export_works_for_all_three_synthetic_cases(self):
+        import json
+        for case in ("matched", "conflict", "script"):
+            with self.subTest(case=case):
+                r = run_synthetic_guard_case(case)
+                result = json.loads(export_synthetic_guard_json(r))
+                self.assertEqual(result["evidence_class"], "SYNTHETIC_ONLY_UNVERIFIED")
+                self.assertEqual(result["report"]["guard"]["decision"],
+                                 "REJECT" if case == "conflict" else "HOLD")
+
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"
