@@ -156,6 +156,39 @@ class KuodraCaptureReplayTests(unittest.TestCase):
             replay_saved_capture(**(self.kwargs | {"macro_context": macro}))
         self.assertFalse(self.db.exists())
 
+    def test_integrity_bound_macro_raw_to_sqlite_guard(self):
+        macro = self._macro()
+        row = macro["observations"][0]
+        raw = json.dumps({
+            k: v for k, v in row.items() if k != "payload_sha256"
+        }).encode("utf-8")
+        row["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        result = replay_saved_capture(**(self.kwargs | {
+            "macro_context": macro,
+            "macro_raw_observations": {"US_CPI_YOY": raw},
+        }))
+        self.assertEqual(result["macro_context"]["raw_observation_count_verified"], 1)
+        self.assertTrue(result["macro_context"]["cards"][0]["raw_observation_sha256_verified"])
+        self.assertEqual(result["guard"]["decision"], "HOLD")
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+        self.assertFalse(result["source_authenticated"])
+
+    def test_tampered_macro_raw_fails_before_sqlite_side_effect(self):
+        macro = self._macro()
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_SHA256_MISMATCH"):
+            replay_saved_capture(**(self.kwargs | {
+                "macro_context": macro,
+                "macro_raw_observations": {"US_CPI_YOY": b'{"value":"tampered"}'},
+            }))
+        self.assertFalse(self.db.exists())
+
+    def test_macro_raw_requires_context_before_audit(self):
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_REQUIRES_CONTEXT"):
+            replay_saved_capture(**(self.kwargs | {
+                "macro_raw_observations": {"SP500": b"{}"},
+            }))
+        self.assertFalse(self.db.exists())
+
     def test_collision_with_input_prevents_write(self):
         with self.assertRaisesRegex(ValueError, "COLLISION"):
             replay_saved_capture(**(self.kwargs | {"audit_db": self.zip}))

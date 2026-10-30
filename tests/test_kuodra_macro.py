@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import unittest
 from unittest.mock import patch
 
@@ -38,11 +39,12 @@ def observation(sid="SP500"):
     }
 
 
-def review(exposures=None, observations=None, raw=RAW):
+def review(exposures=None, observations=None, raw=RAW, raw_observations=None):
     return review_macro_context(
         original_filing=raw, issuer_cik="0000000001", as_of="2025-10-16",
         exposures=[exposure()] if exposures is None else exposures,
         observations=[observation()] if observations is None else observations,
+        raw_observations=raw_observations,
     )
 
 
@@ -142,6 +144,47 @@ class KuodraMacroTests(unittest.TestCase):
         row["payload_sha256"] = "not-a-sha"
         self.assertEqual(state(review(observations=[row]))["reason_code"],
                          "SOURCE_PAYLOAD_DIGEST_MISSING")
+
+    def test_raw_byte_binding_checks_hash_and_exact_fields(self):
+        row = observation()
+        data = {k: v for k, v in row.items() if k != "payload_sha256"}
+        raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        row["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        result = review(observations=[row], raw_observations={"SP500": raw})
+        self.assertTrue(result["cards"][0]["raw_observation_sha256_verified"])
+        self.assertEqual(result["raw_observation_count_verified"], 1)
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["source_rights_verified"])
+
+    def test_raw_content_tamper_rejected_without_fallback(self):
+        row = observation()
+        data = {k: v for k, v in row.items() if k != "payload_sha256"}
+        raw = json.dumps(data).encode("utf-8")
+        row["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_SHA256_MISMATCH"):
+            review(observations=[row], raw_observations={"SP500": raw + b" "})
+
+    def test_raw_field_conflict_with_matching_new_digest_rejected(self):
+        row = observation()
+        data = {k: v for k, v in row.items() if k != "payload_sha256"}
+        data["value"] = "99.99"
+        raw = json.dumps(data).encode("utf-8")
+        row["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_FIELDS_MISMATCH"):
+            review(observations=[row], raw_observations={"SP500": raw})
+
+    def test_raw_duplicate_json_key_rejected_even_if_hash_matches(self):
+        row = observation()
+        raw = b'{"value":"1","value":"2"}'
+        row["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_JSON_INVALID"):
+            review(observations=[row], raw_observations={"SP500": raw})
+
+    def test_raw_series_set_must_be_complete_and_unique(self):
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_SERIES_SET_MISMATCH"):
+            review(raw_observations={"US10Y": b"{}"})
+        with self.assertRaisesRegex(ValueError, "MACRO_RAW_SERIES_SET_MISMATCH"):
+            review(raw_observations={})
 
     def test_invalid_outer_contract_fails_before_analysis(self):
         with self.assertRaisesRegex(ValueError, "MACRO_CONTEXT_INVALID_INPUT"):

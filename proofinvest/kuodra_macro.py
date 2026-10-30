@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timezone
 from decimal import Decimal, InvalidOperation
+import json
 from hashlib import sha256
 from typing import Any, Mapping
 from urllib.parse import urlsplit
@@ -30,6 +31,61 @@ CANDIDATES = {
 MAX_EXPOSURES = 11
 MAX_OBSERVATIONS = 32
 MAX_CARDS = 3
+MAX_RAW_BYTES = 65_536
+
+
+def _no_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("MACRO_RAW_DUPLICATE_JSON_KEY")
+        out[key] = value
+    return out
+
+
+def _verify_raw_observations(
+    observations: list[dict[str, Any]],
+    raw_observations: Mapping[str, bytes] | None,
+) -> set[str]:
+    """Cryptographically bind exact local JSON bytes to metadata observations.
+
+    This only proves bytes equal caller-supplied metadata. It does NOT prove
+    that a publisher produced them, that the rights assertion is true, or
+    that a website's current value has ever been fetched.
+    """
+    if raw_observations is None:
+        return set()
+    if not isinstance(raw_observations, Mapping) or len(raw_observations) > MAX_OBSERVATIONS:
+        raise ValueError("MACRO_RAW_INPUT_INVALID")
+    if any(not isinstance(row, dict) or row.get("series_id") not in CANDIDATES
+           for row in observations):
+        raise ValueError("MACRO_RAW_OBSERVATION_SCHEMA_INVALID")
+    ids = [row["series_id"] for row in observations]
+    if (len(ids) != len(set(ids)) or set(ids) != set(raw_observations)
+            or any(k not in CANDIDATES for k in raw_observations)):
+        raise ValueError("MACRO_RAW_SERIES_SET_MISMATCH")
+    for sid, raw in raw_observations.items():
+        if type(raw) is not bytes or not 0 < len(raw) <= MAX_RAW_BYTES:
+            raise ValueError("MACRO_RAW_INPUT_INVALID")
+        row = next(row for row in observations if row["series_id"] == sid)
+        if sha256(raw).hexdigest() != row.get("payload_sha256"):
+            raise ValueError("MACRO_RAW_SHA256_MISMATCH")
+        try:
+            parsed = json.loads(
+                raw.decode("utf-8"), object_pairs_hook=_no_duplicate_pairs,
+                parse_constant=lambda _: (_ for _ in ()).throw(
+                    ValueError("MACRO_RAW_INVALID_CONSTANT")
+                ),
+            )
+        except (UnicodeDecodeError, ValueError, RecursionError):
+            raise ValueError("MACRO_RAW_JSON_INVALID") from None
+        # No mutable canonicalization: raw file must contain exactly the
+        # observation fields being claimed, excluding self-referential SHA.
+        declared = {k: v for k, v in row.items() if k != "payload_sha256"}
+        if not isinstance(parsed, dict) or parsed != declared:
+            raise ValueError("MACRO_RAW_FIELDS_MISMATCH")
+    return set(raw_observations)
+
 
 
 def _https(value: Any) -> bool:
@@ -103,6 +159,7 @@ def _validate_observation(row: Mapping[str, Any], cutoff: datetime) -> str | Non
 def review_macro_context(
     *, original_filing: bytes, issuer_cik: str, as_of: str,
     exposures: list[dict[str, Any]], observations: list[dict[str, Any]],
+    raw_observations: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Rank up to three metadata-eligible local context cards.
 
@@ -117,6 +174,7 @@ def review_macro_context(
             or not isinstance(observations, list)
             or len(exposures) > MAX_EXPOSURES or len(observations) > MAX_OBSERVATIONS):
         raise ValueError("MACRO_CONTEXT_INVALID_INPUT")
+    verified_raw_ids = _verify_raw_observations(observations, raw_observations)
     cutoff = datetime.combine(day, time.max, timezone.utc)
     eligible_exposures: dict[str, dict[str, Any]] = {}
     exposure_count: dict[str, int] = {}
@@ -171,6 +229,7 @@ def review_macro_context(
             "original_exposure_span": [ex["start_byte"], ex["end_byte_exclusive"]],
             "exposure_literal": ex["literal"], "review_rationale": ex["rationale"],
             "metadata_eligible_only": True,
+            "raw_observation_sha256_verified": sid in verified_raw_ids,
         })
         checks.append({"series_id": sid, "status": "METADATA_ELIGIBLE_UNVERIFIED",
                        "reason_code": "SOURCE_AND_RIGHTS_NOT_INDEPENDENTLY_VERIFIED"})
@@ -179,6 +238,7 @@ def review_macro_context(
         "issuer_cik": issuer_cik, "as_of": as_of,
         "original_filing_sha256": sha256(original_filing).hexdigest(),
         "cards": cards, "candidate_checks": checks,
+        "raw_observation_count_verified": len(verified_raw_ids),
         "all_11_feeds_implemented": False, "source_authenticated": False,
         "source_rights_verified": False, "causality_established": False,
         "guard_policy_modified": False, "ai_agent_executed": False,

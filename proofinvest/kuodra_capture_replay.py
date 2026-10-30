@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 from .local_sec_guard_report import _check_audit_path, review_local_sec_with_guard
 from .local_sec_packet import _read_regular_local
-from .kuodra_macro import review_macro_context
+from .kuodra_macro import CANDIDATES, MAX_RAW_BYTES, review_macro_context
 from .sec_capture_bundle import _read_checked_capture_bundle
 
 
@@ -37,6 +37,7 @@ def replay_saved_capture(
     claimed_growth_pct: str | None = None,
     acknowledge_local_audit_persistence: bool = False,
     macro_context: Mapping[str, Any] | None = None,
+    macro_raw_observations: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Replay a bounded, previously captured ZIP with no HTTP or model.
 
@@ -71,6 +72,8 @@ def replay_saved_capture(
     # Gate optional external context before any SQLite side effect.
     # Metadata-only contextual cards must not change numeric SEC/Guard policy.
     macro_review = None
+    if macro_raw_observations is not None and macro_context is None:
+        raise ValueError("MACRO_RAW_REQUIRES_CONTEXT")
     if macro_context is not None:
         if not isinstance(macro_context, Mapping):
             raise ValueError("MACRO_CONTEXT_INVALID_INPUT")
@@ -79,6 +82,7 @@ def replay_saved_capture(
             issuer_cik=receipt["issuer_cik"], as_of=day,
             exposures=macro_context.get("exposures"),
             observations=macro_context.get("observations"),
+            raw_observations=macro_raw_observations,
         )
     # Use the recorded ORIGINAL observation time. Not today's time and
     # never an invented historical backdating certificate.
@@ -139,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--claimed-growth-pct")
     p.add_argument("--macro-context-json", type=Path,
                    help="Optional local JSON with exposures/observations; no feeds")
+    p.add_argument("--macro-raw", action="append", default=[], metavar="SERIES_ID=LOCAL_JSON",
+                   help="Bind each locally supplied raw observation file by exact SHA256")
     p.add_argument("--acknowledge-local-audit-persistence", action="store_true")
     args = p.parse_args(argv)
     try:
@@ -152,6 +158,28 @@ def main(argv: list[str] | None = None) -> int:
             macro = json.loads(_read_regular_local(args.macro_context_json, 200_000))
         else:
             macro = None
+        raws = None
+        if args.macro_raw:
+            if macro is None:
+                raise ValueError("MACRO_RAW_REQUIRES_CONTEXT")
+            raws = {}
+            reserved = {
+                args.audit_db.expanduser().resolve(strict=False),
+                args.capture_zip.expanduser().resolve(strict=False),
+            }
+            if args.macro_context_json is not None:
+                reserved.add(args.macro_context_json.expanduser().resolve(strict=False))
+            for entry in args.macro_raw:
+                sid, sep, filename = entry.partition("=")
+                if (sep != "=" or sid not in CANDIDATES or sid in raws
+                        or not filename.strip()):
+                    raise ValueError("MACRO_RAW_ENTRY_INVALID")
+                raw_path = Path(filename).expanduser()
+                resolved = raw_path.resolve(strict=False)
+                if resolved in reserved:
+                    raise ValueError("MACRO_RAW_INPUT_PATH_COLLISION")
+                reserved.add(resolved)
+                raws[sid] = _read_regular_local(raw_path, MAX_RAW_BYTES)
         result = replay_saved_capture(
             bundle_path=args.capture_zip, audit_db=args.audit_db,
             run_id=args.run_id, current_end=args.current_end,
@@ -159,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
             claimed_growth_pct=args.claimed_growth_pct,
             acknowledge_local_audit_persistence=args.acknowledge_local_audit_persistence,
             macro_context=macro,
+            macro_raw_observations=raws,
         )
     except (ValueError, TypeError, KeyError, OSError, sqlite3.Error):
         p.exit(2, "KUODRA offline capture replay blocked\n")

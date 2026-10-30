@@ -264,11 +264,23 @@ def run(output: Path) -> dict:
                         # view: run ACTUAL synthetic local inputs, Guard and
                         # disposable SQLite in Chromium, not static mock text.
                         picker = page.get_by_role("combobox", name="자료 유형")
-                        picker.click()
+                        # Streamlit React-Aria can keep the filtered menu
+                        # unmounted after .fill(); previous doc-only CI runs
+                        # timed out waiting for an option that never opened.
+                        # Focus/open with the already-proven keyboard pattern,
+                        # then commit the uniquely filtered choice without a
+                        # fragile DOM-option mouse click.
+                        picker.focus()
                         picker.fill("SEC→Guard 감사 연결")
-                        page.get_by_role(
-                            "option", name="SEC→Guard 감사 연결 — 합성 오프라인"
-                        ).click(timeout=10000)
+                        picker.press("ArrowDown")
+                        expect(page.get_by_role(
+                            "option", name="SEC→Guard 감사 연결 — 합성 오프라인",
+                            exact=True
+                        )).to_have_count(1, timeout=10000)
+                        picker.press("Enter")
+                        expect(picker).to_have_value(
+                            "SEC→Guard 감사 연결 — 합성 오프라인", timeout=15000
+                        )
                         expect(page.get_by_text(
                             "ProofInvest — SEC 근거부터 Guard 감사까지"
                         )).to_be_visible(timeout=15000)
