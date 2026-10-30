@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P21 Windows local genuine-source acceptance handoff (CI pending)
+
+1. Objective: Remove operational blocker between P20 read-only three-file CLI and the owner's existing Windows KIC checkout without accessing actual SEC over network. No SEC raw trio was found in available GitHub tracked files or indexed Library; only curated financial fixture and contest review packets surfaced. Authentic three-source acceptance remains BLOCKED BY SOURCE.
+2. Designs: (A) call SEC 3 GETs or misrepresent stored PDF/curated numbers as raw original, rejected (needs consent and provenance); (B) ask owner to paste complex Python CLI, error prone; (C) one PowerShell safe wrapper that delegates exactly to P20 read-only Python, selected. No backend policy change, additional API expenses or data transfer.
+3. Implementation: verify_sec_local.ps1 accepts owner local folder, filename overrides and explicit CIK/accession/as-of/observed-at timestamp; validates leaf path names against traversal, checks Python, invokes only python -B -m proofinvest.kuodra_loose_sec_compatibility from repo root, and propagates blocked status. Writes neither original source nor SQLite, and no raw SEC upload/transport.
+4. Tests: tests/test_kuodra_windows_local_runner.py validates script contract on Linux; on Windows runs synthetic fixtures via powershell.exe in folder with spaces, confirms 0-HTTP output, unchanged input bytes, blocked missing file, and traversal refusal. Added Windows CI step using that suite on actual windows-latest. No real SEC calls. P21 exact SHA/CI PENDING until verified.
+5. Runbook: docs/SEC_LOCAL_ACCEPTANCE_P21.md includes use, exact optional source filenames, contact/retention restrictions, explicit actual observed UTC timestamp (never fabricate), no-load output interpretation and verification limitations.
+6. Confirmed parent: P20 source bd376e0e0c9733e4b078de62288e5ef797b79bf3 Actions #41112337291 871 Python tests / 0 failures/errors/skips; Windows SQLite and Chromium 3/3 PASS. Documentation HEAD 6df254a233c1dbad4961a8210a524b28e5d174ad.
+7. Repo/branch: hibi89/hibi89-kic-proofinvest lead/kic; target files verify_sec_local.ps1, tests/test_kuodra_windows_local_runner.py, docs/SEC_LOCAL_ACCEPTANCE_P21.md, .github/workflows/ci.yml, STATUS.md, HANDOFF.md.
+8. Safety: no user source persisted, no external transfer or keys, no changed original database or deployment, no rights/source upgrade. Test CI uses synthetic issuer only; actual saved SEC files remain absent/unverified.
+9. Next gate: use this wrapper only with legitimate pre-existing SEC inputs and real known timestamp; otherwise request separate explicit owner authorization for 3 SEC requests/identifying User-Agent/retention. Gemini, DAKER and Production remain independently unverified. Do not expend further cycles on repetitive synthetic-only gates.
+10. KST checkpoint: 2026-10-31; implementation and real Windows CI to be checked; original success not claimed.
+
 ## 2026-10-31 KST — KUODRA P20 direct loose three-file SEC compatibility (CI 3/3 VERIFIED)
 
 1. Goal: Real SEC source format acceptance without unapproved network/retention. P19 requires proprietary synthetic receipt+ZIP; three ordinary already-saved SEC files cannot be tested without falsely inventing capture provenance. P20 accepts the loose Submissions, CompanyFacts and original HTML paths directly.
