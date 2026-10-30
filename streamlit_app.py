@@ -568,7 +568,18 @@ def render_app(st) -> None:
     sec_guard_ui = Path(__file__).resolve().parent / "proofinvest/local_sec_guard_ui.py"
     if sec_guard_ui.is_file():
         available_sources.append(_SOURCE_SEC_GUARD)
-    source = st.selectbox("자료 유형", available_sources)
+    # Deep-link for a judge: ?demo=guard selects the actual offline
+    # SEC->Guard walkthrough, but never executes it or calls external APIs.
+    # Other query values and the public synthetic recovery ZIP keep the
+    # original default, so existing first-run behavior remains unchanged.
+    judge_link = (
+        _SOURCE_SEC_GUARD in available_sources
+        and st.query_params.get("demo") == "guard"
+    )
+    initial_source = _SOURCE_SEC_GUARD if judge_link else _SOURCE_SYNTHETIC
+    source = st.selectbox(
+        "자료 유형", available_sources, index=available_sources.index(initial_source)
+    )
     if source == _SOURCE_SEC_GUARD:
         from proofinvest.local_sec_guard_ui import render_synthetic_guard_ui
         render_synthetic_guard_ui(st)
