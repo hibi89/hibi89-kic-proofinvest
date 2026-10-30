@@ -177,6 +177,30 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '페이지를 검색하지 않았습니다. 미발견은 발행·희석·지분변화 '
             '부재의 증명이 아닙니다.</p></section>'
         )
+    cashflow = report.get("cashflow")
+    if cashflow is not None and (
+            type(cashflow) is not dict
+            or cashflow.get("status") not in ("unavailable", "reviewed_unverified")
+            or cashflow.get("source_authenticated") is not False
+            or cashflow.get("risk_authenticated") is not False
+            or cashflow.get("guard_policy_modified") is not False
+            or cashflow.get("free_cashflow_proxy_is_non_gaap") is not True):
+        raise ValueError("HTML_CASHFLOW_TRUST_CONTRACT_FAILURE")
+    cash_section = ""
+    if cashflow is not None:
+        cfo = (cashflow["operating_cashflow_usd"] if
+               cashflow["operating_cashflow_usd"] is not None else "NOT_AVAILABLE")
+        fcf = (cashflow["free_cashflow_proxy_usd"] if
+               cashflow["free_cashflow_proxy_usd"] is not None else "NOT_AVAILABLE")
+        cash_section = (
+            '<section><h2>02C / 연간 영업현금흐름 · 참고 잉여현금흐름</h2>'
+            '<p>영업현금흐름 USD: ' + _field(cfo)
+            + ' / 간이 FCF USD: ' + _field(fcf)
+            + '</p><p>근거 상태: ' + _field(cashflow["reason_code"])
+            + '</p><p>FCF = 영업현금흐름 - 설비투자 지출의 비GAAP 참고치.'
+            ' 기업별 정의·현금흐름 세부 항목·원본 진위 및 투자 적격성 미검증.'
+            '</p></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     names = (
@@ -221,7 +245,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>현재 연도 · USD</th><td>' + _field(fin["current_amount"]) + '</td></tr>'
         '<tr><th>사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section +
+        + share_section + capital_section + cash_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

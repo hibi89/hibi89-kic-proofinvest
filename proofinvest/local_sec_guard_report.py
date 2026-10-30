@@ -23,6 +23,7 @@ from .local_risk_screen import screen_local_evidence
 from .kuodra_sec_balance import review_sec_balance_sheet
 from .kuodra_sec_shares import review_sec_shares_outstanding
 from .kuodra_capital_filing_watch import review_issuer_capital_filing_watch
+from .kuodra_sec_cashflow import review_sec_annual_cashflow
 from .local_sec_packet import (
     _MAX_FILE_BYTES,
     _read_regular_local,
@@ -167,6 +168,15 @@ def review_local_sec_with_guard(
             or capital_watch["beneficial_ownership_verified"] is not False
             or capital_watch["guard_policy_modified"] is not False):
         raise ValueError("CAPITAL_FILING_WATCH_TRUST_CONTRACT_FAILURE")
+    cashflow = review_sec_annual_cashflow(
+        companyfacts_json, cik=cik, accession=accession,
+        period_end=current_end, as_of=as_of,
+    )
+    if (cashflow["source_authenticated"] is not False
+            or cashflow["risk_authenticated"] is not False
+            or cashflow["guard_policy_modified"] is not False
+            or cashflow["free_cashflow_proxy_is_non_gaap"] is not True):
+        raise ValueError("CASHFLOW_TRUST_CONTRACT_FAILURE")
     source = packet["source"]
     text_node = source["html_text_node_literal_check"]
     text_ok = (
@@ -254,6 +264,7 @@ def review_local_sec_with_guard(
         "balance_sheet": balance_sheet,
         "share_capital": shares,
         "capital_filing_watch": capital_watch,
+        "cashflow": cashflow,
         "guard": result["guard"],
         "human_review": result["review"],
         "audit": result["audit"],

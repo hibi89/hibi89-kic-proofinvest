@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P28 offline annual operating cashflow + capex (CI pending)
+
+1. Scope: add a meaningful research-side operating cash flow and capital expenditure crosscheck missing from the 10-K annual finance panel. No source authentication, investment grade risk score, trade, external API, or new cost.
+2. Designs compared: (A) broad cashflow/stock forecast with new feeds/model and historical dataset (high data/rights costs, premature), (B) bounded annual US-GAAP CompanyFacts CFO and property-plant-equipment cash outflows in exact same issuer/10-K/period/as-of and filing date (selected, zero added provider cost). FCF proxy = annual operating cashflow minus capex payments, explicitly NON-GAAP and unverified; missing capex gives CFO only, no imputed FCF.
+3. Data and guards: new proofinvest/kuodra_sec_cashflow.py validates exact 10-digit CIK + accession, 10-K, annual 330–380d period, filing/as-of chronology, USD-only, bounded integer, duplicates, same start/date. Quarter rows cannot contaminate annual. Source bytes hashed but not independently authenticated. Errors -> unavailable; Guard policy unmodified.
+4. Integration: proofinvest/local_sec_guard_report.py attaches descriptive cashflow, kuodra_capture_replay.py passes it through, local_sec_html_report.py renders escaped non-script section and non-GAAP explanation. No auto-approval or adjustment to deterministic HOLD/REJECT, no new SQLite schema.
+5. Tests: 10 offline cases in tests/test_kuodra_sec_cashflow.py (full year, negative CFO, missing capex, wrong accession, quarterly rows, ambiguous/mixed units, booleans/invalid capex, late filing/CIK, cross-period/filed mismatch, Guard→SQLite→HTML no network). P28 CI pending. P27 SOURCE c53d76c12fe571d20409221f8437e65014fe8197 [Actions #41121469409](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41121469409) all 3 jobs success and Python 925 executed /0 fail/0 error/0 skip, Windows SQLite PASS, Chromium PASS, exact SHA check PASS. Previously docs said pending; now verified.
+6. Repository hibi89/hibi89-kic-proofinvest lead/kic. P28 code and docs in one feature commit. No raw SEC original/secret uploaded, no Git history rewritten. Recovery: ordinary revert.
+7. Limitations: real 10-K cashflow tag availability/issuer SEC authenticity, data rights, external Gemini and production remain UNVERIFIED. FCF simplification excludes leases/acquisitions/asset sales and is not comprehensive liquidity risk.
+8. Current status: P27 verified; P28 functional implementation CI PENDING. Source SHA and actual CI evidence must be written after complete.
+9. Next: validate P28 CI; fix observed failures minimally; owner-authorized genuine SEC raw input necessary for real validation. No automatic live calls.
+10. KST checkpoint: 2026-10-31.
+
 ## 2026-10-31 KST — KUODRA P27 same-day SEC filing anti-lookahead (CI pending)
 
 1. Goal: close P26 as-of leak where filingDate alone admits a candidate accepted after the self-reported source collection instant.
