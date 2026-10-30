@@ -105,6 +105,22 @@ class RevenueConceptTests(unittest.TestCase):
         data["facts"]["us-gaap"][TAG]["units"]["USD"][0]["val"] = True
         self.assertEqual(verify(data)["reason_code"], "INVALID_USD_REVENUE")
 
+    def test_prior_only_primary_does_not_prevent_current_accession_fallback(self):
+        data = facts(concepts=(TAG, "Revenues"))
+        for row in data["facts"]["us-gaap"][TAG]["units"]["USD"]:
+            row["accn"] = "0000000001-24-000001"
+        r = verify(data)
+        self.assertEqual(r["status"], "calculated_unverified")
+        self.assertEqual(r["revenue_concept"], "Revenues")
+        self.assertEqual(r["annual_period_starts"],
+                         ["2023-10-01", "2024-10-01"])
+
+    def test_conflicting_period_start_between_tags_blocks(self):
+        data = facts(concepts=("Revenues", "SalesRevenueNet"))
+        data["facts"]["us-gaap"]["SalesRevenueNet"]["units"]["USD"][1]["start"] = "2023-09-30"
+        r = verify(data)
+        self.assertEqual(r["reason_code"], "REVENUE_CONCEPT_CONFLICT")
+
     def test_non_target_accession_alternative_does_not_block(self):
         data = facts(concepts=("Revenues", "SalesRevenueNet"))
         for row in data["facts"]["us-gaap"]["SalesRevenueNet"]["units"]["USD"]:

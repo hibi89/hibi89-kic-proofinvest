@@ -130,6 +130,7 @@ def _verify_one_revenue_concept(
                             f"{accession}-index.htm",
         "cik": cik, "accession": accession, "as_of": as_of,
         "annual_period_ends": [prior_end, current_end],
+        "annual_period_starts": [previous[1].isoformat(), current[1].isoformat()],
         "filing_date": current[2].isoformat(),
         "revenue_concept": concept,
     }
@@ -191,7 +192,12 @@ def verify_sec_annual_revenue(
     }
     # An explicit primary tag must not be silently overridden by a fallback
     # when it is invalid or incomplete for the selected issuer.
-    if TAG in reviewed and reviewed[TAG]["status"] != "calculated_unverified":
+    if (TAG in reviewed
+            and reviewed[TAG]["status"] != "calculated_unverified"
+            and _target_concept_rows(
+                usgaap[TAG], accession=accession,
+                current_end=current_end, prior_end=prior_end,
+            )):
         return _verify_one_revenue_concept(
             companyfacts, **args, concept=TAG,
             claimed_growth_pct=claimed_growth_pct
@@ -207,7 +213,8 @@ def verify_sec_annual_revenue(
         alternative = reviewed[concept]
         if alternative["status"] == "calculated_unverified":
             if any(alternative.get(key) != chosen_facts.get(key) for key in
-                   ("current_usd", "prior_usd", "filing_date")):
+                   ("current_usd", "prior_usd", "filing_date",
+                    "annual_period_starts")):
                 return _out("REVENUE_CONCEPT_CONFLICT")
         elif _target_concept_rows(
             usgaap[concept], accession=accession,
