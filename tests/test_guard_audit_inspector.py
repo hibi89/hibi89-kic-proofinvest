@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -76,12 +77,18 @@ class GuardAuditSnapshotInspectorTests(unittest.TestCase):
         self.assertNotIn("reason", dumped.lower())
 
     def test_rejects_tampered_decision_and_never_repairs_db(self):
-        with sqlite3.connect(self.path) as con:
+        # On Windows the transaction context does NOT release its file lock;
+        # explicitly close this test's writer before checking the snapshot.
+        with closing(sqlite3.connect(self.path)) as con, con:
             con.execute(
                 "UPDATE guard_audit_events SET event_hash=?",
                 ("0" * 64,),
             )
         corrupted = self.path.read_bytes()
+        # Regression: no lingering writer handle should block a rename on NTFS.
+        moved = self.path.with_name("corrupted-renamed.sqlite")
+        self.path.rename(moved)
+        moved.rename(self.path)
         with self.assertRaisesRegex(ValueError, "AUDIT_SNAPSHOT_CHAIN_INVALID"):
             inspect_guard_snapshot(self.path)
         self.assertEqual(self.path.read_bytes(), corrupted)
