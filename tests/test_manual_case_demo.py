@@ -1,14 +1,38 @@
 """Synthetic test inputs plus prior manual issuer receipt; no external requests."""
 import copy
+import hashlib
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from proofinvest import manual_case_demo as demo
 
 
 class PublishedManualCaseTests(unittest.TestCase):
+    def test_reviewed_git_blob_pin_is_byte_exact_on_checkout(self):
+        original = demo.EVIDENCE_PATH.read_bytes()
+        sha = hashlib.sha1(
+            b"blob " + str(len(original)).encode("ascii") + b"\0" + original
+        ).hexdigest()
+        self.assertEqual(sha, demo.REVIEWED_GIT_BLOB_SHA1)
+        self.assertNotIn(b"\r\n", original)
+
+    def test_crlf_checkout_diagnosed_but_never_trusted(self):
+        original = demo.EVIDENCE_PATH.read_bytes()
+        self.assertIn(b"\n", original)
+        self.assertNotIn(b"\r\n", original)
+        with tempfile.TemporaryDirectory(prefix="kic-evidence-crlf-") as root:
+            modified = Path(root) / "evidence.json"
+            modified.write_bytes(original.replace(b"\n", b"\r\n"))
+            with patch.object(demo, "EVIDENCE_PATH", modified):
+                with self.assertRaisesRegex(ValueError, "CRLF checkout conversion"):
+                    demo.read_reviewed_evidence()
+            self.assertEqual(modified.read_bytes(), original.replace(b"\n", b"\r\n"))
+
     def test_offline_issuer_chain_claim_agrees_and_risk_withheld(self):
         r = demo.run_manual_case()
         self.assertEqual(r["research"]["status"], "success")

@@ -1,0 +1,3 @@
+# Reviewed evidence is pinned to an exact Git blob; keep bytes immutable.
+# Windows autocrlf must not rewrite line endings at checkout.
+docs/evidence/samsung_2024_cfs_revenue.json -text

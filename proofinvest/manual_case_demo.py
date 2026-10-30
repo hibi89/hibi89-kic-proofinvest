@@ -31,6 +31,18 @@ def read_reviewed_evidence() -> dict[str, Any]:
         b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw
     ).hexdigest()
     if object_id != REVIEWED_GIT_BLOB_SHA1:
+        # Diagnose Windows core.autocrlf without trusting normalized data.
+        # Only exact bytes of the previously reviewed Git blob are accepted.
+        if b"\r\n" in raw:
+            original = raw.replace(b"\r\n", b"\n")
+            original_sha = hashlib.sha1(
+                b"blob " + str(len(original)).encode("ascii") + b"\0" + original
+            ).hexdigest()
+            if original_sha == REVIEWED_GIT_BLOB_SHA1:
+                raise ValueError(
+                    "Previously reviewed evidence bytes changed by CRLF checkout "
+                    "conversion; restore the original Git blob bytes before replay"
+                )
         raise ValueError("Previously reviewed evidence bytes changed; re-review before replay")
     data = json.loads(raw.decode("utf-8"))
     if not isinstance(data, dict):
