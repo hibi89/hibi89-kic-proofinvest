@@ -16,13 +16,12 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Any, Mapping
 
-from proofinvest.sec_companyfacts import TAG
+from proofinvest.sec_companyfacts import REVENUE_TAGS
 
 IX = "http://www.xbrl.org/2013/inlineXBRL"
 XBRLI = "http://www.xbrl.org/2003/instance"
 ISO4217 = "http://www.xbrl.org/2003/iso4217"
 XSI = "http://www.w3.org/2001/XMLSchema-instance"
-REVENUE = "us-gaap:" + TAG
 _MAX_BYTES = 8_000_000
 _CIK = re.compile(r"[0-9]{10}\Z", flags=re.ASCII)
 _US_GAAP_NS = re.compile(r"http://fasb\.org/us-gaap/20[0-9]{2}\Z", re.ASCII)
@@ -59,9 +58,14 @@ def _windows(companyfacts: Any, verdict: Any) -> dict[str, tuple[str, str, int]]
     """Resolve one explicit CompanyFacts period each; do not invent start dates."""
     if not isinstance(companyfacts, Mapping) or not isinstance(verdict, Mapping):
         return None
+    # The SEC annual numeric verifier may have selected one of three strict
+    # total-revenue alternatives. Never silently relabel a fallback as TAG.
+    concept = verdict.get("revenue_concept")
+    if type(concept) is not str or concept not in REVENUE_TAGS:
+        return None
     data = companyfacts.get("facts")
     usgaap = data.get("us-gaap") if isinstance(data, Mapping) else None
-    tag = usgaap.get(TAG) if isinstance(usgaap, Mapping) else None
+    tag = usgaap.get(concept) if isinstance(usgaap, Mapping) else None
     units = tag.get("units") if isinstance(tag, Mapping) else None
     rows = units.get("USD") if isinstance(units, Mapping) else None
     ends = verdict.get("annual_period_ends")
@@ -192,6 +196,22 @@ def review_inline_annual_revenue(
             or b"\x00" in original):
         return _missing("FORBIDDEN_XML_DECLARATION")
     try:
+        # ET accepts XML-declared Latin-1. KUODRA's other exact HTML byte
+        # locators require strict UTF-8; reject ambiguous encoding profiles.
+        original.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return _missing("NOT_STRICT_UTF8_XHTML")
+    # Reject an XML declaration that can cause ET to reinterpret valid
+    # ASCII/UTF-8 input as another character set. An optional UTF-8
+    # declaration and UTF-8 BOM remain supported.
+    prologue = original[3:] if original.startswith(b"\xef\xbb\xbf") else original
+    declared = re.match(rb"\s*<\?xml\s+[^>]{0,252}\?>", prologue[:300], re.I)
+    if declared is not None:
+        encoding = re.search(rb"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
+                             declared.group(), re.I)
+        if encoding is not None and encoding.group(2).lower() != b"utf-8":
+            return _missing("UNSUPPORTED_XML_ENCODING_DECLARATION")
+    try:
         ns: dict[str, str] = {}
         for _, (prefix, uri) in ET.iterparse(BytesIO(original), events=("start-ns",)):
             if prefix in ns and ns[prefix] != uri:
@@ -207,9 +227,11 @@ def review_inline_annual_revenue(
     units = _unit_ids(root, ns)
     if contexts is None or units is None:
         return _missing("MALFORMED_CONTEXT_OR_CURRENCY_UNIT")
+    selected_concept = verdict["revenue_concept"]
+    selected_fact_name = "us-gaap:" + selected_concept
     matched: dict[str, list[dict[str, Any]]] = {"prior": [], "current": []}
     for fact in root.iter("{"+IX+"}nonFraction"):
-        if fact.get("name") != REVENUE:
+        if fact.get("name") != selected_fact_name:
             continue
         ref, unit_ref = fact.get("contextRef"), fact.get("unitRef")
         if not isinstance(ref, str) or contexts.get(ref) is None:
@@ -243,5 +265,6 @@ def review_inline_annual_revenue(
     return {
         **_missing("STRUCTURAL_LOCAL_MATCH_NOT_AUTHENTICATION"),
         "status": "local_ixbrl_revenue_context_match_unverified",
+        "revenue_concept": selected_concept,
         "periods": matched["prior"] + matched["current"],
     }

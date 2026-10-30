@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P18 selected SEC revenue concept / iXBRL encoding compatibility (CI pending)
+
+1. Objective: Preserve strict P12 selected revenue taxonomy through iXBRL crosscheck. Existing inline iXBRL reviewer hardcoded RevenueFromContractWithCustomerExcludingAssessedTax despite upstream validated fallback Revenues/SalesRevenueNet; also XML parser could accept non-UTF8 declarations that disagree with exact UTF8 source-literal locators.
+2. Designs: Blindly parse/display any numeric HTML (faster but false financial confidence/scale errors), versus map only allowlisted verifier-selected revenue concept to exact iXBRL name and preserve strict per-period context, USD, scale, precision, uniqueness checks (selected: low cost, minimal maintenance and fail-closed).
+3. Code: ixbrl_revenue_review._windows binds verdict.revenue_concept to one of REVENUE_TAGS, selects CompanyFacts matching tag and exact iXBRL name; output indicates only reviewed selected concept, still source_authenticated=false. Require strict UTF8 bytes; reject explicitly non-UTF8 XML encoding declarations, allow optional BOM/UTF8 declaration. No inference from unscaled printed numbers; P17 literal scanner unchanged.
+4. Tests: 12 new mocked/offline synthetic cases for Revenues and SalesRevenueNet, exact grouped comma decimal and positive scale + USD, wrong tagged fact, conflicting value, unsupported unit/precision, duplicate source facts, forged/missing concept, BOM and UTF8 prologue, alternate XML encoding, invalid bytes, and local SEC packet -> Guard HOLD -> disposable SQLite audit with no HTTP. P18 code CI pending. Baseline P17 SHA 239be65af559c44260bd83bc7a516fc78f2f4387 Actions #41108570987 834/0 Python PASS 3/3.
+5. Scope: only proofinvest/ixbrl_revenue_review.py, new tests/test_kuodra_ixbrl_multi_concept.py and HANDOFF/STATUS; no raw SEC calls, ML/LLM, rights changes, external licensed feeds or deployment. Offline source/hash still not issuer authentication.
+6. Recovery: parent 6cb18be83a01faf3cfcbf29cd7bb0928d79703ef, minimal additive patch and ordinary revert possible; no force push, user originals or old audit DB overwritten.
+7. Repository/branch: hibi89/hibi89-kic-proofinvest lead/kic. Python3.11 offline tests + Windows SQLite + Chromium CI; existing prior source verified.
+8. Risks: XHTML profile remains intentionally strict; arbitrary SEC pages, repeated fact strings, browser CSS visibility, unproven source entitlement and real issuer payload are not validated. Caution: success here only synthetic format coverage.
+9. Next: inspect P18 exact code SHA CI and repair observed regressions; then genuine user-approved saved SEC ZIP and real Gemini/provider gates when authorized.
+10. Checkpoint: 2026-10-31 KST, P18 feature and tests prepared, source CI pending.
+
 ## 2026-10-31 KST — KUODRA P17 iXBRL numeric source boundaries (CI 3/3 SUCCESS)
 
 1. Goal: prevent off-screen Inline XBRL ix:hidden/header/resources/references/exclude numbers from being accepted as numeric local evidence; keep body ix:nonFraction byte-correct evidence and existing Decimal calculation, Guard and SQLite safety.
