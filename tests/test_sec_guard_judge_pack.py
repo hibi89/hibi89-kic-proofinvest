@@ -10,7 +10,7 @@ from unittest.mock import patch
 import zipfile
 
 from scripts.sec_guard_judge_pack import (
-    MANIFEST, SCHEMA, build_bytes, main, verify_bytes,
+    MANIFEST, SCHEMA, START_PAGE, build_bytes, main, verify_bytes,
 )
 
 
@@ -24,14 +24,24 @@ class SecGuardJudgePackTests(unittest.TestCase):
         net.assert_not_called()
         self.assertEqual(result["schema"], SCHEMA)
         self.assertEqual(result["cases"], 3)
-        self.assertEqual(result["files"], 9)
+        self.assertEqual(result["files"], 10)
         self.assertFalse(result["external_source_authenticated"])
         with zipfile.ZipFile(io.BytesIO(raw)) as z:
             names = set(z.namelist())
-            self.assertEqual(len(names), 10)
+            self.assertEqual(len(names), 11)
             manifest = json.loads(z.read(MANIFEST))
             self.assertEqual(manifest["evidence_class"],
                              "SYNTHETIC_ONLY_UNVERIFIED")
+            self.assertEqual(manifest["landing_page"], START_PAGE)
+            landing = z.read(START_PAGE).decode("utf-8")
+            self.assertIn("SYNTHETIC ONLY / NOT REAL SEC", landing)
+            self.assertIn("Content-Security-Policy", landing)
+            self.assertNotIn("<script", landing.lower())
+            self.assertNotIn("https://", landing)
+            for case in ("matched", "conflict", "script"):
+                self.assertIn('href="' + case + '.html"', landing)
+                self.assertIn('href="' + case + '.json"', landing)
+                self.assertIn('href="' + case + '.md"', landing)
             for case in ("matched", "conflict", "script"):
                 receipt = json.loads(z.read(case + ".json"))
                 text = z.read(case + ".md").decode("utf-8")

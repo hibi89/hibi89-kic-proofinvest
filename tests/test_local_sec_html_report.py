@@ -9,7 +9,30 @@ from pathlib import Path
 
 from proofinvest.local_sec_guard_report import main, review_local_sec_with_guard
 from proofinvest.local_sec_html_report import render_local_sec_html
-from tests.test_local_sec_guard_report import fixture
+from proofinvest.kic_dl_demo import (
+    AS_OF, COLLECTED_AT, SYNTHETIC_ACCESSION, SYNTHETIC_CIK,
+    synthetic_companyfacts, synthetic_submissions,
+)
+from proofinvest.kic_dl_original_demo import PHRASE, SYNTHETIC_HTML
+
+
+def fixture(db: Path) -> dict:
+    """Canonical synthetic input fixture, independent from test import paths."""
+    return {
+        "submissions_json": synthetic_submissions(),
+        "companyfacts_json": json.dumps(synthetic_companyfacts()).encode("utf-8"),
+        "original_filing": SYNTHETIC_HTML,
+        "cik": SYNTHETIC_CIK,
+        "accession": SYNTHETIC_ACCESSION,
+        "as_of": AS_OF,
+        "collected_at": COLLECTED_AT,
+        "current_end": "2025-09-30",
+        "prior_end": "2024-09-30",
+        "needle": PHRASE,
+        "claimed_growth_pct": "100.00",
+        "audit_db_path": db,
+        "run_id": "offline-html-one",
+    }
 
 
 class LocalSecHtmlReportTests(unittest.TestCase):

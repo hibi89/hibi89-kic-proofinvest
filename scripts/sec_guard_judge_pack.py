@@ -22,6 +22,7 @@ from proofinvest.local_sec_html_report import render_local_sec_html
 
 SCHEMA = "proofinvest.synthetic-sec-guard-judge-pack.v1"
 MANIFEST = "SYNTHETIC_JUDGE_MANIFEST.json"
+START_PAGE = "START_HERE.html"
 CASES = ("matched", "conflict", "script")
 MAX_FILE_BYTES = 65536
 MAX_ZIP_BYTES = 250000
@@ -46,6 +47,50 @@ def _entry(name: str) -> zipfile.ZipInfo:
     entry.create_system = 3
     entry.external_attr = 0o100644 << 16
     return entry
+
+
+def landing_page() -> bytes:
+    """A zero-network synthetic-only HTML landing page for all 3 cases."""
+    cards = (
+        ("matched", "01 | 수치 일치", "HOLD", "원문/위험 인증 보류"),
+        ("conflict", "02 | 성장률 충돌", "REJECT", "산술 검산과 주장 불일치"),
+        ("script", "03 | 스크립트 인용", "HOLD", "본문 출처 인용 불가"),
+    )
+    rows = "".join(
+        '<tr><td>' + label + '</td><td><b>' + decision + '</b></td>'
+        '<td>' + explanation + '</td><td><a href="' + key +
+        '.html">HTML</a> / <a href="' + key + '.md">Markdown</a> / '
+        '<a href="' + key + '.json">JSON</a></td></tr>'
+        for key, label, decision, explanation in cards
+    )
+    markup = (
+        '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; '
+        'style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;">'
+        '<title>ProofInvest | SYNTHETIC Judge Start</title>'
+        '<style>body{margin:0;background:#0f2035;color:#ebf5ff;font:16px system-ui}'
+        'main{max-width:960px;margin:auto;padding:24px}header{background:#1d3b55;'
+        'border-radius:15px;padding:27px}h1{margin:.3em 0}p{line-height:1.6}'
+        'table{border-collapse:collapse;width:100%;background:#1c3148;'
+        'margin-top:25px}td,th{padding:14px;border-bottom:1px solid #425e78;'
+        'text-align:left}a{color:#73e2d8}.warning{border-left:5px solid #fd7474;'
+        'padding:16px;background:#503036;margin:20px 0}'
+        '@media(max-width:650px){table{display:block;overflow-x:auto;white-space:nowrap}'
+        'main{padding:12px}header{padding:16px}}</style></head>'
+        '<body><main><header><small>PROOFINVEST / EVIDENCE LAB</small>'
+        '<h1>심사 시연 · 시작 페이지</h1>'
+        '<p>세 가지 SEC 형식 가상 사례를 로컬 Guard 파이프라인에서 실행한 결과입니다.'
+        '아래 HTML 보고서는 인터넷 연결 없이 열 수 있습니다.</p></header>'
+        '<div class="warning"><strong>SYNTHETIC ONLY / NOT REAL SEC</strong>'
+        '<p>가상 기업/수치만 사용. SEC 출처 인증, LLM/AI 실행, 실거래,'
+        '공식 KIC 제출 영수증이 아닙니다.</p></div>'
+        '<table><thead><tr><th>사례</th><th>Guard</th><th>판정 이유</th>'
+        '<th>확인 자료</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        '<p>SHA-256 목록: SYNTHETIC_JUDGE_MANIFEST.json'
+        ' (로컬 바이트 동일성만 확인)</p></main></body></html>'
+    )
+    return markup.encode("utf-8")
 
 
 def build_bytes() -> bytes:
@@ -83,6 +128,9 @@ def build_bytes() -> bytes:
             for case in CASES
         ],
     }
+    payload[START_PAGE] = landing_page()
+    manifest["landing_page"] = START_PAGE
+    manifest["file_list"][START_PAGE] = {"sha256": _sha(payload[START_PAGE]), "bytes": len(payload[START_PAGE])}
     payload[MANIFEST] = _json_bytes(manifest)
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w") as archive:
@@ -106,6 +154,7 @@ def verify_bytes(archive: bytes) -> dict:
         names = set(z.namelist())
         if (names != set(manifest["file_list"]) | {MANIFEST}
                 or manifest["schema"] != SCHEMA
+                or manifest.get("landing_page") != START_PAGE
                 or manifest["evidence_class"] != "SYNTHETIC_ONLY_UNVERIFIED"
                 or any(manifest[key] is not False for key in (
                     "real_sec_authenticated", "real_agent_executed",
