@@ -127,6 +127,107 @@ class KuodraBalanceReviewTests(unittest.TestCase):
                 data["facts"]["us-gaap"][tag]["units"]["USD"][0][field] = value
                 self.assertEqual(review(data)["reason_code"], reason)
 
+    def _instant(self, value, filed="2025-10-15"):
+        return {"units": {"USD": [{"accn": SYNTHETIC_ACCESSION,
+                                    "form": "10-K", "end": END,
+                                    "filed": filed, "val": value}]}}
+
+    def test_explicit_consolidated_equity_only(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        del data["facts"]["us-gaap"]["StockholdersEquity"]
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(120)
+        value = review(data)
+        self.assertEqual(value["status"], "reviewed_unverified")
+        self.assertEqual(value["equity_denominator_usd"], "120")
+        self.assertEqual(value["liabilities_to_equity_pct"], "166.67")
+        self.assertEqual(value["equity_denominator_basis"],
+                         "CONSOLIDATED_EQUITY_INCLUDING_NCI")
+
+    def test_parent_equity_plus_explicit_noncontrolling_interest(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(20)
+        value = review(data)
+        self.assertEqual(value["status"], "reviewed_unverified")
+        self.assertEqual(value["noncontrolling_interest_usd"], "20")
+        self.assertEqual(value["equity_denominator_basis"],
+                         "PARENT_EQUITY_PLUS_EXPLICIT_NCI")
+        self.assertEqual(value["liabilities_to_equity_pct"], "166.67")
+
+    def test_explicit_total_parent_nci_all_must_reconcile(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(20)
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(120)
+        value = review(data)
+        self.assertEqual(value["status"], "reviewed_unverified")
+        self.assertTrue(value["balance_identity_match"])
+        self.assertEqual(value["equity_denominator_usd"], "120")
+
+    def test_mismatched_parent_total_without_nci_fails_closed(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(120)
+        value = review(data)
+        self.assertEqual(value["status"], "unavailable")
+        self.assertEqual(value["reason_code"], "NCI_BRIDGE_UNAVAILABLE")
+        self.assertIsNone(value["liabilities_to_equity_pct"])
+
+    def test_conflicting_noncontrolling_bridge_fails(self):
+        data = fixture({"Assets": 320, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(120)
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(21)
+        self.assertEqual(review(data)["reason_code"], "NCI_EQUITY_COMPONENT_CONFLICT")
+
+    def test_zero_total_equity_is_not_safe(self):
+        data = fixture({"Assets": 200, "Liabilities": 200, "StockholdersEquity": 100})
+        del data["facts"]["us-gaap"]["StockholdersEquity"]
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(0)
+        value = review(data)
+        self.assertEqual(value["reason_code"], "NON_POSITIVE_EQUITY_RATIO_UNDEFINED")
+        self.assertIsNone(value["exploratory_ratio_200pct_signal"])
+
+    def test_negative_nci_can_still_reconcile_without_unsafe_abs(self):
+        data = fixture({"Assets": 290, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(-10)
+        value = review(data)
+        self.assertEqual(value["equity_denominator_usd"], "90")
+        self.assertEqual(value["liabilities_to_equity_pct"], "222.22")
+        self.assertTrue(value["exploratory_ratio_200pct_signal"])
+
+    def test_future_nci_and_mismatched_dates_block_even_if_parent_valid(self):
+        data = fixture({"Assets": 300, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(0, "2025-10-17")
+        self.assertEqual(review(data)["reason_code"], "BALANCE_FILING_AFTER_AS_OF")
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(0, "2025-10-16")
+        self.assertEqual(review(data)["reason_code"], "MIXED_BALANCE_FILING_DATES")
+
+    def test_ambiguous_or_malformed_optional_total_does_not_silently_fallback(self):
+        data = fixture()
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(100)
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"]["units"]["USD"].append({
+            "accn": SYNTHETIC_ACCESSION, "form": "10-K",
+            "end": END, "filed": "2025-10-15", "val": 101,
+        })
+        self.assertEqual(review(data)["reason_code"], "AMBIGUOUS_BALANCE_FACT")
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"]["units"]["USD"] = [{
+            "accn": SYNTHETIC_ACCESSION, "form": "10-K",
+            "end": END, "filed": "2025-10-15", "val": True,
+        }]
+        self.assertEqual(review(data)["reason_code"], "INVALID_INSTANT_FACT_OR_AMOUNT")
+
+    def test_nci_present_but_nonreconciled_amount_blocks(self):
+        data = fixture({"Assets": 321, "Liabilities": 200, "StockholdersEquity": 100})
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(20)
+        out = review(data)
+        self.assertEqual(out["reason_code"], "BALANCE_IDENTITY_NOT_RECONCILED")
+        self.assertFalse(out["balance_identity_match"])
+
+    def test_distinct_same_accession_zero_nci_remains_backward_compatible(self):
+        data = fixture()
+        data["facts"]["us-gaap"]["MinorityInterest"] = self._instant(0)
+        data["facts"]["us-gaap"]["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"] = self._instant(100)
+        out = review(data)
+        self.assertEqual(out["status"], "reviewed_unverified")
+        self.assertEqual(out["liabilities_to_equity_pct"], "200.00")
+
     def test_saved_zip_to_guard_sqlite_with_balance_and_no_policy_upgrade(self):
         root = tempfile.TemporaryDirectory(prefix="kuodra-balance-")
         self.addCleanup(root.cleanup)
