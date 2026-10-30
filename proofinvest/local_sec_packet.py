@@ -28,6 +28,7 @@ from proofinvest.dl_bridge import (
 from proofinvest.dl_source_span import anchored_source_span
 from proofinvest.sec_companyfacts import verify_sec_annual_revenue
 from proofinvest.numeric_literal_anchor import find_numeric_literals_in_html_text
+from proofinvest.visible_text_evidence import confirm_html_text_node_literal
 from proofinvest.ixbrl_revenue_review import review_inline_annual_revenue
 
 _MAX_CLAIM_BYTES = 400
@@ -166,6 +167,11 @@ def build_local_sec_review_packet(
             or index["source_sha256"] != hashlib.sha256(submissions_json).hexdigest()
             or span.get("source_uri") != link.get("filing_source_uri")):
         raise ValueError("EVIDENCE_INTEGRITY_CHECK_FAILED")
+    text_node_literal = confirm_html_text_node_literal(
+        original_filing, needle=needle,
+        expected_start=crosslink["start_byte"],
+        expected_end=crosslink["end_byte_exclusive"],
+    )
     numeric_literals = find_numeric_literals_in_html_text(
         original_filing,
         prior_amount=verdict["prior_usd"],
@@ -198,6 +204,7 @@ def build_local_sec_review_packet(
             "literal_occurrences": 1,
             "span_proves_financial_claim": False,
             "numeric_literal_crosscheck": numeric_literals,
+            "html_text_node_literal_check": text_node_literal,
             "ixbrl_revenue_context_review": ixbrl_review,
             "link_status": crosslink["status"],
         },
@@ -227,6 +234,7 @@ def build_local_sec_review_packet(
             "Source URLs are derived from local SEC-shaped metadata, never contacted.",
             "Financial figures are compared within caller-supplied JSON, not independently proved.",
             "The exact archived byte span proves phrase location, not filing semantics or revenue.",
+            "HTML text-node matching excludes script/attribute/comments but does not establish rendered visibility or claim truth.",
             "Financial numeric literals inside HTML text nodes do not establish unit, scale, period, or issuer truth.",
             "Offline iXBRL markup context association is not XBRL taxonomy validation or SEC authentication.",
             "No SEC transport receipt, redistribution rights, external authentication, or investment recommendation.",

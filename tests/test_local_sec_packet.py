@@ -49,6 +49,35 @@ class OfflineLocalSecPacketTests(unittest.TestCase):
         self.assertTrue(all(x is False for x in result["attestations"].values()))
         self.assertEqual(result, build_local_sec_review_packet(**_parts()))
 
+    def test_original_phrase_must_be_in_eligible_text_node(self):
+        packet = build_local_sec_review_packet(**_parts())
+        located = packet["source"]["html_text_node_literal_check"]
+        self.assertEqual(located["status"], "untrusted_html_text_node_literal_located")
+        self.assertTrue(located["exact_raw_byte_span_verified"])
+        self.assertFalse(located["source_authenticated"])
+        self.assertFalse(located["financial_fact_verified"])
+
+    def test_source_phrase_in_html_script_is_not_a_text_node_citation(self):
+        bad_original = b"<html><script>" + PHRASE.encode() + b"</script><body>irrelevant</body></html>"
+        packet = build_local_sec_review_packet(
+            **(_parts() | {"original_filing": bad_original}))
+        self.assertEqual(
+            packet["source"]["html_text_node_literal_check"]["status"], "unavailable"
+        )
+        self.assertEqual(
+            packet["source"]["html_text_node_literal_check"]["reason_code"],
+            "LITERAL_NOT_IN_ELIGIBLE_HTML_TEXT_NODE"
+        )
+        self.assertTrue(all(x is False for x in packet["attestations"].values()))
+
+    def test_source_phrase_in_html_attribute_is_not_a_text_node_citation(self):
+        bad_original = b"<html><body><p data-note='" + PHRASE.encode() + b"'>different text</p></body></html>"
+        packet = build_local_sec_review_packet(
+            **(_parts() | {"original_filing": bad_original}))
+        self.assertEqual(
+            packet["source"]["html_text_node_literal_check"]["status"], "unavailable"
+        )
+
     def test_mismatched_cik_accession_and_filing_future_fail(self):
         for wrong in (
             {"cik": "0000000002"},
