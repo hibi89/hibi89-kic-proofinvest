@@ -141,6 +141,38 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<p>주식 수 변화는 주식분할·신규 발행·희석 또는 '
             '주요 주주 지분변화를 입증하지 않습니다. 원본은 미인증.</p></section>'
         )
+    capital_watch = report.get("capital_filing_watch")
+    if capital_watch is not None and (
+            type(capital_watch) is not dict
+            or capital_watch.get("status") not in (
+                "unavailable", "metadata_candidates_unverified",
+                "no_candidates_in_limited_issuer_index")
+            or capital_watch.get("source_authenticated") is not False
+            or capital_watch.get("beneficial_ownership_verified") is not False
+            or capital_watch.get("guard_policy_modified") is not False
+            or type(capital_watch.get("candidates")) is not list
+            or len(capital_watch["candidates"]) > 8):
+        raise ValueError("HTML_CAPITAL_WATCH_TRUST_CONTRACT_FAILURE")
+    capital_section = ""
+    if capital_watch is not None:
+        items = "".join(
+            "<li>" + _field(item["form"]) + " · "
+            + _field(item["filed_at"]) + " · "
+            + _field(item["accession"]) + " — "
+            + _field(item["review_class"]) + "</li>"
+            for item in capital_watch["candidates"]
+            if type(item) is dict
+        )
+        capital_section = (
+            '<section><h2>02B / 발행·주요 주주 관련 제출 문서 검토 대기</h2>'
+            '<p>' + _field(capital_watch["status"])
+            + ' / 검색된 최근 메타데이터 수: '
+            + _field(capital_watch["total_matching_recent_metadata"])
+            + '</p><ul>' + (items or "<li>검색 범위에서 미발견</li>")
+            + '</ul><p>원문·타인 CIK의 13D/13G/내부자 신고 및 이전 '
+            '페이지를 검색하지 않았습니다. 미발견은 발행·희석·지분변화 '
+            '부재의 증명이 아닙니다.</p></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     names = (
@@ -185,7 +217,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>현재 연도 · USD</th><td>' + _field(fin["current_amount"]) + '</td></tr>'
         '<tr><th>사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section +
+        + share_section + capital_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

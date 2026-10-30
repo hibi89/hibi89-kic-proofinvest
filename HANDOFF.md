@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P26 issuer Submissions capital/owner metadata follow-up (CI PENDING)
+
+1. Objective: complement P25 share counts with issuer's existing SEC Submissions metadata leads without fabricating issuance, dilution or beneficial owner facts. Issuer CIK index cannot exhaust holder Form SC 13D/G and insider Forms 3/4/5 filed under other CIKs.
+2. Options: A multi-filer ownership search/live SEC archive and full-filing parsing (needs user-approved SEC access, more rights/maintenance), B bounded read-only issuer-recent metadata triage with explicit coverage gap and no extra API (selected). This is NOT evidence of capital action or shareholder stake.
+3. Architecture: new proofinvest/kuodra_capital_filing_watch.py receives original caller-held Submissions bytes and explicit issuer CIK, as-of, claimed collection timestamp; strict JSON duplicate/nonfinite, row columns, accession/date, 1000 rows, metadata only. Candidate classes 8-K, S-1/S-3, 424B2-5, DEF 14A, SC 13D/G and 3/4/5 if present; up to 8 shown with total and truncated flag. No full document fetching; absence has strong coverage caveat.
+4. Integration: local_sec_guard_report adds capital_filing_watch as a separate descriptive section after completed Guard core, kuodra_capture_replay passes through, local_sec_html_report prints escaped no-script queue and explicit other-CIK/history gap. No Guard policy change, no new SQLite provenance event or user data writes beyond explicit existing audit.
+5. Tests: 10 offline synthetic cases for missing, form types, as-of cutoff, claimed observation, wrong CIK, mismatched arrays, duplicate accession, malformed JSON, output cap, and Guard→SQLite→HTML no-network. Full CI pending; P25 baseline verified code 447a8930b7f0c4018e1d37426e3e158a82a27a7d #41118824734 SUCCESS Python908/0/0/0, Windows+Chromium PASS; docs HEAD 93e6deddce69bb83e1b6056c8f2dcddf477a513e.
+6. Repo hibi89/hibi89-kic-proofinvest branch lead/kic, paths proofinvest/kuodra_capital_filing_watch.py, local_sec_guard_report.py, kuodra_capture_replay.py, local_sec_html_report.py, tests/test_kuodra_capital_filing_watch.py, HANDOFF.md, STATUS.md.
+7. Recovery: normal git revert, no force push. No fetched original, GitHub public raw SEC source, secrets, consent/permission change, pricing or live SEC requests. Preserve P21 abandoned PowerShell launcher as non-shipped.
+8. Status: source code and tests P26 CI PENDING. Historic ownership searches, cross-filer rights, true 8-K content, actual capital action and production remain UNVERIFIED.
+9. Next: inspect CI once done; fix only evidenced errors. Owner-held genuine originals or separately authorized contact/User-Agent/retention needed to graduate beyond synthetic tests.
+10. Checkpoint: 2026-10-31 KST. Later final documentation can record exact CI SHA and numbers.
+
 ## 2026-10-31 KST KUODRA P25 share capital descriptive snapshot (CI 3/3 SUCCESS)
 
 1. Goal: fill previously missing SEC supported share count and limited change review. NO ownership/issuance/stock split adjusted dilution claims without true underlying filings.

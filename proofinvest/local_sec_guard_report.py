@@ -22,6 +22,7 @@ from .guard_workflow import run_guard_review
 from .local_risk_screen import screen_local_evidence
 from .kuodra_sec_balance import review_sec_balance_sheet
 from .kuodra_sec_shares import review_sec_shares_outstanding
+from .kuodra_capital_filing_watch import review_issuer_capital_filing_watch
 from .local_sec_packet import (
     _MAX_FILE_BYTES,
     _read_regular_local,
@@ -159,6 +160,13 @@ def review_local_sec_with_guard(
             or shares["guard_policy_modified"] is not False
             or shares["shares_change_is_not_dilution_or_issuance"] is not True):
         raise ValueError("SHARES_TRUST_CONTRACT_FAILURE")
+    capital_watch = review_issuer_capital_filing_watch(
+        submissions_json, cik=cik, as_of=as_of, collected_at=collected_at,
+    )
+    if (capital_watch["source_authenticated"] is not False
+            or capital_watch["beneficial_ownership_verified"] is not False
+            or capital_watch["guard_policy_modified"] is not False):
+        raise ValueError("CAPITAL_FILING_WATCH_TRUST_CONTRACT_FAILURE")
     source = packet["source"]
     text_node = source["html_text_node_literal_check"]
     text_ok = (
@@ -245,6 +253,7 @@ def review_local_sec_with_guard(
         "risk": local_risk,
         "balance_sheet": balance_sheet,
         "share_capital": shares,
+        "capital_filing_watch": capital_watch,
         "guard": result["guard"],
         "human_review": result["review"],
         "audit": result["audit"],

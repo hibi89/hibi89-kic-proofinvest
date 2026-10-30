@@ -158,6 +158,7 @@ def replay_saved_capture(
         "risk": report["risk"],
         "balance_sheet": report["balance_sheet"],
         "share_capital": report["share_capital"],
+        "capital_filing_watch": report["capital_filing_watch"],
         "guard": report["guard"],
         "audit": report["audit"],
         "audit_chain_valid": report["audit_chain_valid"],
