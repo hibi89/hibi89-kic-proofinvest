@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .local_sec_guard_report import _check_audit_path, review_local_sec_with_guard
+from .local_sec_packet import _read_regular_local
+from .kuodra_macro import review_macro_context
 from .sec_capture_bundle import _read_checked_capture_bundle
 
 
@@ -34,6 +36,7 @@ def replay_saved_capture(
     current_end: str, prior_end: str, needle: str,
     claimed_growth_pct: str | None = None,
     acknowledge_local_audit_persistence: bool = False,
+    macro_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Replay a bounded, previously captured ZIP with no HTTP or model.
 
@@ -65,6 +68,18 @@ def replay_saved_capture(
             or any(x is None for x in instants)
             or instants != sorted(instants)):
         raise ValueError("CAPTURE_RECEIPT_CHRONOLOGY_INVALID")
+    # Gate optional external context before any SQLite side effect.
+    # Metadata-only contextual cards must not change numeric SEC/Guard policy.
+    macro_review = None
+    if macro_context is not None:
+        if not isinstance(macro_context, Mapping):
+            raise ValueError("MACRO_CONTEXT_INVALID_INPUT")
+        macro_review = review_macro_context(
+            original_filing=raws["original_filing"],
+            issuer_cik=receipt["issuer_cik"], as_of=day,
+            exposures=macro_context.get("exposures"),
+            observations=macro_context.get("observations"),
+        )
     # Use the recorded ORIGINAL observation time. Not today's time and
     # never an invented historical backdating certificate.
     report = review_local_sec_with_guard(
@@ -86,6 +101,10 @@ def replay_saved_capture(
             or report["guard"]["decision"] not in ("HOLD", "REJECT")):
         # An inconsistent post-write report MUST NOT be marked successful.
         raise ValueError("CAPTURE_REPLAY_POSTWRITE_INTEGRITY_FAILURE")
+    if (macro_review is not None
+            and macro_review["original_filing_sha256"]
+            != actual["archived_original_sha256"]):
+        raise ValueError("MACRO_CONTEXT_ORIGINAL_HASH_CONFLICT")
     return {
         "schema": "kuodra.offline-captured-sec-replay.v1",
         "status": "OFFLINE_CAPTURE_REVIEW_RECORDED",
@@ -105,6 +124,7 @@ def replay_saved_capture(
         "ai_agent_executed": False,
         "trade_executed": False,
         "official_contest_submission": False,
+        **({"macro_context": macro_review} if macro_review is not None else {}),
     }
 
 
@@ -117,15 +137,28 @@ def main(argv: list[str] | None = None) -> int:
     for key in ("run-id", "current-end", "prior-end", "needle"):
         p.add_argument("--" + key, required=True)
     p.add_argument("--claimed-growth-pct")
+    p.add_argument("--macro-context-json", type=Path,
+                   help="Optional local JSON with exposures/observations; no feeds")
     p.add_argument("--acknowledge-local-audit-persistence", action="store_true")
     args = p.parse_args(argv)
     try:
+        if args.macro_context_json is not None:
+            macro_path = args.macro_context_json.expanduser().resolve(strict=False)
+            if macro_path in (
+                args.audit_db.expanduser().resolve(strict=False),
+                args.capture_zip.expanduser().resolve(strict=False),
+            ):
+                raise ValueError("MACRO_INPUT_PATH_COLLISION")
+            macro = json.loads(_read_regular_local(args.macro_context_json, 200_000))
+        else:
+            macro = None
         result = replay_saved_capture(
             bundle_path=args.capture_zip, audit_db=args.audit_db,
             run_id=args.run_id, current_end=args.current_end,
             prior_end=args.prior_end, needle=args.needle,
             claimed_growth_pct=args.claimed_growth_pct,
             acknowledge_local_audit_persistence=args.acknowledge_local_audit_persistence,
+            macro_context=macro,
         )
     except (ValueError, TypeError, KeyError, OSError, sqlite3.Error):
         p.exit(2, "KUODRA offline capture replay blocked\n")
