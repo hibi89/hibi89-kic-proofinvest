@@ -179,7 +179,7 @@ def build_local_sec_review_packet(
         raise ValueError("ORIGINAL_CROSSLINK_UNAVAILABLE")
 
     if (span.get("filing_sha256") != hashlib.sha256(original_filing).hexdigest()
-            or index["source_sha256"] != hashlib.sha256(submissions_json).hexdigest()
+            or index["source_sha256"] != hashlib.sha256(index_raw).hexdigest()
             or span.get("source_uri") != link.get("filing_source_uri")):
         raise ValueError("EVIDENCE_INTEGRITY_CHECK_FAILED")
     text_node_literal = confirm_html_text_node_literal(
