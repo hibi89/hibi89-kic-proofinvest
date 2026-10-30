@@ -132,6 +132,32 @@ def _render_offline_agent_trace(st, claim: str) -> None:
     )
 
 
+def _read_guard_history_rows(db_path: Path) -> tuple[list[tuple], list[tuple]]:
+    """Read existing Guard audit history; explicitly release SQLite on Windows.
+
+    The calling UI verifies the audit and human-review chains before display.
+    """
+    from contextlib import closing
+    import sqlite3
+
+    with closing(sqlite3.connect(db_path)) as conn:
+        conn.execute("PRAGMA query_only=ON")
+        rows = conn.execute(
+            "SELECT event_id, run_id, event_type, event_hash, created_at "
+            "FROM guard_audit_events ORDER BY event_id DESC LIMIT 50"
+        ).fetchall()
+        review_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='guard_human_reviews'"
+        ).fetchone()
+        reviews = (conn.execute(
+            "SELECT review_id, run_id, reviewer, action, reason, "
+            "reviewed_at, record_hash FROM guard_human_reviews "
+            "ORDER BY review_id DESC LIMIT 50"
+        ).fetchall() if review_table else [])
+    return rows, reviews
+
+
 def _render_sec_curated_case(st) -> None:
     """Use the SEC-format local data verifier; never imply live SEC connectivity."""
     st.title("ProofInvest — SEC 10-K 연매출 검산 (오프라인)")
@@ -262,20 +288,7 @@ def _render_sec_curated_case(st) -> None:
                     if not store.verify_chain() or not GuardReviewStore(db_path).verify_reviews():
                         st.error("감사 또는 사람 검토 무결성 검증 실패 — 이력 표시를 중단합니다.")
                     else:
-                        with sqlite3.connect(db_path) as conn:
-                            rows = conn.execute(
-                                "SELECT event_id, run_id, event_type, event_hash, created_at "
-                                "FROM guard_audit_events ORDER BY event_id DESC LIMIT 50"
-                            ).fetchall()
-                            review_table = conn.execute(
-                                "SELECT 1 FROM sqlite_master WHERE type='table' "
-                                "AND name='guard_human_reviews'"
-                            ).fetchone()
-                            reviews = (conn.execute(
-                                "SELECT review_id, run_id, reviewer, action, reason, "
-                                "reviewed_at, record_hash FROM guard_human_reviews "
-                                "ORDER BY review_id DESC LIMIT 50"
-                            ).fetchall() if review_table else [])
+                        rows, reviews = _read_guard_history_rows(db_path)
                         st.success("Guard 결정 감사 체인 검증 통과 (로컬 무결성만)")
                         st.dataframe([
                             {"event_id": a, "run_id": b, "type": c, "sha256": d, "UTC": e}
