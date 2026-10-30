@@ -115,13 +115,23 @@ def run(output: Path) -> dict:
                             page.get_by_text("사람 검토 기록 — 로컬 모의").last.click()
                         expect(review_button).to_be_visible(timeout=10000)
                         review_button.click()
-                        # A successful Streamlit form submit rerenders a collapsed
-                        # expander; the success is present but initially hidden.
+                        # Streamlit may auto-collapse the review expander on
+                        # submit. The success message exists in the DOM but
+                        # is hidden in that closed panel: browser visibility
+                        # is not the durable acceptance criterion. Check that
+                        # the actual SQLite review row was committed instead.
                         success_message = page.get_by_text("모의 검토 기록 저장 완료")
                         expect(success_message).to_have_count(1, timeout=15000)
-                        if not success_message.is_visible():
-                            page.get_by_text("사람 검토 기록 — 로컬 모의").last.click()
-                        expect(success_message).to_be_visible(timeout=10000)
+                        with sqlite3.connect(db) as review_conn:
+                            review_rows = review_conn.execute(
+                                "SELECT COUNT(*) FROM guard_human_reviews"
+                            ).fetchone()[0]
+                            saved_action = review_conn.execute(
+                                "SELECT action FROM guard_human_reviews"
+                            ).fetchone()
+                        if (review_rows != 1 or saved_action != ("ACKNOWLEDGE",)
+                                or not GuardReviewStore(db).verify_reviews()):
+                            raise AssertionError("Browser review not committed or invalid")
 
                         page.get_by_text("저장된 Guard 감사 이력 조회").click()
                         page.get_by_role("button", name="감사 무결성·이력 조회").click()

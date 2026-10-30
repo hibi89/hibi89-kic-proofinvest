@@ -1,3 +1,16 @@
+## 2026-10-30 KST — Browser review E2E failure investigated and fixed
+
+1. Goal: repair exact failed CI gate without bypassing persisted evidence validation.
+2. Evidence: Source SHA `c7f77a32`, GitHub Actions #41004019937 Python full tests PASS and Chromium FAIL at `scripts/guard_browser_smoke.py:124`, `expect(success_message).to_be_visible(timeout=10000)`. Trace says locator resolved 24 times to text `모의 검토 기록 저장 완료` but hidden inside Streamlit's automatically collapsed review expander.
+3. Change: keep explicit form submit and confirmation message existence; replace fragile visibility condition with direct SQLite `guard_human_reviews` row count=1, `action=ACKNOWLEDGE`, and `GuardReviewStore.verify_reviews()`. Subsequent existing audit/history verification and screenshot remain.
+4. Risk: Gate still fails on missing form submit, incorrect action, missing/extra persisted row or corrupted review hash. No production/user DB, SEC API, live LLM, trading, credential or official DAKER effect.
+5. CI: Prior python PASS on c7f77a32 does not prove current SHA; rerun new SHA's Actions Python + Chromium jobs. Earlier queued SHA results and new UI behavior must be independently validated.
+6. Repository: `hibi89/hibi89-kic-proofinvest@lead/kic`; parent `fd32fe4192a5770973ff8e1bf8fff063c7e02dd2`; modified `scripts/guard_browser_smoke.py`, `STATUS.md`, `HANDOFF.md`.
+7. Acceptance command: `python -B -m scripts.guard_browser_smoke /tmp/kic-guard-browser` in local CI with Chromium + Playwright, plus `python -B -m scripts.verify_local --full`.
+8. Backups: Git SHA parent retains previous browser behavior. No changes to original evidence, approved private PDF, other hackathon repositories or customer data.
+9. Next: inspect exact new CI and if failures continue use job logs; then verify synthetic SEC-to-Guard Streamlit mode, including button click and screenshot.
+10. Recorded 2026-10-30 KST; work committed but new-source PASS/Production still unverified.
+
 ## 2026-10-30 KST — STREAMLIT SYNTHETIC SEC→GUARD HANDOFF
 
 1. Objective: Connect proven-by-source existing offline SEC→Guard command to a usable judge-facing Streamlit view without pretending external authenticity or shipping a new backend.
