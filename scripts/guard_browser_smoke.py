@@ -217,9 +217,16 @@ def run(output: Path) -> dict:
                         )
                         try:
                             diagnostics.append(capture_selectbox("before_open"))
-                            model_group = page.get_by_role("group").filter(has=model_picker)
-                            model_group.get_by_role("button", name="Open").click()
-                            diagnostics.append(capture_selectbox("after_open"))
+                            # Previous trace confirmed the Open-button
+                            # click only focused the input (aria-expanded
+                            # remained false and no listbox mounted). Use the
+                            # documented accessible combobox keyboard action.
+                            model_picker.focus()
+                            model_picker.press("ArrowDown")
+                            diagnostics.append(capture_selectbox("after_arrow_down"))
+                            expect(model_picker).to_have_attribute(
+                                "aria-expanded", "true", timeout=4000
+                            )
                             page.screenshot(
                                 path=str(output / "mock-proposal-menu-after-open.png")
                             )
