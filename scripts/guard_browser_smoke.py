@@ -371,6 +371,32 @@ def run(output: Path) -> dict:
                                         "official_kic_submission"
                                     ))):
                                 raise AssertionError("Unsafe browser judge ZIP")
+                        # Independent cold entry from the exact link a KIC
+                        # judge will receive. The page must show the guard
+                        # landing, but must NOT run the synthetic pipeline
+                        # before an explicit click.
+                        judge = browser.new_page(
+                            viewport={"width": 1440, "height": 900},
+                            device_scale_factor=1,
+                        )
+                        try:
+                            judge.goto(URL + "/?demo=guard",
+                                       wait_until="domcontentloaded", timeout=30000)
+                            expect(judge.get_by_text(
+                                "ProofInvest — SEC 근거부터 Guard 감사까지"
+                            )).to_be_visible(timeout=20000)
+                            expect(judge.get_by_text(
+                                "실행 전에는 DB를 만들지 않습니다.", exact=False
+                            )).to_be_visible(timeout=15000)
+                            expect(judge.get_by_role(
+                                "button", name="합성 SEC→Guard 검증 실행"
+                            )).to_be_visible(timeout=15000)
+                            judge.screenshot(
+                                path=str(output / "judge-direct-link-before-run.png"),
+                                full_page=True,
+                            )
+                        finally:
+                            judge.close()
                     finally:
                         browser.close()
 
@@ -423,6 +449,8 @@ def run(output: Path) -> dict:
                     "sec_guard_synthetic_only": True,
                     "synthetic_html_download_verified": True,
                     "synthetic_html_download": "sec-guard-browser-downloaded-script.html",
+                    "judge_deeplink_verified": True,
+                    "judge_deeplink_screenshot": "judge-direct-link-before-run.png",
                     "synthetic_comparison_download_verified": True,
                     "synthetic_full_judge_zip_verified": True,
                     "synthetic_full_judge_zip": "sec-guard-browser-judge-pack.zip",
