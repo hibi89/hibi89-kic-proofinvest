@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P22 P20→Guard operator source digest binding (CI pending)
+
+1. Goal: Close the P20 untrusted local preview → separately invoked offline Guard/SQLite evidence swap gap. P20 already emits three exact file SHA-256, but direct local_sec_guard_report previously accepted newer different file bytes even after operator preview without a binding.
+2. Design A: independently trust file paths/mtimes, cheaper coding but TOCTOU and false evidence reuse risk; design B: require explicit exact 3 pinned SHA256 when supplied and rehash loaded file bytes before any Guard audit side effect. Selected B, zero network and no extra cost, backward-compatible opt-in.
+3. Scope: proofinvest/local_sec_guard_report.py adds optional expected_source_sha256 mapping to function and CLI trio --expected-submissions-sha256, --expected-companyfacts-sha256, --expected-original-sha256. All-or-nothing; strict 64 lowercase ASCII hex; match after raw reads but before packet build / SQLite creation, reject changed source or invalid pins. With pinned 3 files, history_page_json is disallowed by CLI because its fourth source is not covered by P20 pins. Result displays operator_reviewed_source_digests_matched boolean, not SEC provenance.
+4. Tests: new offline 7-case tests/test_kuodra_source_pins_guard.py runs P20 preview through actual Python CLI to Guard HOLD/SQLite with explicit opt-in; checks each of 3 swapped bytes, missing/malformed pins, no DB on failure, legacy no-pins compatibility and refusal to claim SEC source rights/provenance. No external SEC/Gemini.
+5. Prior verified source P20 (P21 rollback): 1ccd1778071de4f9a09af43667500816b6b27612 Actions #41114899811 3/3 SUCCESS and Python 871 executed/0 failed/errors/skipped, Windows SQLite PASS, Chromium PASS. Documentation HEAD 0ef54ee750087e5c9a48e989e659cbec1124b410.
+6. Recovery/authorization: ordinary GitHub parent SHA available; only allow owner to opt into SQLite persistence using existing --acknowledge-local-audit-persistence. No raw source saved to GitHub, no new dependencies, no external network/rights, no unattended execution or trading.
+7. Repo/paths: hibi89/hibi89-kic-proofinvest lead/kic; local_sec_guard_report.py, tests/test_kuodra_source_pins_guard.py and current HANDOFF/STATUS. Same README direct Python commands, no unsupported Windows wrapper reintroduction.
+8. Validation: exact SHA workflow CI Python full suite / Windows SQLite / Chromium pending. The new tests use synthetic SEC-shaped fixture; true issuer original and Gemini/Production still unverified. Do not interpret SHA integrity as actual SEC provenance.
+9. Next: validate source CI; if PASS, real owner-supplied 3-source files can be preflighted with P20 then Guard can run with SHA pins and independent explicit audit consent. No actual SEC 3 GETs without separate contact/retention approval.
+10. Checkpoint: 2026-10-31 KST P22 implementation pending exact CI result.
+
 ## 2026-10-31 KST — KUODRA P21 STOP/PIVOT Windows launcher, P20 baseline restored
 
 1. Goal: accept genuine owner-held SEC Submissions JSON + full CompanyFacts JSON + 10-K HTML on Windows without network, raw upload, fake transport receipt or SQLite side effect. No genuine three-source file set is available in accessible tracked GitHub/Library; real acceptance is BLOCKED.

@@ -6,11 +6,13 @@ issuer/source authentication, rights attestation or investment advice.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sqlite3
 import stat
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
@@ -26,6 +28,36 @@ from .local_sec_packet import (
 )
 
 _REVIEW_ACTIONS = frozenset(("ACKNOWLEDGE", "REQUEST_EXCEPTION"))
+_PINNED_KEYS = frozenset(("submissions", "companyfacts", "original_filing"))
+_SHA256 = re.compile(r"[0-9a-f]{64}\\Z", re.ASCII)
+
+
+def _pinned_local_source_match(
+    expected: Mapping[str, str] | None, *,
+    submissions: bytes, companyfacts: bytes, original: bytes,
+) -> bool:
+    """Check reviewed source pins BEFORE building packets or opening SQLite.
+
+    Returning True means ONLY local byte identity to operator-reviewed hashes.
+    It never authenticates any SEC endpoint, filing owner or usage rights.
+    """
+    if expected is None:
+        return False
+    if (not isinstance(expected, Mapping)
+            or set(expected) != _PINNED_KEYS
+            or any(type(expected[k]) is not str
+                   or _SHA256.fullmatch(expected[k]) is None for k in _PINNED_KEYS)):
+        raise ValueError("INVALID_OPERATOR_SOURCE_DIGESTS")
+    local = {
+        "submissions": submissions,
+        "companyfacts": companyfacts,
+        "original_filing": original,
+    }
+    if any(type(local[k]) is not bytes
+           or hashlib.sha256(local[k]).hexdigest() != expected[k]
+           for k in _PINNED_KEYS):
+        raise ValueError("OPERATOR_REVIEWED_SOURCE_BYTES_CHANGED")
+    return True
 
 
 def _check_audit_path(path: str | Path) -> Path:
@@ -63,6 +95,7 @@ def review_local_sec_with_guard(
     action: str | None = None,
     reason: str | None = None,
     required_review_intent: str | None = None,
+    expected_source_sha256: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Read three local inputs, emit a safe report and persist explicit audit.
 
@@ -70,6 +103,13 @@ def review_local_sec_with_guard(
     Even structurally matching SEC-shaped facts are not authenticated. The
     legacy Guard remains unchanged; this path can only HOLD or REJECT.
     """
+    # Bind P20 read-only previews to the EXACT three bytes passed to Guard.
+    # Reject any swap before touching even a new, disposable audit DB.
+    source_pins_matched = _pinned_local_source_match(
+        expected_source_sha256,
+        submissions=submissions_json, companyfacts=companyfacts_json,
+        original=original_filing,
+    )
     db_path = _check_audit_path(audit_db_path)
     if required_review_intent not in (None, "SOURCE_REVIEW", "RISK_CHECK"):
         raise ValueError("UNSUPPORTED_SEC_REVIEW_INTENT")
@@ -200,6 +240,7 @@ def review_local_sec_with_guard(
         "audit": result["audit"],
         "audit_chain_valid": True,
         "human_review_integrity_valid": True,
+        "operator_reviewed_source_digests_matched": source_pins_matched,
         "limits": {
             "external_source_authenticated": False,
             "source_rights_verified": False,
@@ -227,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--acknowledge-local-audit-persistence",
                         action="store_true", required=True)
     parser.add_argument("--claimed-growth-pct")
+    for field in ("submissions", "companyfacts", "original"):
+        parser.add_argument("--expected-" + field + "-sha256")
     parser.add_argument("--history-page-json", type=Path)
     parser.add_argument("--history-page-name")
     parser.add_argument("--report-html", type=Path, help="Explicit new local HTML report; never overwrites")
@@ -234,6 +277,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
     parser.add_argument("--reason")
     args = parser.parse_args(argv)
+    pins = (args.expected_submissions_sha256,
+            args.expected_companyfacts_sha256,
+            args.expected_original_sha256)
+    if 0 < sum(x is not None for x in pins) < 3:
+        parser.exit(2, "Local SEC Guard report blocked: ALL_THREE_SOURCE_PINS_REQUIRED\\n")
+    expected_pins = None if all(x is None for x in pins) else {
+        "submissions": pins[0],
+        "companyfacts": pins[1],
+        "original_filing": pins[2],
+    }
+    if expected_pins is not None and args.history_page_json is not None:
+        parser.exit(2, "Local SEC Guard report blocked: HISTORY_PAGE_NOT_PINNED\\n")
     # Resolve paths before touching input data or a persistent audit: a
     # destination must never alias any source, nor may HTML and the audit
     # database share an uncreated destination (SQLite otherwise wins race).
@@ -275,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
                                if args.history_page_json is not None else None),
             history_page_name=args.history_page_name,
             reviewer=args.reviewer, action=args.action, reason=args.reason,
+            expected_source_sha256=expected_pins,
         )
     except (ValueError, OSError, TypeError, OverflowError, RecursionError,
             sqlite3.DatabaseError) as exc:
