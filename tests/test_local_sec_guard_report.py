@@ -1,6 +1,8 @@
 """Offline local SEC evidence -> verification/risk/Guard/SQLite/report E2E."""
 import json
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -130,6 +132,49 @@ class LocalSecGuardReportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             review_local_sec_with_guard(**(fixture(alias)))
         self.assertEqual(existing.read_bytes(), b"existing-user-file")
+
+    def test_cli_opt_in_preserves_db_and_replay_receipt(self):
+        """Exercise actual Python module CLI and existing SQLite, not a mock."""
+        base = fixture(self.db)
+        paths = {}
+        for key in ("submissions_json", "companyfacts_json", "original_filing"):
+            src = Path(self.folder.name) / (key + ".input")
+            src.write_bytes(base[key])
+            paths[key] = src
+        cmd = [
+            sys.executable, "-B", "-m", "proofinvest.local_sec_guard_report",
+            "--submissions-json", str(paths["submissions_json"]),
+            "--companyfacts-json", str(paths["companyfacts_json"]),
+            "--original-file", str(paths["original_filing"]),
+            "--cik", base["cik"], "--accession", base["accession"],
+            "--as-of", base["as_of"], "--collected-at", base["collected_at"],
+            "--current-end", base["current_end"], "--prior-end", base["prior_end"],
+            "--needle", base["needle"], "--claimed-growth-pct",
+            base["claimed_growth_pct"], "--run-id", base["run_id"],
+            "--audit-db", str(self.db),
+        ]
+        working_dir = Path(__file__).resolve().parents[1]
+        denied = subprocess.run(cmd, cwd=working_dir, capture_output=True,
+                                text=True, timeout=30, check=False)
+        self.assertEqual(denied.returncode, 2)
+        self.assertFalse(self.db.exists(), "No opt-in: no SQLite side effects")
+        approved = cmd + ["--acknowledge-local-audit-persistence"]
+        first = subprocess.run(approved, cwd=working_dir, capture_output=True,
+                               text=True, timeout=30, check=False)
+        self.assertEqual(first.returncode, 0, first.stderr[:300])
+        receipt = json.loads(first.stdout)
+        self.assertEqual(receipt["guard"]["decision"], "HOLD")
+        self.assertEqual(receipt["verification"]["status"], "calculated_unverified")
+        self.assertFalse(receipt["audit"]["replayed"])
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+        self.assertNotIn(PHRASE, first.stdout)
+        second = subprocess.run(approved, cwd=working_dir, capture_output=True,
+                                text=True, timeout=30, check=False)
+        self.assertEqual(second.returncode, 0, second.stderr[:300])
+        self.assertTrue(json.loads(second.stdout)["audit"]["replayed"])
+        with sqlite3.connect(self.db) as conn:
+            count = conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0]
+        self.assertEqual(count, 1)
 
     def test_no_external_http_in_three_source_guard_path(self):
         with patch("urllib.request.build_opener",

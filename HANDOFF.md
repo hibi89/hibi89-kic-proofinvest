@@ -1,3 +1,16 @@
+## 2026-10-30 KST — Real CLI subprocess regression gate
+
+1. **Goal and constraints:** Confirm executable entrypoint for previously added local SEC triple-source → Verification → untrusted Risk → Guard → SQLite audit → report, with no external network, live investment action, source certification or DAKER submission.
+2. **Change:** Added \`test_cli_opt_in_preserves_db_and_replay_receipt\` in \`tests/test_local_sec_guard_report.py\`, exercising \`python -B -m proofinvest.local_sec_guard_report\` through actual subprocesses. \`README.md\` briefly documents required \`--acknowledge-local-audit-persistence\` and explicit local file/DB inputs.
+3. **Tests:** Test written but unexecuted as this update is authored. Test requires missing-flag process exit 2 and no DB; opted-in process returns JSON/HOLD, auditable DB; repeated process replays without new rows. Prior baseline CI \`50f8ea09\` #41003382191 SUCCESS; \`c7f77a32\` #41004019937 was QUEUED at initial check. Verify this new commit SHA separately.
+4. **State:** Code/tests GitHub write planned in one branch commit; runtime verification pending CI/approved local. Live SEC, user originals, private PDF and Production still unverified.
+5. **Error or pivot:** GitHub CI jobs for recent source SHA remained queued at observation; don't re-trigger additional jobs or invent PASS. Direct container checkout previously failed DNS, so one exact-SHA CI outcome is preferred.
+6. **Repo/branch/files:** \`hibi89/hibi89-kic-proofinvest@lead/kic\`; files \`tests/test_local_sec_guard_report.py\`, \`README.md\`, \`STATUS.md\`, \`HANDOFF.md\`. Prior code SHA \`c7f77a32\`, prior docs HEAD \`46c191e0\` as rollback.
+7. **Production/environment:** None deployed/verified; Python 3.11 + local SQLite + GitHub Actions \`offline-tests\`. Commands \`python -B -m unittest tests.test_local_sec_guard_report -v\`, full \`python -B -m scripts.verify_local --full\`; browser and Windows compatibility for new path unverified.
+8. **Sources/security:** Only synthetic tests; no source ZIP, user data/DB, SEC user-agent, secrets, private PDF/PPTX, payments or external submit. User-provided local files are read-only by contract; audit database writes require explicit CLI acknowledgement.
+9. **Next gate:** Inspect Actions result for new SHA; repair actual code failure if any. Keep final PDF owner approval and separate DAKER submission authority before Nov12 10:00 KST; final deliverable must reflect real validated behavior.
+10. **As-of:** 2026-10-30 KST, reviewed \`lead/kic@46c191e0\`. Source CI for this new version pending after commit. Docs must not be used to assert run success.
+
 ## 2026-10-30 KST — Local SEC evidence-to-Guard audit report integrated (10-field handoff)
 
 1. **Goal, binding requirements and stack:** Progress KIC ProofInvest's existing source-linked SEC → numeric Verification → unverified Risk screen → Guard → explicit human review/SQLite audit → report flow, using Python stdlib + pre-existing modules only. Official organizer 7-part <=10-page PDF due 2026-11-12 10:00 KST is separate; finalist-only macro/RAG design remains conditional.
