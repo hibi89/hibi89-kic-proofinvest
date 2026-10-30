@@ -548,6 +548,12 @@ def render_synthetic_guard_ui(st) -> None:
         st.markdown("#### 03 / 검증 근거 흐름")
         st.caption("아래 6단계는 방금 실행한 합성 데이터 결과에서 생성합니다. 외부 원문 인증은 없습니다.")
         st.markdown(render_judge_evidence_trace_html(report), unsafe_allow_html=True)
+        # Remain visible even while the detailed table is collapsed.
+        # Browser/evidence operators rely on this status as a checkable fact.
+        st.caption(
+            "HTML 인용 검증: " + source["html_text_node_status"]
+            + " · 원문 SHA256: " + source["archived_original_sha256"]
+        )
         with st.expander("기술 검증값 · 원문 바이트 및 정책 근거", expanded=False):
             st.dataframe(
                 [
@@ -564,10 +570,6 @@ def render_synthetic_guard_ui(st) -> None:
                 ],
                 use_container_width=True,
                 hide_index=True,
-            )
-            st.caption(
-                "HTML 인용 검증: " + source["html_text_node_status"]
-                + " · 원문 SHA256: " + source["archived_original_sha256"]
             )
 
     c1, c2 = st.columns(2)
