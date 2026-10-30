@@ -298,11 +298,19 @@ def run(output: Path) -> dict:
                         scenario = page.get_by_role(
                             "combobox", name="검증 시나리오"
                         )
+                        # React Aria options remount during Streamlit reruns.
+                        # Choose the single filtered option via focused keyboard
+                        # instead of clicking a DOM node that can detach.
                         scenario.click()
                         scenario.fill("주장 불일치")
-                        page.get_by_role(
-                            "option", name="주장 불일치 → REJECT"
-                        ).click(timeout=10000)
+                        expect(page.get_by_role(
+                            "option", name="주장 불일치 → REJECT", exact=True
+                        )).to_have_count(1, timeout=10000)
+                        scenario.press("ArrowDown")
+                        scenario.press("Enter")
+                        expect(scenario).to_have_value(
+                            "주장 불일치 → REJECT", timeout=15000
+                        )
                         execute.click()
                         expect(page.get_by_text(
                             "REJECT", exact=True
@@ -314,9 +322,15 @@ def run(output: Path) -> dict:
 
                         scenario.click()
                         scenario.fill("스크립트에만 있는 인용")
-                        page.get_by_role(
-                            "option", name="스크립트에만 있는 인용 → HOLD"
-                        ).click(timeout=10000)
+                        expect(page.get_by_role(
+                            "option", name="스크립트에만 있는 인용 → HOLD",
+                            exact=True
+                        )).to_have_count(1, timeout=10000)
+                        scenario.press("ArrowDown")
+                        scenario.press("Enter")
+                        expect(scenario).to_have_value(
+                            "스크립트에만 있는 인용 → HOLD", timeout=15000
+                        )
                         execute.click()
                         expect(page.get_by_text(
                             "HOLD", exact=True
