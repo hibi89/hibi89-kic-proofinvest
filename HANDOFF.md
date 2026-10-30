@@ -1,3 +1,11 @@
+## 2026-10-30 KST — NEW private V8 proposal QA; NO submission
+1. **Goal / decision:** Verify current owner candidate against the actual organizer PPTX, fix two page-10 defects in a *new private copy* only (stale GitHub `feature/kic-integrated-components` URL and missing model-name disclosure). Preserved V7 and organizer originals.
+2. **Candidate:** V8 PDF `KIC_ProofInvest_Global_V8_PRIVATE_REVIEW_20261030.pdf`, SHA256 `78d2b55390d6a9ffefcf9eab9c9754a1f921c0b2d0af239a3d64530144747310`, 481732 bytes, 10 pages. Private PPTX SHA `ad6648dbc244479e533684d0ff72f272399a6a3ed046eb821a4ad52217a0d298`. Full QA `docs/roles/lead/KIC_V8_PRIVATE_QA_20261030.md`.
+3. **Actual verification:** 258/258 V7 shapes geometrically preserved, official template 96/96 retained original shapes geometrically preserved and 8 instruction placeholders intentionally removed, PDF pages 1–9 pixel-identical, p10 approved *for technical review only*, no out-of-bounds/glyph corruption, 4 correct URLs, ZIP positive/tamper negative.
+4. **No false completion:** Owner approval / authenticated DAKER upload/final receipt / real SEC and Production **NOT DONE**. KIC source code unchanged; old exact upload pin intentionally still rejects V8. Private files are NOT in public GitHub or automatically persisted Library.
+5. **Next:** Participant review of exact V8 title/content/SHA; explicit approval before pin changes; separate final portal authorization and receipt by 2026-11-12 10:00 KST. No additional scope inflation. Rollback: prior source HEAD `4bdcd29d7cf0`; documentation-only commit, never force push.
+6. **Reference timestamp:** 2026-10-30 KST, offline PyMuPDF+python-pptx+LibreOffice verified. PDF/PPTX are private conversation artifacts, not tested in DAKER. This documentation commit's own CI/SHA must be read after push.
+
 ## 2026-10-30 KST — KIC/DL selective integration audit (resume)
 1. **Goal:** Check four feature-only DL modules against current KIC lead and decide whether full merge is necessary.
 2. **Outcome:** Source-level matrix `docs/architecture/KIC_DL_SELECTIVE_INTEGRATION_AUDIT_20261030.md`. CompanyFacts, text extraction and inline XBRL partially duplicate KIC logic; older-page `history.py` is a real future capability gap. Keep preliminary standalone; target one offline history receipt adapter only if finalist work is approved.
