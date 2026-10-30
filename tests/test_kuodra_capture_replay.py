@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import io
+from contextlib import redirect_stdout
 import json
 import tempfile
 import unittest
@@ -12,7 +14,7 @@ from proofinvest.kic_dl_demo import (
     synthetic_companyfacts, synthetic_submissions, SYNTHETIC_CIK, SYNTHETIC_ACCESSION
 )
 from proofinvest.kic_dl_original_demo import PHRASE, SYNTHETIC_HTML
-from proofinvest.kuodra_capture_replay import replay_saved_capture
+from proofinvest.kuodra_capture_replay import main, replay_saved_capture
 from proofinvest.sec_capture_bundle import save_local_capture_bundle
 from proofinvest.guard_audit import GuardAuditStore
 
@@ -187,6 +189,50 @@ class KuodraCaptureReplayTests(unittest.TestCase):
             replay_saved_capture(**(self.kwargs | {
                 "macro_raw_observations": {"SP500": b"{}"},
             }))
+        self.assertFalse(self.db.exists())
+
+    def _cli_raw_fixture(self):
+        macro = self._macro()
+        observation = macro["observations"][0]
+        raw = json.dumps({
+            k: v for k, v in observation.items() if k != "payload_sha256"
+        }, ensure_ascii=False).encode("utf-8")
+        observation["payload_sha256"] = hashlib.sha256(raw).hexdigest()
+        raw_path = self.root / "cpi-observation.json"
+        raw_path.write_bytes(raw)
+        macro_path = self.root / "macro-context.json"
+        macro_path.write_text(json.dumps(macro), encoding="utf-8")
+        command = [
+            "--capture-zip", str(self.zip),
+            "--audit-db", str(self.db),
+            "--run-id", "cli-integrity-001",
+            "--current-end", "2025-09-30",
+            "--prior-end", "2024-09-30",
+            "--needle", PHRASE,
+            "--claimed-growth-pct", "100.00",
+            "--macro-context-json", str(macro_path),
+            "--macro-raw", f"US_CPI_YOY={raw_path}",
+            "--acknowledge-local-audit-persistence",
+        ]
+        return raw_path, command
+
+    def test_actual_cli_reads_raw_json_and_writes_guard_once(self):
+        _, command = self._cli_raw_fixture()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(command), 0)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["macro_context"]["raw_observation_count_verified"], 1)
+        self.assertTrue(report["macro_context"]["cards"][0]["raw_observation_sha256_verified"])
+        self.assertEqual(report["guard"]["decision"], "HOLD")
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
+    def test_actual_cli_rejects_tampered_raw_before_audit(self):
+        raw_path, command = self._cli_raw_fixture()
+        raw_path.write_bytes(raw_path.read_bytes() + b" ")
+        with self.assertRaises(SystemExit) as err:
+            main(command)
+        self.assertEqual(err.exception.code, 2)
         self.assertFalse(self.db.exists())
 
     def test_collision_with_input_prevents_write(self):
