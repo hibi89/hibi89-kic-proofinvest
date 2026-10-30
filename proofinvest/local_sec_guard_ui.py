@@ -17,6 +17,7 @@ from .kic_dl_demo import (
 )
 from .kic_dl_original_demo import PHRASE, SYNTHETIC_HTML
 from .local_sec_guard_report import review_local_sec_with_guard
+from .local_sec_html_report import render_local_sec_html
 
 SCENARIOS = {
     "수치 일치 → HOLD": "matched",
@@ -259,6 +260,7 @@ def render_synthetic_guard_ui(st) -> None:
         report = run_synthetic_guard_case(SCENARIOS[choice])
         safe_json = export_synthetic_guard_json(report)
         safe_markdown = export_synthetic_guard_markdown(report)
+        safe_html = render_local_sec_html(report)
     except (ValueError, OSError, KeyError, TypeError, OverflowError):
         st.error("로컬 검증 또는 보고서 안전 검사 실패 — 결과 표시와 내보내기를 차단했습니다.")
         return
@@ -342,10 +344,10 @@ def render_synthetic_guard_ui(st) -> None:
         })
 
     st.markdown("#### 06 / 보고서 내보내기")
-    left, right = st.columns(2)
+    left, middle, right = st.columns(3)
     with left:
         st.download_button(
-            "합성 감사 JSON 다운로드 (실제 공시 아님)",
+            "합성 감사 JSON",
             data=safe_json,
             file_name="proofinvest_SYNTHETIC_SEC_GUARD_UNVERIFIED.json",
             mime="application/json",
@@ -353,9 +355,9 @@ def render_synthetic_guard_ui(st) -> None:
             on_click="ignore",
             use_container_width=True,
         )
-    with right:
+    with middle:
         st.download_button(
-            "심사용 Markdown 요약 (합성 전용)",
+            "심사용 Markdown",
             data=safe_markdown,
             file_name="proofinvest_SYNTHETIC_SEC_GUARD_REVIEW.md",
             mime="text/markdown",
@@ -363,4 +365,15 @@ def render_synthetic_guard_ui(st) -> None:
             on_click="ignore",
             use_container_width=True,
         )
+    with right:
+        st.download_button(
+            "오프라인 HTML 보고서",
+            data=safe_html,
+            file_name="proofinvest_SYNTHETIC_SEC_GUARD_REVIEW.html",
+            mime="text/html",
+            key="sec_guard_synthetic_html",
+            on_click="ignore",
+            use_container_width=True,
+        )
+    st.caption("세 형식 모두 합성 시연 결과만 포함하며, 공식 SEC·대회 인증 자료가 아닙니다.")
     st.warning("감사 해시 일치는 원문 진위/사용권리/투자 적격성 검증이 아닙니다.")

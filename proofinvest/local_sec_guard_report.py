@@ -201,9 +201,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
     parser.add_argument("--reason")
     args = parser.parse_args(argv)
-    # Do not touch the Guard audit if an optional HTML output destination
-    # is already occupied or invalid. open('xb') additionally closes races.
-    if args.report_html is not None:
+    # Resolve paths before touching input data or a persistent audit: a
+    # destination must never alias any source, nor may HTML and the audit
+    # database share an uncreated destination (SQLite otherwise wins race).
+    try:
+        input_locations = {
+            path.expanduser().resolve(strict=False)
+            for path in (args.submissions_json, args.companyfacts_json,
+                         args.original_file)
+        }
+        audit_location = args.audit_db.expanduser().resolve(strict=False)
+        html_location = (
+            args.report_html.expanduser().resolve(strict=False)
+            if args.report_html is not None else None
+        )
+    except (OSError, RuntimeError, ValueError):
+        parser.exit(2, "Local SEC Guard report blocked: INVALID_DESTINATION\n")
+    if audit_location in input_locations:
+        parser.exit(2, "Local SEC Guard report blocked: AUDIT_INPUT_PATH_COLLISION\n")
+    if html_location is not None:
+        if html_location in input_locations or html_location == audit_location:
+            parser.exit(2, "Local SEC Guard report blocked: HTML_PATH_COLLISION\n")
+        # Do not touch the Guard audit if the optional HTML destination
+        # already exists. open('xb') also guards against a later path race.
         output = args.report_html.expanduser()
         if (output.is_symlink() or output.exists()
                 or not output.parent.is_dir()):

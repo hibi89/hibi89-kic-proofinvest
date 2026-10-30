@@ -82,6 +82,54 @@ class LocalSecHtmlReportTests(unittest.TestCase):
         self.assertEqual(context.exception.code, 2)
         self.assertEqual(target_html.read_bytes(), saved)
 
+    def test_cli_rejects_audit_html_same_new_path_without_writing(self):
+        data = fixture(self.root / "unused.sqlite")
+        inputs = {}
+        for key in ("submissions_json", "companyfacts_json", "original_filing"):
+            path = self.root / (key + ".input")
+            path.write_bytes(data[key])
+            inputs[key] = path
+        shared = self.root / "shared.sqlite"
+        args = [
+            "--submissions-json", str(inputs["submissions_json"]),
+            "--companyfacts-json", str(inputs["companyfacts_json"]),
+            "--original-file", str(inputs["original_filing"]),
+            "--cik", data["cik"], "--accession", data["accession"],
+            "--as-of", data["as_of"], "--collected-at", data["collected_at"],
+            "--current-end", data["current_end"], "--prior-end", data["prior_end"],
+            "--needle", data["needle"], "--run-id", data["run_id"],
+            "--audit-db", str(shared), "--report-html", str(shared),
+            "--acknowledge-local-audit-persistence",
+        ]
+        with self.assertRaises(SystemExit) as context:
+            main(args)
+        self.assertEqual(context.exception.code, 2)
+        self.assertFalse(shared.exists())
+
+    def test_cli_rejects_audit_input_alias_before_modifying_source(self):
+        data = fixture(self.root / "unused.sqlite")
+        inputs = {}
+        for key in ("submissions_json", "companyfacts_json", "original_filing"):
+            path = self.root / (key + ".input")
+            path.write_bytes(data[key])
+            inputs[key] = path
+        original_bytes = inputs["companyfacts_json"].read_bytes()
+        args = [
+            "--submissions-json", str(inputs["submissions_json"]),
+            "--companyfacts-json", str(inputs["companyfacts_json"]),
+            "--original-file", str(inputs["original_filing"]),
+            "--cik", data["cik"], "--accession", data["accession"],
+            "--as-of", data["as_of"], "--collected-at", data["collected_at"],
+            "--current-end", data["current_end"], "--prior-end", data["prior_end"],
+            "--needle", data["needle"], "--run-id", data["run_id"],
+            "--audit-db", str(inputs["companyfacts_json"]),
+            "--acknowledge-local-audit-persistence",
+        ]
+        with self.assertRaises(SystemExit) as context:
+            main(args)
+        self.assertEqual(context.exception.code, 2)
+        self.assertEqual(inputs["companyfacts_json"].read_bytes(), original_bytes)
+
     def test_rejects_corrupted_audit_without_html(self):
         report = review_local_sec_with_guard(**fixture(self.root / "audit.sqlite"))
         report["audit_chain_valid"] = False

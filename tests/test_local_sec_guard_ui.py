@@ -130,6 +130,20 @@ class LocalSecGuardUiTests(unittest.TestCase):
         self.assertNotIn("https://", html)
         self.assertIn("prefers-color-scheme", html)
 
+    def test_all_three_export_formats_share_audit_receipt(self):
+        from proofinvest.local_sec_html_report import render_local_sec_html
+        from proofinvest.local_sec_guard_ui import export_synthetic_guard_markdown
+        for case in ("matched", "conflict", "script"):
+            with self.subTest(case=case):
+                report = run_synthetic_guard_case(case)
+                digest = report["audit"]["event_hash"]
+                self.assertIn(digest, export_synthetic_guard_json(report).decode())
+                self.assertIn(digest, export_synthetic_guard_markdown(report).decode())
+                html = render_local_sec_html(report).decode()
+                self.assertIn(digest, html)
+                self.assertIn("UNVERIFIED LOCAL FILES", html)
+                self.assertNotIn("<script", html.lower())
+
     def test_streamlit_new_mode_requires_click(self):
         from streamlit.testing.v1 import AppTest
         file = Path(__file__).resolve().parents[1] / "streamlit_app.py"
