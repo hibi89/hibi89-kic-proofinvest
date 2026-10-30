@@ -79,13 +79,25 @@ def main(argv=None) -> int:
         text=testlog.read_text(encoding="utf-8",errors="replace")
         count=re.search(r"Ran ([0-9]+) tests?",text)
         skips=re.search(r"OK \(skipped=([0-9]+)\)",text)
+        failed_line=re.search(r"(?m)^FAILED \(([^\n]+)\)$",text)
+        failure_counts=dict(
+            (key,int(value)) for key,value in
+            re.findall(r"(\w+)=([0-9]+)",failed_line.group(1))
+        ) if failed_line else {}
         executed=int(count.group(1)) if count else None
         passed=(process.returncode==0 and executed is not None and executed>0)
+        n_fail=failure_counts.get("failures",0)
+        n_err=failure_counts.get("errors",0)
+        n_skip=(int(skips.group(1)) if skips else
+                failure_counts.get("skipped",0) if failed_line else
+                0 if passed else None)
         details["tests"]={
             "status":"PASS" if passed else "FAIL",
             "executed":executed,
-            "skipped":int(skips.group(1)) if skips else 0 if passed else None,
-            "failed":0 if passed else "SEE_TEST_LOG",
+            "skipped":n_skip,
+            "failed":0 if passed else n_fail+n_err if failed_line else "SEE_TEST_LOG",
+            "failures":n_fail if failed_line or passed else None,
+            "errors":n_err if failed_line or passed else None,
             "exit_code":process.returncode,"log":"tests.log",
         }
         if not passed:
@@ -93,6 +105,10 @@ def main(argv=None) -> int:
             # inside an ephemeral temp directory. Print bounded unittest
             # failure sections without dumping successful test output.
             markers=list(re.finditer(r"(?m)^(?:FAIL|ERROR): [^\n]+$", text))
+            if markers:
+                print("All failing test names (up to 80):",file=sys.stderr)
+                for item in markers[:80]:
+                    print("  "+item.group(0)[:280],file=sys.stderr)
             for item in markers[:5]:
                 section=text[item.start():]
                 stop=section.find("\n======================================================================",1)
