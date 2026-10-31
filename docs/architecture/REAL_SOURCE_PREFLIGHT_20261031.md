@@ -1,3 +1,19 @@
+## P66 — Validate Engine C competitor growth against local SEC CompanyFacts originals
+
+By default KUODRA keeps the older offline A/B/C preflight intact; uploaded industry JSON contains operator-declared peer revenues and is NOT independently authenticated.
+
+To **opt in** to raw-byte checks for peers already declared in `--industry-json`, append the following THREE flags for **each** peer (up to 8) to the existing `python -m proofinvest.real_data_preflight` command with `--sec-bundle` or direct SEC 3 source files:
+
+```text
+--industry-json C:/Data/industry.json --peer-companyfacts C:/Data/peer_1_companyfacts.json --peer-cik 0000000007 --peer-accession 0000000007-25-000001
+```
+
+The above CIK/accession are **synthetic placeholders**. Repeat the three peer flags for every declared peer; mixed/incomplete coverage is blocked. All peers are currently required to share the exact prior/current period-end dates in the supplied industry JSON. This intentionally fails closed on mismatched fiscal calendars; different issuer calendars require an approved alignment strategy before claiming comparable market growth.
+
+Each peer's raw SEC-format CompanyFacts JSON is read locally (regular file only, no symlink, max 24MB each, max 48MB aggregate). The existing SEC annual revenue parser validates issuer CIK, selected 10-K accession, filing/as-of, period continuity and complete USD revenues. The exact file SHA must equal both that peer's previous and current source SHA values in industry JSON; both claimed source URLs must be `https://data.sec.gov/api/xbrl/companyfacts/CIK<PEER_CIK>.json` and claimed published date must match the selected filing date. Neither the URL claim nor local SHA certifies provider origin, timestamp, historical vintage or distribution rights. A successful report adds `peer_sec_companyfacts_check` with peer count, filing, digest and matched revenues; all authentication and rights flags remain false.
+
+Malformed/changed/contradictory files, unaligned periods, missing peer or wrong hash return `status=blocked`, `reason_code=PEER_COMPANYFACTS_CHECK_BLOCKED` and CLI exit=2; the temp SQLite audit is destroyed. Do NOT automatically accept failing peers or substitute other companies. This feature performs **zero SEC GET, vendor calls, database retention or trades**, and was tested with synthetic SEC-shaped bytes only. It is ready for owner-provided genuinely sourced file validation, NOT a real-data certification.
+
 ## P65 — Optional Apple 2025 original 24-cell gate in the complete offline A/B/C preflight
 
 Apple statement-table checking previously existed as a separate CLI/UI (P58–P63), while the read-only real-file preflight (P49/P51) independently evaluated the same SEC original against SEC-derived numbers and optional market/sector evidence. P65 connects those paths **only when explicitly enabled**, preserving existing behavior for other issuers and users without Apple original HTML.
