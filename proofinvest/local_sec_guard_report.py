@@ -32,33 +32,43 @@ from .local_sec_packet import (
 
 _REVIEW_ACTIONS = frozenset(("ACKNOWLEDGE", "REQUEST_EXCEPTION"))
 _PINNED_KEYS = frozenset(("submissions", "companyfacts", "original_filing"))
+_HISTORY_PINNED_KEYS = _PINNED_KEYS | frozenset(("history_page",))
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 
 
 def _pinned_local_source_match(
     expected: Mapping[str, str] | None, *,
     submissions: bytes, companyfacts: bytes, original: bytes,
+    history: bytes | None = None, history_name: str | None = None,
 ) -> bool:
-    """Check reviewed source pins BEFORE building packets or opening SQLite.
+    """Pin every bytes input. Historical evidence requires FOUR hashes.
 
-    Returning True means ONLY local byte identity to operator-reviewed hashes.
-    It never authenticates any SEC endpoint, filing owner or usage rights.
+    SHA256 only proves byte continuity; history name is independently bound
+    in the operator request and checked by the pinned SEC manifest parser.
     """
+    wants_history = history is not None or history_name is not None
     if expected is None:
         return False
+    if wants_history and (history is None or history_name is None):
+        raise ValueError("HISTORY_PAGE_AND_NAME_REQUIRED_TOGETHER")
+    keys = _HISTORY_PINNED_KEYS if wants_history else _PINNED_KEYS
     if (not isinstance(expected, Mapping)
-            or set(expected) != _PINNED_KEYS
+            or set(expected) != keys
             or any(type(expected[k]) is not str
-                   or _SHA256.fullmatch(expected[k]) is None for k in _PINNED_KEYS)):
+                   or _SHA256.fullmatch(expected[k]) is None for k in keys)):
+        if wants_history and isinstance(expected, Mapping) and set(expected) == _PINNED_KEYS:
+            raise ValueError("HISTORY_PAGE_NOT_PINNED")
         raise ValueError("INVALID_OPERATOR_SOURCE_DIGESTS")
     local = {
         "submissions": submissions,
         "companyfacts": companyfacts,
         "original_filing": original,
     }
+    if wants_history:
+        local["history_page"] = history
     if any(type(local[k]) is not bytes
            or hashlib.sha256(local[k]).hexdigest() != expected[k]
-           for k in _PINNED_KEYS):
+           for k in keys):
         raise ValueError("OPERATOR_REVIEWED_SOURCE_BYTES_CHANGED")
     return True
 
@@ -106,19 +116,13 @@ def review_local_sec_with_guard(
     Even structurally matching SEC-shaped facts are not authenticated. The
     legacy Guard remains unchanged; this path can only HOLD or REJECT.
     """
-    # The 3-source operator pin cannot attest a fourth historical page.
-    # CLI already rejects this combination. Enforce the same contract for
-    # direct Python callers BEFORE reviewing evidence or creating SQLite.
-    # A future four-source pin must explicitly include the history byte hash.
-    if expected_source_sha256 is not None and (
-            history_page_json is not None or history_page_name is not None):
-        raise ValueError("HISTORY_PAGE_NOT_PINNED")
-    # Bind P20 read-only previews to the EXACT three bytes passed to Guard.
-    # Reject any swap before touching even a new, disposable audit DB.
+    # Reject unpinned fourth evidence or swapped bytes BEFORE SQLite.
+    # A historical page cannot inherit approval from only 3 source hashes.
     source_pins_matched = _pinned_local_source_match(
         expected_source_sha256,
         submissions=submissions_json, companyfacts=companyfacts_json,
         original=original_filing,
+        history=history_page_json, history_name=history_page_name,
     )
     db_path = _check_audit_path(audit_db_path)
     if required_review_intent not in (None, "SOURCE_REVIEW", "RISK_CHECK"):
@@ -342,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument("--expected-" + field + "-sha256")
     parser.add_argument("--history-page-json", type=Path)
     parser.add_argument("--history-page-name")
+    parser.add_argument("--expected-history-sha256")
     parser.add_argument("--report-html", type=Path, help="Explicit new local HTML report; never overwrites")
     parser.add_argument("--reviewer")
     parser.add_argument("--action", choices=sorted(_REVIEW_ACTIONS))
@@ -357,7 +362,13 @@ def main(argv: list[str] | None = None) -> int:
         "companyfacts": pins[1],
         "original_filing": pins[2],
     }
-    if expected_pins is not None and args.history_page_json is not None:
+    if args.expected_history_sha256 is not None:
+        if (expected_pins is None or args.history_page_json is None
+                or args.history_page_name is None):
+            parser.exit(2, "Local SEC Guard report blocked: FOUR_SOURCE_PINS_AND_HISTORY_REQUIRED\n")
+        expected_pins["history_page"] = args.expected_history_sha256
+    elif expected_pins is not None and (
+            args.history_page_json is not None or args.history_page_name is not None):
         parser.exit(2, "Local SEC Guard report blocked: HISTORY_PAGE_NOT_PINNED\n")
     # Resolve paths before touching input data or a persistent audit: a
     # destination must never alias any source, nor may HTML and the audit

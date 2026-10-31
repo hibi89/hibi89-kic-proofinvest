@@ -136,6 +136,56 @@ class LocalWorkspaceTests(unittest.TestCase):
                 )
         guard.assert_not_called()
 
+    def test_history_fourth_file_periods_preview_and_guard_report(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_periods
+        from tests.test_kuodra_history import PAGE, data
+        base, history = data()
+        raw = self.raw | {"submissions": base, "history_page": history}
+        req = self.req | {"history_page_name": PAGE}
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_EXTERNAL_NETWORK")) as network:
+            found = discover_uploaded_periods(
+                raw, cik=req["cik"], accession=req["accession"],
+                as_of=req["as_of"], collected_at=req["collected_at"],
+                history_page_name=PAGE, show_local_needle_candidates=True,
+            )
+            preview = preview_uploaded_triplet(raw, req)
+            report, html = review_uploaded_triplet(
+                raw, req, expected_preview=preview, consent=True,
+            )
+        network.assert_not_called()
+        self.assertEqual(found["period_candidates"][0]["current_end"], req["current_end"])
+        self.assertIn("history_page", found["source_sha256"])
+        self.assertTrue(found["original_text_disclosed"])
+        self.assertEqual(preview["history_page_name"], PAGE)
+        self.assertEqual(preview["source_sha256"], found["source_sha256"])
+        self.assertEqual(report["source"]["source_index_kind"], "PINNED_HISTORY")
+        self.assertTrue(report["operator_reviewed_source_digests_matched"])
+        self.assertEqual(report["guard"]["decision"], "HOLD")
+        self.assertIn(b"HTML", html)
+
+    def test_history_fourth_file_swap_blocks_before_guard(self):
+        from tests.test_kuodra_history import PAGE, data
+        base, history = data()
+        raw = self.raw | {"submissions": base, "history_page": history}
+        req = self.req | {"history_page_name": PAGE}
+        preview = preview_uploaded_triplet(raw, req)
+        with patch("proofinvest.kuodra_local_workspace.review_local_sec_with_guard",
+                   side_effect=AssertionError("NO_WRITES")) as guarded:
+            with self.assertRaisesRegex(ValueError, "CHANGED"):
+                review_uploaded_triplet(
+                    raw | {"history_page": history + b" "}, req,
+                    expected_preview=preview, consent=True,
+                )
+            with self.assertRaisesRegex(ValueError, "CHANGED"):
+                review_uploaded_triplet(
+                    raw, req | {"history_page_name": "CIK0000000001-submissions-002.json"},
+                    expected_preview=preview, consent=True,
+                )
+            with self.assertRaisesRegex(ValueError, "HISTORY_FILE_AND_NAME"):
+                preview_uploaded_triplet(raw, self.req)
+        guarded.assert_not_called()
+
     def test_conflict_claim_is_rejected_not_approved(self):
         req = {**self.req, "claimed_growth_pct": "300.00"}
         prev = preview_uploaded_triplet(self.raw, req)

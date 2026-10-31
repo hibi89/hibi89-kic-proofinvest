@@ -23,6 +23,7 @@ from .kuodra_offline_preflight import _candidate_needle_receipts
 from .local_sec_packet import _json_object, _read_regular_local, _MAX_FILE_BYTES
 from .sec_companyfacts import REVENUE_TAGS, MAX_ROWS, _date, verify_sec_annual_revenue
 from .dl_bridge import filing_available_at_observation
+from .kuodra_history import index_pinned_history
 
 _CIK = re.compile(r"[0-9]{10}\Z", re.ASCII)
 _ACC = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
@@ -104,6 +105,7 @@ def inspect_loose_sec_bytes(
     *, submissions_json: bytes, companyfacts_json: bytes,
     original_filing: bytes, cik: str, accession: str, as_of: str,
     collected_at: str, show_local_needle_candidates: bool = False,
+    history_page_json: bytes | None = None, history_page_name: str | None = None,
 ) -> dict[str, Any]:
     """Bounded read-only three-source discovery without temporary raw-file IO.
 
@@ -125,19 +127,32 @@ def inspect_loose_sec_bytes(
             or type(companyfacts_json) is not bytes or not 0 < len(companyfacts_json) <= _MAX_FILE_BYTES
             or type(original_filing) is not bytes or not 0 < len(original_filing) <= MAX_FILING_BYTES):
         return _result("INPUT_FILES_MISSING_UNSAFE_OR_OVERSIZED")
+    if (history_page_json is None) != (history_page_name is None):
+        return _result("HISTORY_PAGE_AND_NAME_REQUIRED_TOGETHER")
+    if history_page_json is not None and (
+            type(history_page_json) is not bytes
+            or not 0 < len(history_page_json) <= MAX_JSON_BYTES):
+        return _result("HISTORY_PAGE_MISSING_OR_OVERSIZED")
     submissions_raw, facts_raw, original = (
         submissions_json, companyfacts_json, original_filing,
     )
     try:
-        index = index_submissions(
-            submissions_raw, cik=cik, as_of=as_of,
-            forms=frozenset({"10-K"}), provenance="OFFLINE_UNVERIFIED",
-            collected_at=collected_at,
+        index = (
+            index_submissions(
+                submissions_raw, cik=cik, as_of=as_of,
+                forms=frozenset({"10-K"}), provenance="OFFLINE_UNVERIFIED",
+                collected_at=collected_at,
+            ) if history_page_json is None else
+            index_pinned_history(
+                base_raw=submissions_raw, history_raw=history_page_json,
+                page_name=history_page_name, cik=cik, as_of=as_of,
+                collected_at=collected_at,
+            )
         )
         target = [f for f in index["filings"]
                   if f.get("accession") == accession and f.get("form") == "10-K"]
         if len(target) != 1 or not isinstance(target[0].get("source_uri"), str):
-            return _result("TARGET_10K_NOT_IN_SAVED_RECENT_SUBMISSIONS")
+            return _result("TARGET_10K_NOT_IN_SAVED_SOURCE_INDEX")
         if not filing_available_at_observation(index, target[0]):
             return _result("FILING_NOT_AVAILABLE_AT_OBSERVATION")
         facts = _json_object(facts_raw, limit=_MAX_FILE_BYTES)
@@ -229,9 +244,14 @@ def inspect_loose_sec_bytes(
         collected_at_operator_supplied_not_authenticated=index["collected_at"],
         filing_source_uri_in_submissions_not_fetched=target[0]["source_uri"],
         source_sha256={
-            "submissions": hashlib.sha256(submissions_raw).hexdigest(),
-            "companyfacts": hashlib.sha256(facts_raw).hexdigest(),
-            "original_filing": hashlib.sha256(original).hexdigest(),
+            **{
+                "submissions": hashlib.sha256(submissions_raw).hexdigest(),
+                "companyfacts": hashlib.sha256(facts_raw).hexdigest(),
+                "original_filing": hashlib.sha256(original).hexdigest(),
+            },
+            **({
+                "history_page": hashlib.sha256(history_page_json).hexdigest(),
+            } if history_page_json is not None else {}),
         },
         period_candidates=approved[:_MAX_DISPLAY],
         candidates_truncated=len(approved) > _MAX_DISPLAY,

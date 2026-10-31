@@ -34,14 +34,18 @@ def _uploaded_sources(files) -> dict[str, bytes]:
         "submissions": MAX_JSON_BYTES,
         "companyfacts": _MAX_FILE_BYTES,
         "original_filing": MAX_FILING_BYTES,
+        "history_page": MAX_JSON_BYTES,
     }
     if set(files) != set(caps) or any(
         files[k] is None or type(files[k].size) is not int
         or not 0 < files[k].size <= caps[k]
-        for k in caps
-    ):
-        raise ValueError("THREE_BOUNDED_UPLOADS_REQUIRED")
-    return {key: files[key].getvalue() for key in caps}
+        for k in ("submissions", "companyfacts", "original_filing")
+    ) or (files["history_page"] is not None and (
+        type(files["history_page"].size) is not int
+        or not 0 < files["history_page"].size <= caps["history_page"]
+    )):
+        raise ValueError("THREE_OR_FOUR_BOUNDED_UPLOADS_REQUIRED")
+    return {key: files[key].getvalue() for key in caps if files[key] is not None}
 
 
 def render_local_workspace(st) -> None:
@@ -49,6 +53,7 @@ def render_local_workspace(st) -> None:
         st.error("로컬 파일 분석은 localhost 전용 명시적 설정이 없으면 비활성화됩니다.")
         return
     st.title("KUODRA · 로컬 SEC 원본 3종 검토")
+    st.caption("오래된 10-K가 recent에 없다면 filings.files에 등록된 이력 JSON 1개를 추가할 수 있습니다.")
     st.warning(
         "로컬 PC에서만 사용하십시오. 파일은 브라우저에서 실행 중인 Streamlit "
         "서버로 전달됩니다. 다른 PC/클라우드에 배포한 서버에는 올리지 마십시오. "
@@ -63,7 +68,13 @@ def render_local_workspace(st) -> None:
         "companyfacts": st.file_uploader("2. companyfacts.json", type=["json"],
                                          key="kuodra_companyfacts"),
         "original_filing": st.file_uploader("3. 원문 10-K HTML", key="kuodra_original"),
+        "history_page": st.file_uploader("4. 이전 filings.files JSON (선택)", type=["json"],
+                                         key="kuodra_history"),
     }
+    history_page_name = st.text_input(
+        "이력 페이지 파일명 (해당하는 경우 filings.files.name 그대로)",
+        key="kuodra_history_name", max_chars=90,
+    ).strip()
     left, right = st.columns(2)
     with left:
         cik = st.text_input("CIK 10자리", key="kuodra_cik", max_chars=10)
@@ -88,6 +99,7 @@ def render_local_workspace(st) -> None:
                 cik=cik, accession=accession, as_of=as_of,
                 collected_at=collected_at,
                 show_local_needle_candidates=reveal_local_text,
+                history_page_name=(history_page_name if uploads["history_page"] else None),
             )
             st.session_state["kuodra_discovery"] = found
         except (ValueError, TypeError, OSError, KeyError, OverflowError,
@@ -107,6 +119,9 @@ def render_local_workspace(st) -> None:
                 and found.get("accession") == accession
                 and found.get("as_of") == as_of
                 and found.get("collected_at") == collected_at
+                and found.get("history_page_name") == (
+                    history_page_name if uploads["history_page"] else None
+                )
                 and found.get("source_authenticated") is False
             )
         except (ValueError, TypeError, OSError, KeyError):
@@ -164,6 +179,8 @@ def render_local_workspace(st) -> None:
         "current_end": current_end, "prior_end": prior_end,
         "needle": needle, "claimed_growth_pct": claim.strip() or None,
     }
+    if uploads["history_page"] is not None:
+        request["history_page_name"] = history_page_name
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
@@ -175,7 +192,7 @@ def render_local_workspace(st) -> None:
             st.error("미리보기 차단: 입력 원본·기간·인용·식별자 검증 실패")
     receipt = st.session_state.get("kuodra_preview_receipt")
     if receipt is None:
-        st.info("세 파일과 사용자가 확인한 기간/인용을 입력한 후 미리보기를 실행하십시오.")
+        st.info("원본 3개(이력 파일은 선택)와 확인한 기간/인용을 입력한 후 미리보기를 실행하십시오.")
         return
     st.subheader("출처 메타데이터 대조 · 아직 감사 DB 기록 없음")
     st.json({

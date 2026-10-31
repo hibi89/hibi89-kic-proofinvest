@@ -120,6 +120,57 @@ class KuodraHistoryIntegrationTests(unittest.TestCase):
             review_local_sec_with_guard(**params)
         self.assertFalse(self.db.exists())
 
+    def test_four_pins_history_guard_chain_and_readonly_source(self):
+        args = self.kwargs()
+        approved = {
+            "submissions": hashlib.sha256(args["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(args["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(args["original_filing"]).hexdigest(),
+            "history_page": hashlib.sha256(args["history_page_json"]).hexdigest(),
+        }
+        args["expected_source_sha256"] = approved
+        original = args["history_page_json"]
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_EXTERNAL_REQUEST")) as remote:
+            report = review_local_sec_with_guard(**args)
+        remote.assert_not_called()
+        self.assertEqual(args["history_page_json"], original)
+        self.assertEqual(report["guard"]["decision"], "HOLD")
+        self.assertTrue(report["operator_reviewed_source_digests_matched"])
+        self.assertEqual(report["source"]["history_page_sha256"], approved["history_page"])
+        self.assertTrue(report["audit_chain_valid"])
+
+    def test_four_pins_reject_swapped_history_before_any_sqlite(self):
+        args = self.kwargs()
+        args["expected_source_sha256"] = {
+            "submissions": hashlib.sha256(args["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(args["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(args["original_filing"]).hexdigest(),
+            "history_page": hashlib.sha256(args["history_page_json"]).hexdigest(),
+        }
+        other = json.loads(args["history_page_json"])
+        other["acceptanceDateTime"] = ["2025-10-15T11:59:59Z"]
+        args["history_page_json"] = json.dumps(other).encode()
+        with patch("proofinvest.local_sec_guard_report.build_local_sec_review_packet",
+                   side_effect=AssertionError("MUST_NOT_TOUCH_SOURCE")) as packet:
+            with self.assertRaisesRegex(ValueError, "SOURCE_BYTES_CHANGED"):
+                review_local_sec_with_guard(**args)
+        packet.assert_not_called()
+        self.assertFalse(self.db.exists())
+
+    def test_history_four_pin_missing_name_is_not_reusable(self):
+        args = self.kwargs()
+        args["expected_source_sha256"] = {
+            "submissions": hashlib.sha256(args["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(args["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(args["original_filing"]).hexdigest(),
+            "history_page": hashlib.sha256(args["history_page_json"]).hexdigest(),
+        }
+        args["history_page_name"] = None
+        with self.assertRaisesRegex(ValueError, "HISTORY_PAGE_AND_NAME_REQUIRED"):
+            review_local_sec_with_guard(**args)
+        self.assertFalse(self.db.exists())
+
     def test_conflict_rejected_and_audited(self):
         params = self.kwargs()
         params["claimed_growth_pct"] = "300.00"
