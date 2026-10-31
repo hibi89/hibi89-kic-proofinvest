@@ -157,6 +157,41 @@ def run(output: Path) -> dict:
                         expect(page.get_by_text(
                             "Engine A 차단: 가격·시장지수 날짜/단위/출처·발행사를 확인하십시오."
                         )).to_be_visible(timeout=20000)
+                        # P47: exercise real browser CSV upload, metadata UI,
+                        # exact raw-byte SHA pin and existing Decimal beta
+                        # before restoring the JSON upload for the P45/P46
+                        # end-to-end download compatibility checks below.
+                        from tests.test_market_price_csv import csv_from_fixture
+                        csv_raw = csv_from_fixture()
+                        price_upload = page.locator('input[type="file"]').last
+                        price_upload.set_input_files({
+                            "name": "market-synthetic-paired.csv",
+                            "mimeType": "text/csv",
+                            "buffer": csv_raw,
+                        })
+                        expect(page.get_by_label(
+                            "Engine A 종목 티커", exact=True,
+                        )).to_be_visible(timeout=20000)
+                        for label, value in (
+                            ("Engine A 종목 티커", "SYNTH"),
+                            ("Engine A CSV 출처 HTTPS URL (사용자 주장)",
+                             "https://example.org/paired-prices"),
+                            ("Engine A CSV 공개일 (YYYY-MM-DD, 사용자 주장)",
+                             "2025-10-15"),
+                        ):
+                            csv_field = page.get_by_label(label, exact=True)
+                            csv_field.fill(value)
+                            csv_field.press("Tab")
+                            expect(csv_field).to_have_value(value, timeout=15000)
+                        expect(page.get_by_text(
+                            "CSV 원본 SHA256:", exact=False
+                        )).to_be_visible(timeout=18000)
+                        expect(page.get_by_text(
+                            sha256(csv_raw).hexdigest(), exact=False
+                        ).first).to_be_visible(timeout=18000)
+                        expect(page.get_by_text(
+                            "베타 (표본회귀)", exact=True
+                        ).first).to_be_visible(timeout=18000)
                         price_upload = page.locator('input[type="file"]').last
                         price_upload.set_input_files({
                             "name": "market-synthetic.json",
@@ -447,6 +482,7 @@ def run(output: Path) -> dict:
                                 "index-bound-10k-identity-choice",
                                 "engine-a-cross-issuer-upload-blocked",
                                 "engine-a-real-chromium-upload-decimal-ols",
+                                "engine-a-paired-csv-upload-byte-sha-and-regression",
                                 "engine-a-sec-context-json-and-html-download",
                                 "engine-a-does-not-change-guard-or-audit",
                                 "engine-c-wrong-issuer-upload-blocked",
@@ -457,6 +493,8 @@ def run(output: Path) -> dict:
                             "source_authenticated": False,
                             "market_beta": market_card["beta"],
                             "market_upload_sha256": sha256(market_raw).hexdigest(),
+                            "market_csv_original_sha256": sha256(csv_raw).hexdigest(),
+                            "market_csv_regression_visible": True,
                             "market_sec_context_bound": True,
                             "market_guard_policy_modified": False,
                             "market_in_guard_audit": False,

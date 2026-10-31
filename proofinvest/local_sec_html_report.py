@@ -282,6 +282,13 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
                 or market.get("trade_signal") is not False
                 or market.get("ai_generated") is not False
                 or type(market.get("source")) is not dict
+                or type(market["source"].get("stock")) is not dict
+                or type(market["source"].get("benchmark")) is not dict
+                or any(market["source"][role].get("authenticated") is not False
+                       or type(market["source"][role].get("sha256_reported")) is not str
+                       or _SHA.fullmatch(
+                           market["source"][role]["sha256_reported"]
+                       ) is None for role in ("stock", "benchmark"))
                 or type(market["source"].get("upload_sha256")) is not str
                 or _SHA.fullmatch(market["source"]["upload_sha256"]) is None):
             raise ValueError("HTML_MARKET_REALITY_TRUST_BLOCKED")
@@ -316,6 +323,10 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
                      else "NO_LINKED_SEC_CONTEXT")
             + '</p><p>업로드 SHA256: '
             + _field(market["source"]["upload_sha256"])
+            + '</p><p>가격 소스 주장 SHA256 (CSV 입력은 실제 로컬 바이트 계산): '
+            + _field(market["source"]["stock"]["sha256_reported"])
+            + '</p><p>지수 소스 주장 SHA256: '
+            + _field(market["source"]["benchmark"]["sha256_reported"])
             + '</p><p>Guard 감사 체인에 시장 회귀 결과가 포함되지는 않았습니다.'
             ' 출처 인증·이용권리·미래정보 누출 및 회귀 표본 적합성 미확인.</p></section>'
         )
