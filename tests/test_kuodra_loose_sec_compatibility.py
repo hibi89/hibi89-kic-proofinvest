@@ -61,6 +61,20 @@ class LooseSourceTests(unittest.TestCase):
         self.assertEqual(sorted(self.root.iterdir()), sorted(self.paths))
         self.assertNotIn(PHRASE,json.dumps(result))
 
+    def test_memory_discovery_parity_with_file_based_inspector(self):
+        from proofinvest.kuodra_loose_sec_compatibility import inspect_loose_sec_bytes
+        expected = self.inspect()
+        result = inspect_loose_sec_bytes(
+            submissions_json=self.paths[0].read_bytes(),
+            companyfacts_json=self.paths[1].read_bytes(),
+            original_filing=self.paths[2].read_bytes(),
+            cik=self.kw["cik"], accession=self.kw["accession"],
+            as_of=self.kw["as_of"], collected_at=self.kw["collected_at"],
+        )
+        self.assertEqual(result, expected)
+        self.assertNotIn("local_needle_candidates", result)
+        self.assertNotIn(PHRASE, json.dumps(result))
+
     def test_strict_xhtml_is_optional_not_blocking(self):
         result = self.inspect()
         self.assertEqual(result["status"],"operator_review_required")

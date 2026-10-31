@@ -78,6 +78,64 @@ class LocalWorkspaceTests(unittest.TestCase):
         self.assertNotIn(str(Path.home()).encode(), html)
         self.assertFalse(report["limits"]["live_api_called"])
 
+    def test_readonly_memory_discovery_suggests_real_verified_period_pair(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_periods
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_HTTP")) as network, patch(
+            "proofinvest.kuodra_local_workspace.review_local_sec_with_guard",
+            side_effect=AssertionError("NO_PERSISTENT_AUDIT")
+        ) as guard:
+            found = discover_uploaded_periods(
+                self.raw, cik=self.req["cik"],
+                accession=self.req["accession"], as_of=self.req["as_of"],
+                collected_at=self.req["collected_at"],
+            )
+        network.assert_not_called()
+        guard.assert_not_called()
+        self.assertEqual(found["status"], "periods_require_operator_selection")
+        self.assertEqual(found["period_candidates"][0]["current_end"], "2025-09-30")
+        self.assertEqual(found["period_candidates"][0]["prior_end"], "2024-09-30")
+        self.assertEqual(found["local_needle_candidates"], [])
+        self.assertFalse(found["original_text_disclosed"])
+        self.assertFalse(found["source_authenticated"])
+        self.assertFalse(found["audit_written"])
+        self.assertNotIn(PHRASE, json.dumps(found))
+
+    def test_explicit_local_text_disclosure_gives_only_bounded_unique_candidates(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_periods
+        found = discover_uploaded_periods(
+            self.raw, cik=self.req["cik"],
+            accession=self.req["accession"], as_of=self.req["as_of"],
+            collected_at=self.req["collected_at"],
+            show_local_needle_candidates=True,
+        )
+        self.assertTrue(found["original_text_disclosed"])
+        self.assertGreaterEqual(len(found["local_needle_candidates"]), 1)
+        self.assertLessEqual(len(found["local_needle_candidates"]), 5)
+        self.assertIn(PHRASE, [x["needle"] for x in found["local_needle_candidates"]])
+        self.assertTrue(all(x["source_authenticated"] is False
+                            for x in found["local_needle_candidates"]))
+
+    def test_discovery_rejects_changed_issuer_and_false_flag_before_audit(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_periods
+        args = {
+            "cik": self.req["cik"], "accession": self.req["accession"],
+            "as_of": self.req["as_of"], "collected_at": self.req["collected_at"],
+        }
+        with self.assertRaisesRegex(ValueError, "CANDIDATES_UNAVAILABLE"):
+            discover_uploaded_periods(self.raw, **(args | {"cik": "0000000002"}))
+        with self.assertRaisesRegex(ValueError, "FLAG_REQUIRED"):
+            discover_uploaded_periods(
+                self.raw, **args, show_local_needle_candidates="true",
+            )
+        with patch("proofinvest.kuodra_local_workspace.review_local_sec_with_guard",
+                   side_effect=AssertionError("NO_GUARD")) as guard:
+            with self.assertRaises(ValueError):
+                discover_uploaded_periods(
+                    self.raw | {"companyfacts": b'{"broken":true}'}, **args,
+                )
+        guard.assert_not_called()
+
     def test_conflict_claim_is_rejected_not_approved(self):
         req = {**self.req, "claimed_growth_pct": "300.00"}
         prev = preview_uploaded_triplet(self.raw, req)

@@ -1,3 +1,13 @@
+## 2026-10-31 KST — KUODRA P35 local uploaded source candidate selection (CI PENDING)
+
+1. Goal: remove user need to guess accepted annual fiscal period and exact HTML text node phrase after uploading 3 SEC-shaped files, without network or originals persisted.
+2. Design comparison: (A) save uploaded files into temporary path and rerun existing CLI (extra disk original exposure/cost; rejected); (B) share the existing strict loose-file period verifier through a byte-memory function and show optional text candidate only after affirmative disclosure toggle (selected, no new dependencies or network). Existing file CLI delegates same logic, no algorithm fork.
+3. Source: proofinvest/kuodra_loose_sec_compatibility.py inspect_loose_sec_bytes (read-only, shared existing gates); proofinvest/kuodra_local_workspace.py discover_uploaded_periods with source digests and unverified flags; proofinvest/kuodra_local_workspace_ui.py read-only candidate selection, conditional optional original phrase, digest/identity revalidation on each rerun, fills existing period/needle widgets BEFORE their creation; final preview and Guard consent unchanged. No external requests, persistent SQLite or source publishing.
+4. Regression: tests/test_kuodra_local_workspace.py read-only candidate, explicit phrase disclosure, mismatch/invalid flag, tests/test_kuodra_loose_sec_compatibility.py legacy file-to-bytes result parity. CI PENDING. Baseline P34 runtime 52dcc0282443a4f7fffeace60a97bc4508bbc725 CI #41189047958 Python967/0 and Chromium upload E2E PASS.
+5. Recovery: revert P35 functional commit on lead/kic, no force push; P34 original manual fields still available; operator approval still needed for any Guard action. Real SEC/Gemini/Production UNVERIFIED.
+6. Next: exact-SHA Python/Windows/Chromium verification, then actual localhost period-candidate selection browser evidence; no genuine SEC data or rights assumption.
+7. Checkpoint: 2026-10-31 KST; CI not yet run.
+
 ## 2026-10-31 KST — KUODRA P34 opt-in local uploaded-source GUI (CI 3/3 SUCCESS)
 1. Goal: connect the actual user-supplied three-source SEC-shaped offline verifier and Guard to existing Streamlit screen; existing public demo only offered synthetic or curated views, not operator-selected originals.
 2. Designs considered: arbitrary server-side file path input (rejected: arbitrary filesystem access and remote public app risk); in-memory browser upload with env flag AND 127.0.0.1/localhost Streamlit bind (selected: no new deps, no external API, no user file path exposure). Separate preview button and explicit ephemeral-Guard approval button, exact input/source SHA pin prevents preview-to-audit swap.

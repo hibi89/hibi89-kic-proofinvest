@@ -14,7 +14,10 @@ from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
 
 from .local_sec_packet import _MAX_FILE_BYTES
-from .kuodra_local_workspace import preview_uploaded_triplet, review_uploaded_triplet
+from .kuodra_local_workspace import (
+    preview_uploaded_triplet, review_uploaded_triplet, discover_uploaded_periods,
+    _check_bytes,
+)
 
 
 def local_workspace_enabled(st) -> bool:
@@ -68,6 +71,87 @@ def render_local_workspace(st) -> None:
         as_of = st.text_input("기준일 (YYYY-MM-DD)", key="kuodra_asof", max_chars=10)
         collected_at = st.text_input("사용자 주장 수집시각 (UTC ISO8601)",
                                      key="kuodra_collected", max_chars=40)
+    # This read-only discovery happens BEFORE Streamlit constructs the manual
+    # fiscal-end/needle widgets. Candidate application can therefore safely
+    # prefill widget state on this same rerun (no stale-widget mutation).
+    reveal_local_text = st.checkbox(
+        "원문 인용 문구 후보를 이 로컬 화면에 표시하는 데 동의",
+        value=False, key="kuodra_reveal_candidate_text",
+    )
+    if st.button("원본에서 연매출 기간 후보 찾기 (읽기 전용)",
+                 key="kuodra_discover"):
+        st.session_state.pop("kuodra_discovery", None)
+        st.session_state.pop("kuodra_preview_receipt", None)
+        try:
+            found = discover_uploaded_periods(
+                _uploaded_sources(uploads),
+                cik=cik, accession=accession, as_of=as_of,
+                collected_at=collected_at,
+                show_local_needle_candidates=reveal_local_text,
+            )
+            st.session_state["kuodra_discovery"] = found
+        except (ValueError, TypeError, OSError, KeyError, OverflowError,
+                RecursionError):
+            st.error("기간 후보를 찾지 못했습니다. SEC 형식·기간·발행사 식별자를 확인하십시오.")
+
+    found = st.session_state.get("kuodra_discovery")
+    if found is not None:
+        # Check current sources and requested identity on EVERY rerun, not
+        # just when the user clicks "apply"; changed uploads invalidate
+        # earlier advice before it can be selected or disclosed.
+        try:
+            current_digests = _check_bytes(_uploaded_sources(uploads))
+            candidate_is_current = (
+                found.get("source_sha256") == current_digests
+                and found.get("issuer_cik") == cik
+                and found.get("accession") == accession
+                and found.get("as_of") == as_of
+                and found.get("collected_at") == collected_at
+                and found.get("source_authenticated") is False
+            )
+        except (ValueError, TypeError, OSError, KeyError):
+            candidate_is_current = False
+        if not candidate_is_current:
+            st.session_state.pop("kuodra_discovery", None)
+            st.warning("원본이나 식별자가 변경되어 이전 기간 후보를 폐기했습니다.")
+        else:
+            periods = found["period_candidates"]
+            st.caption("연매출 기간 후보: 원본 형식 검증 결과이며 재무 사실 인증이 아닙니다.")
+            options = list(range(len(periods)))
+            chosen = st.selectbox(
+                "연매출 기간 후보를 선택하십시오",
+                options,
+                format_func=lambda i: (
+                    periods[i]["current_end"] + " / " +
+                    periods[i]["prior_end"] + " · " +
+                    periods[i]["growth_pct_unverified"] + "% (미인증)"
+                ),
+                key="kuodra_period_choice",
+            )
+            needles = (
+                found.get("local_needle_candidates", [])
+                if reveal_local_text else []
+            )
+            selected_needle = None
+            if needles:
+                st.warning("아래 문구는 사용자가 선택한 로컬 원문의 일부이며, 사실 인증이 아닙니다.")
+                needle_ix = st.selectbox(
+                    "원문 텍스트 후보 (사용자가 검토·선택)",
+                    list(range(len(needles))),
+                    format_func=lambda i: needles[i]["needle"],
+                    key="kuodra_needle_choice",
+                )
+                selected_needle = needles[needle_ix]["needle"]
+            if st.button("선택한 기간·문구를 입력란에 적용",
+                         key="kuodra_apply_period"):
+                pair = periods[chosen]
+                st.session_state["kuodra_current"] = pair["current_end"]
+                st.session_state["kuodra_prior"] = pair["prior_end"]
+                if selected_needle is not None:
+                    st.session_state["kuodra_needle"] = selected_needle
+                st.session_state.pop("kuodra_preview_receipt", None)
+                st.success("선택 후보를 입력했습니다. 아래 원본 대조 미리보기를 별도로 실행하십시오.")
+
     with right:
         current_end = st.text_input("현재 회계기간 종료일", key="kuodra_current", max_chars=10)
         prior_end = st.text_input("직전 회계기간 종료일", key="kuodra_prior", max_chars=10)

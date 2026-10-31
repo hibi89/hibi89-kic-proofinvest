@@ -19,6 +19,7 @@ from disclosure_lightning.originals import MAX_FILING_BYTES
 from .local_sec_packet import _MAX_FILE_BYTES, build_local_sec_review_packet
 from .local_sec_guard_report import review_local_sec_with_guard
 from .local_sec_html_report import render_local_sec_html
+from .kuodra_loose_sec_compatibility import inspect_loose_sec_bytes
 
 _KEYS = frozenset(("submissions", "companyfacts", "original_filing"))
 _FIELDS = frozenset((
@@ -60,6 +61,45 @@ def _request_sha256(request: dict[str, Any]) -> str:
         request, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")).hexdigest()
+
+
+def discover_uploaded_periods(
+    raw: Mapping[str, bytes], *, cik: str, accession: str,
+    as_of: str, collected_at: str,
+    show_local_needle_candidates: bool = False,
+) -> dict[str, Any]:
+    """No Guard, audit, network or raw-original persistence; human choice only."""
+    if type(show_local_needle_candidates) is not bool:
+        raise ValueError("EXPLICIT_LOCAL_TEXT_DISCLOSURE_FLAG_REQUIRED")
+    pins = _check_bytes(raw)
+    found = inspect_loose_sec_bytes(
+        submissions_json=raw["submissions"],
+        companyfacts_json=raw["companyfacts"],
+        original_filing=raw["original_filing"],
+        cik=cik, accession=accession, as_of=as_of,
+        collected_at=collected_at,
+        show_local_needle_candidates=show_local_needle_candidates,
+    )
+    if (found.get("status") != "operator_review_required"
+            or found.get("source_sha256") != pins
+            or found.get("source_authenticated") is not False
+            or found.get("audit_written") is not False
+            or found.get("network_calls") != 0):
+        raise ValueError("LOCAL_PERIOD_CANDIDATES_UNAVAILABLE")
+    return {
+        "schema": "kuodra.local-upload-period-candidates.v1",
+        "status": "periods_require_operator_selection",
+        "issuer_cik": cik, "accession": accession, "as_of": as_of,
+        "collected_at": collected_at, "source_sha256": pins,
+        "period_candidates": found["period_candidates"],
+        "candidate_count_truncated": found["candidates_truncated"],
+        "local_needle_candidates": (
+            found.get("local_needle_candidates", [])
+            if show_local_needle_candidates else []
+        ),
+        "source_authenticated": False, "audit_written": False,
+        "external_http_called": False, "original_text_disclosed": show_local_needle_candidates,
+    }
 
 
 def preview_uploaded_triplet(

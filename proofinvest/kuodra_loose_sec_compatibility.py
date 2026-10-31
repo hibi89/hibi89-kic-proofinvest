@@ -92,6 +92,42 @@ def inspect_loose_sec_files(
         original = _read_regular_local(Path(paths[2]).expanduser(), MAX_FILING_BYTES)
     except (OSError, ValueError, TypeError, RecursionError, RuntimeError):
         return _result("INPUT_FILES_MISSING_UNSAFE_OR_OVERSIZED")
+    return inspect_loose_sec_bytes(
+        submissions_json=submissions_raw,
+        companyfacts_json=facts_raw,
+        original_filing=original,
+        cik=cik, accession=accession, as_of=as_of, collected_at=collected_at,
+    )
+
+
+def inspect_loose_sec_bytes(
+    *, submissions_json: bytes, companyfacts_json: bytes,
+    original_filing: bytes, cik: str, accession: str, as_of: str,
+    collected_at: str, show_local_needle_candidates: bool = False,
+) -> dict[str, Any]:
+    """Bounded read-only three-source discovery without temporary raw-file IO.
+
+    Reuses the exact historical CLI period/filing/DEI/XBRL gates.
+    Actual literal text candidates are omitted unless explicitly requested.
+    """
+    if type(show_local_needle_candidates) is not bool:
+        raise ValueError("INVALID_EXPLICIT_LOCAL_TEXT_DISCLOSURE_FLAG")
+    if (type(cik) is not str or _CIK.fullmatch(cik) is None
+            or cik == "0000000000" or type(accession) is not str
+            or _ACC.fullmatch(accession) is None or not accession.startswith(cik+"-")
+            or type(as_of) is not str or type(collected_at) is not str):
+        return _result("INVALID_OPERATOR_IDENTITY_OR_DATE")
+    try:
+        parse_day(as_of)
+    except ValueError:
+        return _result("INPUT_FILES_MISSING_UNSAFE_OR_OVERSIZED")
+    if (type(submissions_json) is not bytes or not 0 < len(submissions_json) <= MAX_JSON_BYTES
+            or type(companyfacts_json) is not bytes or not 0 < len(companyfacts_json) <= _MAX_FILE_BYTES
+            or type(original_filing) is not bytes or not 0 < len(original_filing) <= MAX_FILING_BYTES):
+        return _result("INPUT_FILES_MISSING_UNSAFE_OR_OVERSIZED")
+    submissions_raw, facts_raw, original = (
+        submissions_json, companyfacts_json, original_filing,
+    )
     try:
         index = index_submissions(
             submissions_raw, cik=cik, as_of=as_of,
@@ -179,7 +215,8 @@ def inspect_loose_sec_files(
         blocked = _result("ORIGINAL_DEI_SELF_CLAIM_CONFLICT_OR_AMBIGUOUS")
         blocked["embedded_dei_identity"] = dei_identity
         return blocked
-    candidate_count = len(_candidate_needle_receipts(original)) if utf8 else 0
+    needle_candidates = _candidate_needle_receipts(original) if utf8 else []
+    candidate_count = len(needle_candidates)
     out = _result(
         "MANUAL_PERIOD_NEEDLE_REVIEW_REQUIRED"
         if utf8 else "ORIGINAL_NOT_STRICT_UTF8_FOR_TEXT_EVIDENCE"
@@ -202,7 +239,13 @@ def inspect_loose_sec_files(
         embedded_dei_identity=dei_identity,
         eligible_original_text_candidate_count=candidate_count,
     )
+    if show_local_needle_candidates:
+        # Explicit operator consent: these strings come from untrusted local
+        # original bytes and must only be shown inside the loopback UI.
+        out["local_needle_candidates"] = needle_candidates
     return out
+
+
 
 
 def main(argv: list[str] | None = None) -> int:
