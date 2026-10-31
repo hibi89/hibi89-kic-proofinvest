@@ -20,6 +20,7 @@ from .local_sec_guard_report import review_local_sec_with_guard
 from .local_sec_html_report import render_local_sec_html
 from .local_sec_packet import _read_regular_local
 from .market_price_csv import market_price_csv_to_json
+from .market_data_evidence import validate_market_evidence
 from .market_reality import (
     MAX_UPLOAD_BYTES as MARKET_MAX, analyze_market_reality,
     parse_market_reality_json,
@@ -60,6 +61,7 @@ def inspect_offline_data_files(
     market_source_url: str | None = None,
     market_published_at: str | None = None,
     industry_json: Path | None = None,
+    market_evidence_json: Path | None = None,
 ) -> dict[str, Any]:
     """Run real-file *format and local-integrity* gates; fail closed.
 
@@ -83,6 +85,11 @@ def inspect_offline_data_files(
     })
     has_market = market_csv is not None
     has_industry = industry_json is not None
+    has_evidence = market_evidence_json is not None
+    if has_evidence and not has_market:
+        return {**blocked, "reason_code": "MARKET_EVIDENCE_WITHOUT_PRICE_CSV"}
+    if has_market and return_basis == "ADJUSTED_CLOSE_TOTAL_RETURN_PROXY" and not has_evidence:
+        return {**blocked, "reason_code": "ADJUSTED_PRICE_REQUIRES_EVIDENCE_MANIFEST"}
     if has_market and any(type(field) is not str or not field
                           for field in (symbol, benchmark, return_basis,
                                         market_source_url, market_published_at)):
@@ -120,6 +127,9 @@ def inspect_offline_data_files(
                     or report["guard"]["source_authenticated"] is not False):
                 return {**blocked, "reason_code": "SEC_GUARD_CONTEXT_MISMATCH"}
             csv_source_digest = None
+            market_evidence_status = "NO_INPUT"
+            market_evidence_digest = None
+            market_evidence_vintage = "NO_INPUT"
             if has_market:
                 original_csv = _read_regular_local(Path(market_csv), MARKET_MAX)
                 csv_source_digest = sha256(original_csv).hexdigest()
@@ -129,6 +139,25 @@ def inspect_offline_data_files(
                     source_url=market_source_url,
                     published_at=market_published_at,
                 )
+                if has_evidence:
+                    evidence_bytes = _read_regular_local(
+                        Path(market_evidence_json), 8_192
+                    )
+                    evidence_result = validate_market_evidence(
+                        evidence_bytes, csv_bytes=original_csv,
+                        normalized_market_payload=parse_market_reality_json(normalized),
+                    )
+                    market_evidence_status = evidence_result["status"]
+                    market_evidence_digest = evidence_result["metadata_sha256"]
+                    market_evidence_vintage = evidence_result["claimed_vintage_status"]
+                    if (evidence_result["source_authenticated"] is not False
+                            or evidence_result["corporate_actions_verified"] is not False
+                            or evidence_result["data_rights_verified"] is not False
+                            or evidence_result["point_in_time_backtest_verified"] is not False):
+                        return {**blocked, "reason_code": "EVIDENCE_TRUST_CONTRACT_INVALID"}
+                else:
+                    market_evidence_status = "MISSING_OPERATOR_EVIDENCE"
+                    market_evidence_vintage = "NO_OPERATOR_EVIDENCE"
                 market = analyze_market_reality(
                     parse_market_reality_json(normalized),
                     expected_issuer_cik=cik, analysis_as_of=asof,
@@ -176,6 +205,9 @@ def inspect_offline_data_files(
                 "all_three_inputs_present": ledger["all_three_inputs_present"],
                 "sec_source_sha256": dict(integrity["sha256"]),
                 "market_csv_original_sha256": csv_source_digest,
+                "market_evidence_status": market_evidence_status,
+                "market_evidence_sha256": market_evidence_digest,
+                "market_evidence_vintage": market_evidence_vintage,
                 "industry_original_sha256": industry_source_digest,
                 "rendered_report_sha256_not_persisted": sha256(html).hexdigest(),
                 "limitations": [
@@ -199,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--current-end", required=True)
     parser.add_argument("--needle", required=True)
     parser.add_argument("--market-csv", type=Path)
+    parser.add_argument("--market-evidence-json", type=Path)
     parser.add_argument("--symbol")
     parser.add_argument("--benchmark")
     parser.add_argument("--return-basis")
@@ -214,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         market_source_url=args.market_source_url,
         market_published_at=args.market_published_at,
         industry_json=args.industry_json,
+        market_evidence_json=args.market_evidence_json,
     )
     print(json.dumps(result, ensure_ascii=True, sort_keys=True, indent=2))
     return 0 if result["status"] == "local_structure_pass_origin_unverified" else 2
