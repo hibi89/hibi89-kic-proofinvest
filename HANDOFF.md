@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P36 verified, SEC third-party submitter accession
+
+1. Goal: issuer SEC Submissions + CompanyFacts + 10-K original -> Decimal -> Guard -> SQLite -> report.
+2. Change: nine source modules no longer assume accession first ten digits equal issuer CIK; exact accession, issuer index and facts identity checks remain. Chosen over unsafe prefix-only inference.
+3. Tests: runtime 8e13bfbb4a7a3d5ef4dbdf8454b97b56560d464e; [Actions #41190764401](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41190764401) 3/3 SUCCESS; 976 Python PASS, 0 FAIL/ERROR/SKIP, syntax 174 PASS, Windows and Chromium PASS. New agent-prefix cases all mocked/synthetic.
+4. Completed: P36 code. Pending: owner-approved genuine SEC data and rights, live Gemini, deployment, DAKER submission.
+5. Known issue: first SHA 63692352 CI #41190671021 failed 1 obsolete prefix-equality test assertion. Test-only correction at 8e13bfbb4a7a3d5ef4dbdf8454b97b56560d464e passed. Do not reinstate false equality.
+6. Repository: hibi89/hibi89-kic-proofinvest branch lead/kic. Source paths: sec_companyfacts, local_sec_packet, kuodra_loose_sec_compatibility, sec_three_source, kuodra_sec_guard, sec_capture_bundle, kuodra_history, kuodra_operator_replay, kuodra_operator_html in proofinvest; tests/test_sec_agent_filed_accession.py.
+7. Environment: GitHub Actions Python 3.11, Windows SQLite, Chromium localhost. No Production URL or Vercel project verified.
+8. Originals and recovery: synthetic tests only; no actual external SEC requests, private original changes, keys, or PDF edits. Ordinary Git revert is rollback, no force push.
+9. Next: consented genuine SEC triplet plus provenance/rights checks -> real E2E -> optional Gemini integration -> approved production QA.
+10. Checkpoint: 2026-10-31 KST; runtime SHA 8e13bfbb4a7a3d5ef4dbdf8454b97b56560d464e; docs-only commit does not change tested source.
+
 ## 2026-10-31 KST — KUODRA P36 issuer-vs-submitting-agent accession CIK (CI PENDING)
 
 1. SEC webmaster FAQ states accession first 10 digits are submitting CIK, possibly filing agent; Microsoft 2025 10-K public metadata is one example. No live SEC requests made for this implementation.
