@@ -177,6 +177,39 @@ def review_local_sec_with_guard(
             or cashflow["guard_policy_modified"] is not False
             or cashflow["free_cashflow_proxy_is_non_gaap"] is not True):
         raise ValueError("CASHFLOW_TRUST_CONTRACT_FAILURE")
+    # P29: a self-claimed accession is not enough to combine annual facts.
+    # Revenue and Submissions must refer to the SAME 10-K filing date;
+    # do not audit a contradictory core packet. Optional panels with a
+    # different date are withheld independently, preserving valid Guard data.
+    if financial["filing_date"] != packet["issuer"]["filing_date"]:
+        raise ValueError("CORE_10K_FILING_DATE_MISMATCH")
+    for card, numeric_fields in (
+        (balance_sheet, (
+            "period_end", "filing_date", "inputs_usd",
+            "liabilities_to_equity_pct", "exploratory_ratio_200pct_signal",
+            "balance_identity_match", "equity_denominator_usd",
+            "equity_denominator_basis", "noncontrolling_interest_usd",
+        )),
+        (shares, (
+            "concept", "basis", "shares_outstanding", "snapshot_date",
+            "filing_date", "prior_shares", "prior_snapshot_date",
+            "shares_change_pct",
+        )),
+        (cashflow, (
+            "period_start", "period_end", "filing_date",
+            "operating_cashflow_usd", "capex_payments_usd",
+            "free_cashflow_proxy_usd",
+        )),
+    ):
+        if (card["status"] == "reviewed_unverified"
+                and card["filing_date"] != financial["filing_date"]):
+            card.update({key: None for key in numeric_fields})
+            card["status"] = "unavailable"
+            card["reason_code"] = "AUXILIARY_10K_FILING_DATE_MISMATCH"
+            if "shares_change_status" in card:
+                card["shares_change_status"] = "unavailable"
+            if "free_cashflow_proxy_status" in card:
+                card["free_cashflow_proxy_status"] = "unavailable"
     source = packet["source"]
     text_node = source["html_text_node_literal_check"]
     text_ok = (
