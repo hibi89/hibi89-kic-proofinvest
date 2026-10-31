@@ -190,6 +190,14 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
     refs = (benchmark["prior_source_id"], benchmark["current_source_id"])
     if any(type(ref) is not str or ref not in sources for ref in refs):
         _fail("UNKNOWN_INDUSTRY_SOURCE")
+    # Cross-series release chronology: a reported fact cannot originate
+    # before its own period end, even if it is <= research as_of.
+    # Does NOT certify source rights, measurement vintage, or true publication.
+    for entry in [top["target"], *top["peers"], top["industry_series"]]:
+        for key, end in (("prior_source_id", prior), ("current_source_id", current)):
+            record = sources[entry[key]]
+            if _date(record["published_at"], "SERIES_RELEASE") < end:
+                _fail("SOURCE_PRECEDES_ITS_OBSERVATION_PERIOD_END")
     old = _amount(benchmark["prior_value"], "PRIOR_INDUSTRY")
     new = _amount(benchmark["current_value"], "CURRENT_INDUSTRY")
     market_growth = _growth(old, new)

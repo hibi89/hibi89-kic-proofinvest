@@ -176,7 +176,7 @@ jobs:
       - name: Chromium CSV source + 3 engines → SEC Guard → JSON and HTML
         run: |
           python -B -m scripts.local_workspace_browser_smoke /tmp/kic-local-upload-browser
-          python -c 'import json; x=json.load(open("/tmp/kic-local-upload-browser/kuodra-local-upload-browser.json")); assert x["status"]=="PASS" and x["market_sec_context_bound"] is True and x["market_guard_policy_modified"] is False and x["market_in_guard_audit"] is False and x["market_csv_regression_visible"] is True and len(x["market_csv_original_sha256"])==64 and x["industry_sec_source_bound"] is True and x["all_three_engines_reported"] is True and x["combined_risk_score_available"] is False and x["industry_growth_gap_pp"]=="80.00" and x["network_sec_requests"]==0 and len(x["market_upload_sha256"])==64 and len(x["industry_upload_sha256"])==64'
+          python -c 'import json; x=json.load(open("/tmp/kic-local-upload-browser/kuodra-local-upload-browser.json")); assert x["status"]=="PASS" and x["market_sec_context_bound"] is False and x["market_sec_future_filing_withheld"] is True and x["market_guard_policy_modified"] is False and x["market_in_guard_audit"] is False and x["market_csv_regression_visible"] is True and len(x["market_csv_original_sha256"])==64 and x["industry_sec_source_bound"] is True and x["all_three_engines_reported"] is True and x["combined_risk_score_available"] is False and x["industry_growth_gap_pp"]=="80.00" and x["network_sec_requests"]==0 and len(x["market_upload_sha256"])==64 and len(x["industry_upload_sha256"])==64'
       - name: Archive local source upload browser evidence (synthetic only)
         uses: actions/upload-artifact@v4
         with:

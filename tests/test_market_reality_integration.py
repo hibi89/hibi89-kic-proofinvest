@@ -57,8 +57,12 @@ class MarketRealityIntegrationTests(unittest.TestCase):
             net.assert_not_called()
             self.assertTrue(GuardAuditStore(db).verify_chain())
             self.assertEqual(report["guard"]["decision"], "HOLD")
-            self.assertEqual(m["sec_revenue_context"]["growth_pct_calculated_unverified"],
-                             report["verification"]["growth_pct"])
+            # Filing on 2025-10-15 cannot have been known during the
+            # synthetic price window ending 2025-10-02.
+            self.assertIsNone(m["sec_revenue_context"])
+            self.assertEqual(m["sec_context_temporal_status"],
+                             "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW")
+            self.assertFalse(m["point_in_time_backtest_verified"])
             self.assertFalse(m["audit_included"])
             self.assertFalse(m["market_bubble_proven"])
             self.assertIn("Engine A", html)
@@ -77,8 +81,18 @@ class MarketRealityIntegrationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "HTML_MARKET_REALITY_TRUST_BLOCKED"):
                 render_local_sec_html(report)
             report["market_reality"]["market_bubble_proven"] = False
-            report["market_reality"]["sec_revenue_context"]["growth_pct_calculated_unverified"] = "999.99"
-            with self.assertRaisesRegex(ValueError, "HTML_MARKET_SEC_CONTEXT_MISMATCH"):
+            report["market_reality"]["sec_revenue_context"] = {
+                "growth_pct_calculated_unverified": "999.99",
+                "companyfacts_sha256": report["source"]["companyfacts_sha256"],
+                "filing_date": report["issuer"]["filing_date"],
+                "current_period_end": report["verification"]["current_period_end"],
+                "source_authenticated": False,
+            }
+            with self.assertRaisesRegex(ValueError, "HTML_MARKET_POINT_IN_TIME_BLOCKED"):
+                render_local_sec_html(report)
+            report["market_reality"]["sec_revenue_context"] = None
+            report["market_reality"]["point_in_time_backtest_verified"] = True
+            with self.assertRaisesRegex(ValueError, "HTML_MARKET_REALITY_TRUST_BLOCKED"):
                 render_local_sec_html(report)
 
     def test_report_remains_backward_compatible_without_market_upload(self):

@@ -9,7 +9,7 @@ from html import escape
 import re
 from typing import Any, Mapping
 
-from .sec_companyfacts import REVENUE_TAGS
+from .sec_companyfacts import REVENUE_TAGS, _date as _sec_date
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
 _CIK = re.compile(r"[0-9]{10}\Z")
@@ -281,6 +281,13 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
                 or market.get("guard_policy_modified") is not False
                 or market.get("trade_signal") is not False
                 or market.get("ai_generated") is not False
+                or market.get("historical_price_vintage_authenticated") is not False
+                or market.get("point_in_time_backtest_verified") is not False
+                or market.get("sec_context_temporal_status") not in (
+                    "NO_SEC_REVIEW", "NO_ELIGIBLE_SEC_CONTEXT",
+                    "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW",
+                    "FILING_PREDATES_ALL_PRICE_OBSERVATIONS_UNVERIFIED",
+                )
                 or type(market.get("source")) is not dict
                 or type(market["source"].get("stock")) is not dict
                 or type(market["source"].get("benchmark")) is not dict
@@ -293,6 +300,22 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
                 or _SHA.fullmatch(market["source"]["upload_sha256"]) is None):
             raise ValueError("HTML_MARKET_REALITY_TRUST_BLOCKED")
         context = market.get("sec_revenue_context")
+        # Fail closed on forged market/SEC chronology even for a previously
+        # serialized analysis card; a future filing must never reappear.
+        temporal = market["sec_context_temporal_status"]
+        filed = _sec_date(issuer["filing_date"])
+        first_market = _sec_date(market.get("period_start"))
+        last_market = _sec_date(market.get("period_end"))
+        if (filed is None or first_market is None or last_market is None
+                or first_market > last_market
+                or (context is not None and (
+                    temporal != "FILING_PREDATES_ALL_PRICE_OBSERVATIONS_UNVERIFIED"
+                    or filed >= first_market))
+                or (context is None and temporal ==
+                    "FILING_PREDATES_ALL_PRICE_OBSERVATIONS_UNVERIFIED")
+                or (temporal == "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW"
+                    and filed < first_market)):
+            raise ValueError("HTML_MARKET_POINT_IN_TIME_BLOCKED")
         if context is not None and (
                 type(context) is not dict
                 or context.get("source_authenticated") is not False
@@ -321,6 +344,12 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<p>선택 SEC 매출 변화율 (%): '
             + _field(context["growth_pct_calculated_unverified"] if context is not None
                      else "NO_LINKED_SEC_CONTEXT")
+            + '</p><p>SEC·주가 시점 비교: '
+            + market_text("sec_context_temporal_status")
+            + ' (가격 관측 시작: ' + market_text("period_start")
+            + ', SEC 접수일: ' + _field(issuer["filing_date"]) + ')'
+            + '</p><p>과거 가격 원본 빈티지는 독립 인증되지 않았습니다.'
+            ' 역사적 백테스트 검증을 의미하지 않습니다.'
             + '</p><p>업로드 SHA256: '
             + _field(market["source"]["upload_sha256"])
             + '</p><p>가격 소스 주장 SHA256 (CSV 입력은 실제 로컬 바이트 계산): '

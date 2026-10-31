@@ -320,11 +320,11 @@ def run(output: Path) -> dict:
                                 or market_card.get("trade_signal") is not False
                                 or json_report.get("guard", {}).get("decision") != "HOLD"
                                 or json_report.get("limits", {}).get("live_api_called") is not False
-                                or market_card.get("sec_revenue_context", {}).get(
-                                    "growth_pct_calculated_unverified"
-                                ) != json_report["verification"]["growth_pct"]
-                                or market_card["sec_revenue_context"]["companyfacts_sha256"]
-                                   != json_report["source"]["companyfacts_sha256"]):
+                                or market_card.get("sec_revenue_context") is not None
+                                or market_card.get("sec_context_temporal_status")
+                                   != "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW"
+                                or market_card.get("point_in_time_backtest_verified") is not False
+                                or market_card.get("historical_price_vintage_authenticated") is not False):
                             raise AssertionError("ENGINE_A_BROWSER_DOWNLOAD_OR_SEC_JOIN_INVALID")
                         expect(page.get_by_role(
                             "button", name="오프라인 분석 보고서 HTML",
@@ -483,7 +483,7 @@ def run(output: Path) -> dict:
                                 "engine-a-cross-issuer-upload-blocked",
                                 "engine-a-real-chromium-upload-decimal-ols",
                                 "engine-a-paired-csv-upload-byte-sha-and-regression",
-                                "engine-a-sec-context-json-and-html-download",
+                                "engine-a-future-sec-filing-withheld-in-json-html",
                                 "engine-a-does-not-change-guard-or-audit",
                                 "engine-c-wrong-issuer-upload-blocked",
                                 "engine-c-sec-revenue-period-source-sha-joined",
@@ -495,7 +495,8 @@ def run(output: Path) -> dict:
                             "market_upload_sha256": sha256(market_raw).hexdigest(),
                             "market_csv_original_sha256": sha256(csv_raw).hexdigest(),
                             "market_csv_regression_visible": True,
-                            "market_sec_context_bound": True,
+                            "market_sec_context_bound": False,
+                            "market_sec_future_filing_withheld": True,
                             "market_guard_policy_modified": False,
                             "market_in_guard_audit": False,
                             "industry_growth_gap_pp": industry_card["growth_gap_to_industry_pp"],

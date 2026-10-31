@@ -151,9 +151,28 @@ class MarketRealityTests(unittest.TestCase):
             "source": {"companyfacts_sha256": "c" * 64},
             "guard": {"decision": "HOLD", "source_authenticated": False},
         }
-        out = analyze_market_reality(fixture(), sec_review=report)
+        # Existing 45-day fixture is entirely pre-filing: never mix that
+        # future 10-K with market prices that were not yet aware of it.
+        early = analyze_market_reality(fixture(), sec_review=report)
+        self.assertIsNone(early["sec_revenue_context"])
+        self.assertEqual(
+            early["sec_context_temporal_status"],
+            "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW",
+        )
+        later = fixture(seed=date(2025, 10, 20))
+        later["as_of"] = "2025-12-31"
+        for role in ("security", "index"):
+            later[role]["source"]["published_at"] = "2025-12-19"
+        later_report = {**report, "issuer": {**report["issuer"], "as_of": "2025-12-31"}}
+        out = analyze_market_reality(later, sec_review=later_report)
         self.assertEqual(out["sec_revenue_context"]["growth_pct_calculated_unverified"], "100.00")
+        self.assertEqual(
+            out["sec_context_temporal_status"],
+            "FILING_PREDATES_ALL_PRICE_OBSERVATIONS_UNVERIFIED",
+        )
         self.assertFalse(out["sec_revenue_context"]["source_authenticated"])
+        self.assertFalse(out["point_in_time_backtest_verified"])
+        self.assertFalse(out["historical_price_vintage_authenticated"])
         for modify in (
             {"issuer": report["issuer"] | {"cik": "0000000003"}},
             {"issuer": report["issuer"] | {"as_of": "2025-10-15"}},
@@ -165,6 +184,26 @@ class MarketRealityTests(unittest.TestCase):
             fixture(), sec_review=report | {"guard": {"decision": "REJECT",
                                               "source_authenticated": False}}
         )["sec_revenue_context"])
+
+    def test_same_day_filing_is_also_withheld_without_intraday_timestamp(self):
+        obj = fixture(n=45, seed=date(2025, 10, 15))
+        obj["as_of"] = "2025-12-31"
+        for source in ("security", "index"):
+            obj[source]["source"]["published_at"] = "2025-12-16"
+        report = {
+            "schema": "proofinvest.local-sec-guard-report.v1",
+            "issuer": {"cik": "0000000001", "as_of": "2025-12-31",
+                       "filing_date": "2025-10-15"},
+            "verification": {"status": "calculated_unverified",
+                             "growth_pct": "100.00",
+                             "current_period_end": "2025-09-30"},
+            "source": {"companyfacts_sha256": "c" * 64},
+            "guard": {"decision": "HOLD", "source_authenticated": False},
+        }
+        output = analyze_market_reality(obj, sec_review=report)
+        self.assertIsNone(output["sec_revenue_context"])
+        self.assertEqual(output["sec_context_temporal_status"],
+                         "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW")
 
     def test_no_valuation_or_bubble_claim_in_report(self):
         s = json.dumps(analyze_market_reality(fixture()), ensure_ascii=False)

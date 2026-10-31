@@ -72,6 +72,22 @@ class IndustryVisionTests(unittest.TestCase):
             with self.subTest(b=b[:10]), self.assertRaises(ValueError):
                 parse_industry_vision_json(b)
 
+    def test_industry_and_peer_reports_cannot_precede_period_end(self):
+        # Both prior and current series require a release date no earlier
+        # than the measurement period. This is chronology, not authentication.
+        for source_index in (1, 3, 5):
+            data = fixture()
+            data["sources"][source_index]["published_at"] = "2025-12-30"
+            with self.subTest(index=source_index), self.assertRaisesRegex(
+                    ValueError, "SOURCE_PRECEDES_ITS_OBSERVATION_PERIOD_END"):
+                analyze_industry_vision(data)
+        for source_index in (0, 2, 4):
+            data = fixture()
+            data["sources"][source_index]["published_at"] = "2024-12-30"
+            with self.subTest(index=source_index), self.assertRaisesRegex(
+                    ValueError, "SOURCE_PRECEDES_ITS_OBSERVATION_PERIOD_END"):
+                analyze_industry_vision(data)
+
     def test_future_published_and_future_period_block(self):
         a = fixture()
         a["sources"][0]["published_at"] = "2026-11-01"

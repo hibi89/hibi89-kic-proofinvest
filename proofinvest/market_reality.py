@@ -206,7 +206,18 @@ def analyze_market_reality(payload: Any, *, expected_issuer_cik: str | None = No
         _bad("PRICE_CALENDAR_NOT_ALIGNED")
     # Historical adjusted prices sometimes get restated on dividend/split
     # actions; no data vintage claim is made from date gates alone.
+    # Look-ahead gate: date-only SEC filing must predate EVERY return session.
+    # Same-day publication cannot prove market-close availability.
     context = _sec_revenue_context(sec_review, cik=cik, as_of=as_of.isoformat())
+    if context is not None and _date(context["filing_date"], "SEC_FILED") >= s_days[0]:
+        context = None
+        sec_timing = "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW"
+    elif context is not None:
+        sec_timing = "FILING_PREDATES_ALL_PRICE_OBSERVATIONS_UNVERIFIED"
+    elif sec_review is None:
+        sec_timing = "NO_SEC_REVIEW"
+    else:
+        sec_timing = "NO_ELIGIBLE_SEC_CONTEXT"
     if uploaded_sha256 is not None and (type(uploaded_sha256) is not str
                                          or not _SHA.fullmatch(uploaded_sha256)):
         _bad("INVALID_INPUT_SHA256")
@@ -234,6 +245,9 @@ def analyze_market_reality(payload: Any, *, expected_issuer_cik: str | None = No
                 "benchmark_return_pct": _fmt(total_m),
                 "beta": None, "regression_intercept_daily_pct": None, "r_squared": None,
                 "sec_revenue_context": context,
+                "sec_context_temporal_status": sec_timing,
+                "historical_price_vintage_authenticated": False,
+                "point_in_time_backtest_verified": False,
                 "source": {"stock": stock_src, "benchmark": market_src,
                            "upload_sha256": uploaded_sha256},
                 "source_authenticated": False, "audit_included": False, "market_bubble_proven": False,
@@ -255,6 +269,9 @@ def analyze_market_reality(payload: Any, *, expected_issuer_cik: str | None = No
         "beta": _fmt(beta), "regression_intercept_daily_pct": _fmt(alpha),
         "r_squared": _fmt(r2) if r2 is not None else None,
         "sec_revenue_context": context,
+        "sec_context_temporal_status": sec_timing,
+        "historical_price_vintage_authenticated": False,
+        "point_in_time_backtest_verified": False,
         "source": {"stock": stock_src, "benchmark": market_src,
                    "upload_sha256": uploaded_sha256},
         "source_authenticated": False, "audit_included": False, "market_bubble_proven": False,
@@ -265,7 +282,8 @@ def analyze_market_reality(payload: Any, *, expected_issuer_cik: str | None = No
             "Daily OLS intercept is not CAPM/Jensen alpha and not earnings contribution; no risk-free rate or factor controls.",
             "R-squared is in-sample fit, not forecast accuracy or causal attribution.",
             "Reported daily price history and revisions, benchmark choice, vendor rights and timestamp provenance remain unauthenticated.",
-            "Historical SEC revenue growth, if shown, is context with its own filing release date, not an explanation of pre-release price moves.",
+            "SEC revenue growth is withheld unless its filing day is strictly before the first market session; mixed pre/post filing periods cannot use that filing as contemporaneous context.",
+            "Self-reported source URLs and digests do not authenticate historical price vintages or exclude retrospective split/dividend adjustments.",
             "Adjusted close may retrospectively account for dividends and splits, so date <= as-of alone does not prove a valid point-in-time price vintage.",
             "No valuation, intrinsic value, future return, investment recommendation or automatic trade decision is calculated.",
         ],

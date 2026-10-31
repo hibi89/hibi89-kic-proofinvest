@@ -364,6 +364,9 @@ def render_local_workspace(st) -> None:
                 "daily_ols_intercept_pct": m["regression_intercept_daily_pct"],
                 "r_squared": m["r_squared"],
                 "selected_10k_revenue_context": m["sec_revenue_context"],
+                "sec_context_temporal_status": m["sec_context_temporal_status"],
+                "historical_price_vintage_authenticated": False,
+                "point_in_time_backtest_verified": False,
                 "source_authenticated": False, "market_bubble_proven": False,
                 "audit_included": False, "guard_policy_modified": False,
             })

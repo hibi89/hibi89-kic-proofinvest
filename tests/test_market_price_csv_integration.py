@@ -49,8 +49,10 @@ class MarketPriceCsvIntegrationTests(unittest.TestCase):
                              sha256(csv_bytes).hexdigest())
             self.assertEqual(card["source"]["upload_sha256"],
                              sha256(normalized).hexdigest())
-            self.assertEqual(card["sec_revenue_context"]["companyfacts_sha256"],
-                             report["source"]["companyfacts_sha256"])
+            self.assertIsNone(card["sec_revenue_context"])
+            self.assertEqual(card["sec_context_temporal_status"],
+                             "WITHHELD_FILING_NOT_PRIOR_TO_PRICE_WINDOW")
+            self.assertFalse(card["point_in_time_backtest_verified"])
             self.assertIn("Engine A", html)
             self.assertIn(sha256(normalized).hexdigest(), html)
             self.assertIn(sha256(csv_bytes).hexdigest(), html)
