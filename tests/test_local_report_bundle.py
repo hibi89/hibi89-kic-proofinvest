@@ -66,7 +66,7 @@ class ReportBundleTests(unittest.TestCase):
                 self.assertIn(report["guard"]["decision"], ("HOLD", "REJECT"))
                 self.assertEqual(report["peer_sec_companyfacts_check"]["peer_count"], 1)
                 self.assertTrue(report["three_engine_summary"]["all_three_inputs_present"])
-                self.assertIn(b"<!DOCTYPE html", rendered)
+                self.assertIn(b"<!doctype html", rendered.lower())
 
     def test_no_output_flag_preserves_zero_created_files(self):
         with TemporaryDirectory() as root:

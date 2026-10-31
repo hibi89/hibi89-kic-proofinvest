@@ -43,7 +43,7 @@ def write_new_local_report_bundle(
             or guard.get("decision") not in ("HOLD", "REJECT")
             or guard.get("source_authenticated") is not False
             or ledger.get("all_three_inputs_present") is None
-            or not html.startswith(b"<!DOCTYPE html")):
+            or not html[:15].lower().startswith(b"<!doctype html")):
         raise ValueError("REPORT_GUARD_OR_HTML_INVALID")
     try:
         json_bytes = json.dumps(
@@ -94,7 +94,7 @@ def write_new_local_report_bundle(
     # concurrently created destination. No other filesystem path is changed.
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags, 0o600)
-    created = True
+    created_inode = os.fstat(fd)
     try:
         with os.fdopen(fd, "wb") as dest:
             dest.write(archive)
@@ -103,11 +103,12 @@ def write_new_local_report_bundle(
     except BaseException:
         # Only delete the newly created output if it is still the same inode.
         # Never delete a preexisting or concurrently replaced original file.
-        if created:
-            try:
-                if os.stat(path, follow_symlinks=False).st_ino == os.fstat(fd).st_ino:
-                    os.unlink(path)
-            except (OSError, ValueError):
-                pass
+        try:
+            current_inode = os.stat(path, follow_symlinks=False)
+            if (current_inode.st_ino, current_inode.st_dev) == (
+                    created_inode.st_ino, created_inode.st_dev):
+                os.unlink(path)
+        except (OSError, ValueError):
+            pass
         raise
     return sha256(archive).hexdigest()
