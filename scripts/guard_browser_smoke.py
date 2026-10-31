@@ -156,13 +156,23 @@ def run(output: Path) -> dict:
                             "option", name="질문별 로컬 도구 선택 — 규칙 기반 시연",
                             exact=True,
                         )
-                        picker.click()
-                        try:
-                            option.wait_for(state="visible", timeout=3000)
-                        except PlaywrightTimeoutError:
-                            picker.fill("질문별 로컬 도구 선택")
-                            option.wait_for(state="visible", timeout=10000)
-                        option.click(timeout=10000)
+                        # On CI a Streamlit rerun can unmount an option after
+                        # wait_for() succeeded but before click(). Reopen the
+                        # *same* menu once; never select a different item or
+                        # bypass the router's actual output assertions.
+                        for attempt in range(2):
+                            picker.click()
+                            try:
+                                try:
+                                    option.wait_for(state="visible", timeout=3000)
+                                except PlaywrightTimeoutError:
+                                    picker.fill("질문별 로컬 도구 선택")
+                                    option.wait_for(state="visible", timeout=5000)
+                                option.click(timeout=5000)
+                                break
+                            except PlaywrightTimeoutError:
+                                if attempt == 1:
+                                    raise
                         expect(page.get_by_text(
                             "ProofInvest — 질문별 로컬 도구 선택"
                         )).to_be_visible(timeout=15000)
