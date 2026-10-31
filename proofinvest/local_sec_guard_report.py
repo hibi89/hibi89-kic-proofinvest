@@ -106,6 +106,13 @@ def review_local_sec_with_guard(
     Even structurally matching SEC-shaped facts are not authenticated. The
     legacy Guard remains unchanged; this path can only HOLD or REJECT.
     """
+    # The 3-source operator pin cannot attest a fourth historical page.
+    # CLI already rejects this combination. Enforce the same contract for
+    # direct Python callers BEFORE reviewing evidence or creating SQLite.
+    # A future four-source pin must explicitly include the history byte hash.
+    if expected_source_sha256 is not None and (
+            history_page_json is not None or history_page_name is not None):
+        raise ValueError("HISTORY_PAGE_NOT_PINNED")
     # Bind P20 read-only previews to the EXACT three bytes passed to Guard.
     # Reject any swap before touching even a new, disposable audit DB.
     source_pins_matched = _pinned_local_source_match(

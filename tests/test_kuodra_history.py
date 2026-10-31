@@ -75,6 +75,51 @@ class KuodraHistoryIntegrationTests(unittest.TestCase):
         self.assertTrue(res["audit_chain_valid"])
         self.assertFalse(res["limits"]["external_source_authenticated"])
 
+    def test_direct_python_pins_cannot_claim_unpinned_history_page(self):
+        params = self.kwargs()
+        expected = {
+            "submissions": hashlib.sha256(params["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(params["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(params["original_filing"]).hexdigest(),
+        }
+        # Three approved byte hashes do not cover the fourth history page,
+        # even when the supplied history itself is currently well formed.
+        params["expected_source_sha256"] = expected
+        with patch("proofinvest.local_sec_guard_report.build_local_sec_review_packet",
+                   side_effect=AssertionError("MUST_PRECHECK_FIRST")) as build:
+            with self.assertRaisesRegex(ValueError, "HISTORY_PAGE_NOT_PINNED"):
+                review_local_sec_with_guard(**params)
+        build.assert_not_called()
+        self.assertFalse(self.db.exists())
+
+    def test_historical_page_swap_cannot_bypass_three_pins(self):
+        params = self.kwargs()
+        params["expected_source_sha256"] = {
+            "submissions": hashlib.sha256(params["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(params["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(params["original_filing"]).hexdigest(),
+        }
+        # Valid-looking replacement historical evidence, but not included
+        # in the operator-reviewed three hashes.
+        other = json.loads(params["history_page_json"])
+        other["acceptanceDateTime"] = ["2025-10-15T13:00:00Z"]
+        params["history_page_json"] = json.dumps(other).encode()
+        with self.assertRaisesRegex(ValueError, "HISTORY_PAGE_NOT_PINNED"):
+            review_local_sec_with_guard(**params)
+        self.assertFalse(self.db.exists())
+
+    def test_partial_history_parameters_with_pins_also_fail_before_sqlite(self):
+        params = self.kwargs()
+        params["expected_source_sha256"] = {
+            "submissions": hashlib.sha256(params["submissions_json"]).hexdigest(),
+            "companyfacts": hashlib.sha256(params["companyfacts_json"]).hexdigest(),
+            "original_filing": hashlib.sha256(params["original_filing"]).hexdigest(),
+        }
+        params["history_page_json"] = None
+        with self.assertRaisesRegex(ValueError, "HISTORY_PAGE_NOT_PINNED"):
+            review_local_sec_with_guard(**params)
+        self.assertFalse(self.db.exists())
+
     def test_conflict_rejected_and_audited(self):
         params = self.kwargs()
         params["claimed_growth_pct"] = "300.00"

@@ -1,3 +1,14 @@
+## 2026-10-31 KST — KUODRA P31 reject unpinned history with 3-source SHA (CI PENDING)
+
+1. Defect: Python review_local_sec_with_guard accepted expected_source_sha256 for submissions, companyfacts, and original while also consuming a fourth history_page_json. It could report operator_reviewed_source_digests_matched=True even though the effective history page had no operator pin. The CLI had already prohibited this exact combination, but Python direct calls could bypass it.
+2. Options: (A) add a fourth history-page digest to every approval/pinning and CLI interface (larger behavioral/API change, needs separate design); (B) reject history with any 3-source pin prior to packet build or SQLite (selected, same CLI contract, zero extra network/cost).
+3. Change: proofinvest/local_sec_guard_report.py now raises HISTORY_PAGE_NOT_PINNED if pins and either historical field coexist. Existing unpinned history pipeline and correctly pinned 3-source recent flow remain unchanged. No user originals, core DL logic, Guard policy, SEC/Gemini requests, database schema, or Production modifications.
+4. Regression: 3 new tests in tests/test_kuodra_history.py for unmodified four-file case, swapped historical bytes, partial history args, asserting zero audit DB writes and pre-packet rejection. Existing historical unpinned HOLD/REJECT tests retained.
+5. Validation: P31 exact source CI PENDING; baseline P30 feature a4812d16bca52951333dcf9b525daf033555d7de Actions #41185875234 950 Python tests, 0 failures/errors/skips, Windows+Chromium 3/3 success. Never equate these synthetic checks to real SEC authenticity.
+6. Recovery: ordinary revert P31 commit on hibi89/hibi89-kic-proofinvest lead/kic, do not force push.
+7. Next: confirm exact SHA and 3 CI jobs; then real-data intake remains owner-approved original SEC 3-source + provenance/rights gate. Future four-file pinned history support requires separate explicit design, not changing trust labels.
+8. Checkpoint 2026-10-31 KST, status awaiting CI.
+
 ## 2026-10-31 KST — KUODRA P30 selected 10-K acceptance-time anti-lookahead (CI 3/3 SUCCESS)
 
 1. Objective: prevent a selected RECENT SEC 10-K from being considered historically available merely because filingDate is on/before a claimed collection day; P27 protected capital filing-watch candidates, not every selected 10-K path.
