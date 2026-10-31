@@ -25,6 +25,7 @@ from disclosure_lightning.originals import (
 from proofinvest.kuodra_history import index_pinned_history, assess_history_verdict
 from proofinvest.dl_bridge import (
     assess_dl_sec_handoff, assess_dl_original_handoff,
+    filing_available_at_observation,
 )
 from proofinvest.dl_source_span import anchored_source_span
 from proofinvest.sec_companyfacts import verify_sec_annual_revenue
@@ -138,6 +139,8 @@ def build_local_sec_review_packet(
                   if record.get("accession") == accession]
     if len(candidates) != 1 or candidates[0].get("form") != "10-K":
         raise ValueError("FILING_UNAVAILABLE_AT_AS_OF")
+    if not filing_available_at_observation(index, candidates[0]):
+        raise ValueError("FILING_NOT_AVAILABLE_AT_OBSERVATION")
 
     verdict = verify_sec_annual_revenue(
         facts, cik=cik, accession=accession,

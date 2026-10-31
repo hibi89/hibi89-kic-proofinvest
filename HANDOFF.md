@@ -1,3 +1,14 @@
+## 2026-10-31 KST — KUODRA P30 selected 10-K acceptance-time anti-lookahead (CI PENDING)
+
+1. Objective: prevent a selected RECENT SEC 10-K from being considered historically available merely because filingDate is on/before a claimed collection day; P27 protected capital filing-watch candidates, not every selected 10-K path.
+2. Designs: A change Disclosure Lightning core indexing on another owned feature branch (wide coupling/migration regressions); B centralize a read-only KUODRA cross-module availability gate for the selected 10-K only, leaving shared DL index and Guard decisions intact (selected, no added API/fee).
+3. Code: proofinvest/dl_bridge.py filing_available_at_observation compares timezone-aware SEC acceptance UTC instant with caller-reported collected_at; unknown/naive/malformed acceptance withholds same-day; prior-day remains date-only/unverified. Downstream core linkage rechecks independently. local_sec_packet, kuodra_loose_sec_compatibility, kuodra_offline_preflight, sec_three_source now gate selected 10-K before any audit, period proposal or second/third SEC request; historical archive already has an equivalent guard.
+4. Tests: 8 new focused offline/mocked-HTTP cases for after-observation same/prior-day acceptance, offsets, missing/naive same-day, no-write Guard, no-write loose/ZIP preflight, early stop after first mocked request, prior-day valid Guard HOLD. No real network, credentials, owner files, or production changes.
+5. Verification: pending exact P30 source CI. Last verified baseline P29 feature ffe9efc33e1b34ab7ce3037707c06c6eff092dc1 [Actions #41185249866](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41185249866) Python 942 pass/0 fail/error/skip, Windows SQLite and Chromium 3/3 successful. No genuine SEC data, live Gemini or Production has been verified.
+6. Recovery: ordinary Git revert of P30, no force push, no DL branch edits or API policy changes.
+7. Next: verify P30 exact-source CI and no regressions, then stop synthetic-only iteration and await owner-approved genuine three SEC originals/data rights. Do not claim real data acceptance or a deployed service.
+8. Checkpoint: 2026-10-31 KST; code pending validation.
+
 ## 2026-10-31 KST — KUODRA P29 auxiliary 10-K filing-date coherence (CI 3/3 SUCCESS)
 
 1. Goal: block a source-consistent-on-accession but contradictory filed-date join across revenue/Submissions and optional balance/shares/cashflow panels; preserve valid Guard and avoid misleading peripheral figures.

@@ -19,6 +19,7 @@ from .kuodra_capture_replay import _capture_instant
 from .local_sec_packet import _json_object, _MAX_FILE_BYTES
 from .sec_capture_bundle import _read_checked_capture_bundle
 from .sec_companyfacts import MAX_AMOUNT, MAX_ROWS, REVENUE_TAGS, _date, verify_sec_annual_revenue
+from .dl_bridge import filing_available_at_observation
 from .visible_text_evidence import confirm_html_text_node_literal, IGNORED, MAX_BYTES
 
 _MAX_PERIOD_ENDS = 64
@@ -203,6 +204,9 @@ def inspect_saved_capture_periods(
                   if row.get("accession") == accession and row.get("form") == "10-K"]
         if len(filing) != 1:
             result["reason_code"] = "TARGET_10K_NOT_IN_SAVED_SUBMISSIONS_AS_OF"
+            return result
+        if not filing_available_at_observation(indexed, filing[0]):
+            result["reason_code"] = "FILING_NOT_AVAILABLE_AT_OBSERVATION"
             return result
         companyfacts = _json_object(raws["companyfacts"], limit=_MAX_FILE_BYTES)
     except (ValueError, TypeError, KeyError, OverflowError, RecursionError):

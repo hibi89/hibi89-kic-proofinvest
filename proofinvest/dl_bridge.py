@@ -43,6 +43,29 @@ def _instant(value: Any) -> datetime | None:
         return None
 
 
+def filing_available_at_observation(index: Any, record: Any) -> bool:
+    """One 10-K must exist by the stated collection INSTANT, not just its day.
+
+    Same-day unknown/naive SEC acceptance timestamps are withheld. Prior-day
+    missing zone remains date-only evidence, never a verified receipt.
+    These are caller-supplied metadata, not independently authenticated clocks.
+    """
+    if not isinstance(index, Mapping) or not isinstance(record, Mapping):
+        return False
+    cutoff = _day(index.get("as_of_cutoff"))
+    observed = _instant(index.get("collected_at"))
+    filed = _day(record.get("filed_at"))
+    if (cutoff is None or observed is None or filed is None
+            or observed.date() > cutoff or filed > cutoff
+            or filed > observed.date()):
+        return False
+    accepted = _instant(record.get("accepted_at"))
+    if accepted is not None:
+        return accepted <= observed
+    # No timezone inference for naive/missing/invalid SEC acceptance clocks.
+    return filed < observed.date()
+
+
 def assess_dl_sec_handoff(index: Any, numeric_verdict: Any) -> dict[str, Any]:
     """Link ONE DL 10-K metadata record to a matching KIC SEC numeric verdict.
 
@@ -86,6 +109,8 @@ def assess_dl_sec_handoff(index: Any, numeric_verdict: Any) -> dict[str, Any]:
     if len(matches) != 1:
         return _blocked("MISSING_OR_AMBIGUOUS_FILING")
     record = matches[0]
+    if not filing_available_at_observation(index, record):
+        return _blocked("FILING_NOT_AVAILABLE_AT_OBSERVATION")
     filed = _day(record.get("filed_at"))
     url = record.get("source_uri")
     prefix = (f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/"

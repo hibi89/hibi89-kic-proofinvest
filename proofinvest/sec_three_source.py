@@ -30,7 +30,7 @@ from disclosure_lightning.core import (
 from disclosure_lightning.originals import (
     fetch_original, locate_original, persist_original,
 )
-from proofinvest.dl_bridge import assess_dl_sec_handoff
+from proofinvest.dl_bridge import assess_dl_sec_handoff, filing_available_at_observation
 from proofinvest.sec_companyfacts import _date, verify_sec_annual_revenue
 from proofinvest.local_sec_packet import _json_object
 from proofinvest.sec_capture_bundle import preflight_local_bundle_path, save_local_capture_bundle
@@ -150,6 +150,10 @@ def run_sec_three_source_review(
             filings = [f for f in indexed["filings"] if f.get("accession") == accession]
             if len(filings) != 1 or filings[0].get("form") != "10-K":
                 raise ValueError("REQUESTED_10K_NOT_AVAILABLE_IN_SEC_RECENT_WINDOW")
+            # Do not spend the next two requests on a filing that was not
+            # available at the first observed SEC response instant.
+            if not filing_available_at_observation(indexed, filings[0]):
+                raise ValueError("FILING_NOT_AVAILABLE_AT_OBSERVATION")
             save_index(db, raw_submissions, indexed)
             receipt = locate_original(db, cik=target, accession=accession)
             stage = "companyfacts"

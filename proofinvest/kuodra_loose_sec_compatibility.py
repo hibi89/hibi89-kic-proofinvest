@@ -22,6 +22,7 @@ from .dei_identity_review import review_embedded_dei_identity
 from .kuodra_offline_preflight import _candidate_needle_receipts
 from .local_sec_packet import _json_object, _read_regular_local, _MAX_FILE_BYTES
 from .sec_companyfacts import REVENUE_TAGS, MAX_ROWS, _date, verify_sec_annual_revenue
+from .dl_bridge import filing_available_at_observation
 
 _CIK = re.compile(r"[0-9]{10}\Z", re.ASCII)
 _ACC = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
@@ -101,6 +102,8 @@ def inspect_loose_sec_files(
                   if f.get("accession") == accession and f.get("form") == "10-K"]
         if len(target) != 1 or not isinstance(target[0].get("source_uri"), str):
             return _result("TARGET_10K_NOT_IN_SAVED_RECENT_SUBMISSIONS")
+        if not filing_available_at_observation(index, target[0]):
+            return _result("FILING_NOT_AVAILABLE_AT_OBSERVATION")
         facts = _json_object(facts_raw, limit=_MAX_FILE_BYTES)
     except (ValueError, KeyError, TypeError, OverflowError, RecursionError):
         return _result("SUBMISSIONS_OR_COMPANYFACTS_FORMAT_INVALID")
