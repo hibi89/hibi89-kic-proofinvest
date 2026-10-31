@@ -24,6 +24,7 @@ from .local_sec_guard_report import review_local_sec_with_guard
 from .local_sec_html_report import render_local_sec_html
 from .local_sec_packet import _read_regular_local, _MAX_FILE_BYTES
 from .market_price_csv import market_price_csv_to_json
+from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
 from .market_data_evidence import validate_market_evidence
 from .market_reality import (
     MAX_UPLOAD_BYTES as MARKET_MAX, analyze_market_reality,
@@ -46,6 +47,7 @@ def _base(reason: str) -> dict[str, Any]:
         "as_of_self_reported": None,
         "sec_accession": None,
         "apple_10k_original_table_check": None,
+        "peer_sec_companyfacts_check": None,
         "guard_decision_unchanged": None,
         "source_authenticated": False,
         "historical_market_vintage_authenticated": False,
@@ -111,6 +113,9 @@ def inspect_offline_data_files(
     industry_json: Path | None = None,
     market_evidence_json: Path | None = None,
     apple_10k_24_cell_check: bool = False,
+    peer_companyfacts_files: list[Path] | None = None,
+    peer_ciks: list[str] | None = None,
+    peer_accessions: list[str] | None = None,
     sec_submissions: Path | None = None,
     sec_companyfacts: Path | None = None,
     sec_filing: Path | None = None,
@@ -209,6 +214,18 @@ def inspect_offline_data_files(
         except (ValueError, TypeError, KeyError, OSError, OverflowError,
                 RecursionError, UnicodeError):
             return {**blocked, "reason_code": "APPLE_10K_24_CELL_CHECK_BLOCKED"}
+    peer_enabled = any(field is not None for field in (
+        peer_companyfacts_files, peer_ciks, peer_accessions
+    ))
+    if peer_enabled:
+        if (industry_json is None or
+                any(type(field) is not list for field in (
+                    peer_companyfacts_files, peer_ciks, peer_accessions
+                )) or not 1 <= len(peer_companyfacts_files) <= 8 or
+                len(peer_ciks) != len(peer_companyfacts_files) or
+                len(peer_accessions) != len(peer_companyfacts_files) or
+                any(type(p) is not Path for p in peer_companyfacts_files)):
+            return {**blocked, "reason_code": "PEER_SOURCE_INPUTS_REQUIRED"}
     has_market = market_csv is not None
     has_industry = industry_json is not None
     has_evidence = market_evidence_json is not None
@@ -304,6 +321,30 @@ def inspect_offline_data_files(
                 if vision["input_sha256"] != industry_source_digest:
                     return {**blocked, "reason_code": "INDUSTRY_BYTES_MISMATCH"}
                 report["industry_vision"] = vision
+                if peer_enabled:
+                    try:
+                        peer_sources = []
+                        total_peer_bytes = 0
+                        for peer_cik, peer_accession, peer_path in zip(
+                                peer_ciks, peer_accessions,
+                                peer_companyfacts_files):
+                            original = _read_regular_local(
+                                peer_path, _MAX_FILE_BYTES
+                            )
+                            total_peer_bytes += len(original)
+                            if total_peer_bytes > 48_000_000:
+                                raise ValueError("PEER_FACTS_BYTES_OVER_BUDGET")
+                            peer_sources.append((
+                                peer_cik, peer_accession, original
+                            ))
+                        peer_receipt = bind_peer_companyfacts_to_industry(
+                            industry_raw, peer_sources=peer_sources,
+                        )
+                    except (ValueError, TypeError, KeyError, OSError,
+                            OverflowError, RecursionError, UnicodeError):
+                        return {**blocked,
+                                "reason_code": "PEER_COMPANYFACTS_CHECK_BLOCKED"}
+                    report["peer_sec_companyfacts_check"] = peer_receipt
             report["three_engine_summary"] = summarize_three_engines(report)
             html = render_local_sec_html(report)
             if not isinstance(html, bytes) or not html:
@@ -315,6 +356,9 @@ def inspect_offline_data_files(
                 "reason_code": "LOCAL_ONLY_REVIEW_NOT_REAL_DATA_AUTHENTICATION",
                 "guard_decision_unchanged": report["guard"]["decision"],
                 "apple_10k_original_table_check": apple_table_receipt,
+                "peer_sec_companyfacts_check": report.get(
+                    "peer_sec_companyfacts_check"
+                ),
                 "sec_revenue_status": report["verification"]["status"],
                 "accounting_status": report["accounting_integrity"]["status"],
                 "market_status": (
@@ -372,6 +416,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--market-source-url")
     parser.add_argument("--market-published-at")
     parser.add_argument("--industry-json", type=Path)
+    parser.add_argument("--peer-companyfacts", type=Path, action="append",
+                        dest="peer_companyfacts_files",
+                        help="Optional local original CompanyFacts file for every declared Engine C peer (max 8).")
+    parser.add_argument("--peer-cik", action="append", dest="peer_ciks")
+    parser.add_argument("--peer-accession", action="append", dest="peer_accessions")
     parser.add_argument("--apple-10k-24-cell-check", action="store_true",
                         help="Fail closed unless the uploaded Apple FY2025 10-K HTML original matches 24 independently reviewed statement values; does not authenticate its origin.")
     args = parser.parse_args(argv)
@@ -385,6 +434,9 @@ def main(argv: list[str] | None = None) -> int:
         industry_json=args.industry_json,
         market_evidence_json=args.market_evidence_json,
         apple_10k_24_cell_check=args.apple_10k_24_cell_check,
+        peer_companyfacts_files=args.peer_companyfacts_files,
+        peer_ciks=args.peer_ciks,
+        peer_accessions=args.peer_accessions,
         sec_submissions=args.sec_submissions,
         sec_companyfacts=args.sec_companyfacts,
         sec_filing=args.sec_filing,
