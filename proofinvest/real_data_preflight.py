@@ -399,7 +399,7 @@ def inspect_offline_data_files(
                     industry_input_mode = "OPERATOR_UPLOADED_JSON_UNVERIFIED"
                     industry_source_digest = sha256(industry_raw).hexdigest()
                 vision = bind_industry_to_sec(report, industry_raw)
-                if vision["input_sha256"] != industry_source_digest:
+                if vision["input_sha256"] != sha256(industry_raw).hexdigest():
                     return {**blocked, "reason_code": "INDUSTRY_BYTES_MISMATCH"}
                 report["industry_vision"] = vision
                 if peer_enabled:
