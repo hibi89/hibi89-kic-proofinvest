@@ -51,6 +51,12 @@ def review(data, accession=SYNTHETIC_ACCESSION, asof=AS_OF):
 
 
 class AccountingIntegrityTests(unittest.TestCase):
+    def test_report_is_ascii_serializable_for_windows_cli_pipe(self):
+        # Windows redirected stdout may default to a non-UTF-8 codec.
+        # UI/HTML handles localization; transport JSON must remain portable.
+        report = review(fixture())
+        json.dumps(report, ensure_ascii=False).encode("ascii")
+
     def test_positive_income_low_cfo_and_receivables_gap(self):
         with patch("urllib.request.urlopen", side_effect=AssertionError("NO NETWORK")) as net:
             out = review(fixture())

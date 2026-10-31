@@ -57,10 +57,10 @@ def _base(reason: str, source: bytes | None = None) -> dict[str, Any]:
         "guard_policy_modified": False, "ai_generated": False, "trade_executed": False,
         "live_api_called": False,
         "limitations": [
-            "한 회계기간의 현금흐름 괴리는 회계 부정의 증거가 아닙니다.",
-            "매출채권·재고 증가율은 업종, 인수합병, 계절성, 회계변경에 영향을 받습니다.",
-            "선택된 회사·10-K·원본 공개시점·주석 및 데이터 권리는 독립 인증되지 않았습니다.",
-            "제시된 위험 기준은 탐색적 검토 규칙이며 투자 권고·확률이 아닙니다.",
+            "A one-year cash-flow discrepancy does not establish accounting fraud.",
+            "Receivables and inventory growth are sensitive to sector, M&A, seasonality and accounting changes.",
+            "Issuer, filing, release timing, footnotes and data rights are not independently authenticated.",
+            "Review thresholds are exploratory heuristics, not investment advice or probabilities.",
         ],
     }
 
