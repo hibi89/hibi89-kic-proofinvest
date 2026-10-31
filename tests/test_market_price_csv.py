@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from proofinvest.market_price_csv import market_price_csv_to_json
 from proofinvest.market_reality import MAX_UPLOAD_BYTES, analyze_market_reality
-from test_market_reality import fixture
+from tests.test_market_reality import fixture
 
 
 def csv_from_fixture() -> bytes:
