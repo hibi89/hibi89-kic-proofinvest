@@ -14,6 +14,7 @@ from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
 
 from .local_sec_packet import _MAX_FILE_BYTES
+from .local_sec_html_report import render_local_sec_html
 from .kuodra_local_workspace import (
     preview_uploaded_triplet, review_uploaded_triplet, discover_uploaded_periods,
     discover_uploaded_filing_targets, _check_bytes,
@@ -320,7 +321,6 @@ def render_local_workspace(st) -> None:
                 from .market_reality import (
                     parse_market_reality_json, analyze_market_reality,
                 )
-                from .local_sec_html_report import render_local_sec_html
                 market = analyze_market_reality(
                     parse_market_reality_json(market_raw),
                     expected_issuer_cik=cik, analysis_as_of=as_of,
@@ -340,7 +340,6 @@ def render_local_workspace(st) -> None:
         )
         if industry_raw is not None:
             try:
-                from .local_sec_html_report import render_local_sec_html
                 report["industry_vision"] = bind_industry_to_sec(report, industry_raw)
                 html = render_local_sec_html(report)
             except (ValueError, TypeError, OverflowError, RecursionError, KeyError):
