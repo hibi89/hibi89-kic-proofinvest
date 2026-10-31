@@ -1,3 +1,15 @@
+## P73 — Read-only verification of a saved P70 report ZIP (requires original receipt)
+
+P70 optionally creates `new-kuodra-analysis.zip` after the offline local Guard/three-engine run and returns `report_bundle_sha256` in its JSON receipt. Store the receipt digest **separately from the ZIP**. Later, the ZIP can be checked without rerunning the data analysis and without reading external services:
+
+```powershell
+python -m proofinvest.local_report_bundle_verify "C:/Data/new-kuodra-analysis.zip" --expected-sha256 REPLACE_WITH_64_HEX_FROM_P70_RECEIPT
+```
+
+This is a real CLI option (the 64-character replacement is required). The verifier reads the local archive only, checks the exact original ZIP byte hash, bounded non-symlink regular file, exactly `report.json`, `report.html`, `manifest.json`, canonical JSON, stored file SHA-256/lengths, Guard/Engine report state and re-renders the existing escaped HTML for a byte-for-byte match. It refuses duplicate/unexpected entries, malformed/oversized ZIP and false origin/rights/AI/trade/audit claims. On success exit `0` with `LOCAL_ZIP_BYTES_MATCH_RECEIPT_ORIGIN_UNVERIFIED`. On failure exit `2` with sanitized `BLOCKED` JSON. No report is exported or mutated in verification.
+
+**Integrity scope:** The verifier proves a local report ZIP still matches an **independently retained digest**, not who obtained its SEC/market/sector inputs or whether any self-reported release timestamp, data rights or provider claims are genuine. A matched file can contain only synthetic test data. Never treat an output digest as original SEC/issuer/publisher authentication or official contest submission. P73 source SHA `1afa1c8bc1b54df29b7575bf62d45167669f1cdc`, CI #41236018194 1,213 Python PASS and Windows/Chromium tests pass on synthetic inputs only.
+
 ## P70 — Explicit locally saved complete JSON/HTML report bundle (no output by default)
 
 The existing one-shot offline preflight supports a **new optional** flag:

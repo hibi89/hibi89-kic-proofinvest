@@ -1,3 +1,16 @@
+## 2026-11-01 KST — P73 P70 report ZIP receipt-pinned independent verification, 1,213 Python PASS
+
+1. **목표/기술/확정 요구:** 기존 offline `real_data_preflight --output-report-zip` ZIP을 실사용자가 나중에 안전하게 재검증하도록 추가. Python 3.11 표준 라이브러리만 사용, 사용자 저장 파일과 Guard/SEC/3-engine 기존 계약 보존; 진짜 SEC 원본이 없는 현재 상황은 별도 BLOCKED.
+2. **실제 구현/설계 비교:** A=ZIP 내부 manifest SHA만 대조(조작자가 ZIP+manifest를 같이 고칠 수 있어 신뢰 약함); B=별도 보관된 P70 `report_bundle_sha256`를 필수 입력으로 강제 + archive SHA, ZIP 정확 3개 엔트리·중복/크기/암호화, canonical JSON, manifest 타입/false provenance, report Guard/Engine 상태, 2개 part SHA, 기존 HTML renderer의 바이트 일치까지 검사. **B 채택**, `proofinvest/local_report_bundle_verify.py` 신규. 원본 압축 파일 그대로 읽고 추출/쓰기/실 SEC 요청/AI/거래 없음.
+3. **테스트/실제 결과:** 신규 `tests/test_local_report_bundle_verify.py`의 6개 테스트가 기존 P70 합성 3-source SEC+market+sector+peer 완전 ZIP 생성 E2E에 연결, SHA/위변조/악성 manifest·HTML/symlink/CLI 실패-안전 여부 확인. 정확 기능 SHA `1afa1c8bc1b54df29b7575bf62d45167669f1cdc`, [CI #41236018194](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41236018194) **3/3 SUCCESS, Python 1,213 PASS 0 FAIL/ERROR/SKIP**, Windows SQLite SUCCESS, 실제 Chromium 로컬 Guard/세 엔진 browser SUCCESS. 실제 SEC/벤더 데이터가 아닌 SYNTHETIC 테스트.
+4. **완료/미검증:** P73 ZIP 무결성 독립 재검증 기능 DONE/CI VERIFIED. P70 출력 기본 no-retention/no-export 유지. 실제 Apple SEC Submissions+CompanyFacts+10-K original raw 없으며 peer/market/sector 원본/출처·rights/PIT 미확인; 공개 Production/Vercel, LLM, 공식 <=10p PDF 최종 및 제출 영수증 모두 NOT VERIFIED. 이전 사용자 전달 전체 약 80%는 측정된 점수가 아니며 P73만으로 상향하지 않음.
+5. **실패/차단/대안:** 이번 정확 SHA 새 기능 CI 실패 없음. 직전 P72의 HTML 헤더 행 count 버그는 P72에서 수정됨. 실 SEC 403 차단 경로는 동일 환경 재시도 금지; 사용자가 적법하게 확보한 원본 3개를 외부 전송 없이 로컬 preflight로 검증하는 A안 우선, 유료 공급자는 별도 권리/비용 승인 후만.
+6. **GitHub/브랜치/해시:** `hibi89/hibi89-kic-proofinvest@lead/kic` feature SHA `1afa1c8bc1b54df29b7575bf62d45167669f1cdc`; files `proofinvest/local_report_bundle_verify.py` 및 `tests/test_local_report_bundle_verify.py`. 기존 ZIP writer/API/Guard 손대지 않음. 이번 문서 후속 SHA 분리. Git 버전 이력 복구 가능, force push 없음.
+7. **실행/배포:** P70 성공 JSON receipt의 SHA를 따로 보관하고 `python -m proofinvest.local_report_bundle_verify "C:/Data/new-kuodra-analysis.zip" --expected-sha256 RECEIPT_SHA256`. 성공 0, BLOCKED 2; 응답은 파일 경로/원본 노출 없는 제한된 JSON. Public production 배포 미적용.
+8. **원본/보안:** SEC 원본·사용자 ZIP 읽기 전용. archive 파일당 최대 24MB, 각 report 최대 12MB, manifest 최대 8KB, 정규파일/최종경로 symlink 거부. 독립 SHA가 있어도 publisher provenance, 라이선스, 2025 PIT 재현, API 응답 인증 아님. 공개 Git에는 키·고객 자료 추가 안 함.
+9. **다음 우선순위/사전 승인:** owner-approved lawful raw SEC 3-source + 1 peer, 실제 sector/price/index 권리·기간 확보 시 P69/P70 full input E2E -> P73 ZIP 재검증 -> 실제 공시/원본 검증 결과 검토. 대회 공식 PDF <=10p 후보 검수·해시 승인·DAKER 업로드는 사용자 별도 승인이 필요; 마감 2026-11-12 10:00 KST.
+10. **기록 시각/검증 범위:** 2026-11-01 KST, 정확 코드 SHA `1afa1c8bc1b54df29b7575bf62d45167669f1cdc`, Actions #41236018194의 세 job 성공 확인. 문서 HEAD CI와 실제 SEC HTTP/Production/제출은 별개.
+
 ## 2026-11-01 KST — P72 OFFLINE APPLE SEC WEB REVIEW BRIEF: PYTHON 1,207 PASS, CI 3/3 SUCCESS
 
 1. **목표·확정 요구·스택:** P71 SEC 공식 웹렌더링 표에서 수동 대조한 28개 Apple FY2025/24 값을 재검증한 다음, KUODRA 백엔드가 읽을 수 있는 JSON 및 심사 검토용 오프라인 HTML로 표시. 기존 Python3.11, P71 Engine B Decimal replay, 명시적 Guard/no-trade/원본 비인증 조건 유지.
