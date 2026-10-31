@@ -119,6 +119,67 @@ def render_local_apple_10k_original_check(
     })
 
 
+def _render_peer_companyfacts_inputs(st, industry_raw: bytes | None):
+    """Opt-in, in-memory peer upload controls. Return handles, NOT persisted bytes."""
+    if industry_raw is None:
+        return False, []
+    enabled = st.checkbox(
+        "경쟁사 SEC CompanyFacts 원본 검산 추가 (로컬, 출처 미인증)",
+        key="kuodra_peer_sources_opt_in", value=False,
+    )
+    if not enabled:
+        return False, []
+    from .industry_vision import parse_industry_vision_json
+    try:
+        peers = parse_industry_vision_json(industry_raw)["peers"]
+    except (ValueError, TypeError, KeyError, RecursionError, OverflowError):
+        st.error("경쟁사 입력 검증 차단: 산업 JSON을 다시 확인하십시오.")
+        return True, []
+    if not 1 <= len(peers) <= 8:
+        st.warning("경쟁사 원본 검산은 산업 JSON에 경쟁사 1~8개가 있어야 합니다.")
+        return True, []
+    st.caption("모든 경쟁사별 CompanyFacts 원본과 해당 10-K 접수번호가 필요합니다. "
+               "검산되지 않으면 Engine C 통합 결과를 제외합니다. "
+               "SHA-256은 출처 인증이 아닙니다.")
+    inputs = []
+    for peer in peers:
+        cik = peer["cik"]
+        uploaded = st.file_uploader(
+            "경쟁사 " + cik + " SEC CompanyFacts JSON",
+            type=["json"], key="kuodra_peer_facts_" + cik,
+        )
+        accession = st.text_input(
+            "경쟁사 " + cik + " 10-K 접수번호",
+            key="kuodra_peer_acc_" + cik, max_chars=20,
+        )
+        inputs.append((cik, accession, uploaded))
+    return True, inputs
+
+
+def _verify_uploaded_peers(industry_raw: bytes, inputs) -> dict:
+    """Only run after explicit Guard click; bound reads and discard all bytes."""
+    from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
+    if not inputs:
+        raise ValueError("PEER_UI_COMPLETE_INPUTS_REQUIRED")
+    total = 0
+    sources = []
+    for cik, accession, upload in inputs:
+        size = getattr(upload, "size", None)
+        if (upload is None or type(size) is not int
+                or not 0 < size <= 24_000_000):
+            raise ValueError("PEER_UI_ORIGINAL_SIZE_INVALID")
+        total += size
+        if total > 48_000_000:
+            raise ValueError("PEER_UI_TOTAL_SIZE_INVALID")
+        raw = upload.getvalue()
+        if type(raw) is not bytes or len(raw) != size:
+            raise ValueError("PEER_UI_UPLOAD_MISMATCH")
+        sources.append((cik, accession, raw))
+    return bind_peer_companyfacts_to_industry(
+        industry_raw, peer_sources=sources,
+    )
+
+
 def render_local_workspace(st) -> None:
     if not local_workspace_enabled(st):
         st.error("로컬 파일 분석은 localhost 전용 명시적 설정이 없으면 비활성화됩니다.")
@@ -347,6 +408,9 @@ def render_local_workspace(st) -> None:
     # Independent, read-only market/peer comparison; cannot affect Guard.
     from .industry_vision_ui import render_local_industry_vision
     industry_raw = render_local_industry_vision(st, cik=cik, as_of=as_of)
+    peer_requested, peer_inputs = _render_peer_companyfacts_inputs(
+        st, industry_raw,
+    )
 
     # Price data is user-provided; analysis is separate from audited SEC facts.
     from .market_reality_ui import render_local_market_reality
@@ -417,12 +481,27 @@ def render_local_workspace(st) -> None:
         )
         if industry_raw is not None:
             try:
-                report["industry_vision"] = bind_industry_to_sec(report, industry_raw)
+                vision = bind_industry_to_sec(report, industry_raw)
+                # User explicitly chose extra peer verification. Do not show
+                # an unverified peer result as complete when ANY uploaded
+                # original/CIK/accession/period/hash fails its own gate.
+                if peer_requested:
+                    peer_receipt = _verify_uploaded_peers(
+                        industry_raw, peer_inputs,
+                    )
+                    if (peer_receipt["source_authenticated"] is not False
+                            or peer_receipt["audit_written"] is not False):
+                        raise ValueError("PEER_UI_TRUST_MISMATCH")
+                    report["peer_sec_companyfacts_check"] = peer_receipt
+                report["industry_vision"] = vision
                 html = render_local_sec_html(report)
-            except (ValueError, TypeError, OverflowError, RecursionError, KeyError):
+            except (ValueError, TypeError, OverflowError, RecursionError,
+                    KeyError, OSError, UnicodeError):
                 report.pop("industry_vision", None)
-                st.warning("Engine C와 선택 SEC 원본의 발행사·매출·기간·SHA가 "
-                           "일치하지 않아 통합 보고서에서 제외했습니다.")
+                report.pop("peer_sec_companyfacts_check", None)
+                st.warning("Engine C와 SEC 원본 또는 선택한 경쟁사 CompanyFacts의 "
+                           "수치·발행사·기간·해시가 일치하지 않아 통합 보고서에서 "
+                           "제외했습니다. Guard 판정은 변경하지 않았습니다.")
                 html = render_local_sec_html(report)
         # This is NOT a new Guard decision and is not a calibrated score.
         report["three_engine_summary"] = summarize_three_engines(report)
@@ -449,6 +528,11 @@ def render_local_workspace(st) -> None:
             })
         st.subheader("KUODRA · A/B/C 3엔진 근거 요약")
         st.json(report["three_engine_summary"])
+        if "peer_sec_companyfacts_check" in report:
+            st.subheader("Engine C · 경쟁사 SEC CompanyFacts 로컬 원본 검산")
+            st.json(report["peer_sec_companyfacts_check"])
+            st.caption("경쟁사 파일의 숫자·해시 대조만 통과했습니다. SEC 출처·권리·"
+                       "실제 게시일·동종 기업 간 회계기간 비교 가능성은 미인증입니다.")
         if "industry_vision" in report:
             ind = report["industry_vision"]
             st.table([
