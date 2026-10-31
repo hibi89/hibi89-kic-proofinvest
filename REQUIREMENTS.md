@@ -1,3 +1,5 @@
+> **P46 implementation status correction — 2026-10-31 KST:** Engine A and B core offline local logic and Engine C offline growth comparator are coded and source-bounded; A/B/C shared JSON/HTML ledger real Chromium QA 3/3 passed at tested feature SHA `e3e4377ab24c45d74849c099694c87fc2ebe687a`. Below 2026-10-31 initial 'designed, not completed' statements are **historical planning language**, NOT current offline implementation status. Genuine data/API/industry vision and Production remain NOT DONE. No automatic investment recommendation/trade. Details in latest HANDOFF/STATUS.
+
 ## 2026-10-31 KST — KUODRA three-engine analytical product direction (owner confirmed)
 
 - **Engine A Market Reality (designed, not completed):** company price/index alpha-beta and valuation vs financial fundamentals. Beta is market covariance, NOT the proportion of a move caused by liquidity; cannot declare exact bubble %.
