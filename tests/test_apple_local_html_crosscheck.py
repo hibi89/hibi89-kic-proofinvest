@@ -205,11 +205,11 @@ class AppleOriginalHTMLTests(unittest.TestCase):
             self.assertEqual(parser.cell_length, 7)
             self.assertEqual(parser.document_size, 5008)
             parser.feed("</td></tr></table></html>")
-        self.assertEqual(parser.tables, [[["\\uFFFD" * 7]]])
+        self.assertEqual(parser.tables, [[["\uFFFD" * 7]]])
 
     def test_total_parsed_byte_limit_still_applies_after_saturation(self):
         parser = _FinancialTables()
-        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELL_TEXT", 7), \\
+        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELL_TEXT", 7), \
              patch("proofinvest.apple_local_html_crosscheck.MAX_FILING_BYTES", 8):
             parser.feed("<html><table><tr><td>1234567")
             parser.feed("8")
