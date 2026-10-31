@@ -449,7 +449,8 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         scenario_rows = "".join(
             "<tr><th>" + _field(card["title"], 120)
             + "</th><td><strong>" + _field(card["id"], 80)
-            + "</strong><p>" + _field(card["condition"], 180)
+            + "</strong> <em>" + _field(card["kind"], 80)
+            + "</em><p>" + _field(card["condition"], 180)
             + "</p><p>" + _field(card["explanation"], 700)
             + "</p><p>근거 ID (미인증): "
             + _field(", ".join(card["source_ids"]) or "NONE", 1800)
