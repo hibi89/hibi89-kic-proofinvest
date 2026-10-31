@@ -1,3 +1,13 @@
+## P65 — Optional Apple 2025 original 24-cell gate in the complete offline A/B/C preflight
+
+Apple statement-table checking previously existed as a separate CLI/UI (P58–P63), while the read-only real-file preflight (P49/P51) independently evaluated the same SEC original against SEC-derived numbers and optional market/sector evidence. P65 connects those paths **only when explicitly enabled**, preserving existing behavior for other issuers and users without Apple original HTML.
+
+Append `--apple-10k-24-cell-check` to an existing `python -m proofinvest.real_data_preflight` invocation with real, lawfully held `--sec-submissions`, `--sec-companyfacts` and `--sec-filing` inputs (or a valid existing `--sec-bundle`). It requires all five exact target fields: `--issuer-cik 0000320193`, `--accession 0000320193-25-000079`, `--as-of 2025-10-31`, `--prior-end 2024-09-28`, `--current-end 2025-09-27` and existing `--collected-at`, `--needle`. On a structurally valid file, the existing SHA-256 of the original filing is reused and 24 FY2025/FY2024 numeric values across income, balance and cash statements are checked against P57 manual issuer-manifest values; the full SEC/Guard + optional Engine A/C process continues after this check. The receipt includes `apple_10k_original_table_check` with computed original SHA-256, 24 matched cells and **source_authenticated=false**; it does not retain the original or certify genuine issuer bytes.
+
+A malformed, inconsistent, wrong-identity or missing original 10-K returns **exit 2** with `APPLE_10K_24_CELL_CHECK_BLOCKED` and no raw byte/path leakage. The optional mode does not establish third-party issuer authentication, data rights, actual SEC source or valid historical price vintage. Source verification and licensed market/sector inputs remain necessary even if all checks pass.
+
+A non-Apple original follows the unchanged preflight when the flag is absent. The new tests in `tests/test_real_data_preflight_apple.py` use **constructed synthetic HTML**; passing those tests is not an Apple/SEC real-byte demonstration. The first legally supplied genuine original may reveal layout variants and must be run through the real parser with an independently recorded byte SHA.
+
 ## P51 — Direct SEC 3-source files (alternative to capture ZIP)
 
 A separately saved capture ZIP is **not** required if the operator has the original three individual files. The same local SEC validation, SHA pinning, temporary Guard, optional market CSV/evidence and industry JSON are reused without any provider/API call or original-file overwrite.
