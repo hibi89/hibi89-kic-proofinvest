@@ -266,6 +266,10 @@ def render_local_workspace(st) -> None:
     from .ml_explainability_ui import render_local_ml_evaluation
     render_local_ml_evaluation(st, cik=cik, as_of=as_of)
 
+    # Independent, read-only market/peer comparison; cannot affect Guard.
+    from .industry_vision_ui import render_local_industry_vision
+    render_local_industry_vision(st, cik=cik, as_of=as_of)
+
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
