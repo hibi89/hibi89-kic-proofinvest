@@ -6,6 +6,8 @@ No external SEC/API, no private source, no model, no retained original/SQLite.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
+from hashlib import sha256
 import os
 from pathlib import Path
 import subprocess
@@ -136,6 +138,40 @@ def run(output: Path) -> dict:
                             expect(page.get_by_label(label, exact=True)).to_have_value(
                                 value, timeout=12000,
                             )
+                        # P45: actual Chromium market upload (reject mismatched
+                        # issuer before accepting matching historic observations).
+                        # The existing local SEC/Guard path must remain unchanged.
+                        from tests.test_market_reality import fixture as market_fixture
+                        market_input = market_fixture()
+                        market_raw = json.dumps(
+                            market_input, sort_keys=True, separators=(",", ":"),
+                        ).encode("utf-8")
+                        different_issuer = dict(market_input)
+                        different_issuer["issuer_cik"] = "0000000002"
+                        price_upload = page.locator('input[type="file"]').last
+                        price_upload.set_input_files({
+                            "name": "market-wrong-cik.json",
+                            "mimeType": "application/json",
+                            "buffer": json.dumps(different_issuer).encode("utf-8"),
+                        })
+                        expect(page.get_by_text(
+                            "Engine A 차단: 가격·시장지수 날짜/단위/출처·발행사를 확인하십시오."
+                        )).to_be_visible(timeout=20000)
+                        price_upload = page.locator('input[type="file"]').last
+                        price_upload.set_input_files({
+                            "name": "market-synthetic.json",
+                            "mimeType": "application/json",
+                            "buffer": market_raw,
+                        })
+                        expect(page.get_by_text(
+                            "KUODRA · Engine A — Market Reality", exact=True,
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "베타 (표본회귀)", exact=True,
+                        ).first).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "이 입력은 독립 출처 인증 전입니다.", exact=False,
+                        )).to_be_visible(timeout=20000)
                         page.get_by_role(
                             "button", name="1단계 · 원본 대조 미리보기",
                         ).click()
@@ -160,6 +196,36 @@ def run(output: Path) -> dict:
                             "로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증"
                         )).to_be_visible(timeout=30000)
                         expect(page.get_by_text("HOLD", exact=True).first).to_be_visible()
+                        expect(page.get_by_text(
+                            "Engine A · 시장 회귀 + SEC 실적 맥락", exact=True,
+                        )).to_be_visible(timeout=20000)
+                        with page.expect_download(timeout=15000) as market_json_download:
+                            page.get_by_role(
+                                "button", name="오프라인 분석 보고서 JSON",
+                            ).click()
+                        json_report = json.loads(
+                            Path(market_json_download.value.path()).read_text(encoding="utf-8")
+                        )
+                        market_card = json_report.get("market_reality")
+                        if (not isinstance(market_card, dict)
+                                or market_card.get("status") != "REPORTED_UNVERIFIED"
+                                or abs(Decimal(market_card["beta"]) - Decimal("1.5"))
+                                   > Decimal("0.002")
+                                or market_card.get("source", {}).get("upload_sha256")
+                                   != sha256(market_raw).hexdigest()
+                                or market_card.get("audit_included") is not False
+                                or market_card.get("source_authenticated") is not False
+                                or market_card.get("market_bubble_proven") is not False
+                                or market_card.get("guard_policy_modified") is not False
+                                or market_card.get("trade_signal") is not False
+                                or json_report.get("guard", {}).get("decision") != "HOLD"
+                                or json_report.get("limits", {}).get("live_api_called") is not False
+                                or market_card.get("sec_revenue_context", {}).get(
+                                    "growth_pct_calculated_unverified"
+                                ) != json_report["verification"]["growth_pct"]
+                                or market_card["sec_revenue_context"]["companyfacts_sha256"]
+                                   != json_report["source"]["companyfacts_sha256"]):
+                            raise AssertionError("ENGINE_A_BROWSER_DOWNLOAD_OR_SEC_JOIN_INVALID")
                         expect(page.get_by_role(
                             "button", name="오프라인 분석 보고서 HTML",
                         )).to_be_visible()
@@ -173,7 +239,10 @@ def run(output: Path) -> dict:
                         html_bytes = Path(html_download.value.path()).read_bytes()
                         if (b"KUODRA | OFFLINE UNVERIFIED Review" not in html_bytes
                                 or b"STRUCTURAL_NUMERIC_COMPARISON_ONLY" not in html_bytes
-                                or b"RevenueFromContractWithCustomerExcludingAssessedTax" not in html_bytes):
+                                or b"RevenueFromContractWithCustomerExcludingAssessedTax" not in html_bytes
+                                or b"Engine A" not in html_bytes
+                                or b"Guard " not in html_bytes
+                                or sha256(market_raw).hexdigest().encode() not in html_bytes):
                             raise AssertionError("HTML_REPORT_NOT_EVIDENCE_LINKED")
                         if (Path(home) / ".proofinvest-guard" / "audit.sqlite").exists():
                             raise AssertionError("EPHEMERAL_UI_WROTE_PERSISTENT_SQLITE")
@@ -308,8 +377,18 @@ def run(output: Path) -> dict:
                                 "four-source-pinned-history-Guard-HOLD",
                                 "three-and-four-source-html-evidence",
                                 "index-bound-10k-identity-choice",
+                                "engine-a-cross-issuer-upload-blocked",
+                                "engine-a-real-chromium-upload-decimal-ols",
+                                "engine-a-sec-context-json-and-html-download",
+                                "engine-a-does-not-change-guard-or-audit",
+
                             ],
                             "source_authenticated": False,
+                            "market_beta": market_card["beta"],
+                            "market_upload_sha256": sha256(market_raw).hexdigest(),
+                            "market_sec_context_bound": True,
+                            "market_guard_policy_modified": False,
+                            "market_in_guard_audit": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,
                         }
