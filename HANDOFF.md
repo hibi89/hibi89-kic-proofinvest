@@ -1,13 +1,13 @@
-## 2026-10-31 KST — KUODRA P29 auxiliary 10-K filing-date coherence (CI PENDING)
+## 2026-10-31 KST — KUODRA P29 auxiliary 10-K filing-date coherence (CI 3/3 SUCCESS)
 
 1. Goal: block a source-consistent-on-accession but contradictory filed-date join across revenue/Submissions and optional balance/shares/cashflow panels; preserve valid Guard and avoid misleading peripheral figures.
 2. Designs: A globally reject every report when any optional fact has a conflicting filing date (unnecessarily loses valid Guard evidence); B fail closed for conflicting core dates before audit, redact only inconsistent optional panels (selected, no extra API/cost). Preserves other panels and existing HOLD/REJECT.
 3. Implementation: proofinvest/local_sec_guard_report.py verifies packet core issuer date equals verification date before any SQLite call; otherwise ValueError. For an optional panel marked reviewed_unverified whose selected filing date differs from core, set status unavailable, explicit mismatch reason, remove all selected numeric/date fields, and reset derived comparison statuses. No mutation to raw inputs or source rights flags.
-4. Tests: tests/test_kuodra_financial_coherence.py seven synthetic offline cases for 3 coherent panels, 3 disjoint mismatches, combined mismatch+HTML suppression+Guard SQLite, strict RISK_CHECK no audit on mismatch, tampered core no-write. CI NOT YET VERIFIED; previous good baseline P28 source 6bdd0d75b8bf875e65fdcc9568cbd79b9c1485f7 Actions #41122656013 Python 935/0/0/0 and 3/3 success.
+4. Tests: tests/test_kuodra_financial_coherence.py seven synthetic offline cases for 3 coherent panels, 3 disjoint mismatches, combined mismatch+HTML suppression+Guard SQLite, strict RISK_CHECK no audit on mismatch, tampered core no-write. P29 code SHA ffe9efc33e1b34ab7ce3037707c06c6eff092dc1 [Actions #41185249866](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41185249866) SUCCESS 3/3: full Python 942 executed/0 failures/0 errors/0 skips, source SHA check PASS, syntax 168 files PASS, Windows SQLite PASS, Chromium PASS. Baseline P28 code 6bdd0d75b8bf875e65fdcc9568cbd79b9c1485f7 Actions #41122656013 Python 935 and 3/3 success.
 5. Repo: hibi89/hibi89-kic-proofinvest lead/kic. Revert ordinary P29 feature commit if regression; no force push. No SEC requests, Gemini, trading, owner originals, Production, permissions or schema change.
 6. Remaining gates: genuine lawful original SEC 3-source corpus, SEC issuer authentication, data rights, live Gemini, Production E2E, official PDF submission all NOT VERIFIED.
-7. Next: verify exact P29 GitHub CI Python+Windows+Chromium, fix failures minimally, then seek owner authorization before real-source intake/API; avoid more synthetic-only readiness inflation. Document code SHA and exact CI results before claiming P29 complete.
-8. Checkpoint: 2026-10-31 KST, source implementation pending remote CI.
+7. Next: P29 CI closed successfully; owner authorization is required before real SEC source intake/API. Next high-value gate is lawful issuer originals + compatibility review, not more synthetic-only readiness claims. Document code SHA and exact CI results before claiming P29 complete.
+8. Checkpoint: 2026-10-31 KST, P29 exact feature SHA ffe9efc33e1b34ab7ce3037707c06c6eff092dc1 verified 3/3 GitHub CI; documentation-only successor does not change runtime.
 
 ## 2026-10-31 KST — KUODRA P28 offline annual operating cashflow + capex (CI 3/3 SUCCESS)
 
