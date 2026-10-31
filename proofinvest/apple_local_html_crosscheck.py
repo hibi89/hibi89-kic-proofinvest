@@ -185,6 +185,23 @@ def _cells(row: list[str]) -> tuple[str, list[int]]:
     return label, values
 
 
+def _has_2025_2024_year_header(rows: list[list[str]]) -> bool:
+    """Require current/prior fiscal columns in official Apple order.
+
+    The third (2023) column is permitted for operations/cash, but cannot
+    replace 2024. This checks local table structure, NOT document origin.
+    """
+    for row in rows[:12]:
+        years: list[str] = []
+        for cell in row:
+            years.extend(re.findall(
+                r"(?<![0-9])(?:2025|2024|2023)(?![0-9])", cell
+            ))
+        if years[:2] == ["2025", "2024"]:
+            return True
+    return False
+
+
 def _statement_rows(tables: list[list[list[str]]], kind: str) -> dict[str, list[int]]:
     required = set(_HEADERS[kind])
     candidates = []
@@ -195,6 +212,9 @@ def _statement_rows(tables: list[list[list[str]]], kind: str) -> dict[str, list[
             if label:
                 labeled.setdefault(label, []).append(vals)
         if all(k in labeled for k in required):
+            if not _has_2025_2024_year_header(rows):
+                raise ValueError("FILING_" + kind.upper()
+                                 + "_YEAR_HEADER_MISSING_OR_REVERSED")
             candidates.append(labeled)
     if len(candidates) != 1:
         raise ValueError("FILING_" + kind.upper() + "_TABLE_MISSING_OR_AMBIGUOUS")
