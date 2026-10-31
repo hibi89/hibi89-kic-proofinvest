@@ -224,7 +224,7 @@ def inspect_offline_data_files(
                 )) or not 1 <= len(peer_companyfacts_files) <= 8 or
                 len(peer_ciks) != len(peer_companyfacts_files) or
                 len(peer_accessions) != len(peer_companyfacts_files) or
-                any(type(p) is not Path for p in peer_companyfacts_files)):
+                any(not isinstance(p, Path) for p in peer_companyfacts_files)):
             return {**blocked, "reason_code": "PEER_SOURCE_INPUTS_REQUIRED"}
     has_market = market_csv is not None
     has_industry = industry_json is not None
