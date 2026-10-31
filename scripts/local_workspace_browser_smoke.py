@@ -98,7 +98,6 @@ def run(output: Path) -> dict:
                             field.press("Tab")
                             page.wait_for_timeout(500)
                             expect(field).to_have_value(value)
-                        expect(page.get_by_text("명시적으로")).to_have_count(0) if False else None
                         page.get_by_role(
                             "button", name="1단계 · 원본 대조 미리보기",
                         ).click()
@@ -110,9 +109,13 @@ def run(output: Path) -> dict:
                             "button", name="2단계 · Guard 로컬 검증 실행",
                         )
                         expect(audit).to_be_disabled()
-                        page.get_by_label(
-                            "임시 로컬 SQLite 생성·검증 후 자동 삭제에 동의"
-                        ).check()
+                        # React-Aria places an interactive label over the
+                        # checkbox input. Click the actual visible label,
+                        # rather than an input intercepted by the label.
+                        page.get_by_text(
+                            "임시 로컬 SQLite 생성·검증 후 자동 삭제에 동의",
+                            exact=True,
+                        ).click()
                         expect(audit).to_be_enabled()
                         audit.click()
                         expect(page.get_by_text(
