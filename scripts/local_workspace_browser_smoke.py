@@ -227,7 +227,14 @@ def run(output: Path) -> dict:
                                 src["sha256"] = source_digest
                         rejected_industry = dict(industry)
                         rejected_industry["issuer_cik"] = "0000000002"
-                        industry_upload = page.locator('input[type="file"]').nth(5)
+                        # Use a semantic file-uploader label across rerenders.
+                        industry_upload = page.get_by_test_id("stFileUploader").filter(
+                            has=page.get_by_text(
+                                "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
+                                exact=True,
+                            ),
+                        ).locator('input[type="file"]')
+                        expect(industry_upload).to_have_count(1)
                         industry_upload.set_input_files({
                             "name": "industry-wrong-issuer.json",
                             "mimeType": "application/json",
@@ -239,7 +246,14 @@ def run(output: Path) -> dict:
                         industry_raw = json.dumps(
                             industry, sort_keys=True, separators=(",", ":")
                         ).encode("utf-8")
-                        industry_upload = page.locator('input[type="file"]').nth(5)
+                        # Use a semantic file-uploader label across rerenders.
+                        industry_upload = page.get_by_test_id("stFileUploader").filter(
+                            has=page.get_by_text(
+                                "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
+                                exact=True,
+                            ),
+                        ).locator('input[type="file"]')
+                        expect(industry_upload).to_have_count(1)
                         industry_upload.set_input_files({
                             "name": "industry-synthetic.json",
                             "mimeType": "application/json",
@@ -297,6 +311,18 @@ def run(output: Path) -> dict:
                                    != json_report["verification"]["growth_pct"]
                                 or industry_card["input_sha256"] != sha256(industry_raw).hexdigest()
                                 or industry_card["growth_gap_to_industry_pp"] != "80.00"
+                                or [item.get("id") for item in industry_card.get(
+                                    "conditional_scenarios", [])] != [
+                                    "OBSERVED_BASE", "CONDITIONAL_UPSIDE",
+                                    "CONDITIONAL_DOWNSIDE"]
+                                or industry_card["conditional_scenarios"][1]["source_ids"]
+                                   != ["sector-now"]
+                                or industry_card["conditional_scenarios"][2]["kind"]
+                                   != "WITHHELD_NO_DRIVER"
+                                or any(item.get("verified") is not False
+                                       or item.get("future_return_forecast_pct") is not None
+                                       or item.get("future_growth_forecast_pct") is not None
+                                       for item in industry_card["conditional_scenarios"])
                                 or industry_card.get("audit_included") is not False
                                 or industry_card.get("industry_outlook_verified") is not False
                                 or not isinstance(ledger, dict)
@@ -342,6 +368,9 @@ def run(output: Path) -> dict:
                                 or b"RevenueFromContractWithCustomerExcludingAssessedTax" not in html_bytes
                                 or b"Engine A" not in html_bytes
                                 or b"Engine C" not in html_bytes
+                                or b"CONDITIONAL_UPSIDE" not in html_bytes
+                                or b"CONDITIONAL_DOWNSIDE" not in html_bytes
+                                or b"WITHHELD_NO_DRIVER" not in html_bytes
                                 or b"A" + "·B·C".encode("utf-8") not in html_bytes
                                 or sha256(industry_raw).hexdigest().encode() not in html_bytes
                                 or b"Guard " not in html_bytes

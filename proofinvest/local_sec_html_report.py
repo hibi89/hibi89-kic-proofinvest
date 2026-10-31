@@ -10,6 +10,7 @@ import re
 from typing import Any, Mapping
 
 from .sec_companyfacts import REVENUE_TAGS, _date as _sec_date
+from .industry_scenarios import build_industry_scenarios
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
 _CIK = re.compile(r"[0-9]{10}\Z")
@@ -435,6 +436,26 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
                 + _field(item["direction_operator_supplied"]) + " ("
                 + _field(", ".join(item["source_ids"])) + ")</li>"
             )
+        # Recompute the conditional narrative from the validated Engine C
+        # input before rendering. Refuse altered sources or numeric forecasts.
+        try:
+            expected_scenarios = build_industry_scenarios(industry)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise ValueError("HTML_INDUSTRY_SCENARIOS_BLOCKED") from None
+        scenarios = industry.get("conditional_scenarios")
+        if (type(scenarios) is not list or len(scenarios) != 3
+                or scenarios != expected_scenarios):
+            raise ValueError("HTML_INDUSTRY_SCENARIOS_BLOCKED")
+        scenario_rows = "".join(
+            "<tr><th>" + _field(card["title"], 120)
+            + "</th><td><strong>" + _field(card["id"], 80)
+            + "</strong><p>" + _field(card["condition"], 180)
+            + "</p><p>" + _field(card["explanation"], 700)
+            + "</p><p>근거 ID (미인증): "
+            + _field(", ".join(card["source_ids"]) or "NONE", 1800)
+            + "</p><p>미래 성장률·주가 수익률 전망: 산출 안 함</p></td></tr>"
+            for card in scenarios
+        )
         def industry_field(x):
             return _field(x if x is not None else "NOT_AVAILABLE")
         industry_section = (
@@ -458,6 +479,10 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<p>업로드 SHA256: ' + industry_field(industry["input_sha256"])
             + '</p><p>시장점유율·미래 성장률·수익률·업종 비전 인증이 아닙니다.'
             ' Engine C 자료는 Guard 감사 체인에 추가되지 않았습니다.</p></section>'
+            '<section><h2>02F-1 / 근거 연계 조건부 시나리오 (미검증 가설)</h2>'
+            '<p>입력된 동인만 조건부로 표시하며 근거 부재 시 보류합니다. '
+            '미래 산업 성장률·주가 수익률·시장점유율은 예측하지 않습니다.</p>'
+            '<table>' + scenario_rows + '</table></section>'
         )
     ledger = report.get("three_engine_summary")
     ledger_section = ""

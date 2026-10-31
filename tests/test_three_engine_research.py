@@ -72,6 +72,10 @@ class ThreeEngineReportTests(unittest.TestCase):
             self.assertIn("Engine A", rendered)
             self.assertIn("Engine B", rendered)
             self.assertIn("Engine C", rendered)
+            self.assertIn("CONDITIONAL_UPSIDE", rendered)
+            self.assertIn("CONDITIONAL_DOWNSIDE", rendered)
+            self.assertIn("WITHHELD_NO_DRIVER", rendered)
+            self.assertIn("sector-now", rendered)
             self.assertIn("A·B·C 독립 분석 상태", rendered)
             self.assertIn(sha256(industry_json).hexdigest(), rendered)
             self.assertIn("종합 위험점수, 시장 비전 인증", rendered)
@@ -118,6 +122,39 @@ class ThreeEngineReportTests(unittest.TestCase):
             modified["industry_vision"]["sources"][1]["sha256"] = "f" * 64
             with self.assertRaisesRegex(ValueError, "HTML_INDUSTRY_ORIGINAL_PIN_BLOCKED"):
                 render_local_sec_html(modified)
+
+    def test_html_conditional_scenarios_fail_closed_and_escape_operator_text(self):
+        with tempfile.TemporaryDirectory(prefix="kuodra-p54-") as home:
+            report = _make_report(Path(home) / "audit.sqlite")
+            supplied = industry_for_report(report)
+            hostile = '<img src=x onerror="alert(1)">'
+            supplied["drivers"][0]["label"] = hostile
+            report["industry_vision"] = bind_industry_to_sec(
+                report, json.dumps(supplied).encode("utf-8"))
+            rendered = render_local_sec_html(report).decode("utf-8")
+            self.assertIn("&lt;img", rendered)
+            self.assertNotIn(hostile, rendered)
+            self.assertIn("CONDITIONAL_UPSIDE", rendered)
+            self.assertIn("WITHHELD_NO_DRIVER", rendered)
+            prior_guard = copy.deepcopy(report["guard"])
+            for variant in ("missing", "source", "verified", "forecast", "claim", "future"):
+                tampered = copy.deepcopy(report)
+                card = tampered["industry_vision"]["conditional_scenarios"][1]
+                if variant == "missing":
+                    tampered["industry_vision"].pop("conditional_scenarios")
+                elif variant == "source":
+                    card["source_ids"] = ["target-now"]
+                elif variant == "verified":
+                    card["verified"] = True
+                elif variant == "forecast":
+                    card["future_return_forecast_pct"] = "99.99"
+                elif variant == "claim":
+                    card["explanation"] = "Guaranteed returns"
+                else:
+                    tampered["industry_vision"]["industry_outlook_verified"] = True
+                with self.subTest(variant=variant), self.assertRaises(ValueError):
+                    render_local_sec_html(tampered)
+            self.assertEqual(report["guard"], prior_guard)
 
     def test_status_ledger_missing_optional_never_safe(self):
         with tempfile.TemporaryDirectory(prefix="kuodra-p46-") as home:
