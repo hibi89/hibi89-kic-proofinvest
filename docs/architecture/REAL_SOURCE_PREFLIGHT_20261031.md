@@ -1,3 +1,47 @@
+## 2026-10-31 KST — P50 market source/adjustment declaration gate
+
+New optional flag: `--market-evidence-json PATH` alongside `--market-csv`.
+Price-only CSV without a manifest keeps existing behavior but reports `MISSING_OPERATOR_EVIDENCE`. Adjusted-close total-return proxy CSV **requires** an explicit evidence JSON and fails closed without one.
+
+The exact `kuodra.market-data-evidence.v1` JSON fields are:
+
+```json
+{
+  "schema": "kuodra.market-data-evidence.v1",
+  "issuer_cik": "0000000001",
+  "as_of": "2025-10-16",
+  "symbol": "SYNTH",
+  "benchmark": "NASDAQ_100",
+  "return_basis": "PRICE_ONLY_CLOSE",
+  "market_csv_sha256": "REPLACE_WITH_ACTUAL_64_CHAR_CSV_SHA256",
+  "price_first_date": "2025-08-01",
+  "price_last_date": "2025-10-02",
+  "claimed_source_url": "https://example.org/combined-price-sheet",
+  "claimed_published_at": "2025-10-15",
+  "captured_at_utc": "2025-10-15T12:00:00Z",
+  "price_provider": "OPERATOR_DECLARED_PROVIDER",
+  "rights_scope": "UNKNOWN",
+  "revision_policy": "VERSIONED_SNAPSHOT_CLAIMED",
+  "stock_split_treatment": "UNADJUSTED",
+  "stock_dividend_treatment": "EXCLUDED",
+  "benchmark_total_return_claimed": false
+}
+```
+
+**Example data is synthetic and intentionally not executable unchanged**; the digest, symbol, price basis, URL, published_at, exact period and source fields must be replaced by values corresponding to the actual local CSV. The schema is closed; API keys, email addresses, personal identifiers and other free fields are rejected.
+
+Allowed rights_scope: `UNKNOWN`, `LOCAL_RESEARCH_CLAIMED`, `REDISTRIBUTION_CLAIMED`. Revision policy: `UNKNOWN`, `RETROSPECTIVE_UNVERSIONED`, `VERSIONED_SNAPSHOT_CLAIMED`. Split: `UNKNOWN`, `UNADJUSTED`, `ADJUSTED_CLAIMED`; dividend: `UNKNOWN`, `EXCLUDED`, `INCLUDED_CLAIMED`.
+
+`PRICE_ONLY_CLOSE` requires dividend `EXCLUDED` and benchmark_total_return_claimed=false. `ADJUSTED_CLOSE_TOTAL_RETURN_PROXY` requires `ADJUSTED_CLAIMED` split treatment, `INCLUDED_CLAIMED` dividends and benchmark_total_return_claimed=true. The labels are operator claims, **not certification of corporate actions or vendor licenses**.
+
+Captured-at must be UTC `YYYY-MM-DDTHH:MM:SSZ`, no earlier than claimed release. If captured after analysis as-of, preflight records `RETROSPECTIVE_CAPTURE_NOT_POINT_IN_TIME`, never true historical vintage certification. If captured before/on as-of it records `PRE_ASOF_CAPTURE_CLAIMED_UNAUTHENTICATED`, still not third-party authenticated.
+
+Example CLI addition: append `--market-evidence-json C:/Data/price-evidence.json` to the prior P49 command. Output reports local metadata SHA, `market_evidence_status` and `market_evidence_vintage`, while `source_authenticated`, `data_rights_verified`, `corporate_actions_verified` and `point_in_time_backtest_verified` remain false.
+
+Two designs compared: (1) this bounded no-network declaration-and-digest gate (selected: no provider cost, strong input consistency, minimal dependencies); (2) authorized vendor API/archive/total-return reconstitution (deferred: provider rights/API cost/history and corporate action evidence required). Neither self-attested JSON nor metadata SHA proves authentic provenance. P50 synthetic CI does not prove real market reliability.
+
+---
+
 # P49 — KUODRA Offline Real-File Preflight
 
 Date: 2026-10-31 KST. Tested code SHA: 5c69335c81c739378aec907fe715313d25f1eb8c. CI: https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41207181153
