@@ -1,3 +1,12 @@
+## 2026-10-31 KST — KUODRA three-engine analytical product direction (owner confirmed)
+
+- **Engine A Market Reality (designed, not completed):** company price/index alpha-beta and valuation vs financial fundamentals. Beta is market covariance, NOT the proportion of a move caused by liquidity; cannot declare exact bubble %.
+- **Engine B Financial Integrity (designed; existing partial financial verifier reused):** accounting earnings vs operating cashflow, receivables, inventories, notes and related-party disclosures; evidence-backed anomaly flags NOT proof of misconduct.
+- **Engine C Industry Vision (P42 basic offline compare code, no live source):** assess user-selected issuer growth vs peers and relevant industry-wide growth measurements, show industry upside/downside factors and eventually source-grounded AI explanations and conditional development scenarios. Required: fiscal period/currency/unit/geography/release-vintage/rights/source matching; report missing evidence rather than forecast; never call industry gross output an addressable market share.
+- Combined output under existing Research -> Decimal Verification -> Risk/Guard -> Human Review -> Evidence audit -> Streamlit report. Keep A/B/C independent; none overrides verified facts, Guard or trades.
+- P42 is synthetic/local-only growth calculation, and no deployed AI vision, external industry feeds or real industry model is claimed. Details: docs/architecture/KUODRA_THREE_ENGINE_INDUSTRY_VISION_20261031.md.
+- This is a **finalist product direction**; Nov 12 10:00 KST <=10-page official PDF-only preliminary, exact template preservation and explicit owner submission approval remain unchanged. Data/API/LLM/Production/security cost approval stays separate.
+
 ## 2026-10-31 KST — Official product name confirmed: KUODRA
 
 - **공식 브랜드명: KUODRA (쿠오드라).** Owner explicitly selected \`KUODRA\` instead of the former outward-facing \`ProofInvest Global\`. The former name is preserved only for historical evidence, file paths and source-code compatibility.
