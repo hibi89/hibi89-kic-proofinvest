@@ -1,0 +1,65 @@
+{
+  "schema": "kuodra.apple-fy2025-issuer-hosted-10k-manual-excerpt.v1",
+  "issuer": "Apple Inc.",
+  "cik": "0000320193",
+  "accession": "0000320193-25-000079",
+  "filed_at": "2025-10-31",
+  "as_of": "2025-10-31",
+  "currency": "USD",
+  "unit": "MILLIONS",
+  "statement_basis": "US_GAAP_CONSOLIDATED",
+  "fiscal": {
+    "prior_start": "2023-10-01",
+    "prior_end": "2024-09-28",
+    "current_start": "2024-09-29",
+    "current_end": "2025-09-27"
+  },
+  "source": {
+    "kind": "MANUAL_VIEWED_ISSUER_HOSTED_10K_HTML_NOT_ORIGINAL_BYTES",
+    "url": "https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/c636d8a7-8025-47d2-9b13-bcf5465343b3.html",
+    "sec_index_reference": "https://www.sec.gov/Archives/edgar/data/320193/0000320193-25-000079-index.htm",
+    "financial_statement_printed_pages": [
+      29,
+      31,
+      33
+    ],
+    "independent_auditor_opinion_printed_page": 49,
+    "published_form": "10-K",
+    "source_raw_html_sha256_verified": false,
+    "distribution_rights_verified": false,
+    "original_sec_api_authenticated": false,
+    "issuer_html_viewed_manually": true
+  },
+  "prior": {
+    "sales": "391035",
+    "products": "294866",
+    "services": "96169",
+    "cost_of_sales": "210352",
+    "gross_margin": "180683",
+    "operating_income": "123216",
+    "net_income": "93736",
+    "operating_cashflow": "118254",
+    "capex_payments": "9447",
+    "accounts_receivable_net": "33410",
+    "inventory_net": "7286",
+    "assets": "364980",
+    "liabilities": "308030",
+    "equity": "56950"
+  },
+  "current": {
+    "sales": "416161",
+    "products": "307003",
+    "services": "109158",
+    "cost_of_sales": "220960",
+    "gross_margin": "195201",
+    "operating_income": "133050",
+    "net_income": "112010",
+    "operating_cashflow": "111482",
+    "capex_payments": "12715",
+    "accounts_receivable_net": "39777",
+    "inventory_net": "5718",
+    "assets": "359241",
+    "liabilities": "285508",
+    "equity": "73733"
+  }
+}
