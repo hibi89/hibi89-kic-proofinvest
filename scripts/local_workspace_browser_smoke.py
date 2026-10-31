@@ -225,6 +225,28 @@ def run(output: Path) -> dict:
                             src["published_at"] = "2025-10-15"
                             if src["id"] in ("target-old", "target-now"):
                                 src["sha256"] = source_digest
+                        # Peer CompanyFacts is now an optional real localhost
+                        # upload. Construct matching SEC-shaped peer facts,
+                        # never fetching SEC or claiming authenticated origin.
+                        from proofinvest.sec_companyfacts import TAG
+                        peer_cik = "0000000007"
+                        peer_accession = "0000000007-25-000001"
+                        peer_facts = synthetic_companyfacts()
+                        peer_facts["cik"] = 7
+                        for fact in peer_facts["facts"]["us-gaap"][TAG]["units"]["USD"]:
+                            fact["accn"] = peer_accession
+                            fact["val"] = (
+                                130 if fact["end"] == "2025-09-30" else 100
+                            )
+                        peer_raw = json.dumps(peer_facts, sort_keys=True).encode()
+                        peer_hash = sha256(peer_raw).hexdigest()
+                        for source in industry["sources"]:
+                            if source["id"] in ("peer-old", "peer-now"):
+                                source["url"] = (
+                                    "https://data.sec.gov/api/xbrl/companyfacts/"
+                                    "CIK0000000007.json"
+                                )
+                                source["sha256"] = peer_hash
                         rejected_industry = dict(industry)
                         rejected_industry["issuer_cik"] = "0000000002"
                         # A Streamlit rerun can discard the upload widget
@@ -275,6 +297,36 @@ def run(output: Path) -> dict:
                             "기업 매출 성장률이 입력된 산업 지표 성장률보다 높습니다.",
                             exact=True,
                         )).to_be_visible(timeout=20000)
+                        # Verify the operator-facing optional peer gate,
+                        # including actual Chromium upload and 10-K accession.
+                        page.get_by_text(
+                            "경쟁사 SEC CompanyFacts 원본 검산 추가 (로컬, 출처 미인증)",
+                            exact=True,
+                        ).click()
+                        peer_label = (
+                            "경쟁사 0000000007 SEC CompanyFacts JSON"
+                        )
+                        peer_upload = page.get_by_test_id("stFileUploader").filter(
+                            has=page.get_by_text(peer_label, exact=True)
+                        ).locator('input[type="file"]')
+                        expect(peer_upload).to_have_count(1)
+                        peer_upload.set_input_files({
+                            "name": "peer-companyfacts-synthetic.json",
+                            "mimeType": "application/json",
+                            "buffer": peer_raw,
+                        })
+                        expect(page.get_by_role(
+                            "button", name="Remove peer-companyfacts-synthetic.json",
+                            exact=True,
+                        )).to_be_visible(timeout=20000)
+                        peer_accession_input = page.get_by_label(
+                            "경쟁사 0000000007 10-K 접수번호", exact=True,
+                        )
+                        peer_accession_input.fill(peer_accession)
+                        peer_accession_input.press("Tab")
+                        expect(peer_accession_input).to_have_value(
+                            peer_accession, timeout=12000,
+                        )
                         page.get_by_role(
                             "button", name="1단계 · 원본 대조 미리보기",
                         ).click()
@@ -311,6 +363,17 @@ def run(output: Path) -> dict:
                         )
                         market_card = json_report.get("market_reality")
                         industry_card = json_report.get("industry_vision")
+                        peer_card = json_report.get("peer_sec_companyfacts_check")
+                        if (not isinstance(peer_card, dict)
+                                or peer_card.get("status") !=
+                                   "local_peer_values_hash_matched_origin_unverified"
+                                or peer_card.get("peer_count") != 1
+                                or peer_card["peer_records"][0]["companyfacts_sha256"]
+                                   != peer_hash
+                                or peer_card["peer_records"][0]["growth_pct"] != "30.00"
+                                or peer_card.get("source_authenticated") is not False
+                                or peer_card.get("audit_written") is not False):
+                            raise AssertionError("PEER_COMPANYFACTS_REAL_BROWSER_GATE_INVALID")
                         ledger = json_report.get("three_engine_summary")
                         if (not isinstance(industry_card, dict)
                                 or industry_card.get("status") != "OBSERVED_COMPARISON_UNVERIFIED"
@@ -580,6 +643,7 @@ def run(output: Path) -> dict:
                                 "engine-a-does-not-change-guard-or-audit",
                                 "engine-c-wrong-issuer-upload-blocked",
                                 "engine-c-sec-revenue-period-source-sha-joined",
+                                "engine-c-peer-companyfacts-real-chromium-upload-and-sha",
                                 "three-engine-ledger-json-html-download",
                                 "p59-apple-html-synthetic-upload-24-cells",
 
