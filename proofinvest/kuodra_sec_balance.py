@@ -106,7 +106,8 @@ def review_sec_balance_sheet(
             or cik == "0000000000"
             or type(accession) is not str
             or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession) is None
-            or accession[:10] != cik
+            # EDGAR submitter accession prefix is not always issuer CIK.
+            # Exact accession facts and CompanyFacts issuer still gate this view.
             or end is None or cutoff is None or end > cutoff):
         return result
     facts = _json_object(companyfacts_json, limit=_MAX_FILE_BYTES)

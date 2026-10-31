@@ -224,6 +224,48 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             ' 기업별 정의·현금흐름 세부 항목·원본 진위 및 투자 적격성 미검증.'
             '</p></section>'
         )
+    # Optional Engine B; never allow a supplied card to claim proven fraud
+    # or to disconnect the displayed numbers from this report's source hash.
+    accounting = report.get("accounting_integrity")
+    if accounting is not None and (
+            type(accounting) is not dict
+            or accounting.get("schema") != "kuodra.accounting-integrity-offline.v1"
+            or accounting.get("status") not in ("unavailable", "reviewed_unverified")
+            or accounting.get("source_authenticated") is not False
+            or accounting.get("accounting_fraud_proven") is not False
+            or accounting.get("guard_policy_modified") is not False
+            or accounting.get("trade_executed") is not False
+            or accounting.get("companyfacts_sha256") != source["companyfacts_sha256"]):
+        raise ValueError("HTML_ACCOUNTING_TRUST_CONTRACT_FAILURE")
+    accounting_section = ""
+    if accounting is not None:
+        def shown(key):
+            val = accounting.get(key)
+            return _field(val if val is not None else "NOT_AVAILABLE")
+        accounting_section = (
+            '<section><h2>02D / Engine B · 이익의 질 · 회계 괴리 검토</h2>'
+            '<p>상태: ' + shown("status")
+            + ' / 근거: ' + shown("reason_code") + '</p><table>'
+            '<tr><th>순이익 (USD)</th><td>' + shown("net_income_usd") + '</td></tr>'
+            '<tr><th>영업이익 (USD)</th><td>' + shown("operating_income_usd") + '</td></tr>'
+            '<tr><th>영업현금흐름 (USD)</th><td>' + shown("operating_cashflow_usd") + '</td></tr>'
+            '<tr><th>순이익 - 영업현금흐름 (USD)</th><td>'
+            + shown("earnings_less_cash_usd") + '</td></tr>'
+            '<tr><th>현금전환율 (순이익 양수일 때만, %)</th><td>'
+            + shown("cash_to_net_income_pct") + '</td></tr>'
+            '<tr><th>이익·현금 검토 신호</th><td>'
+            + shown("earnings_cash_signal") + '</td></tr>'
+            '<tr><th>매출채권 성장률 - 매출 성장률 (pp)</th><td>'
+            + shown("receivables_minus_revenue_growth_pp") + '</td></tr>'
+            '<tr><th>재고 성장률 - 매출 성장률 (pp)</th><td>'
+            + shown("inventory_minus_revenue_growth_pp") + '</td></tr>'
+            '<tr><th>운전자본 검토 상태</th><td>'
+            + shown("working_capital_review_status") + '</td></tr>'
+            '</table><p>관측된 괴리는 회계 부정의 증거가 아닙니다.'
+            ' 단일 연도·업종·계절성과 출처 미인증 한계를 고려해야 합니다.</p>'
+            '<p>탐색적 운전자본 검토 신호:</p><ul>'
+            + _reasons(accounting.get("working_capital_signals")) + '</ul></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     history_kind = ("4개 원본 · 이력 페이지" if index_kind == "PINNED_HISTORY"
@@ -283,7 +325,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
         '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section + cash_section +
+        + share_section + capital_section + cash_section + accounting_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

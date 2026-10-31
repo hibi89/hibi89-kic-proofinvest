@@ -24,6 +24,7 @@ from .kuodra_sec_balance import review_sec_balance_sheet
 from .kuodra_sec_shares import review_sec_shares_outstanding
 from .kuodra_capital_filing_watch import review_issuer_capital_filing_watch
 from .kuodra_sec_cashflow import review_sec_annual_cashflow
+from .accounting_integrity import review_accounting_integrity
 from .local_sec_packet import (
     _MAX_FILE_BYTES,
     _read_regular_local,
@@ -192,6 +193,16 @@ def review_local_sec_with_guard(
             or cashflow["guard_policy_modified"] is not False
             or cashflow["free_cashflow_proxy_is_non_gaap"] is not True):
         raise ValueError("CASHFLOW_TRUST_CONTRACT_FAILURE")
+    accounting = review_accounting_integrity(
+        companyfacts_json, cik=cik, accession=accession,
+        current_end=current_end, prior_end=prior_end, as_of=as_of,
+    )
+    if (accounting["source_authenticated"] is not False
+            or accounting["accounting_fraud_proven"] is not False
+            or accounting["guard_policy_modified"] is not False
+            or accounting["trade_executed"] is not False
+            or accounting["companyfacts_sha256"] != hashlib.sha256(companyfacts_json).hexdigest()):
+        raise ValueError("ACCOUNTING_INTEGRITY_TRUST_CONTRACT_FAILURE")
     # P29: a self-claimed accession is not enough to combine annual facts.
     # Revenue and Submissions must refer to the SAME 10-K filing date;
     # do not audit a contradictory core packet. Optional panels with a
@@ -215,6 +226,14 @@ def review_local_sec_with_guard(
             "operating_cashflow_usd", "capex_payments_usd",
             "free_cashflow_proxy_usd",
         )),
+        (accounting, (
+            "period_end", "filing_date", "net_income_usd", "operating_income_usd",
+            "operating_cashflow_usd", "earnings_less_cash_usd",
+            "cash_to_net_income_pct", "receivables_growth_pct",
+            "inventory_growth_pct", "revenue_growth_pct",
+            "receivables_minus_revenue_growth_pp",
+            "inventory_minus_revenue_growth_pp",
+        )),
     ):
         if (card["status"] == "reviewed_unverified"
                 and card["filing_date"] != financial["filing_date"]):
@@ -225,6 +244,10 @@ def review_local_sec_with_guard(
                 card["shares_change_status"] = "unavailable"
             if "free_cashflow_proxy_status" in card:
                 card["free_cashflow_proxy_status"] = "unavailable"
+    if accounting["status"] == "unavailable" and accounting["reason_code"] == "AUXILIARY_10K_FILING_DATE_MISMATCH":
+        accounting["earnings_cash_signal"] = "NOT_CHECKED"
+        accounting["working_capital_signals"] = []
+        accounting["working_capital_review_status"] = "NOT_CHECKED"
     source = packet["source"]
     text_node = source["html_text_node_literal_check"]
     text_ok = (
@@ -313,6 +336,7 @@ def review_local_sec_with_guard(
         "share_capital": shares,
         "capital_filing_watch": capital_watch,
         "cashflow": cashflow,
+        "accounting_integrity": accounting,
         "guard": result["guard"],
         "human_review": result["review"],
         "audit": result["audit"],

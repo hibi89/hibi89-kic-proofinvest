@@ -100,7 +100,8 @@ def review_sec_annual_cashflow(
     if (type(cik) is not str or _CIK.fullmatch(cik) is None
             or cik=="0000000000" or type(accession) is not str
             or _ACC.fullmatch(accession) is None
-            or not accession.startswith(cik+"-")
+            # SEC accession prefix may be a third-party EDGAR submitter;
+            # issuer identity is validated via CompanyFacts CIK and exact rows.
             or end is None or cutoff is None or end>cutoff):
         return report
     doc=_json_object(companyfacts_json,limit=_MAX_FILE_BYTES)

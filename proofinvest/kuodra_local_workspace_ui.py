@@ -328,12 +328,31 @@ def render_local_workspace(st) -> None:
         ])
         st.caption("회사 재무 사실이 아닌 사용자 입력 원본의 수치 비교 결과입니다. "
                    "Guard 승인 또는 거래 권한이 아닙니다.")
+        # P43: describe the new Engine B as an unverified financial
+        # reconciliation candidate, never a proven accounting violation.
+        acc = report["accounting_integrity"]
+        st.subheader("Engine B · 이익의 질과 현금흐름 괴리")
+        st.table([
+            {"항목": "순이익 (USD)", "값": acc["net_income_usd"] or "미확인"},
+            {"항목": "영업현금흐름 (USD)", "값": acc["operating_cashflow_usd"] or "미확인"},
+            {"항목": "순이익 - 영업현금흐름 (USD)", "값": acc["earnings_less_cash_usd"] or "미확인"},
+            {"항목": "현금전환율 (%)", "값": acc["cash_to_net_income_pct"] or "미확인"},
+            {"항목": "매출채권 - 매출 성장률 격차 (pp)",
+             "값": acc["receivables_minus_revenue_growth_pp"] or "미확인"},
+            {"항목": "재고 - 매출 성장률 격차 (pp)",
+             "값": acc["inventory_minus_revenue_growth_pp"] or "미확인"},
+        ])
+        st.caption("관측된 괴리는 회계 부정·기업 가치의 확정 판정이 아닙니다. "
+                   "공시 원문·발행사·수치 출처는 별도 인증이 필요합니다.")
         st.json({
             "guard_reasons": report["guard"]["reason_codes"],
             "balance_sheet": report["balance_sheet"]["status"],
             "share_capital": report["share_capital"]["status"],
             "capital_filing_watch": report["capital_filing_watch"]["status"],
             "cashflow": report["cashflow"]["status"],
+            "accounting_integrity": acc["status"],
+            "accounting_cash_signal": acc["earnings_cash_signal"],
+            "accounting_working_capital_signals": acc["working_capital_signals"],
             "audit_hash": report["audit"]["event_hash"],
             "source_authenticated": False, "trade_executed": False,
             "audit_retained": False,
