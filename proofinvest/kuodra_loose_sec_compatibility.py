@@ -152,7 +152,11 @@ def inspect_loose_sec_bytes(
         target = [f for f in index["filings"]
                   if f.get("accession") == accession and f.get("form") == "10-K"]
         if len(target) != 1 or not isinstance(target[0].get("source_uri"), str):
-            return _result("TARGET_10K_NOT_IN_SAVED_SOURCE_INDEX")
+            return _result(
+                "TARGET_10K_NOT_IN_SAVED_RECENT_SUBMISSIONS"
+                if history_page_json is None else
+                "TARGET_10K_NOT_IN_SAVED_PINNED_HISTORY"
+            )
         if not filing_available_at_observation(index, target[0]):
             return _result("FILING_NOT_AVAILABLE_AT_OBSERVATION")
         facts = _json_object(facts_raw, limit=_MAX_FILE_BYTES)

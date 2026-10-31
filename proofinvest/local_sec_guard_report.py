@@ -49,6 +49,10 @@ def _pinned_local_source_match(
     wants_history = history is not None or history_name is not None
     if expected is None:
         return False
+    if wants_history and isinstance(expected, Mapping) and set(expected) == _PINNED_KEYS:
+        # Preserve the legacy unpinned-fourth-source denial, including a
+        # partially supplied historical source.
+        raise ValueError("HISTORY_PAGE_NOT_PINNED")
     if wants_history and (history is None or history_name is None):
         raise ValueError("HISTORY_PAGE_AND_NAME_REQUIRED_TOGETHER")
     keys = _HISTORY_PINNED_KEYS if wants_history else _PINNED_KEYS

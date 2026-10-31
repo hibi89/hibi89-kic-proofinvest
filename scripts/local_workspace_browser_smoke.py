@@ -156,13 +156,109 @@ def run(output: Path) -> dict:
                             path=str(output / "kuodra-local-upload-guard.png"),
                             full_page=True,
                         )
+                        # P37: second isolated browser session exercises the
+                        # complete historical four-upload path (not only Python).
+                        from tests.test_kuodra_history import PAGE as HISTORY_PAGE, data as history_data
+                        base_submissions, raw_history = history_data()
+                        hist = browser.new_page(
+                            viewport={"width": 1440, "height": 1100}
+                        )
+                        try:
+                            hist.goto(URL, wait_until="domcontentloaded", timeout=30000)
+                            expect(hist.get_by_text(
+                                "ProofInvest — 오프라인 합성 데이터"
+                            )).to_be_visible(timeout=25000)
+                            hist.get_by_test_id("stSelectbox").first.click()
+                            hist.get_by_role("option", name=MODE, exact=True).click()
+                            expect(hist.get_by_text(
+                                "KUODRA · 로컬 SEC 원본 3종 검토"
+                            )).to_be_visible(timeout=25000)
+                            historical_uploads = [
+                                ("submissions.json", "application/json", base_submissions),
+                                ("companyfacts.json", "application/json",
+                                 json.dumps(synthetic_companyfacts()).encode()),
+                                ("original.html", "text/html", SYNTHETIC_HTML),
+                                (HISTORY_PAGE, "application/json", raw_history),
+                            ]
+                            for k, (name, mime, payload) in enumerate(historical_uploads):
+                                hist.locator('input[type="file"]').nth(k).set_input_files({
+                                    "name": name, "mimeType": mime, "buffer": payload,
+                                })
+                                hist.wait_for_timeout(650)
+                            history_inputs = [
+                                ("이력 페이지 파일명 (해당하는 경우 filings.files.name 그대로)",
+                                 HISTORY_PAGE),
+                                ("CIK 10자리", SYNTHETIC_CIK),
+                                ("SEC 접수번호", SYNTHETIC_ACCESSION),
+                                ("기준일 (YYYY-MM-DD)", AS_OF),
+                                ("사용자 주장 수집시각 (UTC ISO8601)", COLLECTED_AT),
+                            ]
+                            for label, value in history_inputs:
+                                field = hist.get_by_label(label, exact=True)
+                                field.fill(value)
+                                field.press("Tab")
+                                hist.wait_for_timeout(450)
+                                expect(field).to_have_value(value)
+                            hist.get_by_text(
+                                "원문 인용 문구 후보를 이 로컬 화면에 표시하는 데 동의",
+                                exact=True,
+                            ).click()
+                            hist.get_by_role(
+                                "button", name="원본에서 연매출 기간 후보 찾기 (읽기 전용)",
+                            ).click()
+                            expect(hist.get_by_text(
+                                "연매출 기간 후보: 원본 형식 검증 결과이며 재무 사실 인증이 아닙니다."
+                            )).to_be_visible(timeout=25000)
+                            hist.get_by_role(
+                                "button", name="선택한 기간·문구를 입력란에 적용",
+                            ).click()
+                            expect(hist.get_by_label(
+                                "현재 회계기간 종료일", exact=True,
+                            )).to_have_value("2025-09-30")
+                            hist.get_by_role(
+                                "button", name="1단계 · 원본 대조 미리보기",
+                            ).click()
+                            expect(hist.get_by_text(
+                                "출처 메타데이터 대조 · 아직 감사 DB 기록 없음"
+                            )).to_be_visible(timeout=30000)
+                            hist.get_by_text(
+                                "임시 로컬 SQLite 생성·검증 후 자동 삭제에 동의",
+                                exact=True,
+                            ).click()
+                            hist.get_by_role(
+                                "button", name="2단계 · Guard 로컬 검증 실행",
+                            ).click()
+                            expect(hist.get_by_text(
+                                "로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증"
+                            )).to_be_visible(timeout=30000)
+                            with hist.expect_download(timeout=15000) as downloaded:
+                                hist.get_by_role(
+                                    "button", name="오프라인 분석 보고서 JSON"
+                                ).click()
+                            result_file = downloaded.value.path()
+                            report_json = json.loads(Path(result_file).read_text(
+                                encoding="utf-8"
+                            ))
+                            if (report_json["source"]["source_index_kind"] != "PINNED_HISTORY"
+                                    or report_json["guard"]["decision"] != "HOLD"
+                                    or report_json["source"]["history_page_sha256"] is None
+                                    or report_json["operator_reviewed_source_digests_matched"] is not True
+                                    or report_json["limits"]["live_api_called"] is not False):
+                                raise AssertionError("HISTORY_UI_GUARD_PROVENANCE_FAILURE")
+                            hist.screenshot(
+                                path=str(output / "kuodra-local-history-guard.png"),
+                                full_page=True,
+                            )
+                        finally:
+                            hist.close()
                         result = {
                             "schema": "kuodra.local-upload-browser-check.v1",
-                            "status": "PASS", "uploads": 3,
+                            "status": "PASS", "uploads": 3, "historical_uploads": 4,
                             "stages": [
                                 "explicit-local-text-disclosure",
                                 "offline-period-and-needle-choice",
                                 "local-source-preview", "ephemeral-guard-HOLD",
+                                "four-source-pinned-history-Guard-HOLD",
                             ],
                             "source_authenticated": False,
                             "network_sec_requests": 0,
