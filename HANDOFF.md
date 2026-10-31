@@ -1,3 +1,13 @@
+## 2026-10-31 KST — KUODRA P34 opt-in local uploaded-source GUI (CI PENDING)
+1. Goal: connect the actual user-supplied three-source SEC-shaped offline verifier and Guard to existing Streamlit screen; existing public demo only offered synthetic or curated views, not operator-selected originals.
+2. Designs considered: arbitrary server-side file path input (rejected: arbitrary filesystem access and remote public app risk); in-memory browser upload with env flag AND 127.0.0.1/localhost Streamlit bind (selected: no new deps, no external API, no user file path exposure). Separate preview button and explicit ephemeral-Guard approval button, exact input/source SHA pin prevents preview-to-audit swap.
+3. Code: proofinvest/kuodra_local_workspace.py reuses existing checked offline source packet/Guard and safe local SEC HTML, creates SQLite only inside temporary dirs and deletes on return; proofinvest/kuodra_local_workspace_ui.py gates mode on KUODRA_ENABLE_LOCAL_SOURCE_UI=1 and Streamlit server.address loopback, 3 bounded uploads and operator entry, displays verified local math/Guard, downloadable untrusted report JSON/HTML; streamlit_app.py lazy-gates a new selector mode without changing existing default demos.
+4. Tests: tests/test_kuodra_local_workspace.py covers localhost/default lock, real in-memory staged synthetic content through Guard/HTML and no network, conflict REJECT, explicit consent refusal, input/request SHA swaps refusal, malformed inputs and forged provenance. This is NOT external SEC origin or source rights validation.
+5. Validation: P34 exact source CI PENDING. Previous P33 runtime SHA e2fb5bb11008f6691690392f9e35b83436638d6c Actions #41188045779 Python960 and all 3/3 CI PASS. Real original SEC, Gemini and Production UNVERIFIED.
+6. Recovery: ordinary revert of P34 commit on hibi89/hibi89-kic-proofinvest@lead/kic. Public Streamlit still defaults synthetic because mode is off unless explicit environmental opt-in+loopback; do not change production host bind to enable mode.
+7. Next: run exact SHA CI then address failures; authorized genuine originals with rights confirmation needed for real SEC three-source E2E. Test coverage does not establish publication authenticity. Local launch: PowerShell $env:KUODRA_ENABLE_LOCAL_SOURCE_UI='1'; python -m streamlit run streamlit_app.py --server.address=127.0.0.1 .
+8. Checkpoint 2026-10-31 KST, CI pending.
+
 ## 2026-10-31 KST — KUODRA P33 operator full offline panel handoff (CI 3/3 SUCCESS)
 
 1. Objective: existing real offline SEC triplet Guard replay computed risk, share_capital, cashflow and issuer capital filing watch, but operator-proposal response and its standalone KUODRA HTML silently omitted them. Operator-facing reports were less complete than validated backend review.

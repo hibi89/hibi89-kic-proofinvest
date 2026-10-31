@@ -1,4 +1,4 @@
-"""ProofInvest local-only synthetic Streamlit UI; no live data or uploads.
+"""ProofInvest Streamlit UI; synthetic by default, opt-in loopback raw review.
 
 To use stored mode first run:
   python -m proofinvest.snapshot_store --save
@@ -17,6 +17,7 @@ _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
 _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
+_SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -581,6 +582,12 @@ def render_app(st) -> None:
     sec_guard_ui = Path(__file__).resolve().parent / "proofinvest/local_sec_guard_ui.py"
     if sec_guard_ui.is_file():
         available_sources.append(_SOURCE_SEC_GUARD)
+    # Raw original upload is NEVER shown by default or on a public bind.
+    local_module = Path(__file__).resolve().parent / "proofinvest/kuodra_local_workspace_ui.py"
+    if local_module.is_file():
+        from proofinvest.kuodra_local_workspace_ui import local_workspace_enabled
+        if local_workspace_enabled(st):
+            available_sources.append(_SOURCE_LOCAL_WORKSPACE)
     # Deep-link for a judge: ?demo=guard selects the actual offline
     # SEC->Guard walkthrough, but never executes it or calls external APIs.
     # Other query values and the public synthetic recovery ZIP keep the
@@ -593,6 +600,10 @@ def render_app(st) -> None:
     source = st.selectbox(
         "자료 유형", available_sources, index=available_sources.index(initial_source)
     )
+    if source == _SOURCE_LOCAL_WORKSPACE:
+        from proofinvest.kuodra_local_workspace_ui import render_local_workspace
+        render_local_workspace(st)
+        return
     if source == _SOURCE_SEC_GUARD:
         from proofinvest.local_sec_guard_ui import render_synthetic_guard_ui
         render_synthetic_guard_ui(st)
