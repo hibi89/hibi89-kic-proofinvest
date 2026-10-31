@@ -50,6 +50,14 @@ def render_local_industry_vision(st, *, cik: str, as_of: str) -> bytes | None:
         "비교 기준 기간": result["periods"], "분석상태": result["status"],
     })
     st.write(result["vision_summary"])
+    st.subheader("출처 연계 조건부 시나리오 · 미검증 가설")
+    st.table([{
+        "구분": card["title"], "상태": card["kind"],
+        "조건": card["condition"], "분석": card["explanation"],
+        "근거 출처 ID": ", ".join(card["source_ids"]),
+        "미래 성장률 전망": "산출 안 함",
+        "미래 수익률 전망": "산출 안 함",
+    } for card in result["conditional_scenarios"]])
     if result["vision_drivers"]:
         st.table([{
             "성장·위험 동인 (입력값)": row["label"],
