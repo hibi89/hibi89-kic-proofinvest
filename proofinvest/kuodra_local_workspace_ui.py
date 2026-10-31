@@ -261,6 +261,11 @@ def render_local_workspace(st) -> None:
     }
     if uploads["history_page"] is not None:
         request["history_page_name"] = history_page_name
+    # Optional, read-only contract for separately evaluated historical ML.
+    # Neither this upload nor its report can alter the SEC/Decimal/Guard path.
+    from .ml_explainability_ui import render_local_ml_evaluation
+    render_local_ml_evaluation(st, cik=cik, as_of=as_of)
+
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
