@@ -485,6 +485,83 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '미래 산업 성장률·주가 수익률·시장점유율은 예측하지 않습니다.</p>'
             '<table>' + scenario_rows + '</table></section>'
         )
+    # Peer SEC CompanyFacts receipt is supplementary; the HTML export must
+    # validate it rather than silently drop a JSON-only evidence claim.
+    peer_check = report.get("peer_sec_companyfacts_check")
+    peer_section = ""
+    if peer_check is not None:
+        if (industry is None or type(peer_check) is not dict
+                or peer_check.get("schema") !=
+                   "kuodra.industry-peer-companyfacts-binding.v1"
+                or peer_check.get("status") !=
+                   "local_peer_values_hash_matched_origin_unverified"
+                or any(peer_check.get(flag) is not False for flag in (
+                    "source_authenticated", "source_rights_verified",
+                    "point_in_time_provider_vintage_authenticated",
+                    "live_sec_called", "audit_written", "trade_executed"))):
+            raise ValueError("HTML_PEER_ORIGINAL_TRUST_BLOCKED")
+        listed = industry.get("peers")
+        rows = peer_check.get("peer_records")
+        count = peer_check.get("peer_count")
+        if (type(listed) is not list or not 1 <= len(listed) <= 8
+                or type(rows) is not list or type(count) is not int
+                or count != len(rows) or count != len(listed)):
+            raise ValueError("HTML_PEER_ORIGINAL_COUNT_BLOCKED")
+        names = {p.get("cik"): p for p in listed if type(p) is dict}
+        if len(names) != count:
+            raise ValueError("HTML_PEER_ORIGINAL_CIK_BLOCKED")
+        from decimal import Decimal, InvalidOperation
+        peer_html = []
+        seen = set()
+        for item in rows:
+            if type(item) is not dict:
+                raise ValueError("HTML_PEER_ORIGINAL_ROW_INVALID")
+            cik = item.get("peer_cik")
+            if cik not in names or cik in seen or (
+                    type(cik) is not str or _CIK.fullmatch(cik) is None):
+                raise ValueError("HTML_PEER_ORIGINAL_CIK_BLOCKED")
+            seen.add(cik)
+            entry = names[cik]
+            digest = item.get("companyfacts_sha256")
+            accession = item.get("accession")
+            if (type(digest) is not str or _SHA.fullmatch(digest) is None
+                    or type(accession) is not str
+                    or _ACCESSION.fullmatch(accession) is None
+                    or item.get("filing_date_self_reported") is None
+                    or type(entry.get("source_ids")) is not list
+                    or len(entry["source_ids"]) != 2
+                    or any(source_map.get(ref, {}).get("sha256") != digest
+                           for ref in entry["source_ids"])):
+                raise ValueError("HTML_PEER_ORIGINAL_SHA_OR_FILING_BLOCKED")
+            try:
+                matched = (
+                    Decimal(item["prior_revenue_usd"]) ==
+                    Decimal(entry["prior_revenue_usd"])
+                    and Decimal(item["current_revenue_usd"]) ==
+                    Decimal(entry["current_revenue_usd"])
+                    and Decimal(item["growth_pct"]) ==
+                    Decimal(entry["growth_pct_reported_input"])
+                )
+            except (InvalidOperation, ValueError, TypeError, KeyError):
+                matched = False
+            if not matched:
+                raise ValueError("HTML_PEER_ORIGINAL_REVENUE_BLOCKED")
+            peer_html.append(
+                "<tr><th>" + _field(cik) + "</th><td>"
+                + _field(accession) + "</td><td><code>"
+                + _field(digest) + "</code></td><td>"
+                + _field(item["growth_pct"]) + "</td></tr>"
+            )
+        peer_section = (
+            '<section><h2>02F-2 / Engine C 경쟁사 CompanyFacts 로컬 검산</h2>'
+            '<p>기업별 접수번호·매출액·성장률·원본 SHA-256이'
+            ' 사용자가 제공한 자료 안에서 일치합니다.'
+            ' SEC 실제 원본 출처, 배포권리, 게시시각, 회계기간의'
+            ' 경제적 비교가능성은 인증되지 않았습니다.</p>'
+            '<table><tr><th>CIK</th><td>10-K accession</td>'
+            '<td>Local SHA256</td><td>매출성장률 (%)</td></tr>'
+            + "".join(peer_html) + "</table></section>"
+        )
     ledger = report.get("three_engine_summary")
     ledger_section = ""
     if ledger is not None:
@@ -573,7 +650,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
         '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section + cash_section + accounting_section + market_section + industry_section + ledger_section +
+        + share_section + capital_section + cash_section + accounting_section + market_section + industry_section + peer_section + ledger_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +
