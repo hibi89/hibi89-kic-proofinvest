@@ -1,0 +1,24 @@
+# ONE-TIME owner-authorized SEC Apple 2025 raw source probe.
+# Trigger ONLY when THIS workflow file changes; never on ordinary CI pushes.
+# Strict total 3 first-party public GETs, spaced, no retries or secrets.
+# Raw SEC originals are kept in ephemeral runner RAM and NEVER uploaded
+# to GitHub artifacts/repo, caches, stdout, or a persistent filesystem.
+name: kic-sec-apple-2025-original-probe-once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-sec-apple-original-probe-once.yml'
+permissions:
+  contents: read
+jobs:
+  original-apple:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch only three official SEC source URLs with fair-access spacing
+        run: python -B -m scripts.kic_sec_apple_original_probe
