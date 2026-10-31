@@ -23,6 +23,7 @@ from .public_primary_baseline import APPLE, CURATED, _read
 
 _MAX_TABLES = 2500
 _MAX_ROWS = 50000
+_MAX_CELLS = 100000
 _MAX_CELL_TEXT = 2500
 _MAX_VALUES = 15
 _NUMBER = re.compile(r"\(?-?[0-9]{1,3}(?:,[0-9]{3})*\)?\Z")
@@ -74,6 +75,8 @@ class _FinancialTables(HTMLParser):
         self.cell: list[str] | None = None
         self.document_size = 0
         self.row_count = 0
+        self.cell_count = 0
+        self.cell_length = 0
         self.suppressed = 0
         self.seen_html = False
 
@@ -96,7 +99,11 @@ class _FinancialTables(HTMLParser):
             if tag == "tr":
                 self.row = []
             elif tag in ("td", "th") and self.row is not None:
+                self.cell_count += 1
+                if self.cell_count > _MAX_CELLS:
+                    raise ValueError("FILING_TOO_MANY_CELLS")
                 self.cell = []
+                self.cell_length = 0
 
     def handle_endtag(self, tag: str):
         tag = tag.lower()
@@ -131,11 +138,16 @@ class _FinancialTables(HTMLParser):
         self.document_size += len(data)
         if self.document_size > MAX_FILING_BYTES:
             raise ValueError("FILING_PARSED_TEXT_TOO_LARGE")
-        if sum(len(s) for s in self.cell) + len(data) > _MAX_CELL_TEXT:
+        # O(1) per fragment; inline XBRL may split a single cell into
+        # many nested spans. Repeatedly summing fragments is quadratic.
+        next_length = self.cell_length + len(data)
+        if next_length > _MAX_CELL_TEXT:
             # Long legal text is irrelevant to numeric statement rows.
             self.cell = ["\uFFFD" * _MAX_CELL_TEXT]
+            self.cell_length = _MAX_CELL_TEXT
         else:
             self.cell.append(data)
+            self.cell_length = next_length
 
 
 def _cells(row: list[str]) -> tuple[str, list[int]]:
