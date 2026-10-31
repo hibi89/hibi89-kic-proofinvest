@@ -268,7 +268,7 @@ def render_local_workspace(st) -> None:
 
     # Independent, read-only market/peer comparison; cannot affect Guard.
     from .industry_vision_ui import render_local_industry_vision
-    render_local_industry_vision(st, cik=cik, as_of=as_of)
+    industry_raw = render_local_industry_vision(st, cik=cik, as_of=as_of)
 
     # Price data is user-provided; analysis is separate from audited SEC facts.
     from .market_reality_ui import render_local_market_reality
@@ -332,6 +332,25 @@ def render_local_workspace(st) -> None:
                 report.pop("market_reality", None)
                 st.warning("시장자료 연결 검증에 실패하여 Engine A를 보고서에서 제외했습니다. "
                            "SEC·Guard 결과는 변경하지 않았습니다.")
+        # The independent industry panel must match the *selected* SEC
+        # issuer/period/revenue and the local CompanyFacts source SHA.
+        # A malformed or conflicting optional panel cannot block Guard.
+        from .three_engine_research import (
+            bind_industry_to_sec, summarize_three_engines,
+        )
+        if industry_raw is not None:
+            try:
+                from .local_sec_html_report import render_local_sec_html
+                report["industry_vision"] = bind_industry_to_sec(report, industry_raw)
+                html = render_local_sec_html(report)
+            except (ValueError, TypeError, OverflowError, RecursionError, KeyError):
+                report.pop("industry_vision", None)
+                st.warning("Engine C와 선택 SEC 원본의 발행사·매출·기간·SHA가 "
+                           "일치하지 않아 통합 보고서에서 제외했습니다.")
+                html = render_local_sec_html(report)
+        # This is NOT a new Guard decision and is not a calibrated score.
+        report["three_engine_summary"] = summarize_three_engines(report)
+        html = render_local_sec_html(report)
         st.success("로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증")
         a, b, c = st.columns(3)
         a.metric("재무 주장", report["verification"]["status"])
@@ -349,6 +368,17 @@ def render_local_workspace(st) -> None:
                 "source_authenticated": False, "market_bubble_proven": False,
                 "audit_included": False, "guard_policy_modified": False,
             })
+        st.subheader("KUODRA · A/B/C 3엔진 근거 요약")
+        st.json(report["three_engine_summary"])
+        if "industry_vision" in report:
+            ind = report["industry_vision"]
+            st.table([
+                {"항목": "산업", "값": ind["industry"]},
+                {"항목": "기업 매출 성장률 (%)", "값": ind["target"]["growth_pct_reported_input"]},
+                {"항목": "업종 지표 성장률 (%)", "값": ind["industry_series"]["growth_pct_reported_input"] or "미확인"},
+                {"항목": "기업 대비 산업 성장률 격차 (pp)", "값": ind["growth_gap_to_industry_pp"] or "미확인"},
+                {"항목": "선택 SEC와 수치/해시 일치", "값": ind["sec_revenue_link"]["status"]},
+            ])
         st.subheader("KUODRA · 비인증 재무 검산 근거")
         st.table([
             {"항목": "공시 접수번호", "값": report["issuer"]["accession"]},

@@ -319,6 +319,135 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             + '</p><p>Guard 감사 체인에 시장 회귀 결과가 포함되지는 않았습니다.'
             ' 출처 인증·이용권리·미래정보 누출 및 회귀 표본 적합성 미확인.</p></section>'
         )
+    # Post-Guard Engine C is only displayed if it agrees with the selected
+    # locally pinned SEC CompanyFacts revenue; no added audit/Guard authority.
+    industry = report.get("industry_vision")
+    industry_section = ""
+    if industry is not None:
+        link = industry.get("sec_revenue_link") if type(industry) is dict else None
+        target = industry.get("target") if type(industry) is dict else None
+        periods = industry.get("periods") if type(industry) is dict else None
+        series = industry.get("industry_series") if type(industry) is dict else None
+        sources_c = industry.get("sources") if type(industry) is dict else None
+        if (type(industry) is not dict
+                or industry.get("schema") != "kuodra.industry-vision-explanation.v1"
+                or industry.get("status") not in (
+                    "OBSERVED_COMPARISON_UNVERIFIED", "INSUFFICIENT_EVIDENCE")
+                or industry.get("issuer_cik") != issuer["cik"]
+                or industry.get("as_of") != issuer["as_of"]
+                or industry.get("source_authenticated") is not False
+                or industry.get("industry_outlook_verified") is not False
+                or industry.get("guard_decision_changed") is not False
+                or industry.get("trade_signal") is not False
+                or industry.get("ai_generated") is not False
+                or industry.get("audit_included") is not False
+                or type(industry.get("input_sha256")) is not str
+                or _SHA.fullmatch(industry["input_sha256"]) is None
+                or type(link) is not dict
+                or link.get("status") != "LOCALLY_MATCHED_NUMERIC_INPUT_UNAUTHENTICATED"
+                or link.get("source_authenticated") is not False
+                or link.get("original_sec_bytes_authenticated") is not False
+                or link.get("companyfacts_sha256") != source["companyfacts_sha256"]
+                or link.get("growth_pct") != fin["growth_pct"]
+                or link.get("filing_date") != issuer["filing_date"]
+                or type(periods) is not dict
+                or periods.get("prior_end") != fin["prior_period_end"]
+                or periods.get("current_end") != fin["current_period_end"]
+                or type(target) is not dict
+                or target.get("cik") != issuer["cik"]
+                or type(series) is not dict
+                or type(sources_c) is not list):
+            raise ValueError("HTML_INDUSTRY_SEC_CONTEXT_BLOCKED")
+        from decimal import Decimal, InvalidOperation
+        try:
+            values_match = (
+                Decimal(target["prior_revenue_usd"]) == Decimal(str(fin["prior_amount"]))
+                and Decimal(target["current_revenue_usd"]) == Decimal(str(fin["current_amount"]))
+                and Decimal(link["prior_amount"]) == Decimal(str(fin["prior_amount"]))
+                and Decimal(link["current_amount"]) == Decimal(str(fin["current_amount"]))
+            )
+        except (InvalidOperation, KeyError, TypeError, ValueError):
+            values_match = False
+        if not values_match:
+            raise ValueError("HTML_INDUSTRY_SEC_REVENUE_BLOCKED")
+        source_map = {x["id"]: x for x in sources_c if type(x) is dict
+                      and type(x.get("id")) is str}
+        refs = target.get("source_ids")
+        if (type(refs) is not list or len(refs) != 2
+                or any(ref not in source_map
+                       or source_map[ref].get("sha256") != source["companyfacts_sha256"]
+                       or source_map[ref].get("published_at", "") < issuer["filing_date"]
+                       for ref in refs)):
+            raise ValueError("HTML_INDUSTRY_ORIGINAL_PIN_BLOCKED")
+        drivers = industry.get("vision_drivers")
+        if type(drivers) is not list or len(drivers) > 3:
+            raise ValueError("HTML_INDUSTRY_DRIVERS_INVALID")
+        driver_rows = []
+        for item in drivers:
+            if (type(item) is not dict or item.get("verified") is not False
+                    or item.get("direction_operator_supplied") not in
+                    ("OPPORTUNITY", "RISK", "MIXED")
+                    or type(item.get("source_ids")) is not list
+                    or any(ref not in source_map for ref in item["source_ids"])):
+                raise ValueError("HTML_INDUSTRY_DRIVER_TRUST_BLOCKED")
+            driver_rows.append(
+                "<li>" + _field(item["label"], 120) + " — "
+                + _field(item["direction_operator_supplied"]) + " ("
+                + _field(", ".join(item["source_ids"])) + ")</li>"
+            )
+        def industry_field(x):
+            return _field(x if x is not None else "NOT_AVAILABLE")
+        industry_section = (
+            '<section><h2>02F / Engine C · 산업 성장 및 경쟁사 비교 (미인증)</h2>'
+            '<p>산업: ' + industry_field(industry["industry"])
+            + ' / 검토 상태: ' + industry_field(industry["status"]) + '</p><table>'
+            '<tr><th>종목 매출 성장률 (%)</th><td>'
+            + industry_field(target["growth_pct_reported_input"]) + '</td></tr>'
+            '<tr><th>산업 지표 종류</th><td>'
+            + industry_field(series["kind"]) + '</td></tr>'
+            '<tr><th>산업 지표 성장률 (%)</th><td>'
+            + industry_field(series["growth_pct_reported_input"]) + '</td></tr>'
+            '<tr><th>산업 성장률 대비 격차 (pp)</th><td>'
+            + industry_field(industry["growth_gap_to_industry_pp"]) + '</td></tr>'
+            '<tr><th>경쟁사 중위 성장률 대비 격차 (pp)</th><td>'
+            + industry_field(industry["growth_gap_to_peer_median_pp"]) + '</td></tr>'
+            '<tr><th>SEC 연매출·기간·SHA 로컬 일치</th><td>'
+            + industry_field(link["status"]) + '</td></tr>'
+            '</table><p>시장 기회·위험 요인 (사용자 입력 가설):</p><ul>'
+            + ("".join(driver_rows) or "<li>미입력</li>") + '</ul>'
+            '<p>업로드 SHA256: ' + industry_field(industry["input_sha256"])
+            + '</p><p>시장점유율·미래 성장률·수익률·업종 비전 인증이 아닙니다.'
+            ' Engine C 자료는 Guard 감사 체인에 추가되지 않았습니다.</p></section>'
+        )
+    ledger = report.get("three_engine_summary")
+    ledger_section = ""
+    if ledger is not None:
+        expected_a = (market["status"] if market is not None else "NO_INPUT")
+        expected_b = accounting["status"] if accounting is not None else None
+        expected_c = (industry["status"] if industry is not None else "NO_INPUT")
+        if (type(ledger) is not dict
+                or ledger.get("schema") != "kuodra.three-engine-evidence-ledger.v1"
+                or ledger.get("issuer_cik") != issuer["cik"]
+                or ledger.get("as_of") != issuer["as_of"]
+                or ledger.get("A_market_reality") != expected_a
+                or ledger.get("B_financial_integrity") != expected_b
+                or ledger.get("C_industry_vision") != expected_c
+                or ledger.get("guard_decision_unchanged") != guard["decision"]
+                or ledger.get("all_three_inputs_present") is not (
+                    market is not None and industry is not None)
+                or any(ledger.get(k) is not False for k in (
+                    "source_authenticated", "combined_risk_score_available",
+                    "market_outlook_verified", "market_bubble_or_fraud_proven",
+                    "ai_generated", "trade_signal", "audit_included"))):
+            raise ValueError("HTML_THREE_ENGINE_LEDGER_BLOCKED")
+        ledger_section = (
+            '<section><h2>02G / A·B·C 독립 분석 상태</h2><table>'
+            '<tr><th>Engine A</th><td>' + _field(expected_a) + '</td></tr>'
+            '<tr><th>Engine B</th><td>' + _field(expected_b) + '</td></tr>'
+            '<tr><th>Engine C</th><td>' + _field(expected_c) + '</td></tr>'
+            '</table><p>종합 위험점수, 시장 비전 인증, 자동 거래 권한 없음.'
+            ' 세 엔진 결과는 기존 Guard 판정을 변경하지 않습니다.</p></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     history_kind = ("4개 원본 · 이력 페이지" if index_kind == "PINNED_HISTORY"
@@ -378,7 +507,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
         '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section + cash_section + accounting_section + market_section +
+        + share_section + capital_section + cash_section + accounting_section + market_section + industry_section + ledger_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

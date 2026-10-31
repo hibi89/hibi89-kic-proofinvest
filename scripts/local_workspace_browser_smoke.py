@@ -172,6 +172,51 @@ def run(output: Path) -> dict:
                         expect(page.get_by_text(
                             "이 입력은 독립 출처 인증 전입니다.", exact=False,
                         )).to_be_visible(timeout=20000)
+                        # P46: real Chromium also exercises an Engine C source
+                        # upload, initially blocking wrong CIK, then joining
+                        # exactly the same SEC CompanyFacts snapshot by hash.
+                        from tests.test_industry_vision import fixture as industry_fixture
+                        raw_sec = json.dumps(synthetic_companyfacts()).encode()
+                        source_digest = sha256(raw_sec).hexdigest()
+                        industry = industry_fixture()
+                        industry["issuer_cik"] = SYNTHETIC_CIK
+                        industry["as_of"] = AS_OF
+                        industry["target"]["cik"] = SYNTHETIC_CIK
+                        industry["prior_period_end"] = "2024-09-30"
+                        industry["current_period_end"] = "2025-09-30"
+                        industry["target"]["prior_revenue_usd"] = "100"
+                        industry["target"]["current_revenue_usd"] = "200"
+                        for src in industry["sources"]:
+                            src["published_at"] = "2025-10-15"
+                            if src["id"] in ("target-old", "target-now"):
+                                src["sha256"] = source_digest
+                        rejected_industry = dict(industry)
+                        rejected_industry["issuer_cik"] = "0000000002"
+                        industry_upload = page.locator('input[type="file"]').nth(5)
+                        industry_upload.set_input_files({
+                            "name": "industry-wrong-issuer.json",
+                            "mimeType": "application/json",
+                            "buffer": json.dumps(rejected_industry).encode("utf-8"),
+                        })
+                        expect(page.get_by_text(
+                            "산업 분석 차단: 원본 출처·기간·기업 식별자·성장률 계약을 확인하십시오."
+                        )).to_be_visible(timeout=20000)
+                        industry_raw = json.dumps(
+                            industry, sort_keys=True, separators=(",", ":")
+                        ).encode("utf-8")
+                        industry_upload = page.locator('input[type="file"]').nth(5)
+                        industry_upload.set_input_files({
+                            "name": "industry-synthetic.json",
+                            "mimeType": "application/json",
+                            "buffer": industry_raw,
+                        })
+                        expect(page.get_by_text(
+                            "KUODRA · Engine C — Industry Vision", exact=True,
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "기업 매출 성장률이 입력된 산업 지표 성장률보다 높습니다.",
+                            exact=True,
+                        )).to_be_visible(timeout=20000)
                         page.get_by_role(
                             "button", name="1단계 · 원본 대조 미리보기",
                         ).click()
@@ -207,6 +252,26 @@ def run(output: Path) -> dict:
                             Path(market_json_download.value.path()).read_text(encoding="utf-8")
                         )
                         market_card = json_report.get("market_reality")
+                        industry_card = json_report.get("industry_vision")
+                        ledger = json_report.get("three_engine_summary")
+                        if (not isinstance(industry_card, dict)
+                                or industry_card.get("status") != "OBSERVED_COMPARISON_UNVERIFIED"
+                                or industry_card["sec_revenue_link"]["companyfacts_sha256"]
+                                   != json_report["source"]["companyfacts_sha256"]
+                                or industry_card["sec_revenue_link"]["growth_pct"]
+                                   != json_report["verification"]["growth_pct"]
+                                or industry_card["input_sha256"] != sha256(industry_raw).hexdigest()
+                                or industry_card["growth_gap_to_industry_pp"] != "80.00"
+                                or industry_card.get("audit_included") is not False
+                                or industry_card.get("industry_outlook_verified") is not False
+                                or not isinstance(ledger, dict)
+                                or ledger.get("all_three_inputs_present") is not True
+                                or ledger.get("A_market_reality") != "REPORTED_UNVERIFIED"
+                                or ledger.get("B_financial_integrity") != "unavailable"
+                                or ledger.get("C_industry_vision") != "OBSERVED_COMPARISON_UNVERIFIED"
+                                or ledger.get("combined_risk_score_available") is not False
+                                or ledger.get("guard_decision_unchanged") != "HOLD"):
+                            raise AssertionError("ENGINE_C_BROWSER_SEC_JOIN_OR_LEDGER_INVALID")
                         if (not isinstance(market_card, dict)
                                 or market_card.get("status") != "REPORTED_UNVERIFIED"
                                 or abs(Decimal(market_card["beta"]) - Decimal("1.5"))
@@ -241,6 +306,9 @@ def run(output: Path) -> dict:
                                 or b"STRUCTURAL_NUMERIC_COMPARISON_ONLY" not in html_bytes
                                 or b"RevenueFromContractWithCustomerExcludingAssessedTax" not in html_bytes
                                 or b"Engine A" not in html_bytes
+                                or b"Engine C" not in html_bytes
+                                or b"A" + "·B·C".encode("utf-8") not in html_bytes
+                                or sha256(industry_raw).hexdigest().encode() not in html_bytes
                                 or b"Guard " not in html_bytes
                                 or sha256(market_raw).hexdigest().encode() not in html_bytes):
                             raise AssertionError("HTML_REPORT_NOT_EVIDENCE_LINKED")
@@ -381,6 +449,9 @@ def run(output: Path) -> dict:
                                 "engine-a-real-chromium-upload-decimal-ols",
                                 "engine-a-sec-context-json-and-html-download",
                                 "engine-a-does-not-change-guard-or-audit",
+                                "engine-c-wrong-issuer-upload-blocked",
+                                "engine-c-sec-revenue-period-source-sha-joined",
+                                "three-engine-ledger-json-html-download",
 
                             ],
                             "source_authenticated": False,
@@ -389,6 +460,11 @@ def run(output: Path) -> dict:
                             "market_sec_context_bound": True,
                             "market_guard_policy_modified": False,
                             "market_in_guard_audit": False,
+                            "industry_growth_gap_pp": industry_card["growth_gap_to_industry_pp"],
+                            "industry_upload_sha256": sha256(industry_raw).hexdigest(),
+                            "industry_sec_source_bound": True,
+                            "all_three_engines_reported": True,
+                            "combined_risk_score_available": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,
                         }

@@ -6,7 +6,7 @@ from .industry_vision import (
 )
 
 
-def render_local_industry_vision(st, *, cik: str, as_of: str) -> None:
+def render_local_industry_vision(st, *, cik: str, as_of: str) -> bytes | None:
     st.subheader("KUODRA · Engine C — Industry Vision")
     st.caption("선택한 기업 vs 동종 기업 vs 산업 성장률 / 시장 성장 동력과 위험. "
                "업로드 데이터만 비교하며 SEC·거시 API·LLM을 호출하지 않습니다.")
@@ -60,3 +60,6 @@ def render_local_industry_vision(st, *, cik: str, as_of: str) -> None:
              "중요한 제한": result["caveats"],
              "source_authenticated": False, "industry_outlook_verified": False,
              "ai_generated": False, "trade_signal": False})
+    # Return bytes only from successfully validated, opt-in source input.
+    # A later SEC-bound comparison must independently revalidate the input.
+    return uploaded.getvalue()
