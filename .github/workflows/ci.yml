@@ -173,6 +173,18 @@ jobs:
       - name: Click through actual browser UI and verify SQLite
         run: |
           python -B -m scripts.guard_browser_smoke /tmp/kic-guard-browser
+      - name: Click through opt-in localhost upload → preview → ephemeral Guard
+        run: |
+          python -B -m scripts.local_workspace_browser_smoke /tmp/kic-local-upload-browser
+      - name: Archive local source upload browser evidence (synthetic only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-local-upload-browser-check
+          path: |
+            /tmp/kic-local-upload-browser/kuodra-local-upload-guard.png
+            /tmp/kic-local-upload-browser/kuodra-local-upload-browser.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Archive actual browser screenshot and machine-readable receipt
         uses: actions/upload-artifact@v4
         with:
