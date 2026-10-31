@@ -217,6 +217,49 @@ class AppleOriginalHTMLTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "FILING_PARSED_TEXT_TOO_LARGE"):
                 parser.feed("9")
 
+    def test_cli_invalid_local_file_returns_sanitized_json_exit_2(self):
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "private-issuer-original.htm"
+            path.write_bytes(sample_html().replace(b"416,161", b"416,162"))
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["--original-html", str(path)])
+            self.assertEqual(exit_code, 2)
+            record = json.loads(stdout.getvalue())
+            self.assertEqual(record["status"], "blocked")
+            self.assertEqual(record["reason_code"],
+                             "LOCAL_HTML_OPERATIONS_ORIGINAL_VS_MANUAL_CONFLICT")
+            self.assertFalse(record["sec_original_file_authenticated"])
+            self.assertFalse(record["original_bytes_retained"])
+            self.assertNotIn(str(path), stdout.getvalue())
+            self.assertNotIn("416,162", stdout.getvalue())
+
+    def test_cli_missing_file_is_blocked_without_path_disclosure(self):
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "DO_NOT_LEAK_missing_10k_original.htm"
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["--original-html", str(path)])
+            record = json.loads(stdout.getvalue())
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(record["reason_code"], "LOCAL_SOURCE_REVIEW_BLOCKED")
+            self.assertNotIn(str(path), stdout.getvalue())
+            self.assertEqual(record["network_requests"], 0)
+
+    def test_cli_untrusted_exception_text_is_not_exposed(self):
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "local.htm"
+            path.write_bytes(sample_html())
+            stdout = StringIO()
+            with patch("proofinvest.apple_local_html_crosscheck.verify_local_apple_10k_html",
+                       side_effect=ValueError("PRIVATE_SECRET_DO_NOT_EMIT")), \
+                 redirect_stdout(stdout):
+                exit_code = main(["--original-html", str(path)])
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(json.loads(stdout.getvalue())["reason_code"],
+                             "LOCAL_SOURCE_REVIEW_BLOCKED")
+            self.assertNotIn("PRIVATE_SECRET", stdout.getvalue())
+
     def test_cli_local_file_path_and_json_receipt(self):
         raw = sample_html()
         with TemporaryDirectory() as folder:
