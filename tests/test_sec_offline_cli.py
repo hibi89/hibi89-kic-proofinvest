@@ -72,12 +72,17 @@ class SecOfflineCliTests(unittest.TestCase):
                 f.truncate(sec_offline_cli.MAX_INPUT_BYTES + 1)
             self.assertEqual(run_cli(path)[1]["reason_code"], "LOCAL_INPUT_REJECTED")
 
-    def test_rejects_accession_not_belonging_to_issuer(self):
+    def test_unlisted_submitter_accession_has_no_matching_issuer_facts(self):
+        # EDGAR accession prefix identifies the submitting account and may
+        # legitimately differ from the issuer CIK. This arbitrary accession
+        # is rejected because the issuer's CompanyFacts has no matching
+        # filing rows, not because the prefix is different.
         args = list(BASE)
         args[3] = "9999999999-25-000079"
         code, out = run_cli(FIXTURE, args)
         self.assertEqual(code, 2)
-        self.assertEqual(out["reason_code"], "INVALID_INPUT")
+        self.assertEqual(out["reason_code"], "ANNUAL_FACTS_UNAVAILABLE")
+        self.assertFalse(out["authenticated_external_source"])
 
     def test_rejects_extremely_large_cik_string_in_payload(self):
         with tempfile.TemporaryDirectory() as folder:
