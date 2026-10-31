@@ -171,6 +171,28 @@ class AppleOriginalHTMLTests(unittest.TestCase):
         label, vals = _cells(["Capex", "(", "12,715", ")", "(", "9,447", ")"])
         self.assertEqual(vals, [-12715, -9447])
 
+    def test_empty_html_cell_flood_is_bounded_even_without_numeric_text(self):
+        parser = _FinancialTables()
+        malicious = "<html><table><tr>" + "<td></td>" * 8 + "</tr></table></html>"
+        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELLS", 7):
+            with self.assertRaisesRegex(ValueError, "FILING_TOO_MANY_CELLS"):
+                parser.feed(malicious)
+        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELLS", 10):
+            with self.assertRaisesRegex(ValueError, "LOCAL_HTML_TABLE_PARSE_FAILED"):
+                self.run_gate()
+
+    def test_fragmented_inline_tags_preserve_bounded_cell_text(self):
+        # Thousands of fragments must remain linear-time, even if the HTML
+        # input stays below the original byte-size limit.
+        parser = _FinancialTables()
+        raw = "<html><table><tr><td>" + "<span>1</span>" * 5000
+        raw += "</td></tr></table></html>"
+        parser.feed(raw)
+        parser.close()
+        self.assertEqual(parser.tables, [[[ "\uFFFD" * 2500 ]]])
+        self.assertEqual(parser.cell_length, 2500)
+        self.assertEqual(parser.cell_count, 1)
+
     def test_cli_local_file_path_and_json_receipt(self):
         raw = sample_html()
         with TemporaryDirectory() as folder:
