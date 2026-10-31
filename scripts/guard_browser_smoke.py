@@ -135,7 +135,10 @@ def run(output: Path) -> dict:
                                 or not GuardReviewStore(db).verify_reviews()):
                             raise AssertionError("Browser review not committed or invalid")
 
-                        page.get_by_text("저장된 Guard 감사 이력 조회").click()
+                        # Streamlit can duplicate this expander caption while
+                        # restoring its post-submit DOM; last is the current
+                        # rendered instance, not a stale hidden predecessor.
+                        page.get_by_text("저장된 Guard 감사 이력 조회").last.click()
                         page.get_by_role("button", name="감사 무결성·이력 조회").click()
                         expect(page.get_by_text(
                             "Guard 결정 감사 체인 검증 통과 (로컬 무결성만)"

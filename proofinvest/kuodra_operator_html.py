@@ -116,7 +116,10 @@ def render_kuodra_operator_html(report: Any) -> bytes:
             or any(cashflow.get(k) is not False for k in (
                 "source_authenticated", "source_rights_verified",
                 "risk_authenticated", "guard_policy_modified", "trade_executed"))
-            or capital.get("status") not in ("reviewed_unverified", "unavailable")
+            or capital.get("status") not in (
+                "metadata_candidates_unverified",
+                "no_candidates_in_limited_issuer_index", "unavailable"
+            )
             or capital.get("issuer_recent_window_only") is not True
             or capital.get("other_filers_cik_not_queried") is not True
             or any(capital.get(k) is not False for k in (
@@ -179,7 +182,10 @@ def render_kuodra_operator_html(report: Any) -> bytes:
         ("Issuer capital metadata status", _clean(capital["status"])),
         ("Recent issuer metadata candidates", (
             _clean(capital.get("total_matching_recent_metadata"))
-            if capital["status"] == "reviewed_unverified" else "Unavailable"
+            if capital["status"] in (
+                "metadata_candidates_unverified",
+                "no_candidates_in_limited_issuer_index"
+            ) else "Unavailable"
         )),
     ]
     # A missing/invalid panel cannot become a numeric success merely because
