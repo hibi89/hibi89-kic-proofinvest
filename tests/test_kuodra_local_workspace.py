@@ -43,6 +43,79 @@ class LocalWorkspaceTests(unittest.TestCase):
             "needle": PHRASE, "claimed_growth_pct": "100.00",
         }
 
+    def test_p40_discover_filings_prefills_only_indexed_metadata_without_network(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_filing_targets
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO SEC NETWORK")) as network, patch(
+            "proofinvest.kuodra_local_workspace.review_local_sec_with_guard",
+            side_effect=AssertionError("NO AUDIT"),
+        ) as guard:
+            found = discover_uploaded_filing_targets(
+                self.raw, as_of=AS_OF, collected_at=COLLECTED_AT,
+            )
+        network.assert_not_called()
+        guard.assert_not_called()
+        self.assertEqual(found["issuer_cik"], SYNTHETIC_CIK)
+        self.assertEqual(found["status"], "filing_targets_require_operator_selection")
+        self.assertEqual(found["filing_targets"][0]["accession"], SYNTHETIC_ACCESSION)
+        self.assertEqual(found["filing_targets"][0]["index_kind"], "RECENT")
+        self.assertEqual(found["source_sha256"]["companyfacts"],
+                         hashlib.sha256(self.raw["companyfacts"]).hexdigest())
+        self.assertFalse(found["original_text_disclosed"])
+        self.assertFalse(found["audit_written"])
+        self.assertFalse(found["source_authenticated"])
+
+    def test_p40_historical_target_list_respects_pinned_manifest(self):
+        from tests.test_kuodra_history import PAGE, data
+        from proofinvest.kuodra_local_workspace import discover_uploaded_filing_targets
+        base, history = data()
+        raw = self.raw | {"submissions": base, "history_page": history}
+        result = discover_uploaded_filing_targets(
+            raw, as_of=AS_OF, collected_at=COLLECTED_AT,
+            history_page_name=PAGE,
+        )
+        self.assertEqual(
+            [(x["accession"], x["index_kind"]) for x in result["filing_targets"]],
+            [(SYNTHETIC_ACCESSION, "PINNED_HISTORY")],
+        )
+        self.assertIn("history_page", result["source_sha256"])
+        self.assertEqual(result["history_page_name"], PAGE)
+        with self.assertRaisesRegex(ValueError, "HISTORY_FILE_AND_NAME_REQUIRED"):
+            discover_uploaded_filing_targets(raw, as_of=AS_OF, collected_at=COLLECTED_AT)
+        with self.assertRaises(ValueError):
+            discover_uploaded_filing_targets(
+                raw, as_of=AS_OF, collected_at=COLLECTED_AT,
+                history_page_name="CIK0000000001-submissions-999.json",
+            )
+
+    def test_p40_future_or_wrong_issuer_target_not_listed(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_filing_targets
+        obj = json.loads(self.raw["submissions"])
+        obj["filings"]["recent"]["filingDate"][0] = "2027-01-15"
+        future = self.raw | {"submissions": json.dumps(obj).encode()}
+        result = discover_uploaded_filing_targets(
+            future, as_of=AS_OF, collected_at=COLLECTED_AT,
+        )
+        self.assertEqual(result["filing_targets"], [])
+        obj["cik"] = 0
+        with self.assertRaisesRegex(ValueError, "CIK_INVALID"):
+            discover_uploaded_filing_targets(
+                future | {"submissions": json.dumps(obj).encode()},
+                as_of=AS_OF, collected_at=COLLECTED_AT,
+            )
+
+    def test_p40_different_filing_agent_cik_still_selectable(self):
+        from proofinvest.kuodra_local_workspace import discover_uploaded_filing_targets
+        from tests.test_sec_agent_filed_accession import (
+            made_up_sources, SUBMITTER_ACCESSION,
+        )
+        found = discover_uploaded_filing_targets(
+            made_up_sources(), as_of=AS_OF, collected_at=COLLECTED_AT,
+        )
+        self.assertEqual(found["issuer_cik"], SYNTHETIC_CIK)
+        self.assertEqual(found["filing_targets"][0]["accession"], SUBMITTER_ACCESSION)
+        self.assertNotEqual(SUBMITTER_ACCESSION[:10], SYNTHETIC_CIK)
+
     def test_local_ui_disabled_by_default_and_on_public_bind(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("KUODRA_ENABLE_LOCAL_SOURCE_UI", None)

@@ -87,8 +87,6 @@ def run(output: Path) -> dict:
                         # manual entry. Real SEC-shaped uploaded bytes provide
                         # a human-selectable read-only period/needle candidate.
                         identity_inputs = [
-                            ("CIK 10자리", SYNTHETIC_CIK),
-                            ("SEC 접수번호", SYNTHETIC_ACCESSION),
                             ("기준일 (YYYY-MM-DD)", AS_OF),
                             ("사용자 주장 수집시각 (UTC ISO8601)", COLLECTED_AT),
                         ]
@@ -98,6 +96,21 @@ def run(output: Path) -> dict:
                             field.press("Tab")
                             page.wait_for_timeout(500)
                             expect(field).to_have_value(value)
+                        page.get_by_role(
+                            "button", name="업로드한 공시 목록에서 10-K 대상 찾기 (읽기 전용)",
+                        ).click()
+                        expect(page.get_by_text(
+                            "10-K 공시 대상 후보 (원본과 대조 후 선택)", exact=True,
+                        )).to_be_visible(timeout=18000)
+                        page.get_by_role(
+                            "button", name="선택한 공시의 CIK·접수번호 입력",
+                        ).click()
+                        expect(page.get_by_label("CIK 10자리", exact=True)).to_have_value(
+                            SYNTHETIC_CIK, timeout=15000,
+                        )
+                        expect(page.get_by_label("SEC 접수번호", exact=True)).to_have_value(
+                            SYNTHETIC_ACCESSION, timeout=15000,
+                        )
                         page.get_by_text(
                             "원문 인용 문구 후보를 이 로컬 화면에 표시하는 데 동의",
                             exact=True,
@@ -200,8 +213,6 @@ def run(output: Path) -> dict:
                             history_inputs = [
                                 ("이력 페이지 파일명 (해당하는 경우 filings.files.name 그대로)",
                                  HISTORY_PAGE),
-                                ("CIK 10자리", SYNTHETIC_CIK),
-                                ("SEC 접수번호", SYNTHETIC_ACCESSION),
                                 ("기준일 (YYYY-MM-DD)", AS_OF),
                                 ("사용자 주장 수집시각 (UTC ISO8601)", COLLECTED_AT),
                             ]
@@ -211,6 +222,21 @@ def run(output: Path) -> dict:
                                 field.press("Tab")
                                 hist.wait_for_timeout(450)
                                 expect(field).to_have_value(value)
+                            hist.get_by_role(
+                                "button", name="업로드한 공시 목록에서 10-K 대상 찾기 (읽기 전용)",
+                            ).click()
+                            expect(hist.get_by_text(
+                                "10-K 공시 대상 후보 (원본과 대조 후 선택)", exact=True,
+                            )).to_be_visible(timeout=18000)
+                            hist.get_by_role(
+                                "button", name="선택한 공시의 CIK·접수번호 입력",
+                            ).click()
+                            expect(hist.get_by_label("CIK 10자리", exact=True)).to_have_value(
+                                SYNTHETIC_CIK, timeout=15000,
+                            )
+                            expect(hist.get_by_label("SEC 접수번호", exact=True)).to_have_value(
+                                SYNTHETIC_ACCESSION, timeout=15000,
+                            )
                             hist.get_by_text(
                                 "원문 인용 문구 후보를 이 로컬 화면에 표시하는 데 동의",
                                 exact=True,
@@ -281,6 +307,7 @@ def run(output: Path) -> dict:
                                 "local-source-preview", "ephemeral-guard-HOLD",
                                 "four-source-pinned-history-Guard-HOLD",
                                 "three-and-four-source-html-evidence",
+                                "index-bound-10k-identity-choice",
                             ],
                             "source_authenticated": False,
                             "network_sec_requests": 0,

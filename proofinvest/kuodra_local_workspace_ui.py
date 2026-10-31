@@ -16,7 +16,7 @@ from disclosure_lightning.originals import MAX_FILING_BYTES
 from .local_sec_packet import _MAX_FILE_BYTES
 from .kuodra_local_workspace import (
     preview_uploaded_triplet, review_uploaded_triplet, discover_uploaded_periods,
-    _check_bytes,
+    discover_uploaded_filing_targets, _check_bytes,
 )
 
 
@@ -75,6 +75,24 @@ def render_local_workspace(st) -> None:
         "이력 페이지 파일명 (해당하는 경우 filings.files.name 그대로)",
         key="kuodra_history_name", max_chars=90,
     ).strip()
+    # An explicitly chosen filing can only prefill BEFORE the CIK and
+    # accession widgets are built on this rerun. Verify byte and date pins
+    # again, so stale targets cannot silently overwrite operator identity.
+    pending = st.session_state.pop("kuodra_pending_filing", None)
+    if pending is not None:
+        try:
+            exact_pins = _check_bytes(_uploaded_sources(uploads))
+            if (pending["source_sha256"] != exact_pins
+                    or pending["history_page_name"] != (
+                        history_page_name if uploads["history_page"] else None
+                    )
+                    or pending["as_of"] != st.session_state.get("kuodra_asof")
+                    or pending["collected_at"] != st.session_state.get("kuodra_collected")):
+                raise ValueError("STALE_FILING_TARGET")
+            st.session_state["kuodra_cik"] = pending["cik"]
+            st.session_state["kuodra_accession"] = pending["accession"]
+        except (ValueError, KeyError, TypeError, OSError):
+            st.warning("원본 또는 기준 정보가 변경되어 공시 대상 자동 입력을 취소했습니다.")
     left, right = st.columns(2)
     with left:
         cik = st.text_input("CIK 10자리", key="kuodra_cik", max_chars=10)
@@ -82,6 +100,68 @@ def render_local_workspace(st) -> None:
         as_of = st.text_input("기준일 (YYYY-MM-DD)", key="kuodra_asof", max_chars=10)
         collected_at = st.text_input("사용자 주장 수집시각 (UTC ISO8601)",
                                      key="kuodra_collected", max_chars=40)
+    # Read-only target discovery uses issuer-specific SEC submissions metadata.
+    # It never approves a filing, confirms source provenance or reads HTML text.
+    if st.button("업로드한 공시 목록에서 10-K 대상 찾기 (읽기 전용)",
+                 key="kuodra_find_filings"):
+        st.session_state.pop("kuodra_filing_targets", None)
+        st.session_state.pop("kuodra_discovery", None)
+        st.session_state.pop("kuodra_preview_receipt", None)
+        try:
+            candidate_report = discover_uploaded_filing_targets(
+                _uploaded_sources(uploads),
+                as_of=as_of, collected_at=collected_at,
+                history_page_name=(history_page_name if uploads["history_page"] else None),
+            )
+            st.session_state["kuodra_filing_targets"] = candidate_report
+        except (ValueError, KeyError, TypeError, OSError, OverflowError, RecursionError):
+            st.error("공시 목록을 읽을 수 없습니다. Submissions·이력 파일·기준 시각을 확인하십시오.")
+    candidate_report = st.session_state.get("kuodra_filing_targets")
+    if candidate_report is not None:
+        try:
+            valid_candidates = (
+                candidate_report.get("source_sha256")
+                == _check_bytes(_uploaded_sources(uploads))
+                and candidate_report.get("as_of") == as_of
+                and candidate_report.get("collected_at") == collected_at
+                and candidate_report.get("history_page_name") == (
+                    history_page_name if uploads["history_page"] else None
+                )
+                and candidate_report.get("source_authenticated") is False
+                and candidate_report.get("audit_written") is False
+            )
+        except (ValueError, KeyError, OSError, TypeError):
+            valid_candidates = False
+        if not valid_candidates:
+            st.session_state.pop("kuodra_filing_targets", None)
+            st.warning("입력 파일·시각이 변경되어 이전 공시 후보를 폐기했습니다.")
+        else:
+            targets = candidate_report["filing_targets"]
+            if targets:
+                st.caption("공시 목록 후보는 사용자 제공 메타데이터이며 원문 진위가 인증된 것은 아닙니다.")
+                target_index = st.selectbox(
+                    "10-K 공시 대상 후보 (원본과 대조 후 선택)",
+                    list(range(len(targets))),
+                    format_func=lambda k: (
+                        targets[k]["filing_date"] + " · " +
+                        targets[k]["accession"] + " · " + targets[k]["index_kind"]
+                    ), key="kuodra_target_choice",
+                )
+                if st.button("선택한 공시의 CIK·접수번호 입력",
+                             key="kuodra_apply_filing"):
+                    st.session_state["kuodra_pending_filing"] = {
+                        "source_sha256": candidate_report["source_sha256"],
+                        "history_page_name": candidate_report["history_page_name"],
+                        "as_of": candidate_report["as_of"],
+                        "collected_at": candidate_report["collected_at"],
+                        "cik": candidate_report["issuer_cik"],
+                        "accession": targets[target_index]["accession"],
+                    }
+                    st.session_state.pop("kuodra_discovery", None)
+                    st.session_state.pop("kuodra_preview_receipt", None)
+                    st.rerun()
+            else:
+                st.info("해당 기준 시각에 확인 가능한 10-K 목록이 없습니다. 이력 파일을 확인하십시오.")
     # This read-only discovery happens BEFORE Streamlit constructs the manual
     # fiscal-end/needle widgets. Candidate application can therefore safely
     # prefill widget state on this same rerun (no stale-widget mutation).

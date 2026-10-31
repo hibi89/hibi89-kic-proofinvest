@@ -13,10 +13,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Mapping
 
-from disclosure_lightning.core import MAX_JSON_BYTES
+from disclosure_lightning.core import MAX_JSON_BYTES, index_submissions, cik10
 from disclosure_lightning.originals import MAX_FILING_BYTES
 
-from .local_sec_packet import _MAX_FILE_BYTES, build_local_sec_review_packet
+from .local_sec_packet import _MAX_FILE_BYTES, _json_object, build_local_sec_review_packet
+from .kuodra_history import index_pinned_history
+from .dl_bridge import filing_available_at_observation
 from .local_sec_guard_report import review_local_sec_with_guard
 from .local_sec_html_report import render_local_sec_html
 from .kuodra_loose_sec_compatibility import inspect_loose_sec_bytes
@@ -67,6 +69,76 @@ def _request_sha256(request: dict[str, Any]) -> str:
         request, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")).hexdigest()
+
+
+def discover_uploaded_filing_targets(
+    raw: Mapping[str, bytes], *, as_of: str, collected_at: str,
+    history_page_name: str | None = None,
+) -> dict[str, Any]:
+    """Read-only chooser for 10-K metadata strictly listed by issuer sources.
+
+    A listed accession is NOT proof that the supplied third file belongs to
+    that filing, nor is local metadata evidence of actual SEC origin.
+    Human choice, period/original verification and Guard consent remain separate.
+    """
+    pins = _check_bytes(raw)
+    if ("history_page" in pins) != (history_page_name is not None):
+        raise ValueError("HISTORY_FILE_AND_NAME_REQUIRED_TOGETHER")
+    sub = _json_object(raw["submissions"], limit=MAX_JSON_BYTES)
+    issuer = sub.get("cik")
+    if (type(issuer) not in (int, str) or not str(issuer).isascii()
+            or not str(issuer).isdecimal() or len(str(issuer)) > 10
+            or int(issuer) == 0):
+        raise ValueError("SUBMISSIONS_ISSUER_CIK_INVALID")
+    cik = cik10(str(issuer))
+    recent = index_submissions(
+        raw["submissions"], cik=cik, as_of=as_of,
+        forms=frozenset({"10-K"}), provenance="OFFLINE_UNVERIFIED",
+        collected_at=collected_at,
+    )
+    # One user-supplied manifest-listed old page may be read in addition to
+    # recent; do not relabel an old response or bypass as-of checks.
+    indexes = [("RECENT", recent)]
+    if "history_page" in pins:
+        old = index_pinned_history(
+            base_raw=raw["submissions"], history_raw=raw["history_page"],
+            page_name=history_page_name, cik=cik, as_of=as_of,
+            collected_at=collected_at,
+        )
+        indexes.append(("PINNED_HISTORY", old))
+    eligible = []
+    seen: set[str] = set()
+    for kind, index in indexes:
+        for filing in index["filings"]:
+            accession = filing.get("accession")
+            if (filing.get("issuer_cik") != cik
+                    or filing.get("form") != "10-K"
+                    or not isinstance(accession, str)
+                    or not filing_available_at_observation(index, filing)):
+                continue
+            if accession in seen:
+                raise ValueError("DUPLICATE_FILING_BETWEEN_RECENT_AND_HISTORY")
+            seen.add(accession)
+            eligible.append({
+                "accession": accession,
+                "filing_date": filing["filed_at"],
+                "index_kind": kind,
+                "source_index_sha256": index["source_sha256"],
+                "source_authenticated": False,
+            })
+    eligible.sort(key=lambda e: (e["filing_date"], e["accession"]), reverse=True)
+    return {
+        "schema": "kuodra.local-upload-filing-targets.v1",
+        "status": "filing_targets_require_operator_selection",
+        "issuer_cik": cik,
+        "as_of": as_of, "collected_at": collected_at,
+        "history_page_name": history_page_name,
+        "source_sha256": pins,
+        "filing_targets": eligible[:12],
+        "candidate_count_truncated": len(eligible) > 12,
+        "source_authenticated": False, "audit_written": False,
+        "external_http_called": False, "original_text_disclosed": False,
+    }
 
 
 def discover_uploaded_periods(
