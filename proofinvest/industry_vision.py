@@ -5,6 +5,8 @@ Figures, publisher metadata and source hashes are NOT independently authenticate
 """
 from __future__ import annotations
 
+from .industry_scenarios import build_industry_scenarios
+
 from datetime import date
 from decimal import Decimal, InvalidOperation
 import json
@@ -235,7 +237,7 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
         drivers.append({"label": _string(row["label"], "DRIVER_LABEL", 120),
                         "direction_operator_supplied": row["direction"],
                         "source_ids": list(refs), "verified": False})
-    return {
+    report = {
         "schema": "kuodra.industry-vision-explanation.v1", "status": status,
         "industry": industry, "issuer_cik": issuer, "as_of": as_of.isoformat(),
         "periods": {"prior_end": prior.isoformat(), "current_end": current.isoformat()},
@@ -267,3 +269,5 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
         "ai_generated": False, "trade_signal": False,
         "guard_decision_changed": False,
     }
+    report["conditional_scenarios"] = build_industry_scenarios(report)
+    return report
