@@ -193,6 +193,30 @@ class AppleOriginalHTMLTests(unittest.TestCase):
         self.assertEqual(parser.cell_length, 2500)
         self.assertEqual(parser.cell_count, 1)
 
+    def test_saturated_cell_does_not_reallocate_overflow_marker(self):
+        parser = _FinancialTables()
+        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELL_TEXT", 7):
+            parser.feed("<html><table><tr><td>1234567")
+            parser.feed("<span>8</span>")
+            self.assertTrue(parser.cell_overflow)
+            marker = parser.cell[0]
+            parser.feed("<span>9</span>" * 5000)
+            self.assertIs(parser.cell[0], marker)
+            self.assertEqual(parser.cell_length, 7)
+            self.assertEqual(parser.document_size, 5008)
+            parser.feed("</td></tr></table></html>")
+        self.assertEqual(parser.tables, [[["\\uFFFD" * 7]]])
+
+    def test_total_parsed_byte_limit_still_applies_after_saturation(self):
+        parser = _FinancialTables()
+        with patch("proofinvest.apple_local_html_crosscheck._MAX_CELL_TEXT", 7), \\
+             patch("proofinvest.apple_local_html_crosscheck.MAX_FILING_BYTES", 8):
+            parser.feed("<html><table><tr><td>1234567")
+            parser.feed("8")
+            self.assertTrue(parser.cell_overflow)
+            with self.assertRaisesRegex(ValueError, "FILING_PARSED_TEXT_TOO_LARGE"):
+                parser.feed("9")
+
     def test_cli_local_file_path_and_json_receipt(self):
         raw = sample_html()
         with TemporaryDirectory() as folder:
