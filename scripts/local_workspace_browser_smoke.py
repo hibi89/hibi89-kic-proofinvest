@@ -227,38 +227,47 @@ def run(output: Path) -> dict:
                                 src["sha256"] = source_digest
                         rejected_industry = dict(industry)
                         rejected_industry["issuer_cik"] = "0000000002"
-                        # Use a semantic file-uploader label across rerenders.
-                        industry_upload = page.get_by_test_id("stFileUploader").filter(
-                            has=page.get_by_text(
-                                "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
-                                exact=True,
-                            ),
-                        ).locator('input[type="file"]')
-                        expect(industry_upload).to_have_count(1)
-                        industry_upload.set_input_files({
-                            "name": "industry-wrong-issuer.json",
-                            "mimeType": "application/json",
-                            "buffer": json.dumps(rejected_industry).encode("utf-8"),
-                        })
+                        # A Streamlit rerun can discard the upload widget
+                        # immediately after set_input_files while the previous
+                        # market upload commits. Require a visible, exact
+                        # filename acknowledgement before checking the result.
+                        # Retry the SAME in-memory test file once only; no
+                        # server writes or alternate source are authorized.
+                        def upload_industry(name, payload):
+                            for attempt in range(2):
+                                uploader = page.get_by_test_id("stFileUploader").filter(
+                                    has=page.get_by_text(
+                                        "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
+                                        exact=True,
+                                    ),
+                                ).locator('input[type="file"]')
+                                expect(uploader).to_have_count(1)
+                                uploader.set_input_files({
+                                    "name": name,
+                                    "mimeType": "application/json",
+                                    "buffer": payload,
+                                })
+                                try:
+                                    expect(page.get_by_role(
+                                        "button", name="Remove " + name,
+                                        exact=True,
+                                    )).to_be_visible(timeout=8000)
+                                    return
+                                except AssertionError:
+                                    if attempt == 1:
+                                        raise
+
+                        upload_industry(
+                            "industry-wrong-issuer.json",
+                            json.dumps(rejected_industry).encode("utf-8"),
+                        )
                         expect(page.get_by_text(
                             "산업 분석 차단: 원본 출처·기간·기업 식별자·성장률 계약을 확인하십시오."
                         )).to_be_visible(timeout=20000)
                         industry_raw = json.dumps(
                             industry, sort_keys=True, separators=(",", ":")
                         ).encode("utf-8")
-                        # Use a semantic file-uploader label across rerenders.
-                        industry_upload = page.get_by_test_id("stFileUploader").filter(
-                            has=page.get_by_text(
-                                "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
-                                exact=True,
-                            ),
-                        ).locator('input[type="file"]')
-                        expect(industry_upload).to_have_count(1)
-                        industry_upload.set_input_files({
-                            "name": "industry-synthetic.json",
-                            "mimeType": "application/json",
-                            "buffer": industry_raw,
-                        })
+                        upload_industry("industry-synthetic.json", industry_raw)
                         expect(page.get_by_text(
                             "KUODRA · Engine C — Industry Vision", exact=True,
                         )).to_be_visible(timeout=20000)
