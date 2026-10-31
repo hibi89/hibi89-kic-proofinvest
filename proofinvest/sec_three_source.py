@@ -32,11 +32,11 @@ from disclosure_lightning.originals import (
 )
 from proofinvest.dl_bridge import assess_dl_sec_handoff, filing_available_at_observation
 from proofinvest.sec_companyfacts import _date, verify_sec_annual_revenue
-from proofinvest.local_sec_packet import _json_object
+from proofinvest.local_sec_packet import _json_object, _MAX_FILE_BYTES
 from proofinvest.sec_capture_bundle import preflight_local_bundle_path, save_local_capture_bundle
 
 _SEC_DOMAIN = "https://data.sec.gov"
-_MAX_FACTS = 8_000_000
+_MAX_FACTS = _MAX_FILE_BYTES
 _REQUEST_PAUSE_SECONDS = 0.25
 
 
@@ -165,7 +165,7 @@ def run_sec_three_source_review(
             observed_facts = _utcnow()
             if observed_facts.date().isoformat() != as_of:
                 raise ValueError("SEC_COLLECTION_CROSSED_UTC_DAY")
-            facts = _json_object(raw_facts, limit=MAX_JSON_BYTES)
+            facts = _json_object(raw_facts, limit=_MAX_FACTS)
             actual_cik = facts.get("cik")
             if (type(actual_cik) not in (int, str)
                     or not str(actual_cik).isascii()

@@ -18,12 +18,12 @@ from typing import Any, Mapping
 
 from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
-from proofinvest.local_sec_packet import _json_object
+from proofinvest.local_sec_packet import _json_object, _MAX_FILE_BYTES
 
-_MAX_ZIP_BYTES = MAX_JSON_BYTES * 2 + MAX_FILING_BYTES + 100_000
+_MAX_ZIP_BYTES = MAX_JSON_BYTES + _MAX_FILE_BYTES + MAX_FILING_BYTES + 100_000
 _NAMES = ("manifest.json", "submissions.json", "companyfacts.json", "original_filing.bin")
 _PARTS = (("submissions", "submissions.json", MAX_JSON_BYTES),
-          ("companyfacts", "companyfacts.json", MAX_JSON_BYTES),
+          ("companyfacts", "companyfacts.json", _MAX_FILE_BYTES),
           ("original_filing", "original_filing.bin", MAX_FILING_BYTES))
 
 

@@ -35,7 +35,11 @@ from proofinvest.ixbrl_revenue_review import review_inline_annual_revenue
 from proofinvest.dei_identity_review import review_embedded_dei_identity
 
 _MAX_CLAIM_BYTES = 400
-_MAX_FILE_BYTES = 8_000_000
+# CompanyFacts carries every US-GAAP concept across many years. A fixed
+# 8 MB limit rejected large SEC issuers before any numeric checks. Maintain
+# an independent strict 24 MB cap; submissions/history keep their smaller
+# MAX_JSON_BYTES limit and originals keep MAX_FILING_BYTES.
+_MAX_FILE_BYTES = 24_000_000
 _CIK = re.compile(r"[0-9]{10}\Z", flags=re.ASCII)
 _ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", flags=re.ASCII)
 
