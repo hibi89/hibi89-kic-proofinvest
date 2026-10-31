@@ -445,6 +445,8 @@ def run(output: Path) -> dict:
                                 or b"WITHHELD_NO_DRIVER" not in html_bytes
                                 or b"A" + "·B·C".encode("utf-8") not in html_bytes
                                 or sha256(industry_raw).hexdigest().encode() not in html_bytes
+                                or peer_hash.encode() not in html_bytes
+                                or "경쟁사 CompanyFacts 로컬 검산".encode("utf-8") not in html_bytes
                                 or b"Guard " not in html_bytes
                                 or sha256(market_raw).hexdigest().encode() not in html_bytes):
                             raise AssertionError("HTML_REPORT_NOT_EVIDENCE_LINKED")
@@ -644,6 +646,7 @@ def run(output: Path) -> dict:
                                 "engine-c-wrong-issuer-upload-blocked",
                                 "engine-c-sec-revenue-period-source-sha-joined",
                                 "engine-c-peer-companyfacts-real-chromium-upload-and-sha",
+                                "engine-c-peer-companyfacts-html-sha-included",
                                 "three-engine-ledger-json-html-download",
                                 "p59-apple-html-synthetic-upload-24-cells",
 
