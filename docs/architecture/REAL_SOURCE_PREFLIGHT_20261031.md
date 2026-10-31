@@ -1,3 +1,19 @@
+## P69 — ONE offline command for SEC originals, market CSV, and auto-derived Engine C
+
+This mode **does not** require first writing a separate Industry Vision JSON. Provide (a) the verified-local-form SEC capture ZIP OR three direct SEC raw files and associated exact issuer metadata, (b) one or more raw peer CompanyFacts JSON files, (c) a **strict two-row UTF-8 normalized sector CSV** whose two `period_end` values equal the selected target SEC fiscal prior/current ends, and (d) optionally a stock/index market CSV and its existing URL/date/price basis evidence. Industry original SEC figures and peer SHA-256 are taken directly from bounded original bytes. Publication metadata and rights are self-declared, not independently certified.
+
+**Synthetic placeholder invocation (NOT usable with real issuer data without replacing every identifier, period, source and value):**
+
+```powershell
+python -m proofinvest.real_data_preflight --sec-bundle "C:/Data/sec.zip" --prior-end 2024-09-30 --current-end 2025-09-30 --needle EXACT_SOURCE_TEXT --industry-sector-csv "C:/Data/sector-two-rows.csv" --industry-sector-url "https://example.org/source-data" --industry-sector-published-at 2025-10-15 --industry-name "Example sector" --industry-series-name "Example output index" --industry-series-kind PRODUCTION_INDEX --industry-sector-unit index_points --industry-target-name "Example target" --industry-peer-name "Example peer" --peer-companyfacts "C:/Data/peer-companyfacts.json" --peer-cik 0000000007 --peer-accession 0000000007-25-000001
+```
+
+For **direct original three-file mode**, replace `--sec-bundle` with `--sec-submissions C:/Data/submissions.json --sec-companyfacts C:/Data/companyfacts.json --sec-filing C:/Data/10k.htm --issuer-cik 0000000001 --accession 0000000001-25-000001 --as-of 2025-10-16 --collected-at 2025-10-16T12:00:00Z` (all example values fictional). For **Engine A**, add prior standard `--market-csv PATH --symbol NAME --benchmark NAME --return-basis PRICE_ONLY_CLOSE --market-source-url HTTPS_URL --market-published-at YYYY-MM-DD`. The previous manually prepared `--industry-json` mode remains supported, but **do not mix** it with any `--industry-sector-*` or new derived-mode fields. Repeat each `--industry-peer-name`, `--peer-companyfacts`, `--peer-cik`, `--peer-accession` exactly once for every peer in matching order (max 8).
+
+On success, output JSON `industry_input_mode=LOCAL_ORIGINALS_DERIVED_NO_SAVE`, `industry_generated_sha256` (actual in-memory derived bytes), `industry_original_sha256=null`, `peer_sec_companyfacts_check` and existing Guard/Engine A/B/C summaries. No intermediate Industry JSON, raw original persistence, live HTTP or trading. On source mismatch, exit 2 with a sanitized blocked reason. An equal file SHA verifies only local byte identity, **not real issuer origin, industry license, vintage, comparable fiscal calendars, model accuracy or economic truth**. Industry release must not be earlier than its selected sector observation period end, nor later than `as_of`. The tool **does not invent** a quarterly alignment if authentic sector data are calendar-year based.
+
+Exact synthetic CI #41230534239: https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41230534239 (3/3 green, Python 1,191 PASS). Real sourced A/B/C E2E requires owner-supplied lawful originals and rights, plus separately approved provider GET if needed.
+
 ## P68 — Build Engine C industry input from local company and sector files
 
 This is a NEW optional LOCAL tool for a user who already lawfully holds original target+peer SEC CompanyFacts JSON and a normalized sector CSV, NOT a downloader and NOT publisher authentication. It replaces manual JSON revenue/sha transcription with verified offline calculations and SHA pinning. All peers must have two annual periods with exactly the same end dates; no FX/fiscal calendar adjustment is invented. Each SEC file <=24MB; total financial originals <=48MB; normalized CSV <=1MB.
