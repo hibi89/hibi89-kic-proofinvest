@@ -1,0 +1,41 @@
+{
+  "schema": "kuodra.apple-fy2025-public-manual.v1",
+  "issuer": "Apple Inc.",
+  "cik": "0000320193",
+  "as_of": "2025-10-31",
+  "currency": "USD",
+  "unit": "MILLIONS",
+  "accounting_basis": "US_GAAP_CONSOLIDATED",
+  "statement_status": "UNAUDITED_ISSUER_PRESS_RELEASE",
+  "source": {
+    "publisher": "Apple Inc.",
+    "document": "FY2025 Q4 Condensed Consolidated Financial Statements",
+    "url": "https://www.apple.com/newsroom/pdfs/fy2025-q4/FY25_Q4_Consolidated_Financial_Statements.pdf",
+    "release_date": "2025-10-30",
+    "pdf_pages_one_based": [1, 2, 3],
+    "transcription_method": "MANUAL_FIRST_PARTY_PDF_TABLE_REVIEW",
+    "pdf_original_sha256_authenticated": false,
+    "distribution_rights_verified": false
+  },
+  "filing_context": {
+    "kind": "MANUALLY_CURATED_10K_COMPANYFACTS_NOT_RAW_API",
+    "accession": "0000320193-25-000079",
+    "filed_at": "2025-10-31"
+  },
+  "prior": {
+    "start": "2023-10-01", "end": "2024-09-28",
+    "net_sales": "391035", "products_sales": "294866", "services_sales": "96169",
+    "cost_of_sales": "210352", "gross_margin": "180683",
+    "operating_income": "123216", "net_income": "93736",
+    "operating_cash_flow": "118254", "accounts_receivable_net": "33410",
+    "inventories": "7286"
+  },
+  "current": {
+    "start": "2024-09-29", "end": "2025-09-27",
+    "net_sales": "416161", "products_sales": "307003", "services_sales": "109158",
+    "cost_of_sales": "220960", "gross_margin": "195201",
+    "operating_income": "133050", "net_income": "112010",
+    "operating_cash_flow": "111482", "accounts_receivable_net": "39777",
+    "inventories": "5718"
+  }
+}
