@@ -117,6 +117,8 @@ def _result(reason: str, *, status: str = "blocked") -> dict[str, Any]:
         "local_tool_attempts": 0, "max_local_tool_attempts": 1,
         "external_tool_calls": 0, "network_calls": 0,
         "guard": None, "verification": None, "balance_sheet": None,
+        "risk": None, "share_capital": None, "cashflow": None,
+        "capital_filing_watch": None,
         "source_review": None, "issuer": None, "audit": None,
         "audit_written": False, "source_authenticated": False,
         "operator_source_digests_verified": False,
@@ -207,6 +209,9 @@ def run_offline_proposal_replay(
     result.update(status="completed", reason_code=reason,
                   verification=report["verification"], guard=report["guard"],
                   balance_sheet=report["balance_sheet"],
+                  risk=report["risk"], share_capital=report["share_capital"],
+                  cashflow=report["cashflow"],
+                  capital_filing_watch=report["capital_filing_watch"],
                   source_review=report["source_review"], issuer=report["issuer"],
                   audit=report["audit"], audit_written=True,
                   operator_source_digests_verified=report["operator_source_digests_verified"])

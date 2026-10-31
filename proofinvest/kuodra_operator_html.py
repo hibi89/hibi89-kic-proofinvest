@@ -33,6 +33,13 @@ def _reasons(obj: Any) -> str:
     return "".join("<li>" + _clean(x, limit=160) + "</li>" for x in obj)
 
 
+def _optional_display(card: dict[str, Any], field: str, *, suffix: str = "") -> str:
+    """Unavailable numeric fields must never be imputed or shown as None."""
+    if card["status"] != "reviewed_unverified" or card.get(field) is None:
+        return "Unavailable"
+    return _clean(card[field]) + suffix
+
+
 def render_kuodra_operator_html(report: Any) -> bytes:
     """Safely render a human-auditable, NON-AUTHENTICATED research receipt."""
     if (type(report) is not dict
@@ -86,6 +93,37 @@ def render_kuodra_operator_html(report: Any) -> bytes:
             or type(audit.get("event_hash")) is not str
             or _SHA.fullmatch(audit["event_hash"]) is None):
         raise ValueError("HTML_REVIEW_INTEGRITY_FAILED")
+    # P33: operator receipts now expose panels already computed inside
+    # the exact same offline replay. They are descriptive ONLY, must carry
+    # the original unverified policy flags and cannot change Guard.
+    risk, shares, cashflow, capital = (
+        report.get(k) for k in (
+            "risk", "share_capital", "cashflow", "capital_filing_watch"
+        )
+    )
+    if any(type(x) is not dict for x in (risk, shares, cashflow, capital)):
+        raise ValueError("HTML_AUXILIARY_SECTION_MISSING")
+    if (risk.get("status") not in ("reviewed_unverified", "unavailable")
+            or any(risk.get(k) is not False for k in (
+                "source_authenticated", "investment_recommendation", "trade_authorized"))
+            or shares.get("status") not in ("reviewed_unverified", "unavailable")
+            or shares.get("shares_change_is_not_dilution_or_issuance") is not True
+            or any(shares.get(k) is not False for k in (
+                "source_authenticated", "source_rights_verified",
+                "ownership_verified", "guard_policy_modified", "trade_executed"))
+            or cashflow.get("status") not in ("reviewed_unverified", "unavailable")
+            or cashflow.get("free_cashflow_proxy_is_non_gaap") is not True
+            or any(cashflow.get(k) is not False for k in (
+                "source_authenticated", "source_rights_verified",
+                "risk_authenticated", "guard_policy_modified", "trade_executed"))
+            or capital.get("status") not in ("reviewed_unverified", "unavailable")
+            or capital.get("issuer_recent_window_only") is not True
+            or capital.get("other_filers_cik_not_queried") is not True
+            or any(capital.get(k) is not False for k in (
+                "source_authenticated", "source_rights_verified",
+                "beneficial_ownership_verified", "filing_contents_verified",
+                "guard_policy_modified", "trade_executed"))):
+        raise ValueError("HTML_AUXILIARY_TRUST_CONTRACT_VIOLATION")
     if report["selected_intent"] == "RISK_CHECK" and balance["status"] != "reviewed_unverified":
         raise ValueError("HTML_REQUIRED_RISK_UNAVAILABLE")
     if (report["selected_intent"] == "SOURCE_REVIEW"
@@ -126,6 +164,30 @@ def render_kuodra_operator_html(report: Any) -> bytes:
         "<tr><th>" + escape(label) + "</th><td>" + value + "</td></tr>"
         for label, value in fields
     )
+    extra = [
+        ("Local risk review status", _clean(risk["status"])),
+        ("Share snapshot status", _clean(shares["status"])),
+        ("Shares outstanding (not ownership)", _optional_display(shares, "shares_outstanding")),
+        ("Share count change (not dilution)", _optional_display(shares, "shares_change_pct", suffix="%")),
+        ("Operating cash flow USD", _optional_display(cashflow, "operating_cashflow_usd")),
+        ("Capex payments USD", _optional_display(cashflow, "capex_payments_usd")),
+        ("Free cash flow proxy USD (NON-GAAP)", (
+            _optional_display(cashflow, "free_cashflow_proxy_usd")
+            if cashflow.get("free_cashflow_proxy_status")
+            == "same_10k_period_non_gaap_unverified" else "Unavailable"
+        )),
+        ("Issuer capital metadata status", _clean(capital["status"])),
+        ("Recent issuer metadata candidates", (
+            _clean(capital.get("total_matching_recent_metadata"))
+            if capital["status"] == "reviewed_unverified" else "Unavailable"
+        )),
+    ]
+    # A missing/invalid panel cannot become a numeric success merely because
+    # some other section of the same 10-K was reviewable.
+    extra_table = "".join(
+        "<tr><th>" + escape(label) + "</th><td>" + value + "</td></tr>"
+        for label, value in extra
+    )
     page = (
         '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -150,7 +212,14 @@ def render_kuodra_operator_html(report: Any) -> bytes:
         'live model, network API, or official contest submission. '
         'HOLD means review remains blocked, NOT approved.</p></section>'
         '<section><h2>Review facts</h2><table>' + table +
-        '</table></section><section><h2>Guard reasons</h2><ul>' +
+        '</table></section><section><h2>Additional local research panels</h2>'
+        '<p>Untrusted issuer-format numbers only. Share-count change does '
+        'not establish issuance, dilution or beneficial ownership. '
+        'Free cash flow is a simplified NON-GAAP proxy, not cash available '
+        'for distribution. Issuer recent metadata omits older and '
+        'other-filer filings; zero candidates proves nothing.</p>'
+        '<table>' + extra_table + '</table></section>'
+        '<section><h2>Guard reasons</h2><ul>' +
         _reasons(guard.get("reason_codes")) + '</ul></section>'
         '<footer><p>SHA-256 checks local bytes only; source rights are '
         'not independently verified. Human review required.</p></footer>'

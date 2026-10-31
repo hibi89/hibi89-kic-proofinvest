@@ -1,3 +1,14 @@
+## 2026-10-31 KST — KUODRA P33 operator full offline panel handoff (CI PENDING)
+
+1. Objective: existing real offline SEC triplet Guard replay computed risk, share_capital, cashflow and issuer capital filing watch, but operator-proposal response and its standalone KUODRA HTML silently omitted them. Operator-facing reports were less complete than validated backend review.
+2. Options: (A) re-run financial parsers and metadata scanner in HTML export (duplicate calculation, possible inconsistent evidence or input IO); (B) pass through exact completed, bounded, already-computed P28/P27/P25 panels and render only source-limited fields (selected, zero extra SEC/LLM/API calls or audit writes). No new routes or network.
+3. Code: kuodra_operator_replay._result adds optional panel keys as None for blocked paths, success copies existing risk/share/cashflow/capital-watch objects from one replay; kuodra_operator_html validates their unverified trust flags and only renders bounded escaped values in separate 'Additional local research panels' section. Missing CFO/shares/FCF stay 'Unavailable'; simplified FCF explicitly NON-GAAP, issuer's recent filing metadata never proves ownership or issuance.
+4. Tests: four additional offline cases for full existing-facts panels with SQLite Guard chain and exact ZIP unchanged, missing panels, forged provenance rejection, and safe escaped numeric strings, no HTTP; existing CLI HTML and three-intent contract preserved.
+5. Verification: P33 exact SHA CI pending. Baseline P32 function SHA 39f633541884afa5828ebbb3a58eeefd0da067f2 Actions #41187278714 956 Python success, 3/3 Python/Windows/Chromium PASS; original P32 failed test-only fault corrected.
+6. Recovery: ordinary revert P33 on lead/kic, no force-push, original files never committed or moved, existing raw/review schema untouched. Branch owner hibi89; no Production URL or secrets, source authenticity/rights/Gemini remain unverified.
+7. Next: actual SHA CI check and fix only reproduced failures. Then request authorized lawful SEC original triplet to validate real issuer/filing compatibility; do not fabricate real-data completion.
+8. Checkpoint: 2026-10-31 KST. Documentation reflects pending validation.
+
 ## 2026-10-31 KST — KUODRA P32 post-write audit truthfulness (CI 3/3 SUCCESS)
 
 1. Goal: correct an observed code path in live-SEC-to-Guard wrapper: after run_guard_review begins persistence, a subsequent Guard/SQLite verification failure returned audit_written=False even though a Guard event could already be committed. This is dangerous when an operator decides whether to retry.

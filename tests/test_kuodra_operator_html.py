@@ -22,7 +22,7 @@ from proofinvest.sec_companyfacts import TAG
 
 
 def _fixture(root: Path, *, with_balance: bool = True, conflict: bool = False,
-             revenue_concept: str = TAG):
+             revenue_concept: str = TAG, with_auxiliary: bool = False):
     original = synthetic_companyfacts()
     if revenue_concept != TAG:
         original["facts"]["us-gaap"][revenue_concept] = (
@@ -36,6 +36,26 @@ def _fixture(root: Path, *, with_balance: bool = True, conflict: bool = False,
                 "accn": SYNTHETIC_ACCESSION, "form": "10-K",
                 "end": "2025-09-30", "filed": "2025-10-15", "val": value,
             }]}}
+    if with_auxiliary:
+        original["facts"]["us-gaap"]["CommonStockSharesOutstanding"] = {
+            "units": {"shares": [
+                {"accn": SYNTHETIC_ACCESSION, "form": "10-K",
+                 "end": "2025-09-30", "filed": "2025-10-15", "val": 200},
+                {"accn": SYNTHETIC_ACCESSION, "form": "10-K",
+                 "end": "2024-09-30", "filed": "2025-10-15", "val": 100},
+            ]}
+        }
+        for concept, amount in (
+            ("NetCashProvidedByUsedInOperatingActivities", 80),
+            ("PaymentsToAcquirePropertyPlantAndEquipment", 10),
+        ):
+            original["facts"]["us-gaap"][concept] = {
+                "units": {"USD": [{
+                    "accn": SYNTHETIC_ACCESSION, "form": "10-K",
+                    "start": "2024-10-01", "end": "2025-09-30",
+                    "filed": "2025-10-15", "val": amount,
+                }]}
+            }
     raw = {
         "submissions": synthetic_submissions(),
         "companyfacts": json.dumps(original).encode(),
@@ -125,6 +145,62 @@ class OperatorHtmlReportTests(unittest.TestCase):
         self.assertNotIn("https://", page)
         self.assertNotIn(str(self.src), page)
         self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
+    def test_full_offline_backend_panels_reach_operator_html(self):
+        root = self.root / "full-panels"
+        root.mkdir()
+        source, db, request = _fixture(root, with_auxiliary=True)
+        original_zip = source.read_bytes()
+        with patch("urllib.request.build_opener",
+                   side_effect=AssertionError("NO_EXTERNAL_HTTP")) as no_http:
+            report = self._report(request)
+            html = render_kuodra_operator_html(report).decode("utf-8")
+        no_http.assert_not_called()
+        self.assertEqual(report["status"], "completed")
+        self.assertEqual(report["guard"]["decision"], "HOLD")
+        self.assertEqual(report["share_capital"]["shares_outstanding"], "200")
+        self.assertEqual(report["share_capital"]["shares_change_pct"], "100.00")
+        self.assertEqual(report["cashflow"]["free_cashflow_proxy_usd"], "70")
+        self.assertIn("<th>Shares outstanding (not ownership)</th><td>200</td>", html)
+        self.assertIn("<th>Free cash flow proxy USD (NON-GAAP)</th><td>70</td>", html)
+        self.assertIn("Issuer capital metadata status", html)
+        self.assertIn("Local risk review status", html)
+        self.assertIn("other-filer filings", html)
+        self.assertNotIn(str(source), html)
+        self.assertNotIn("<script", html.lower())
+        self.assertTrue(GuardAuditStore(db).verify_chain())
+        self.assertEqual(source.read_bytes(), original_zip)
+
+    def test_missing_auxiliary_financials_remain_unavailable(self):
+        result = self._report()
+        self.assertEqual(result["share_capital"]["status"], "unavailable")
+        self.assertEqual(result["cashflow"]["status"], "unavailable")
+        page = render_kuodra_operator_html(result).decode()
+        self.assertIn("<th>Shares outstanding (not ownership)</th><td>Unavailable</td>", page)
+        self.assertIn("<th>Free cash flow proxy USD (NON-GAAP)</th><td>Unavailable</td>", page)
+        self.assertNotIn("<td>None</td>", page)
+
+    def test_auxiliary_provenance_upgrade_cannot_render_html(self):
+        valid = self._report()
+        for section, key, value in (
+            ("risk", "source_authenticated", True),
+            ("share_capital", "ownership_verified", True),
+            ("cashflow", "free_cashflow_proxy_is_non_gaap", False),
+            ("capital_filing_watch", "other_filers_cik_not_queried", False),
+        ):
+            with self.subTest(section=section):
+                corrupted = json.loads(json.dumps(valid))
+                corrupted[section][key] = value
+                with self.assertRaisesRegex(ValueError, "HTML_AUXILIARY"):
+                    render_kuodra_operator_html(corrupted)
+
+    def test_html_escapes_auxiliary_string_without_running_code(self):
+        result = self._report()
+        result["share_capital"]["status"] = "reviewed_unverified"
+        result["share_capital"]["shares_outstanding"] = '<img src=x onerror="alert(1)">'
+        page = render_kuodra_operator_html(result).decode()
+        self.assertIn("&lt;img", page)
+        self.assertNotIn('src=x onerror="alert(1)">', page)
 
     def test_alt_revenues_taxonomy_reaches_operator_html_from_original_zip(self):
         place = self.root / "alt-revenue"
