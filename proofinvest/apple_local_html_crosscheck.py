@@ -283,9 +283,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--press-release", type=Path, default=APPLE)
     parser.add_argument("--curated", type=Path, default=CURATED)
     args = parser.parse_args(argv)
-    output = verify_local_apple_10k_html(
-        _read_regular_local(args.original_html, MAX_FILING_BYTES),
-        _read(args.manual_10k), _read(args.press_release), _read(args.curated))
+    try:
+        output = verify_local_apple_10k_html(
+            _read_regular_local(args.original_html, MAX_FILING_BYTES),
+            _read(args.manual_10k), _read(args.press_release), _read(args.curated))
+    except (ValueError, TypeError, KeyError, OSError, OverflowError,
+            RecursionError, UnicodeError) as exc:
+        # An actual issuer document may have a different HTML table layout.
+        # Return machine-readable fail-closed metadata without traceback,
+        # caller path, original filing bytes, or sensitive manifest content.
+        reason = str(exc) if type(exc) is ValueError else ""
+        if re.fullmatch(r"(?:LOCAL_HTML|FILING|LOCAL_FILE)_[A-Z0-9_]{1,70}",
+                        reason, re.ASCII) is None:
+            reason = "LOCAL_SOURCE_REVIEW_BLOCKED"
+        print(json.dumps({
+            "schema": "kuodra.apple-local-html-statements-crosscheck.v1",
+            "status": "blocked",
+            "reason_code": reason,
+            "sec_original_file_authenticated": False,
+            "issuer_original_file_authenticated": False,
+            "data_rights_verified": False,
+            "full_sec_guard_a_b_c_real_data_verified": False,
+            "original_bytes_retained": False,
+            "network_requests": 0,
+            "trade_executed": False,
+        }, sort_keys=True, ensure_ascii=True))
+        return 2
     print(json.dumps(output, sort_keys=True, ensure_ascii=True, indent=2))
     return 0
 
