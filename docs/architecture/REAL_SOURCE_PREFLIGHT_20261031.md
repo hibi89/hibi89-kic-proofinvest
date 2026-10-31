@@ -1,3 +1,11 @@
+## P67 — Localhost Engine C raw peer upload and downloadable evidence
+
+The existing localhost-only user workflow can now verify **the same P66 peer CompanyFacts evidence** without CLI. After providing your SEC three original files, issuer, accession, analysis as-of, fiscal dates and unique 10-K quote, upload a valid Engine C industry/peer JSON. Then enable the checkbox `경쟁사 SEC CompanyFacts 원본 검산 추가 (로컬, 출처 미인증)`. For **every declared peer** (1–8), select its locally held original SEC-format CompanyFacts JSON and enter the exact 10-K accession. Each file may be up to 24MB, total peer originals up to 48MB. Nothing is sent to SEC, Gemini or an external vendor. As usual use Preview → explicit consent to ephemeral SQLite → Guard.
+
+When requested, the peer gate must pass for Engine C to appear in the downloaded JSON and HTML. The report records each peer's original local CompanyFacts SHA-256, 10-K accession and computed annual revenue growth, with source origin/data rights and PIT historical vintage **all unverified**. If any peer original is absent, changed, misdated, wrong issuer or has a conflicting number/hash, Engine C and the peer receipt are **excluded** from the report; the previously verified target SEC Guard/HOLD/REJECT and temporary audit are unchanged. HTML output rechecks receipt identity/digest/amounts and escapes all caller text.
+
+This is an additional local interaction for P66, not independent SEC publisher authentication. It was validated with synthetic files in Playwright Chromium via exact code SHA `b3460de10a26c7507e57e9b197b55522d3009921`, CI #41226880981 3/3 green, Python 1,180 PASS. Genuine real issuer/peer raw bytes, legal market/sector prices and original-data vintage are **NOT** established. For UI launch keep `KUODRA_ENABLE_LOCAL_SOURCE_UI=1` and `--server.address=127.0.0.1`; do not publicly expose uploads.
+
 ## P66 — Validate Engine C competitor growth against local SEC CompanyFacts originals
 
 By default KUODRA keeps the older offline A/B/C preflight intact; uploaded industry JSON contains operator-declared peer revenues and is NOT independently authenticated.
