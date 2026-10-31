@@ -83,21 +83,46 @@ def run(output: Path) -> dict:
                                 "name": name, "mimeType": mime, "buffer": payload,
                             })
                             page.wait_for_timeout(750)
-                        inputs = [
+                        # P35: only CIK/accession/as-of/collection need
+                        # manual entry. Real SEC-shaped uploaded bytes provide
+                        # a human-selectable read-only period/needle candidate.
+                        identity_inputs = [
                             ("CIK 10자리", SYNTHETIC_CIK),
                             ("SEC 접수번호", SYNTHETIC_ACCESSION),
                             ("기준일 (YYYY-MM-DD)", AS_OF),
                             ("사용자 주장 수집시각 (UTC ISO8601)", COLLECTED_AT),
-                            ("현재 회계기간 종료일", "2025-09-30"),
-                            ("직전 회계기간 종료일", "2024-09-30"),
-                            ("원문 본문에서 고유한 인용 문구", PHRASE),
                         ]
-                        for label, value in inputs:
+                        for label, value in identity_inputs:
                             field = page.get_by_label(label, exact=True)
                             field.fill(value)
                             field.press("Tab")
                             page.wait_for_timeout(500)
                             expect(field).to_have_value(value)
+                        page.get_by_text(
+                            "원문 인용 문구 후보를 이 로컬 화면에 표시하는 데 동의",
+                            exact=True,
+                        ).click()
+                        page.get_by_role(
+                            "button", name="원본에서 연매출 기간 후보 찾기 (읽기 전용)",
+                        ).click()
+                        expect(page.get_by_text(
+                            "연매출 기간 후보: 원본 형식 검증 결과이며 재무 사실 인증이 아닙니다."
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "원문 텍스트 후보 (사용자가 검토·선택)",
+                            exact=True,
+                        )).to_be_visible()
+                        page.get_by_role(
+                            "button", name="선택한 기간·문구를 입력란에 적용",
+                        ).click()
+                        for label, value in (
+                            ("현재 회계기간 종료일", "2025-09-30"),
+                            ("직전 회계기간 종료일", "2024-09-30"),
+                            ("원문 본문에서 고유한 인용 문구", PHRASE),
+                        ):
+                            expect(page.get_by_label(label, exact=True)).to_have_value(
+                                value, timeout=12000,
+                            )
                         page.get_by_role(
                             "button", name="1단계 · 원본 대조 미리보기",
                         ).click()
@@ -134,7 +159,11 @@ def run(output: Path) -> dict:
                         result = {
                             "schema": "kuodra.local-upload-browser-check.v1",
                             "status": "PASS", "uploads": 3,
-                            "stages": ["local-source-preview", "ephemeral-guard-HOLD"],
+                            "stages": [
+                                "explicit-local-text-disclosure",
+                                "offline-period-and-needle-choice",
+                                "local-source-preview", "ephemeral-guard-HOLD",
+                            ],
                             "source_authenticated": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,
