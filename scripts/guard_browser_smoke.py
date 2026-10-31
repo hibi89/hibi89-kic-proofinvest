@@ -226,28 +226,32 @@ def run(output: Path) -> dict:
                         )
                         try:
                             diagnostics.append(capture_selectbox("before_open"))
-                            # Previous trace confirmed the Open-button
-                            # click only focused the input (aria-expanded
-                            # remained false and no listbox mounted). Use the
-                            # documented accessible combobox keyboard action.
-                            model_picker.focus()
-                            model_picker.press("ArrowDown")
-                            diagnostics.append(capture_selectbox("after_arrow_down"))
-                            expect(model_picker).to_have_attribute(
-                                "aria-expanded", "true", timeout=4000
-                            )
-                            page.screenshot(
-                                path=str(output / "mock-proposal-menu-after-open.png")
-                            )
+                            # On the post-submit form, focus/ArrowDown may
+                            # leave the React-Aria popup closed. Search for an
+                            # ACTUAL option through the input instead of
+                            # asserting a transient aria-expanded attribute.
+                            # A typed string alone is not success: we click
+                            # the real option AND verify BLOCKED after submit.
+                            model_picker.fill("불일치 제안")
+                            diagnostics.append(capture_selectbox("after_filter"))
                             mismatch_option = page.get_by_role(
                                 "option", name="불일치 제안: SOURCE_REVIEW", exact=True
                             )
                             try:
-                                expect(mismatch_option).to_be_visible(timeout=4000)
+                                expect(mismatch_option).to_be_visible(timeout=6000)
                             except AssertionError:
-                                diagnostics.append(capture_selectbox("option_absent"))
-                                raise
-                            mismatch_option.click()
+                                diagnostics.append(capture_selectbox("after_missing_option"))
+                                # One accessible keyboard attempt for
+                                # Streamlit versions that defer opening.
+                                model_picker.press("ArrowDown")
+                                expect(mismatch_option).to_be_visible(timeout=4000)
+                            page.screenshot(
+                                path=str(output / "mock-proposal-menu-after-open.png")
+                            )
+                            mismatch_option.click(timeout=10000)
+                            expect(model_picker).to_have_value(
+                                "불일치 제안: SOURCE_REVIEW", timeout=10000
+                            )
                             diagnostics.append(capture_selectbox("after_selection"))
                         finally:
                             page.context.tracing.stop(path=str(trace_path))
