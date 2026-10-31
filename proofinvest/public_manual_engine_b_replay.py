@@ -137,7 +137,7 @@ def replay_manual_apple_through_engine_b(manual: Any, curated: Any) -> dict:
         "manual_source_url": baseline["source_url"],
         "fiscal_current_end": baseline["fiscal_current_end"],
         "unit": "USD", "amounts_based_on_usd_millions": True,
-        "manual_issuer_statement": "UNAUDITED_PUBLISHER_RELEASE",
+        "manual_issuer_statement": "MANUALLY_TRANSCRIBED_UNAUDITED_PUBLISHER_RELEASE",
         "reconstructed_sec_shape_not_raw_api": True,
         "curated_10k_revenue_not_raw_sec_response": True,
         "derived_input_sha256_not_original_sec": sha256(derived_bytes).hexdigest(),
