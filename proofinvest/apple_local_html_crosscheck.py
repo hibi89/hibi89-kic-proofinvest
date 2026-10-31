@@ -77,6 +77,7 @@ class _FinancialTables(HTMLParser):
         self.row_count = 0
         self.cell_count = 0
         self.cell_length = 0
+        self.cell_overflow = False
         self.suppressed = 0
         self.seen_html = False
 
@@ -104,6 +105,7 @@ class _FinancialTables(HTMLParser):
                     raise ValueError("FILING_TOO_MANY_CELLS")
                 self.cell = []
                 self.cell_length = 0
+                self.cell_overflow = False
 
     def handle_endtag(self, tag: str):
         tag = tag.lower()
@@ -138,13 +140,17 @@ class _FinancialTables(HTMLParser):
         self.document_size += len(data)
         if self.document_size > MAX_FILING_BYTES:
             raise ValueError("FILING_PARSED_TEXT_TOO_LARGE")
-        # O(1) per fragment; inline XBRL may split a single cell into
-        # many nested spans. Repeatedly summing fragments is quadratic.
+        # Inline XBRL may split a cell into thousands of nested spans.
+        # After saturation, keep accounting for parsed input bytes without
+        # reallocating the overflow marker on every subsequent fragment.
+        if self.cell_overflow:
+            return
         next_length = self.cell_length + len(data)
         if next_length > _MAX_CELL_TEXT:
             # Long legal text is irrelevant to numeric statement rows.
             self.cell = ["\uFFFD" * _MAX_CELL_TEXT]
             self.cell_length = _MAX_CELL_TEXT
+            self.cell_overflow = True
         else:
             self.cell.append(data)
             self.cell_length = next_length
