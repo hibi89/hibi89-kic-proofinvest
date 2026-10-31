@@ -1,3 +1,21 @@
+## P51 — Direct SEC 3-source files (alternative to capture ZIP)
+
+A separately saved capture ZIP is **not** required if the operator has the original three individual files. The same local SEC validation, SHA pinning, temporary Guard, optional market CSV/evidence and industry JSON are reused without any provider/API call or original-file overwrite.
+
+Example **single PowerShell command** (replace all file paths, issuer/accession, filing dates and 10-K text literal with your own authorized values):
+
+```powershell
+python -m proofinvest.real_data_preflight --sec-submissions C:/Data/submissions.json --sec-companyfacts C:/Data/companyfacts.json --sec-filing C:/Data/10-k.htm --issuer-cik 0000000001 --accession 0000000001-25-000001 --as-of 2025-10-16 --collected-at 2025-10-16T12:00:00Z --prior-end 2024-09-30 --current-end 2025-09-30 --needle EXACT_10K_LITERAL --market-csv C:/Data/prices.csv --symbol EXAMPLE --benchmark NASDAQ_100 --return-basis PRICE_ONLY_CLOSE --market-source-url https://example.org/price-history --market-published-at 2025-10-15 --industry-json C:/Data/industry.json
+```
+
+Supply the full group --sec-submissions, --sec-companyfacts, --sec-filing, --issuer-cik, --accession, --as-of, --collected-at OR --sec-bundle, never both. Capture must use UTC YYYY-MM-DDTHH:MM:SSZ or +00:00 on the same UTC day as as-of. This clock is operator-reported, never authenticated. The examples are placeholders, not real SEC data. Market and industry arguments remain optional; adjusted total-return prices require --market-evidence-json as specified below.
+
+Direct mode returns sec_input_mode=DIRECT_THREE_FILES_UNAUTHENTICATED, sec_capture_digest_matched=false (no capture ZIP), sec_local_byte_sha256_computed=true. All three local raw SHA hashes appear in the sanitized receipt after a local structural pass. source_authenticated=false, external_http_called=false, audit_retained=false and the existing data rights/PIT flags remain false.
+
+Selected architecture: direct read-only ingestion of bounded originals with existing SEC review (no extra dependencies, no provider/API costs). Alternate existing ZIP replay for captured bundled inputs, kept fully backward compatible; a new downloader would need explicit permission, real User-Agent, market rights and provenance.
+
+---
+
 ## 2026-10-31 KST — P50 market source/adjustment declaration gate
 
 New optional flag: `--market-evidence-json PATH` alongside `--market-csv`.

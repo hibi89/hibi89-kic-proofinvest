@@ -8,6 +8,8 @@ No persistent originals, reports, SQLite, HTTP, AI, trades or uploads.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, date, timezone
+import re
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -15,10 +17,12 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from .guard_audit import GuardAuditStore
+from disclosure_lightning.core import MAX_JSON_BYTES
+from disclosure_lightning.originals import MAX_FILING_BYTES
 from .industry_vision import MAX_UPLOAD_BYTES as INDUSTRY_MAX
 from .local_sec_guard_report import review_local_sec_with_guard
 from .local_sec_html_report import render_local_sec_html
-from .local_sec_packet import _read_regular_local
+from .local_sec_packet import _read_regular_local, _MAX_FILE_BYTES
 from .market_price_csv import market_price_csv_to_json
 from .market_data_evidence import validate_market_evidence
 from .market_reality import (
@@ -36,6 +40,8 @@ def _base(reason: str) -> dict[str, Any]:
         "status": "blocked",
         "reason_code": reason,
         "sec_capture_digest_matched": False,
+        "sec_input_mode": None,
+        "sec_local_byte_sha256_computed": False,
         "issuer_cik": None,
         "as_of_self_reported": None,
         "sec_accession": None,
@@ -55,13 +61,20 @@ def _base(reason: str) -> dict[str, Any]:
 
 
 def inspect_offline_data_files(
-    sec_bundle: Path, *, prior_end: str, current_end: str, needle: str,
+    sec_bundle: Path | None = None, *, prior_end: str, current_end: str, needle: str,
     market_csv: Path | None = None, symbol: str | None = None,
     benchmark: str | None = None, return_basis: str | None = None,
     market_source_url: str | None = None,
     market_published_at: str | None = None,
     industry_json: Path | None = None,
     market_evidence_json: Path | None = None,
+    sec_submissions: Path | None = None,
+    sec_companyfacts: Path | None = None,
+    sec_filing: Path | None = None,
+    issuer_cik: str | None = None,
+    accession: str | None = None,
+    as_of: str | None = None,
+    collected_at: str | None = None,
 ) -> dict[str, Any]:
     """Run real-file *format and local-integrity* gates; fail closed.
 
@@ -69,19 +82,77 @@ def inspect_offline_data_files(
     bytes and declared dates, NOT verified real SEC or vendor source data.
     """
     blocked = _base("PRECHECK_FAILED")
-    integrity, raws, receipt = _read_checked_capture_bundle(Path(sec_bundle))
-    if (integrity.get("status") != "bundle_integrity_pass_origin_unverified"
-            or raws is None or receipt is None):
-        return {**blocked, "reason_code": "SEC_ZIP_INTEGRITY_OR_MANIFEST_INVALID"}
-    captured = _receipt_capture_clock(receipt)
-    if captured is None:
-        return {**blocked, "reason_code": "SEC_ZIP_CAPTURE_CLOCK_INVALID"}
-    cik, asof, acc = (receipt[k] for k in (
-        "issuer_cik", "observed_utc_day", "accession",
-    ))
+    direct_fields = (sec_submissions, sec_companyfacts, sec_filing,
+                     issuer_cik, accession, as_of, collected_at)
+    direct_present = any(v is not None for v in direct_fields)
+    # Exactly one mode; no silent fallback to unrelated original files.
+    if sec_bundle is not None and direct_present:
+        return {**blocked, "reason_code": "MIXED_SEC_INPUT_MODES_BLOCKED"}
+    if sec_bundle is None and not all(v is not None for v in direct_fields):
+        return {**blocked, "reason_code": "INCOMPLETE_DIRECT_SEC_THREE_FILES"}
+    if sec_bundle is not None:
+        integrity, raws, receipt = _read_checked_capture_bundle(Path(sec_bundle))
+        if (integrity.get("status") != "bundle_integrity_pass_origin_unverified"
+                or raws is None or receipt is None):
+            return {**blocked, "reason_code": "SEC_ZIP_INTEGRITY_OR_MANIFEST_INVALID"}
+        captured = _receipt_capture_clock(receipt)
+        if captured is None:
+            return {**blocked, "reason_code": "SEC_ZIP_CAPTURE_CLOCK_INVALID"}
+        cik, asof, acc = (receipt[k] for k in (
+            "issuer_cik", "observed_utc_day", "accession",
+        ))
+        input_mode = "CAPTURE_ZIP_SELF_REPORTED"
+        bundle_match = True
+    else:
+        # Bounded, non-symlink, no-follow reads. The existing SEC/Guard
+        # validators check issuer, accession, filing and numeric claims.
+        if (type(issuer_cik) is not str
+                or re.fullmatch(r"[0-9]{10}", issuer_cik, re.ASCII) is None
+                or issuer_cik == "0000000000"
+                or type(accession) is not str
+                or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}",
+                                accession, re.ASCII) is None
+                or type(as_of) is not str
+                or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}",
+                                as_of, re.ASCII) is None
+                or type(collected_at) is not str):
+            return {**blocked, "reason_code": "DIRECT_SEC_METADATA_INVALID"}
+        try:
+            if date.fromisoformat(as_of).isoformat() != as_of:
+                raise ValueError("INVALID_DATE")
+            timestamp = datetime.fromisoformat(collected_at.replace("Z", "+00:00"))
+            if (timestamp.tzinfo is None or timestamp.utcoffset() is None
+                    or timestamp.utcoffset().total_seconds() != 0
+                    or timestamp.astimezone(timezone.utc).date().isoformat() != as_of):
+                raise ValueError("INVALID_CAPTURE_TIME")
+            # Require an explicit timezone marker, not an accidentally
+            # parser-accepted naive or variable date/time notation.
+            if (re.fullmatch(
+                    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                    r"(?:Z|\+00:00)", collected_at, re.ASCII
+                ) is None):
+                raise ValueError("CAPTURE_TIME_FORMAT")
+            raws = {
+                "submissions": _read_regular_local(
+                    Path(sec_submissions), MAX_JSON_BYTES),
+                "companyfacts": _read_regular_local(
+                    Path(sec_companyfacts), _MAX_FILE_BYTES),
+                "original_filing": _read_regular_local(
+                    Path(sec_filing), MAX_FILING_BYTES),
+            }
+        except (ValueError, TypeError, OSError, OverflowError) :
+            return {**blocked, "reason_code": "DIRECT_SEC_BYTES_OR_CLOCK_INVALID"}
+        cik, asof, acc = issuer_cik, as_of, accession
+        captured = timestamp.isoformat()
+        integrity = {"sha256": {k: sha256(v).hexdigest()
+                                for k, v in raws.items()}}
+        input_mode = "DIRECT_THREE_FILES_UNAUTHENTICATED"
+        bundle_match = False
     blocked.update({
-        "sec_capture_digest_matched": True, "issuer_cik": cik,
-        "as_of_self_reported": asof, "sec_accession": acc,
+        "sec_capture_digest_matched": bundle_match,
+        "sec_input_mode": input_mode, "sec_local_byte_sha256_computed": True,
+        "issuer_cik": cik, "as_of_self_reported": asof,
+        "sec_accession": acc,
     })
     has_market = market_csv is not None
     has_industry = industry_json is not None
@@ -226,7 +297,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Offline, read-only KUODRA SEC + market + industry file preflight (NO provider API)."
     )
-    parser.add_argument("--sec-bundle", required=True, type=Path)
+    parser.add_argument("--sec-bundle", type=Path)
+    parser.add_argument("--sec-submissions", type=Path)
+    parser.add_argument("--sec-companyfacts", type=Path)
+    parser.add_argument("--sec-filing", type=Path)
+    parser.add_argument("--issuer-cik")
+    parser.add_argument("--accession")
+    parser.add_argument("--as-of")
+    parser.add_argument("--collected-at")
     parser.add_argument("--prior-end", required=True)
     parser.add_argument("--current-end", required=True)
     parser.add_argument("--needle", required=True)
@@ -248,6 +326,13 @@ def main(argv: list[str] | None = None) -> int:
         market_published_at=args.market_published_at,
         industry_json=args.industry_json,
         market_evidence_json=args.market_evidence_json,
+        sec_submissions=args.sec_submissions,
+        sec_companyfacts=args.sec_companyfacts,
+        sec_filing=args.sec_filing,
+        issuer_cik=args.issuer_cik,
+        accession=args.accession,
+        as_of=args.as_of,
+        collected_at=args.collected_at,
     )
     print(json.dumps(result, ensure_ascii=True, sort_keys=True, indent=2))
     return 0 if result["status"] == "local_structure_pass_origin_unverified" else 2
