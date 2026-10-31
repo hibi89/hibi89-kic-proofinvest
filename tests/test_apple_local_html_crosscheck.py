@@ -23,11 +23,15 @@ from proofinvest.public_primary_baseline import APPLE, CURATED, _read
 
 
 def _table(rows):
-    return "<table>" + "".join(
-        "<tr><td>" + name + "</td><td>$</td><td>" + a
-        + "</td><td></td><td>$</td><td>" + b + "</td></tr>"
-        for name, a, b in rows
-    ) + "</table>"
+    return (
+        "<table><tr><td>Years ended</td><td>2025</td>"
+        "<td>2024</td></tr>"
+        + "".join(
+            "<tr><td>" + name + "</td><td>$</td><td>" + a
+            + "</td><td></td><td>$</td><td>" + b + "</td></tr>"
+            for name, a, b in rows
+        ) + "</table>"
+    )
 
 
 def sample_html():
@@ -75,6 +79,25 @@ class AppleOriginalHTMLTests(unittest.TestCase):
             self.doc if doc is None else doc,
             self.press, self.curated,
         )
+
+    def test_financial_table_missing_or_reversed_year_header_blocked(self):
+        raw = sample_html()
+        header = b"<tr><td>Years ended</td><td>2025</td><td>2024</td></tr>"
+        variants = (
+            b"",
+            b"<tr><td>Years ended</td><td>2024</td><td>2025</td></tr>",
+            b"<tr><td>Years ended</td><td>2025</td><td>2023</td></tr>",
+        )
+        for replacement in variants:
+            with self.subTest(header=replacement), self.assertRaisesRegex(
+                    ValueError, "FILING_OPERATIONS_YEAR_HEADER_MISSING_OR_REVERSED"):
+                self.run_gate(raw=raw.replace(header, replacement, 1))
+
+    def test_three_year_statement_layout_allows_2023_third_column(self):
+        header = b"<td>Years ended</td><td>2025</td><td>2024</td></tr>"
+        extended = b"<td>Years ended</td><td>2025</td><td>2024</td><td>2023</td></tr>"
+        raw = sample_html().replace(header, extended)
+        self.assertEqual(self.run_gate(raw=raw)["matched_numeric_cells"], 24)
 
     def test_three_statements_and_raw_byte_sha(self):
         raw = sample_html()
