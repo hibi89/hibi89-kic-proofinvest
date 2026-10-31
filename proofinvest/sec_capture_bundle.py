@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import stat
 import tempfile
@@ -44,7 +45,7 @@ def _receipt_ok(receipt: Any, raws: Mapping[str, bytes] | None = None) -> bool:
     id_cik, acc = receipt.get("issuer_cik"), receipt.get("accession")
     if (not isinstance(id_cik, str) or len(id_cik) != 10 or
             not id_cik.isascii() or not id_cik.isdecimal() or int(id_cik) == 0 or
-            not isinstance(acc, str) or len(acc) != 20 or not acc.startswith(id_cik+"-")):
+            not isinstance(acc, str) or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", acc, re.ASCII) is None):
         return False
     urls = receipt.get("source_uris")
     digests = receipt.get("raw_response_sha256")

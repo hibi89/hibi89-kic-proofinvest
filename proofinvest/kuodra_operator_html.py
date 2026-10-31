@@ -70,7 +70,7 @@ def render_kuodra_operator_html(report: Any) -> bytes:
     cik, acc, asof = (issuer.get(k) for k in ("cik", "accession", "as_of"))
     if (type(cik) is not str or _CIK.fullmatch(cik) is None
             or type(acc) is not str or _ACC.fullmatch(acc) is None
-            or not acc.startswith(cik + "-")
+            # Subject CIK comes from the linked report, not submitter prefix.
             or type(asof) is not str or _DATE.fullmatch(asof) is None
             or guard.get("decision") not in ("HOLD", "REJECT")
             or guard.get("source_authenticated") is not False

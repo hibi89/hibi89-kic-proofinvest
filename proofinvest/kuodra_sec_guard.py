@@ -134,7 +134,8 @@ def run_kuodra_sec_guard(
     if (not isinstance(cik, str) or _CIK.fullmatch(cik) is None
             or cik == "0000000000" or not isinstance(accession, str)
             or _ACCESSION.fullmatch(accession) is None
-            or not accession.startswith(cik + "-")):
+            # Third-party EDGAR submitter CIK may differ from issuer CIK.
+            ):
         return _blocked("INVALID_CIK_OR_ACCESSION")
     try:
         dest = _check_audit_path(audit_db)

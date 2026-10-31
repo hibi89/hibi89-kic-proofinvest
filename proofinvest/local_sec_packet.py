@@ -100,7 +100,9 @@ def build_local_sec_review_packet(
             or cik == "0000000000"
             or not isinstance(accession, str)
             or _ACCESSION.fullmatch(accession) is None
-            or accession[:10] != cik):
+            # Bind issuer and accession using Submissions + CompanyFacts
+            # downstream: a submitting agent may have a different CIK.
+            ):
         raise ValueError("INVALID_CIK_ACCESSION_TARGET")
     _json_object(submissions_json, limit=MAX_JSON_BYTES)
     facts = _json_object(companyfacts_json, limit=_MAX_FILE_BYTES)

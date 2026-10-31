@@ -70,7 +70,7 @@ def _valid_request(req: Any) -> bool:
     if (type(cik) is not str or _CIK.fullmatch(cik) is None
             or cik == "0000000000"
             or type(acc) is not str or _ACCESSION.fullmatch(acc) is None
-            or not acc.startswith(cik + "-")
+            # Operator's explicit accession is cross-checked against ZIP.
             or req.get("requested_intent") not in _INTENTS):
         return False
     d, current, prior = (_calendar_day(req.get(k)) for k in

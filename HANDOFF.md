@@ -1,3 +1,10 @@
+## 2026-10-31 KST — KUODRA P36 issuer-vs-submitting-agent accession CIK (CI PENDING)
+
+1. SEC webmaster FAQ states accession first 10 digits are submitting CIK, possibly filing agent; Microsoft 2025 10-K public metadata is one example. No live SEC requests made for this implementation.
+2. Fix: retain issuer CIK and accession regex validation while removing false issuer==submitter-prefix assumption in 9 existing modules: SEC CompanyFacts Decimal, offline packet, loose local intake, three-source HTTP adapter preflight, Guard wrapper, capture ZIP receipt validator, old-history index, operator gate, operator HTML. Keep issuer-specific Submissions index membership, exact CompanyFacts accn/cik, acceptance/as-of, source URI, digests/Guard policy.
+3. Regression: tests/test_sec_agent_filed_accession.py all-synthetic fake submitter coverage across in-memory candidates, local Guard, ZIP audit and operator HTML, pinned history, mocked 3-GET→Guard; reject wrong issuer or missing accession. Prior P35 exact runtime 0d5f3ae3, CI #41189816698 971 Python and 3/3 PASS.
+4. SHA CI pending; no actual real SEC data validated, source rights/Gemini/Production/DAKER unverified. Next: confirm same SHA CI, fix only diagnosed failures, maintain prior workflows. Recovery: ordinary revert on lead/kic, no force push, no modified private originals.
+
 ## 2026-10-31 KST — KUODRA P35 offline candidate selection — CI 3/3 SUCCESS
 
 1. Objective and contract: read-only real user-supplied SEC-shaped Submissions, CompanyFacts, and 10-K original into strict candidate discovery; choose manual period/quote; only later explicit preview and Guard HOLD/REJECT. No source authenticity or trading.

@@ -79,7 +79,7 @@ def index_pinned_history(
     recent_ids = {x["accession"] for x in indexed_recent["filings"]}
     for i, accession in enumerate(accessions):
         if (not isinstance(accession, str) or _ACCESSION.fullmatch(accession) is None
-                or not accession.startswith(target + "-") or accession in seen):
+                or accession in seen):
             raise ValueError("HISTORY_ACCESSION_INVALID_OR_DUPLICATE")
         seen.add(accession)
         filed = core.parse_day(days[i])

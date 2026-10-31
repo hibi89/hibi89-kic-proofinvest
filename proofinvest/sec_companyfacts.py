@@ -51,7 +51,10 @@ def _verify_one_revenue_concept(
     if (not isinstance(cik, str) or not re.fullmatch(r"[0-9]{10}", cik)
             or not isinstance(accession, str)
             or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)
-            or accession[:10] != cik):
+            # The accession prefix identifies the EDGAR submitter, sometimes
+            # a third-party agent; validate issuer via CompanyFacts.cik and
+            # target accession rows rather than using that prefix.
+            ):
         return _out("INVALID_INPUT")
     asof, curr, prev = _date(as_of), _date(current_end), _date(prior_end)
     if not all((asof, curr, prev)) or not prev < curr:

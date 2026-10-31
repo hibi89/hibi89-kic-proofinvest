@@ -76,7 +76,7 @@ def inspect_loose_sec_files(
     """
     if (type(cik) is not str or _CIK.fullmatch(cik) is None
             or cik == "0000000000" or type(accession) is not str
-            or _ACC.fullmatch(accession) is None or not accession.startswith(cik+"-")
+            or _ACC.fullmatch(accession) is None
             or type(as_of) is not str or type(collected_at) is not str):
         return _result("INVALID_OPERATOR_IDENTITY_OR_DATE")
     try:
@@ -114,7 +114,7 @@ def inspect_loose_sec_bytes(
         raise ValueError("INVALID_EXPLICIT_LOCAL_TEXT_DISCLOSURE_FLAG")
     if (type(cik) is not str or _CIK.fullmatch(cik) is None
             or cik == "0000000000" or type(accession) is not str
-            or _ACC.fullmatch(accession) is None or not accession.startswith(cik+"-")
+            or _ACC.fullmatch(accession) is None
             or type(as_of) is not str or type(collected_at) is not str):
         return _result("INVALID_OPERATOR_IDENTITY_OR_DATE")
     try:

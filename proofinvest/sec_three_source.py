@@ -110,7 +110,9 @@ def run_sec_three_source_review(
         return _error("INVALID_CIK", "preflight", 0)
     if (not isinstance(accession, str)
             or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession) is None
-            or accession[:10] != target):
+            # Exact accession membership in issuer-specific Submissions is
+            # verified before requesting CompanyFacts or original filing.
+            ):
         return _error("INVALID_ACCESSION", "preflight", 0)
     if not _valid_user_agent(user_agent):
         return _error("GENUINE_CONTACT_USER_AGENT_REQUIRED", "preflight", 0)
