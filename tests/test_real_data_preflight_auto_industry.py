@@ -52,6 +52,7 @@ class DirectIndustryPreflightTests(unittest.TestCase):
             options, archive, market, sector, peer = build_args(root)
             before = {p.name: sha256(p.read_bytes()).hexdigest()
                       for p in (archive, market, sector, peer)}
+            existing_files = sorted(p.name for p in root.iterdir())
             with patch("urllib.request.urlopen",
                        side_effect=AssertionError("HTTP_FORBIDDEN")) as external:
                 result = inspect_offline_data_files(**options)
@@ -74,7 +75,7 @@ class DirectIndustryPreflightTests(unittest.TestCase):
                 p.name: sha256(p.read_bytes()).hexdigest()
                 for p in (archive, market, sector, peer)})
             self.assertEqual(sorted(p.name for p in root.iterdir()),
-                             sorted(before))
+                             existing_files)
 
     def test_accept_direct_three_sec_files_same_bytes(self):
         with TemporaryDirectory() as folder:
