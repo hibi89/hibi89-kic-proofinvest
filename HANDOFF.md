@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P39 bounded large CompanyFacts intake — CI VERIFIED
+
+1. 목표/요구/스택: issuer SEC Submissions+CompanyFacts+10-K (optional pinned history) → Decimal → Guard → local SQLite → JSON/HTML. Python 3.11, Streamlit.
+2. 완료/설계근거: real-world whole-issuer CompanyFacts can exceed previous 8 MB, so widened ONLY the CompanyFacts raw limit to 24,000,000 bytes. A single `_MAX_FILE_BYTES` applies to local packet/UI, mockable 3-GET response reader and capture ZIP; changed `_MAX_ZIP_BYTES` to actual sum. Kept submissions and historical JSON at original MAX_JSON_BYTES, original HTML at MAX_FILING_BYTES. Compared unrestricted size (rejected due memory/ZIP abuse) vs separately bounded 24MB (selected); no new API calls or persistence.
+3. 테스트: exact feature SHA 12e6850dc696eb3d9d52162f798a4f93fc574cf8; GitHub Actions [#41193739361](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41193739361) 3/3 SUCCESS, 988 Python PASS/0 FAIL/ERROR/SKIP, syntax175 and source SHA PASS, Windows SQLite PASS, actual Chromium localhost 3/4-file Guard and HTML PASS. New tests verify >8MB mocked CompanyFacts accepted and ZIP byte-identical SHA, 24MB+ Content-Length refused, no network for offline paths.
+4. 완료/대기: P39 bounded intake DONE. Live genuine SEC raw acquisition, issuer provenance, completeness, legal source rights, Gemini model, Production and contest PDF submission UNVERIFIED.
+5. 실패/재시도: no failed P39 CI after source commit; previous 8MB had cross-module mismatch with combined CompanyFacts. Do not infer that 24MB fits every issuer; maintain fail-closed over-cap. No speculative unbounded increase.
+6. 저장소/브랜치/SHA: hibi89/hibi89-kic-proofinvest branch lead/kic, tested runtime 12e6850dc696eb3d9d52162f798a4f93fc574cf8. Changed `proofinvest/local_sec_packet.py`, `proofinvest/sec_three_source.py`, `proofinvest/sec_capture_bundle.py`, `tests/test_kuodra_companyfacts_capacity.py`.
+7. Production/명령/환경: No verified Vercel/Production. Local-only `KUODRA_ENABLE_LOCAL_SOURCE_UI=1`, `python -m streamlit run streamlit_app.py --server.address=127.0.0.1`. CI Python3.11/Windows/Chromium.
+8. 원본/백업/비밀: only synthetic 8MB+ fixture generated in CI memory/temporary ZIP; no raw SEC live HTTP, secrets, source licensing assertion or external user data upload. Revert normal Git commit for rollback, no force push. No original contest files modified.
+9. 다음 작업/승인: Require explicit separately scoped owner approval for up to three real SEC GET requests, authentic contact User-Agent and any local original retention; or owner-supplied authorized SEC original files, before true production-like E2E. After actual source data, implement missing real-data compatibility based on evidence, then separately approve Gemini, hosting.
+10. 시점/기준: 2026-10-31 KST; CI #41193739361 completed SUCCESS at runtime SHA 12e6850dc696eb3d9d52162f798a4f93fc574cf8; successor docs-only SHA does not replace runtime validation.
+
 ## 2026-10-31 KST — KUODRA P38 source-linked financial HTML report VERIFIED
 
 1. 목표·용도·확정 요구·기술: one-issuer KUODRA SEC Submissions+CompanyFacts+10-K original (optional one pinned history) → Decimal revenue verification → Guard HOLD/REJECT → SQLite audit → readable local HTML/JSON; Python/Streamlit/HTML with no external dependency or API calls.
