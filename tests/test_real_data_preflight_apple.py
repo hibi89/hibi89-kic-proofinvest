@@ -108,6 +108,91 @@ class AppleFullPreflightGateTests(unittest.TestCase):
         )
         self.assertEqual(result["reason_code"], "INVALID_APPLE_CHECK_OPTION")
 
+    def test_full_direct_sec_triplet_and_apple_table_gate_end_to_end(self):
+        """Real verification logic; constructed files are NOT original SEC."""
+        from proofinvest.kic_dl_demo import (
+            synthetic_companyfacts, synthetic_submissions,
+        )
+
+        submissions = json.loads(synthetic_submissions())
+        submissions["cik"] = 320193
+        submissions["name"] = "Apple Inc. (CONSTRUCTED TEST DOCUMENT)"
+        recent = submissions["filings"]["recent"]
+        for field, values in {
+            "accessionNumber": [_APPLE["accession"]],
+            "form": ["10-K"],
+            "filingDate": ["2025-10-31"],
+            "primaryDocument": ["aapl-20250927.htm"],
+            "acceptanceDateTime": ["2025-10-31T06:01:26Z"],
+        }.items():
+            recent[field] = values
+        facts = synthetic_companyfacts()
+        facts["cik"] = 320193
+        gaap = next(iter(facts["facts"]["us-gaap"].values()))
+        values = gaap["units"]["USD"]
+        values[0].update(
+            accn=_APPLE["accession"], start="2024-09-29",
+            end="2025-09-27", filed="2025-10-31",
+            val=416_161_000_000,
+        )
+        values[1].update(
+            accn=_APPLE["accession"], start="2023-10-01",
+            end="2024-09-28", filed="2025-10-31",
+            val=391_035_000_000,
+        )
+        raw = sample_html()
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            files = {
+                "sec_submissions": root / "submissions.json",
+                "sec_companyfacts": root / "companyfacts.json",
+                "sec_filing": root / "aapl-20250927.htm",
+            }
+            files["sec_submissions"].write_bytes(json.dumps(submissions).encode())
+            files["sec_companyfacts"].write_bytes(json.dumps(facts).encode())
+            files["sec_filing"].write_bytes(raw)
+            before = {
+                name: sha256(file.read_bytes()).hexdigest()
+                for name, file in files.items()
+            }
+            with patch("urllib.request.urlopen",
+                       side_effect=AssertionError("NO_NETWORK")) as net:
+                report = inspect_offline_data_files(
+                    **files,
+                    issuer_cik=_APPLE["cik"],
+                    accession=_APPLE["accession"],
+                    as_of=_APPLE["as_of"],
+                    collected_at="2025-10-31T12:00:00Z",
+                    current_end=_APPLE["current_end"],
+                    prior_end=_APPLE["prior_end"],
+                    needle="CONSOLIDATED BALANCE SHEETS",
+                    apple_10k_24_cell_check=True,
+                )
+            net.assert_not_called()
+            self.assertEqual(
+                report["status"], "local_structure_pass_origin_unverified",
+                report,
+            )
+            self.assertEqual(
+                report["apple_10k_original_table_check"]["matched_numeric_cells"],
+                24,
+            )
+            self.assertEqual(
+                report["apple_10k_original_table_check"]["original_local_html_sha256"],
+                sha256(raw).hexdigest(),
+            )
+            self.assertFalse(report["source_authenticated"])
+            self.assertFalse(report["three_engine_real_world_validated"])
+            self.assertFalse(report["audit_retained"])
+            self.assertEqual(
+                before,
+                {k: sha256(v.read_bytes()).hexdigest() for k, v in files.items()},
+            )
+            self.assertEqual(
+                sorted(p.name for p in root.iterdir()),
+                ["aapl-20250927.htm", "companyfacts.json", "submissions.json"],
+            )
+
     def test_cli_opt_in_refuses_wrong_issuer_without_disclosing_paths(self):
         with TemporaryDirectory() as directory:
             archive, _, _, _ = create_files(Path(directory))
