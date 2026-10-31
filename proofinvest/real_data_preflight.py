@@ -45,6 +45,7 @@ def _base(reason: str) -> dict[str, Any]:
         "issuer_cik": None,
         "as_of_self_reported": None,
         "sec_accession": None,
+        "apple_10k_original_table_check": None,
         "guard_decision_unchanged": None,
         "source_authenticated": False,
         "historical_market_vintage_authenticated": False,
@@ -60,6 +61,47 @@ def _base(reason: str) -> dict[str, Any]:
     }
 
 
+def _apple_2025_original_table_gate(
+    raw: bytes, *, cik: str, accession: str, as_of: str,
+    current_end: str, prior_end: str,
+) -> dict[str, Any]:
+    """Cross-check the *same SEC original bytes* against 24 Apple statement cells.
+
+    Optional offline enhancement to the 3-source + market/industry preflight.
+    A matched SHA and arithmetic never authenticate issuer/SEC provenance.
+    """
+    if (cik, accession, as_of, current_end, prior_end) != (
+        "0000320193", "0000320193-25-000079", "2025-10-31",
+        "2025-09-27", "2024-09-28",
+    ):
+        raise ValueError("APPLE_ORIGINAL_TARGET_MISMATCH")
+    from .apple_local_html_crosscheck import verify_local_apple_10k_html
+    from .apple_audited_10k_replay import TEN_K
+    from .public_primary_baseline import APPLE, CURATED, _read
+
+    result = verify_local_apple_10k_html(
+        raw, _read(TEN_K), _read(APPLE), _read(CURATED),
+    )
+    if (result.get("status") !=
+            "LOCAL_ORIGINAL_HTML_BYTES_MATCH_MANUAL_FINANCIAL_ROWS_ORIGIN_UNVERIFIED"
+            or result.get("matched_numeric_cells") != 24
+            or result.get("statements_matched") !=
+               ["operations", "balance", "cash"]
+            or result.get("original_local_html_sha256") != sha256(raw).hexdigest()
+            or result.get("original_bytes_retained") is not False
+            or result.get("sec_original_file_authenticated") is not False
+            or result.get("full_sec_guard_a_b_c_real_data_verified") is not False):
+        raise ValueError("APPLE_ORIGINAL_TABLE_TRUST_OR_VALUES_INVALID")
+    return {
+        "status": "24_LOCAL_VALUES_MATCH_ORIGIN_UNVERIFIED",
+        "original_local_html_sha256": sha256(raw).hexdigest(),
+        "matched_numeric_cells": 24,
+        "source_authenticated": False,
+        "data_rights_verified": False,
+        "original_bytes_retained": False,
+    }
+
+
 def inspect_offline_data_files(
     sec_bundle: Path | None = None, *, prior_end: str, current_end: str, needle: str,
     market_csv: Path | None = None, symbol: str | None = None,
@@ -68,6 +110,7 @@ def inspect_offline_data_files(
     market_published_at: str | None = None,
     industry_json: Path | None = None,
     market_evidence_json: Path | None = None,
+    apple_10k_24_cell_check: bool = False,
     sec_submissions: Path | None = None,
     sec_companyfacts: Path | None = None,
     sec_filing: Path | None = None,
@@ -82,6 +125,8 @@ def inspect_offline_data_files(
     bytes and declared dates, NOT verified real SEC or vendor source data.
     """
     blocked = _base("PRECHECK_FAILED")
+    if type(apple_10k_24_cell_check) is not bool:
+        return {**blocked, "reason_code": "INVALID_APPLE_CHECK_OPTION"}
     direct_fields = (sec_submissions, sec_companyfacts, sec_filing,
                      issuer_cik, accession, as_of, collected_at)
     direct_present = any(v is not None for v in direct_fields)
@@ -154,6 +199,16 @@ def inspect_offline_data_files(
         "issuer_cik": cik, "as_of_self_reported": asof,
         "sec_accession": acc,
     })
+    apple_table_receipt = None
+    if apple_10k_24_cell_check:
+        try:
+            apple_table_receipt = _apple_2025_original_table_gate(
+                raws["original_filing"], cik=cik, accession=acc, as_of=asof,
+                current_end=current_end, prior_end=prior_end,
+            )
+        except (ValueError, TypeError, KeyError, OSError, OverflowError,
+                RecursionError, UnicodeError):
+            return {**blocked, "reason_code": "APPLE_10K_24_CELL_CHECK_BLOCKED"}
     has_market = market_csv is not None
     has_industry = industry_json is not None
     has_evidence = market_evidence_json is not None
@@ -259,6 +314,7 @@ def inspect_offline_data_files(
                 **blocked, "status": "local_structure_pass_origin_unverified",
                 "reason_code": "LOCAL_ONLY_REVIEW_NOT_REAL_DATA_AUTHENTICATION",
                 "guard_decision_unchanged": report["guard"]["decision"],
+                "apple_10k_original_table_check": apple_table_receipt,
                 "sec_revenue_status": report["verification"]["status"],
                 "accounting_status": report["accounting_integrity"]["status"],
                 "market_status": (
@@ -316,6 +372,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--market-source-url")
     parser.add_argument("--market-published-at")
     parser.add_argument("--industry-json", type=Path)
+    parser.add_argument("--apple-10k-24-cell-check", action="store_true",
+                        help="Fail closed unless the uploaded Apple FY2025 10-K HTML original matches 24 independently reviewed statement values; does not authenticate its origin.")
     args = parser.parse_args(argv)
     result = inspect_offline_data_files(
         args.sec_bundle, prior_end=args.prior_end,
@@ -326,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         market_published_at=args.market_published_at,
         industry_json=args.industry_json,
         market_evidence_json=args.market_evidence_json,
+        apple_10k_24_cell_check=args.apple_10k_24_cell_check,
         sec_submissions=args.sec_submissions,
         sec_companyfacts=args.sec_companyfacts,
         sec_filing=args.sec_filing,
