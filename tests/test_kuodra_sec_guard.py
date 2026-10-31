@@ -113,7 +113,10 @@ class KuodraSecGuardTests(unittest.TestCase):
         self.assertFalse(result["guard"]["human_approved"])
 
     def test_postwrite_chain_verification_failure_does_not_claim_no_audit(self):
-        with patch.object(unit.GuardAuditStore, "verify_chain", return_value=False):
+        # GuardAuditStore.verify_chain is also used by record_decision.
+        # Patch the *independent post-commit* human-review verifier only,
+        # so this test exercises a genuinely persisted-but-not-cleared case.
+        with patch.object(unit.GuardReviewStore, "verify_reviews", return_value=False):
             result, calls = self._call_mock_transport()
         self.assertEqual(calls, (1, 1, 1))
         self.assertEqual(result["status"], "BLOCKED")
