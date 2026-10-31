@@ -107,13 +107,13 @@ class DirectIndustryPreflightTests(unittest.TestCase):
             self.assertIsNone(out["industry_original_sha256"])
             self.assertFalse(out["source_authenticated"])
 
-    def test_wrong_raw_peer_blocks_all_engines_without_guard_audit(self):
+    def test_invalid_raw_peer_blocks_all_engines_without_guard_audit(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)
             opts, archive, market, sector, peer = build_args(root)
             obj = json.loads(peer.read_bytes())
             row = next(iter(obj["facts"]["us-gaap"].values()))["units"]["USD"][0]
-            row["val"] = 12345
+            row["val"] = "not-a-number"
             peer.write_bytes(json.dumps(obj).encode())
             out = inspect_offline_data_files(**opts)
             self.assertEqual(out["status"], "blocked", out)

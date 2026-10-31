@@ -230,7 +230,7 @@ def inspect_offline_data_files(
         peer_companyfacts_files, peer_ciks, peer_accessions
     ))
     if peer_enabled:
-        if (industry_json is None or
+        if ((industry_json is None and industry_sector_csv is None) or
                 any(type(field) is not list for field in (
                     peer_companyfacts_files, peer_ciks, peer_accessions
                 )) or not 1 <= len(peer_companyfacts_files) <= 8 or
