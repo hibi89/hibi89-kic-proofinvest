@@ -29,13 +29,17 @@ _CIK = re.compile(r"[0-9]{10}\Z", re.ASCII)
 _ACCESSION = re.compile(r"[0-9]{10}-[0-9]{2}-[0-9]{6}\Z", re.ASCII)
 
 
-def _blocked(reason: str, *, requests: int = 0) -> dict[str, Any]:
+def _blocked(
+    reason: str, *, requests: int = 0, audit_written: bool | None = False,
+) -> dict[str, Any]:
     return {
         "schema": "kuodra.sec-guard-workflow.v1",
         "status": "BLOCKED",
         "reason_code": reason,
         "http_requests_attempted": requests,
-        "audit_written": False,
+        # False: no audit attempted. None: an attempted write cannot be
+        # proven absent or valid; inspect SQLite before retrying this run.
+        "audit_written": audit_written,
         "source_authenticated": False,
         "risk_authenticated": False,
         "ai_agent_executed": False,
@@ -175,9 +179,16 @@ def run_kuodra_sec_guard(
                 or reviewed["trade_executed"] is not False
                 or not GuardAuditStore(dest).verify_chain()
                 or not GuardReviewStore(dest).verify_reviews()):
-            return _blocked("AUDIT_INTEGRITY_OR_GUARD_FAILURE", requests=attempts)
+            return _blocked(
+                "AUDIT_INTEGRITY_OR_GUARD_FAILURE", requests=attempts,
+                audit_written=None,
+            )
     except (OSError, ValueError, TypeError, sqlite3.Error):
-        return _blocked("GUARD_AUDIT_WRITE_FAILED", requests=attempts)
+        # SQLite might have COMMITTED before validation or another failure.
+        # Do not falsely claim that no audit row exists after starting write.
+        return _blocked(
+            "GUARD_AUDIT_WRITE_FAILED", requests=attempts, audit_written=None,
+        )
     return {
         "schema": "kuodra.sec-guard-workflow.v1",
         "status": "REVIEW_RECORDED_SOURCE_UNVERIFIED",

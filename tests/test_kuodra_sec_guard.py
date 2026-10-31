@@ -112,6 +112,51 @@ class KuodraSecGuardTests(unittest.TestCase):
         self.assertEqual(result["guard"]["decision"], "REJECT")
         self.assertFalse(result["guard"]["human_approved"])
 
+    def test_postwrite_chain_verification_failure_does_not_claim_no_audit(self):
+        with patch.object(unit.GuardAuditStore, "verify_chain", return_value=False):
+            result, calls = self._call_mock_transport()
+        self.assertEqual(calls, (1, 1, 1))
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["reason_code"], "AUDIT_INTEGRITY_OR_GUARD_FAILURE")
+        self.assertIsNone(result["audit_written"])
+        # A genuine local audit row was inserted before verify_chain failed.
+        with closing(sqlite3.connect(self.db)) as conn:
+            count = conn.execute("SELECT COUNT(*) FROM guard_audit_events").fetchone()[0]
+        self.assertEqual(count, 1)
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
+    def test_write_then_exception_preserves_unknown_audit_state(self):
+        original = unit.run_guard_review
+
+        def after_commit(*args, **kwargs):
+            original(*args, **kwargs)
+            raise sqlite3.OperationalError("simulated post-commit failure")
+
+        with patch.object(unit, "run_guard_review", side_effect=after_commit):
+            result, calls = self._call_mock_transport()
+        self.assertEqual(calls, (1, 1, 1))
+        self.assertEqual(result["reason_code"], "GUARD_AUDIT_WRITE_FAILED")
+        self.assertIsNone(result["audit_written"])
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) FROM guard_audit_events"
+            ).fetchone()[0], 1)
+
+    def test_prewrite_consent_and_failed_transport_are_proven_false(self):
+        with patch.object(unit, "run_sec_three_source_review",
+                          side_effect=AssertionError("NO_HTTP")) as remote:
+            denied = unit.run_kuodra_sec_guard(
+                **(self.kwargs | {"acknowledge_local_audit_persistence": False}))
+        self.assertIs(denied["audit_written"], False)
+        remote.assert_not_called()
+        self.assertFalse(self.db.exists())
+        with patch.object(unit, "run_sec_three_source_review", return_value={
+            "status": "unavailable", "http_requests_attempted": 2,
+        }):
+            fail = unit.run_kuodra_sec_guard(**self.kwargs)
+        self.assertIs(fail["audit_written"], False)
+        self.assertFalse(self.db.exists())
+
     def test_duplicate_run_prevents_second_sec_contact(self):
         self._call_mock_transport()
         with patch.object(unit, "run_sec_three_source_review",

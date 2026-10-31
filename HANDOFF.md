@@ -1,3 +1,14 @@
+## 2026-10-31 KST — KUODRA P32 post-write audit truthfulness (CI PENDING)
+
+1. Goal: correct an observed code path in live-SEC-to-Guard wrapper: after run_guard_review begins persistence, a subsequent Guard/SQLite verification failure returned audit_written=False even though a Guard event could already be committed. This is dangerous when an operator decides whether to retry.
+2. Two options: A re-open/repair/reconcile the possibly damaged SQLite on every exception (additional I/O, corruption risk and state mutation, complex recovery); B report explicit unknown (null/None) for post-write faults while preserving prewrite false and verified success true (selected, no extra SQL or provider cost, no schema migration).
+3. Code: proofinvest/kuodra_sec_guard.py _blocked takes typed audit_written bool|None. Both audit verification failure and caught exception after run_guard_review begins now return None. Preflight failures and transport rejection remain False. No silent retry, no API or external source rights change.
+4. Tests: tests/test_kuodra_sec_guard.py adds three deterministic mocked transport cases confirming a real SQLite row exists after post-write verification failure, row exists after injected exception after commit, and prewrite denials truly return False; previous positive success still returns True.
+5. Verification: P32 CI PENDING. Baseline P31 source 27b37095f11c3dcde729944d251383fc987893a3 GitHub Actions #41186656275 SUCCESS 3/3 and Python 953/0 fail, Windows SQLite and Chromium PASS. Real SEC/Gemini, origin/rights and Production remain UNVERIFIED.
+6. Recovery: ordinary git revert on hibi89/hibi89-kic-proofinvest@lead/kic; no force push or original data modification. Human recovery after null: inspect local SQLite + chain BEFORE reusing run ID; do NOT auto-repeat SEC requests.
+7. Next: run exact-SHA CI, repair genuine failures only. Further feature expansion awaits owner-approved real SEC three original sources and explicit data rights.
+8. Checkpoint 2026-10-31 KST. Source/CI result pending.
+
 ## 2026-10-31 KST — KUODRA P31 reject unpinned history with 3-source SHA (CI 3/3 SUCCESS)
 
 1. Defect: Python review_local_sec_with_guard accepted expected_source_sha256 for submissions, companyfacts, and original while also consuming a fourth history_page_json. It could report operator_reviewed_source_digests_matched=True even though the effective history page had no operator pin. The CLI had already prohibited this exact combination, but Python direct calls could bypass it.
