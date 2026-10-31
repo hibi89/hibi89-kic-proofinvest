@@ -1,3 +1,16 @@
+## 2026-10-31 KST — KUODRA P41 explainable ML evaluation, CODE+CI VERIFIED
+
+1. 목표·기술·확정요구: ML 결과가 실제로 생겼을 때 일반 사용자가 주요 판단·계산 근거·출처를 이해할 수 있도록 한다. Python 3.11, localhost Streamlit, stdlib. SEC/Decimal/Guard/SQLite의 기존 검증은 그대로 유지.
+2. 변경·결정: 신규 proofinvest/ml_explainability.py는 제한된(65536 byte) 평가 JSON의 날짜·발행사·기간·출처·기준모델 및 ML 성능을 검토하고 한국어로 설명한다. proofinvest/ml_explainability_ui.py는 기존 로컬 화면에 선택적 입력·표를 추가한다. NO_TRAIN/INSUFFICIENT_EVIDENCE는 결론 유보, EVALUATED는 MAE/RMSE 비교와 변수 중요도/출처 ID를 보여 주되 REPORTED_UNVERIFIED로 표시한다. ML 자체와 Gemini는 실행하지 않으므로 외부 비용 없는 규칙 기반 방식 채택. 출처 진위·인과·수익률은 주장하지 않는다.
+3. 테스트·실패수·범위: 격리 환경 신규 test_ml_explainability*.py 9 PASS, 0 FAIL, 0 ERROR. Feature SHA 816996888b06637dd83b1b385d4a8939842d616a, GitHub Actions #41197719786 https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41197719786 3/3 SUCCESS: Python full verifier, Windows SQLite, actual Chromium localhost browser. All synthetic/model-output-as-input; real trained model NOT tested.
+4. 완료·진행·대기·차단: 오프라인 설명 파서 및 화면 연동 DONE. 실제 ML 학습/홀드아웃 재현, 시점별 데이터 검증, SEC 실원본, 실 Gemini, 외부 Production, DAKER 제출 NOT DONE/UNVERIFIED.
+5. 오류·근거·시도·금지·대안: 신규 9 tests 즉시 PASS. UI 테스트에서 타 테스트 패키지와 충돌을 피하도록 로컬 discover import로 정리 후 재검증. 중복 JSON 키·NaN·크기 초과·미래 공표·잘못된 CIK/기준일·겹치는 학습/검증 구간·누락 출처는 차단. 형식 검증만으로 모델 신뢰성 승격 금지. 독립 모델 재현 없이 위험 판정·매매 권고 금지.
+6. 저장소·브랜치·SHA·경로: hibi89/hibi89-kic-proofinvest @ lead/kic; tested SHA 816996888b06637dd83b1b385d4a8939842d616a. Sources: proofinvest/ml_explainability.py, proofinvest/ml_explainability_ui.py, proofinvest/kuodra_local_workspace_ui.py; tests/test_ml_explainability.py and tests/test_ml_explainability_ui.py; docs/architecture/ML_EXPLAINABILITY_CONTRACT_20261031.md. Rollback ordinary git revert; never force push.
+7. Production·실행·환경: NO verified Vercel/Production URL/SHA. Existing local opt-in KUODRA_ENABLE_LOCAL_SOURCE_UI=1 and python -m streamlit run streamlit_app.py --server.address=127.0.0.1. No provider calls or new services.
+8. 원본·백업·권한: Parent Git commit preserves rollback source. No original private submission PDFs, real SEC files, tokens, .env, paid APIs, deployment, data-retention grants, authentication, or access settings changed. JSON remains user-supplied in existing localhost Streamlit processing.
+9. 다음 작업·승인·완료조건: First authorized <=3 genuine SEC GETs plus real contact User-Agent, OR owner-provided lawful raw triplet, and real SEC E2E. After separate evidence/legal gates: point-in-time issuer+macro data with release vintages, measured walk-forward baseline/ML, integration into P41 JSON contract, optional separately approved Gemini grounded-language layer. No unproven prediction certainty.
+10. 갱신·검증 기준: 2026-10-31 KST. This HANDOFF/STATUS are docs-only successor to P41 feature SHA; CI result applies exactly to feature SHA. Next chat HANDOFF -> STATUS -> AGENTS -> REQUIREMENTS -> verified source.
+
 ## 2026-10-31 KST — KUODRA P40 user-supplied SEC 10-K issuer/filing target chooser (VERIFIED)
 
 1. 목표·요구·기술: Provide real-file usable offline SEC candidate → human target/period/quote selection → source-pinned preview → consented Guard HOLD/REJECT → disposable SQLite/JSON/HTML. One issuer, Python3.11, Streamlit on localhost only.
