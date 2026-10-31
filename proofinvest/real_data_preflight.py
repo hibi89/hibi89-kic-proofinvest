@@ -25,6 +25,7 @@ from .local_sec_html_report import render_local_sec_html
 from .local_sec_packet import _read_regular_local, _MAX_FILE_BYTES
 from .market_price_csv import market_price_csv_to_json
 from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
+from .industry_packet_builder import build_industry_packet, _MAX_SECTOR_BYTES
 from .market_data_evidence import validate_market_evidence
 from .market_reality import (
     MAX_UPLOAD_BYTES as MARKET_MAX, analyze_market_reality,
@@ -48,6 +49,8 @@ def _base(reason: str) -> dict[str, Any]:
         "sec_accession": None,
         "apple_10k_original_table_check": None,
         "peer_sec_companyfacts_check": None,
+        "industry_input_mode": None,
+        "industry_generated_sha256": None,
         "guard_decision_unchanged": None,
         "source_authenticated": False,
         "historical_market_vintage_authenticated": False,
@@ -116,6 +119,15 @@ def inspect_offline_data_files(
     peer_companyfacts_files: list[Path] | None = None,
     peer_ciks: list[str] | None = None,
     peer_accessions: list[str] | None = None,
+    industry_sector_csv: Path | None = None,
+    industry_sector_url: str | None = None,
+    industry_sector_published_at: str | None = None,
+    industry_name: str | None = None,
+    industry_series_name: str | None = None,
+    industry_series_kind: str | None = None,
+    industry_sector_unit: str | None = None,
+    industry_target_name: str | None = None,
+    industry_peer_names: list[str] | None = None,
     sec_submissions: Path | None = None,
     sec_companyfacts: Path | None = None,
     sec_filing: Path | None = None,
@@ -226,8 +238,31 @@ def inspect_offline_data_files(
                 len(peer_accessions) != len(peer_companyfacts_files) or
                 any(not isinstance(p, Path) for p in peer_companyfacts_files)):
             return {**blocked, "reason_code": "PEER_SOURCE_INPUTS_REQUIRED"}
+    # New opt-in: generate an Engine C industry packet directly from the
+    # SAME target CompanyFacts bytes as SEC/Guard. No intermediate industry
+    # file is saved; every derived SHA is checked by the existing gate.
+    derived_fields = (
+        industry_sector_csv, industry_sector_url,
+        industry_sector_published_at, industry_name, industry_series_name,
+        industry_series_kind, industry_sector_unit, industry_target_name,
+        industry_peer_names,
+    )
+    derived_enabled = any(x is not None for x in derived_fields)
+    if derived_enabled:
+        if (industry_json is not None or not peer_enabled
+                or not isinstance(industry_sector_csv, Path)
+                or any(type(x) is not str or not x for x in (
+                    industry_sector_url, industry_sector_published_at,
+                    industry_name, industry_series_name, industry_series_kind,
+                    industry_sector_unit, industry_target_name,
+                ))
+                or type(industry_peer_names) is not list
+                or len(industry_peer_names) != len(peer_ciks)
+                or any(type(name) is not str or not name
+                       for name in industry_peer_names)):
+            return {**blocked, "reason_code": "DERIVED_INDUSTRY_INPUTS_INVALID"}
     has_market = market_csv is not None
-    has_industry = industry_json is not None
+    has_industry = industry_json is not None or derived_enabled
     has_evidence = market_evidence_json is not None
     if has_evidence and not has_market:
         return {**blocked, "reason_code": "MARKET_EVIDENCE_WITHOUT_PRICE_CSV"}
@@ -314,29 +349,75 @@ def inspect_offline_data_files(
                     return {**blocked, "reason_code": "MARKET_BYTES_OR_TRUST_MISMATCH"}
                 report["market_reality"] = market
             industry_source_digest = None
+            industry_input_mode = None
+            generated_peer_sources = None
             if has_industry:
-                industry_raw = _read_regular_local(Path(industry_json), INDUSTRY_MAX)
-                industry_source_digest = sha256(industry_raw).hexdigest()
+                if derived_enabled:
+                    try:
+                        generated_peer_sources = []
+                        for peer_cik, peer_acc, peer_path in zip(
+                                peer_ciks, peer_accessions,
+                                peer_companyfacts_files):
+                            peer_raw = _read_regular_local(
+                                peer_path, _MAX_FILE_BYTES
+                            )
+                            generated_peer_sources.append((
+                                peer_cik, peer_acc, peer_raw,
+                            ))
+                        industry_raw = build_industry_packet(
+                            target=(cik, acc, industry_target_name,
+                                    raws["companyfacts"]),
+                            peers=[
+                                (peer_cik, peer_acc, name, raw)
+                                for (peer_cik, peer_acc, raw), name in zip(
+                                    generated_peer_sources, industry_peer_names
+                                )
+                            ],
+                            sector_csv=_read_regular_local(
+                                industry_sector_csv, _MAX_SECTOR_BYTES
+                            ),
+                            sector_url=industry_sector_url,
+                            sector_published_at=industry_sector_published_at,
+                            as_of=asof, prior_end=prior_end,
+                            current_end=current_end,
+                            industry_name=industry_name,
+                            series_name=industry_series_name,
+                            series_kind=industry_series_kind,
+                            sector_unit=industry_sector_unit,
+                        )
+                        if len(industry_raw) > INDUSTRY_MAX:
+                            raise ValueError("DERIVED_INDUSTRY_TOO_LARGE")
+                    except (ValueError, TypeError, KeyError, OSError,
+                            OverflowError, RecursionError, UnicodeError):
+                        return {**blocked,
+                                "reason_code": "DERIVED_INDUSTRY_SOURCE_BLOCKED"}
+                    industry_input_mode = "LOCAL_ORIGINALS_DERIVED_NO_SAVE"
+                else:
+                    industry_raw = _read_regular_local(
+                        Path(industry_json), INDUSTRY_MAX
+                    )
+                    industry_input_mode = "OPERATOR_UPLOADED_JSON_UNVERIFIED"
+                    industry_source_digest = sha256(industry_raw).hexdigest()
                 vision = bind_industry_to_sec(report, industry_raw)
                 if vision["input_sha256"] != industry_source_digest:
                     return {**blocked, "reason_code": "INDUSTRY_BYTES_MISMATCH"}
                 report["industry_vision"] = vision
                 if peer_enabled:
                     try:
-                        peer_sources = []
-                        total_peer_bytes = 0
-                        for peer_cik, peer_accession, peer_path in zip(
-                                peer_ciks, peer_accessions,
-                                peer_companyfacts_files):
-                            original = _read_regular_local(
-                                peer_path, _MAX_FILE_BYTES
-                            )
-                            total_peer_bytes += len(original)
-                            if total_peer_bytes > 48_000_000:
-                                raise ValueError("PEER_FACTS_BYTES_OVER_BUDGET")
-                            peer_sources.append((
-                                peer_cik, peer_accession, original
-                            ))
+                        peer_sources = generated_peer_sources
+                        if peer_sources is None:
+                            peer_sources = []
+                            for peer_cik, peer_accession, peer_path in zip(
+                                    peer_ciks, peer_accessions,
+                                    peer_companyfacts_files):
+                                original = _read_regular_local(
+                                    peer_path, _MAX_FILE_BYTES
+                                )
+                                peer_sources.append((
+                                    peer_cik, peer_accession, original
+                                ))
+                        if sum(len(item[2]) for item in peer_sources) > 48_000_000:
+                            raise ValueError("PEER_FACTS_BYTES_OVER_BUDGET")
                         peer_receipt = bind_peer_companyfacts_to_industry(
                             industry_raw, peer_sources=peer_sources,
                         )
@@ -380,6 +461,11 @@ def inspect_offline_data_files(
                 "market_evidence_sha256": market_evidence_digest,
                 "market_evidence_vintage": market_evidence_vintage,
                 "industry_original_sha256": industry_source_digest,
+                "industry_input_mode": industry_input_mode,
+                "industry_generated_sha256": (
+                    sha256(industry_raw).hexdigest()
+                    if derived_enabled else None
+                ),
                 "rendered_report_sha256_not_persisted": sha256(html).hexdigest(),
                 "limitations": [
                     "Matching local SHA and data contracts do not certify issuer, provider, license, or true publication time.",
@@ -416,6 +502,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--market-source-url")
     parser.add_argument("--market-published-at")
     parser.add_argument("--industry-json", type=Path)
+    parser.add_argument("--industry-sector-csv", type=Path)
+    parser.add_argument("--industry-sector-url")
+    parser.add_argument("--industry-sector-published-at")
+    parser.add_argument("--industry-name")
+    parser.add_argument("--industry-series-name")
+    parser.add_argument("--industry-series-kind")
+    parser.add_argument("--industry-sector-unit")
+    parser.add_argument("--industry-target-name")
+    parser.add_argument("--industry-peer-name", action="append",
+                        dest="industry_peer_names")
     parser.add_argument("--peer-companyfacts", type=Path, action="append",
                         dest="peer_companyfacts_files",
                         help="Optional local original CompanyFacts file for every declared Engine C peer (max 8).")
@@ -437,6 +533,15 @@ def main(argv: list[str] | None = None) -> int:
         peer_companyfacts_files=args.peer_companyfacts_files,
         peer_ciks=args.peer_ciks,
         peer_accessions=args.peer_accessions,
+        industry_sector_csv=args.industry_sector_csv,
+        industry_sector_url=args.industry_sector_url,
+        industry_sector_published_at=args.industry_sector_published_at,
+        industry_name=args.industry_name,
+        industry_series_name=args.industry_series_name,
+        industry_series_kind=args.industry_series_kind,
+        industry_sector_unit=args.industry_sector_unit,
+        industry_target_name=args.industry_target_name,
+        industry_peer_names=args.industry_peer_names,
         sec_submissions=args.sec_submissions,
         sec_companyfacts=args.sec_companyfacts,
         sec_filing=args.sec_filing,
