@@ -224,6 +224,21 @@ def render_local_workspace(st) -> None:
         a.metric("재무 주장", report["verification"]["status"])
         b.metric("Guard", report["guard"]["decision"])
         c.metric("로컬 감사 체인", "PASS")
+        fin = report["verification"]
+        st.subheader("KUODRA · 비인증 재무 검산 근거")
+        st.table([
+            {"항목": "공시 접수번호", "값": report["issuer"]["accession"]},
+            {"항목": "공시 인덱스 종류", "값": report["source"]["source_index_kind"]},
+            {"항목": "US GAAP 수익 항목", "값": fin["revenue_concept"]},
+            {"항목": "이전 기간 종료일", "값": fin["prior_period_end"]},
+            {"항목": "이전 연매출 (USD)", "값": fin["prior_amount"]},
+            {"항목": "현재 기간 종료일", "값": fin["current_period_end"]},
+            {"항목": "현재 연매출 (USD)", "값": fin["current_amount"]},
+            {"항목": "변화율 (Decimal, %)", "값": fin["growth_pct"]},
+            {"항목": "검산 사유", "값": fin["reason_code"]},
+        ])
+        st.caption("회사 재무 사실이 아닌 사용자 입력 원본의 수치 비교 결과입니다. "
+                   "Guard 승인 또는 거래 권한이 아닙니다.")
         st.json({
             "guard_reasons": report["guard"]["reason_codes"],
             "balance_sheet": report["balance_sheet"]["status"],

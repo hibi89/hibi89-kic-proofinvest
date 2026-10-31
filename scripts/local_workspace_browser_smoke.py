@@ -150,6 +150,18 @@ def run(output: Path) -> dict:
                         expect(page.get_by_role(
                             "button", name="오프라인 분석 보고서 HTML",
                         )).to_be_visible()
+                        expect(page.get_by_text(
+                            "KUODRA · 비인증 재무 검산 근거"
+                        )).to_be_visible()
+                        with page.expect_download(timeout=15000) as html_download:
+                            page.get_by_role(
+                                "button", name="오프라인 분석 보고서 HTML"
+                            ).click()
+                        html_bytes = Path(html_download.value.path()).read_bytes()
+                        if (b"KUODRA | OFFLINE UNVERIFIED Review" not in html_bytes
+                                or b"STRUCTURAL_NUMERIC_COMPARISON_ONLY" not in html_bytes
+                                or b"RevenueFromContractWithCustomerExcludingAssessedTax" not in html_bytes):
+                            raise AssertionError("HTML_REPORT_NOT_EVIDENCE_LINKED")
                         if (Path(home) / ".proofinvest-guard" / "audit.sqlite").exists():
                             raise AssertionError("EPHEMERAL_UI_WROTE_PERSISTENT_SQLITE")
                         page.screenshot(
@@ -245,6 +257,15 @@ def run(output: Path) -> dict:
                                     or report_json["operator_reviewed_source_digests_matched"] is not True
                                     or report_json["limits"]["live_api_called"] is not False):
                                 raise AssertionError("HISTORY_UI_GUARD_PROVENANCE_FAILURE")
+                            with hist.expect_download(timeout=15000) as history_html_download:
+                                hist.get_by_role(
+                                    "button", name="오프라인 분석 보고서 HTML",
+                                ).click()
+                            history_html = Path(history_html_download.value.path()).read_bytes()
+                            if (b"PINNED_HISTORY" not in history_html
+                                    or b"SEC Historical Page JSON" not in history_html
+                                    or report_json["source"]["history_page_sha256"].encode() not in history_html):
+                                raise AssertionError("HISTORY_HTML_FOURTH_SOURCE_MISSING")
                             hist.screenshot(
                                 path=str(output / "kuodra-local-history-guard.png"),
                                 full_page=True,
@@ -259,6 +280,7 @@ def run(output: Path) -> dict:
                                 "offline-period-and-needle-choice",
                                 "local-source-preview", "ephemeral-guard-HOLD",
                                 "four-source-pinned-history-Guard-HOLD",
+                                "three-and-four-source-html-evidence",
                             ],
                             "source_authenticated": False,
                             "network_sec_requests": 0,

@@ -1,13 +1,15 @@
 """Static human-readable local SEC→Guard report. No scripts, links or assets.
 
 This page is not source authentication, investment advice or KIC submission.
-Only output from the existing local three-file Guard review is eligible.
+Only an existing validated local 3/4-file Guard review is eligible.
 """
 from __future__ import annotations
 
 from html import escape
 import re
 from typing import Any, Mapping
+
+from .sec_companyfacts import REVENUE_TAGS
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
 _CIK = re.compile(r"[0-9]{10}\Z")
@@ -100,7 +102,9 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             or _CIK.fullmatch(issuer["cik"]) is None
             or not isinstance(issuer.get("accession"), str)
             or _ACCESSION.fullmatch(issuer["accession"]) is None
-            or issuer["accession"][:10] != issuer["cik"]
+            # EDGAR accession may identify a submitting agent, not issuer.
+            # The upstream Guard evidence is linked using issuer-specific
+            # Submissions + CompanyFacts accession membership.
             or guard.get("decision") not in ("HOLD", "REJECT")
             or guard.get("source_authenticated") is not False
             or guard.get("trade_executed") is not False
@@ -121,6 +125,25 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             or not isinstance(audit.get("event_hash"), str)
             or _SHA.fullmatch(audit["event_hash"]) is None):
         raise ValueError("HTML_REPORT_INTEGRITY_BLOCKED")
+    # P38: select issuer-owned RECENT or manifest-listed PINNED_HISTORY.
+    # A missing or forged fourth SHA must never be represented as evidence.
+    index_kind = source.get("source_index_kind")
+    hist_digest = source.get("history_page_sha256")
+    if (index_kind not in ("RECENT", "PINNED_HISTORY")
+            or (index_kind == "RECENT" and hist_digest is not None)
+            or (index_kind == "PINNED_HISTORY" and (
+                type(hist_digest) is not str or _SHA.fullmatch(hist_digest) is None
+            ))
+            or fin.get("revenue_concept") not in REVENUE_TAGS
+            or fin.get("unit") != "USD"
+            or fin.get("filing_date") != issuer.get("filing_date")
+            or type(fin.get("prior_period_end")) is not str
+            or type(fin.get("current_period_end")) is not str
+            or type(fin.get("annual_period_starts")) is not list
+            or len(fin["annual_period_starts"]) != 2
+            or any(type(x) is not str or len(x) != 10
+                   for x in fin["annual_period_starts"])):
+        raise ValueError("HTML_REPORT_PROVENANCE_OR_PERIOD_INVALID")
     shares = report.get("share_capital")
     if shares is not None and (
             type(shares) is not dict
@@ -203,11 +226,15 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
-    names = (
-        ("Submissions JSON", source["submissions_sha256"]),
+    history_kind = ("4개 원본 · 이력 페이지" if index_kind == "PINNED_HISTORY"
+                    else "3개 원본 · 최근 제출 목록")
+    names = [
+        ("Issuer Submissions JSON", source["submissions_sha256"]),
         ("CompanyFacts JSON", source["companyfacts_sha256"]),
-        ("Original HTML", source["archived_original_sha256"]),
-    )
+        ("Original Filing", source["archived_original_sha256"]),
+    ]
+    if index_kind == "PINNED_HISTORY":
+        names.append(("SEC Historical Page JSON", hist_digest))
     digests = "".join(
         "<tr><th>" + _field(name) + "</th><td><code>" + _field(digest) +
         "</code></td></tr>" for name, digest in names
@@ -218,12 +245,12 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<meta http-equiv="Content-Security-Policy" '
         'content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; '
         'base-uri &#39;none&#39;; form-action &#39;none&#39;">'
-        '<title>ProofInvest | OFFLINE UNVERIFIED Review</title><style>'
+        '<title>KUODRA | OFFLINE UNVERIFIED Review</title><style>'
         + _CSS + '</style></head><body><main>'
-        '<header><div class="brand">PROOFINVEST / EVIDENCE REVIEW</div>'
-        '<h1>공시 근거부터 판단 보류까지</h1>'
-        '<p class="kicker">3개 로컬 SEC 형식 파일 · 산술 비교 · '
-        '위험 근거 점검 · Guard · SQLite 감사 기록</p></header>'
+        '<header><div class="brand">KUODRA / EVIDENCE REVIEW</div>'
+        '<h1>공시 근거 기반 재무 검산 · Guard 판단</h1>'
+        '<p class="kicker">' + _field(history_kind) +
+        ' · 비인증 USD 수치 · 위험 근거 점검 · Guard · 임시 감사</p></header>'
         '<div class="disclaimer">UNVERIFIED LOCAL FILES — 실제 SEC 원문 진위·'
         '출처 권리·투자 적격성 검증이 아닙니다. 외부 요청·투자 주문·'
         '공식 KIC 접수는 수행하지 않았습니다.</div>'
@@ -239,11 +266,22 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>CIK</th><td>' + _field(issuer["cik"]) + '</td></tr>'
         '<tr><th>접수번호</th><td>' + _field(issuer["accession"]) + '</td></tr>'
         '<tr><th>검토 기준일</th><td>' + _field(issuer["as_of"]) + '</td></tr>'
+        '<tr><th>공시 접수일 (원본 메타데이터)</th><td>' +
+        _field(issuer["filing_date"]) + '</td></tr>'
+        '<tr><th>공시 인덱스</th><td>' + _field(index_kind) + '</td></tr>'
         '</table></section>'
-        '<section><h2>02 / 수치 검산</h2><table>'
+        '<section><h2>02 / SEC 형식 수치 검산 (USD · 미인증)</h2><table>'
+        '<tr><th>수익 항목 (US GAAP)</th><td>' + _field(fin["revenue_concept"]) + '</td></tr>'
+        '<tr><th>이전 연도 기간</th><td>' +
+        _field(fin["annual_period_starts"][0]) + ' ~ ' +
+        _field(fin["prior_period_end"]) + '</td></tr>'
         '<tr><th>이전 연도 · USD</th><td>' + _field(fin["prior_amount"]) + '</td></tr>'
+        '<tr><th>현재 연도 기간</th><td>' +
+        _field(fin["annual_period_starts"][1]) + ' ~ ' +
+        _field(fin["current_period_end"]) + '</td></tr>'
         '<tr><th>현재 연도 · USD</th><td>' + _field(fin["current_amount"]) + '</td></tr>'
-        '<tr><th>사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
+        '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
+        '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
         + share_section + capital_section + cash_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
@@ -262,7 +300,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>감사 SHA-256</th><td><code>' + _field(audit["event_hash"]) +
         '</code></td></tr><tr><th>체인 / 사람 검토 무결성</th>'
         '<td>PASS / PASS (로컬 SQLite만)</td></tr></table></section>'
-        '<footer>ProofInvest OFFLINE_UNAUTHENTICATED · '
+        '<footer>KUODRA OFFLINE_UNAUTHENTICATED · '
         '외부 SEC 인증 없음 · 투자 권고/거래 승인 없음 · '
         'DAKER 제출 영수증 아님</footer></main></body></html>'
     )

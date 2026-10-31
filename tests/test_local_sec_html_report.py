@@ -44,7 +44,12 @@ class LocalSecHtmlReportTests(unittest.TestCase):
     def test_complete_real_offline_guard_rendered_as_safe_local_html(self):
         report = review_local_sec_with_guard(**fixture(self.root / "audit.sqlite"))
         html = render_local_sec_html(report).decode("utf-8")
-        self.assertIn("ProofInvest | OFFLINE UNVERIFIED Review", html)
+        self.assertIn("KUODRA | OFFLINE UNVERIFIED Review", html)
+        self.assertIn("RevenueFromContractWithCustomerExcludingAssessedTax", html)
+        self.assertIn("2025-09-30", html)
+        self.assertIn("2024-09-30", html)
+        self.assertIn("STRUCTURAL_NUMERIC_COMPARISON_ONLY", html)
+        self.assertIn("RECENT", html)
         self.assertIn("Content-Security-Policy", html)
         self.assertIn("HOLD", html)
         self.assertIn(report["audit"]["event_hash"], html)
@@ -73,6 +78,60 @@ class LocalSecHtmlReportTests(unittest.TestCase):
         page = render_local_sec_html(result).decode("utf-8")
         self.assertIn('class="state reject"', page)
         self.assertIn("GROWTH_CLAIM_CONFLICT", page)
+
+    def test_submitting_agent_accession_is_renderable_without_false_issuer_equality(self):
+        from tests.test_sec_agent_filed_accession import (
+            made_up_sources, kw, SUBMITTER_ACCESSION,
+        )
+        raw = made_up_sources()
+        args = kw()
+        report = review_local_sec_with_guard(
+            submissions_json=raw["submissions"],
+            companyfacts_json=raw["companyfacts"],
+            original_filing=raw["original_filing"],
+            audit_db_path=self.root / "submitting-agent.sqlite",
+            run_id="html-agent-review", **args,
+        )
+        self.assertNotEqual(report["issuer"]["cik"], SUBMITTER_ACCESSION[:10])
+        page = render_local_sec_html(report).decode("utf-8")
+        self.assertIn(SUBMITTER_ACCESSION, page)
+        self.assertIn("KUODRA", page)
+        self.assertIn(report["audit"]["event_hash"], page)
+
+    def test_history_report_displays_exact_fourth_sha_or_blocks_bad_contract(self):
+        import hashlib
+        from tests.test_kuodra_history import PAGE, data
+        original, history = data()
+        args = fixture(self.root / "history.sqlite")
+        args["submissions_json"] = original
+        args["history_page_json"] = history
+        args["history_page_name"] = PAGE
+        args["run_id"] = "html-history-review"
+        report = review_local_sec_with_guard(**args)
+        page = render_local_sec_html(report).decode("utf-8")
+        self.assertIn("PINNED_HISTORY", page)
+        self.assertIn("4개 원본", page)
+        self.assertIn("SEC Historical Page JSON", page)
+        self.assertIn(hashlib.sha256(history).hexdigest(), page)
+        self.assertNotIn("PROOFINVEST / EVIDENCE REVIEW", page)
+        report["source"]["history_page_sha256"] = None
+        with self.assertRaisesRegex(ValueError, "PROVENANCE"):
+            render_local_sec_html(report)
+        report["source"]["history_page_sha256"] = "0" * 64
+        report["source"]["source_index_kind"] = "RECENT"
+        with self.assertRaisesRegex(ValueError, "PROVENANCE"):
+            render_local_sec_html(report)
+
+    def test_report_rejects_false_financial_provenance_or_untrusted_html_markup(self):
+        report = review_local_sec_with_guard(**fixture(self.root / "trust.sqlite"))
+        original = report["verification"]["revenue_concept"]
+        report["verification"]["revenue_concept"] = "<script>unknown</script>"
+        with self.assertRaisesRegex(ValueError, "PROVENANCE"):
+            render_local_sec_html(report)
+        report["verification"]["revenue_concept"] = original
+        report["issuer"]["filing_date"] = "2024-01-01"
+        with self.assertRaisesRegex(ValueError, "PROVENANCE"):
+            render_local_sec_html(report)
 
     def test_cli_creates_new_html_and_does_not_overwrite_old_one(self):
         data = fixture(self.root / "audit.sqlite")
