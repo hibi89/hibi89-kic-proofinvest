@@ -499,6 +499,61 @@ def run(output: Path) -> dict:
                             )
                         finally:
                             hist.close()
+                        # P59: independent localhost UI path. Only synthetic
+                        # constructed HTML is used in CI; this is NOT a real
+                        # issuer original-byte or SEC source-authentication test.
+                        from tests.test_apple_local_html_crosscheck import sample_html
+                        apple_raw = sample_html()
+                        apple_page = browser.new_page(
+                            viewport={"width": 1440, "height": 1100}
+                        )
+                        try:
+                            apple_page.goto(URL, wait_until="domcontentloaded", timeout=30000)
+                            expect(apple_page.get_by_text(
+                                "ProofInvest — 오프라인 합성 데이터"
+                            )).to_be_visible(timeout=25000)
+                            apple_page.get_by_test_id("stSelectbox").first.click()
+                            apple_page.get_by_role(
+                                "option", name=MODE, exact=True,
+                            ).click()
+                            expect(apple_page.get_by_text(
+                                "KUODRA · 로컬 SEC 원본 3종 검토"
+                            )).to_be_visible(timeout=20000)
+                            apple_page.locator('input[type="file"]').nth(2).set_input_files({
+                                "name": "apple-2025-synthetic-specimen.html",
+                                "mimeType": "text/html",
+                                "buffer": apple_raw,
+                            })
+                            for label, value in (
+                                ("CIK 10자리", "0000320193"),
+                                ("SEC 접수번호", "0000320193-25-000079"),
+                                ("기준일 (YYYY-MM-DD)", "2025-10-31"),
+                                ("현재 회계기간 종료일", "2025-09-27"),
+                                ("직전 회계기간 종료일", "2024-09-28"),
+                            ):
+                                field = apple_page.get_by_label(label, exact=True)
+                                field.fill(value)
+                                field.press("Tab")
+                                expect(field).to_have_value(value, timeout=12000)
+                            action = apple_page.get_by_role(
+                                "button",
+                                name="Apple FY2025 10-K HTML 24개 수치 대조 (로컬)",
+                            )
+                            expect(action).to_be_enabled(timeout=20000)
+                            action.click()
+                            expect(apple_page.get_by_text(
+                                "로컬 HTML 숫자 24개 대조 통과 · 발행사/SEC 출처 미인증",
+                                exact=True,
+                            )).to_be_visible(timeout=30000)
+                            expect(apple_page.get_by_text(
+                                sha256(apple_raw).hexdigest(), exact=False,
+                            ).first).to_be_visible(timeout=10000)
+                            apple_page.screenshot(
+                                path=str(output / "kuodra-apple-original-html-synthetic-ui.png"),
+                                full_page=True,
+                            )
+                        finally:
+                            apple_page.close()
                         result = {
                             "schema": "kuodra.local-upload-browser-check.v1",
                             "status": "PASS", "uploads": 3, "historical_uploads": 4,
@@ -517,6 +572,7 @@ def run(output: Path) -> dict:
                                 "engine-c-wrong-issuer-upload-blocked",
                                 "engine-c-sec-revenue-period-source-sha-joined",
                                 "three-engine-ledger-json-html-download",
+                                "p59-apple-html-synthetic-upload-24-cells",
 
                             ],
                             "source_authenticated": False,
@@ -532,6 +588,7 @@ def run(output: Path) -> dict:
                             "industry_upload_sha256": sha256(industry_raw).hexdigest(),
                             "industry_sec_source_bound": True,
                             "all_three_engines_reported": True,
+                            "apple_local_html_ui_synthetic_24_values_passed": True,
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,

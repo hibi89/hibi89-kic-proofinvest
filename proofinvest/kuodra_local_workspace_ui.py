@@ -49,6 +49,76 @@ def _uploaded_sources(files) -> dict[str, bytes]:
     return {key: files[key].getvalue() for key in caps if files[key] is not None}
 
 
+def render_local_apple_10k_original_check(
+    st, *, upload, cik: str, accession: str,
+    as_of: str, current_end: str, prior_end: str,
+) -> None:
+    """Independent P59 read-only Apple 10-K check; never changes SEC/Guard.
+
+    This panel is meaningful ONLY for Apple FY2025. Never stash upload bytes
+    or computed receipts in session_state, and keep source-origin flags false.
+    The 10-K may be checked before the optional 3-source Guard workflow.
+    """
+    if cik != "0000320193" or accession != "0000320193-25-000079":
+        return
+    st.subheader("Apple FY2025 · 업로드한 10-K 원문 숫자 확인 (로컬 전용)")
+    st.caption(
+        "별도 SEC API 조회 없이 2025·2024년의 손익·재무상태·현금흐름 "
+        "24개 수치를 P57 수동 확인 기록과 비교합니다. "
+        "SHA-256은 업로드 바이트의 식별값일 뿐 출처 인증이 아닙니다."
+    )
+    permitted = (
+        local_workspace_enabled(st)
+        and as_of == "2025-10-31"
+        and current_end == "2025-09-27"
+        and prior_end == "2024-09-28"
+        and upload is not None
+        and type(getattr(upload, "size", None)) is int
+        and 0 < upload.size <= MAX_FILING_BYTES
+    )
+    if not st.button(
+        "Apple FY2025 10-K HTML 24개 수치 대조 (로컬)",
+        key="kuodra_apple_10k_html_check", disabled=not permitted,
+    ):
+        return
+    try:
+        data = upload.getvalue()
+        if type(data) is not bytes or len(data) != upload.size:
+            raise ValueError("LOCAL_APPLE_SOURCE_UPLOAD_MISMATCH")
+        from .apple_local_html_crosscheck import verify_local_apple_10k_html
+        from .apple_audited_10k_replay import TEN_K
+        from .public_primary_baseline import APPLE, CURATED, _read
+        result = verify_local_apple_10k_html(
+            data, _read(TEN_K), _read(APPLE), _read(CURATED),
+        )
+        if (
+            result.get("matched_numeric_cells") != 24
+            or result.get("original_bytes_retained") is not False
+            or result.get("sec_original_file_authenticated") is not False
+            or result.get("full_sec_guard_a_b_c_real_data_verified") is not False
+        ):
+            raise ValueError("LOCAL_APPLE_SOURCE_RESULT_TRUST_MISMATCH")
+    except (ValueError, TypeError, KeyError, OSError, OverflowError,
+            RecursionError, UnicodeError):
+        st.error("10-K 원문 숫자 대조 차단: HTML 표·발행사·기간 또는 전사 수치가 일치하지 않습니다.")
+        return
+    # Expose ONLY a bounded receipt, not raw HTML or an unverified positive
+    # security classification. No result is retained on the next rerun.
+    st.success("로컬 HTML 숫자 24개 대조 통과 · 발행사/SEC 출처 미인증")
+    st.json({
+        "status": result["status"],
+        "matched_numeric_cells": result["matched_numeric_cells"],
+        "statements_matched": result["statements_matched"],
+        "original_local_html_sha256": result["original_local_html_sha256"],
+        "original_local_html_size": result["original_local_html_size"],
+        "source_authenticated": False,
+        "sec_original_file_authenticated": False,
+        "full_sec_guard_a_b_c_real_data_verified": False,
+        "audit_written": False,
+        "network_requests": 0,
+    })
+
+
 def render_local_workspace(st) -> None:
     if not local_workspace_enabled(st):
         st.error("로컬 파일 분석은 localhost 전용 명시적 설정이 없으면 비활성화됩니다.")
@@ -262,6 +332,13 @@ def render_local_workspace(st) -> None:
     }
     if uploads["history_page"] is not None:
         request["history_page_name"] = history_page_name
+    # P59: uses the SAME third local 10-K upload; no extra transfer, API,
+    # extra uploader, persistent original, or Guard decision.
+    render_local_apple_10k_original_check(
+        st, upload=uploads["original_filing"], cik=cik,
+        accession=accession, as_of=as_of,
+        current_end=current_end, prior_end=prior_end,
+    )
     # Optional, read-only contract for separately evaluated historical ML.
     # Neither this upload nor its report can alter the SEC/Decimal/Guard path.
     from .ml_explainability_ui import render_local_ml_evaluation
