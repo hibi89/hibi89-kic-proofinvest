@@ -1,3 +1,19 @@
+## P70 — Explicit locally saved complete JSON/HTML report bundle (no output by default)
+
+The existing one-shot offline preflight supports a **new optional** flag:
+
+    --output-report-zip "C:/Data/NEW-kuodra-report.zip"
+
+Append it to a correctly populated P69 command using lawfully held raw SEC 3-source ZIP or individual files, peer CompanyFacts, normalized industry-sector CSV and optional market CSV. All original filename/clock/rights requirements remain the same. The output path must be a new, previously nonexistent .zip file on the local filesystem; any existing file, symlink, invalid original, blocked Guard/revenue/industry/market contract or output failure returns the existing sanitized blocked JSON and exit code 2 without overwriting a user file. No destination folder or report file is made when this flag is omitted.
+
+The one ZIP contains report.json (full offline SEC/Guard and A/B/C analytic evidence, not just summary status), report.html (existing safely escaped offline report), and manifest.json (original byte size and SHA-256 for the two report files and explicit flags that issuer origin, economic source rights and historical price/sector vintage remain unauthenticated). The command prints report_bundle_created=true and report_bundle_sha256 when successful; the ZIP never certifies first-party SEC original authenticity or source license and contains no persistent SQLite database. The ZIP itself is a USER-CONTROLLED local copy, so never redistribute customer-specific or licensed input-derived report content without permission.
+
+Example for a user who has ALREADY supplied all necessary P69 input flags:
+
+    python -m proofinvest.real_data_preflight [REPLACE_WITH_GENUINE_P69_SEC_MARKET_SECTOR_PEER_FLAGS] --output-report-zip "C:/Data/new-kuodra-analysis.zip"
+
+The bracketed portion is an explanation placeholder, not literal runnable CLI flags. See preceding P69 documentation for the complete sample. P70 tested exact source SHA fdc373647bd8fbcc2205b1661ece83798d19c922 in GitHub Actions #41231426016: Python 1,197 PASS and Windows/Chromium jobs SUCCESS, using synthetic sources, not actual SEC and vendor originals. Do not count the generated report alone as actual investment or data integrity certification.
+
 ## P69 — ONE offline command for SEC originals, market CSV, and auto-derived Engine C
 
 This mode **does not** require first writing a separate Industry Vision JSON. Provide (a) the verified-local-form SEC capture ZIP OR three direct SEC raw files and associated exact issuer metadata, (b) one or more raw peer CompanyFacts JSON files, (c) a **strict two-row UTF-8 normalized sector CSV** whose two `period_end` values equal the selected target SEC fiscal prior/current ends, and (d) optionally a stock/index market CSV and its existing URL/date/price basis evidence. Industry original SEC figures and peer SHA-256 are taken directly from bounded original bytes. Publication metadata and rights are self-declared, not independently certified.
