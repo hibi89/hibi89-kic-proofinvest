@@ -270,6 +270,10 @@ def render_local_workspace(st) -> None:
     from .industry_vision_ui import render_local_industry_vision
     render_local_industry_vision(st, cik=cik, as_of=as_of)
 
+    # Price data is user-provided; analysis is separate from audited SEC facts.
+    from .market_reality_ui import render_local_market_reality
+    market_raw = render_local_market_reality(st, cik=cik, as_of=as_of)
+
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
@@ -308,12 +312,43 @@ def render_local_workspace(st) -> None:
             st.error("Guard 실행 차단: 미리보기 이후 원본/입력이 변경됐거나 감사 실패. "
                      "미리보기를 다시 수행하고 로컬 상태를 확인하십시오.")
             return
+        # Optional Engine A attaches only AFTER existing source-pinned Guard.
+        # No market observation may influence the SEC policy/audit decision.
+        if market_raw is not None:
+            try:
+                from hashlib import sha256
+                from .market_reality import (
+                    parse_market_reality_json, analyze_market_reality,
+                )
+                from .local_sec_html_report import render_local_sec_html
+                market = analyze_market_reality(
+                    parse_market_reality_json(market_raw),
+                    expected_issuer_cik=cik, analysis_as_of=as_of,
+                    sec_review=report, uploaded_sha256=sha256(market_raw).hexdigest(),
+                )
+                report["market_reality"] = market
+                html = render_local_sec_html(report)
+            except (ValueError, TypeError, OverflowError, RecursionError, KeyError):
+                report.pop("market_reality", None)
+                st.warning("시장자료 연결 검증에 실패하여 Engine A를 보고서에서 제외했습니다. "
+                           "SEC·Guard 결과는 변경하지 않았습니다.")
         st.success("로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증")
         a, b, c = st.columns(3)
         a.metric("재무 주장", report["verification"]["status"])
         b.metric("Guard", report["guard"]["decision"])
         c.metric("로컬 감사 체인", "PASS")
         fin = report["verification"]
+        if "market_reality" in report:
+            m = report["market_reality"]
+            st.subheader("Engine A · 시장 회귀 + SEC 실적 맥락")
+            st.json({
+                "regression_status": m["status"], "beta": m["beta"],
+                "daily_ols_intercept_pct": m["regression_intercept_daily_pct"],
+                "r_squared": m["r_squared"],
+                "selected_10k_revenue_context": m["sec_revenue_context"],
+                "source_authenticated": False, "market_bubble_proven": False,
+                "audit_included": False, "guard_policy_modified": False,
+            })
         st.subheader("KUODRA · 비인증 재무 검산 근거")
         st.table([
             {"항목": "공시 접수번호", "값": report["issuer"]["accession"]},

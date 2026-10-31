@@ -266,6 +266,59 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<p>탐색적 운전자본 검토 신호:</p><ul>'
             + _reasons(accounting.get("working_capital_signals")) + '</ul></section>'
         )
+    market = report.get("market_reality")
+    market_section = ""
+    if market is not None:
+        if (type(market) is not dict
+                or market.get("schema") != "kuodra.market-reality-analysis.v1"
+                or market.get("status") not in ("REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE")
+                or market.get("issuer_cik") != issuer["cik"]
+                or market.get("as_of") != issuer["as_of"]
+                or market.get("source_authenticated") is not False
+                or market.get("audit_included") is not False
+                or market.get("market_bubble_proven") is not False
+                or market.get("sec_growth_caused_price_move") is not False
+                or market.get("guard_policy_modified") is not False
+                or market.get("trade_signal") is not False
+                or market.get("ai_generated") is not False
+                or type(market.get("source")) is not dict
+                or type(market["source"].get("upload_sha256")) is not str
+                or _SHA.fullmatch(market["source"]["upload_sha256"]) is None):
+            raise ValueError("HTML_MARKET_REALITY_TRUST_BLOCKED")
+        context = market.get("sec_revenue_context")
+        if context is not None and (
+                type(context) is not dict
+                or context.get("source_authenticated") is not False
+                or context.get("companyfacts_sha256") != source["companyfacts_sha256"]
+                or context.get("growth_pct_calculated_unverified") != fin["growth_pct"]
+                or context.get("current_period_end") != fin["current_period_end"]
+                or context.get("filing_date") != issuer["filing_date"]):
+            raise ValueError("HTML_MARKET_SEC_CONTEXT_MISMATCH")
+        def market_text(field):
+            v = market.get(field)
+            return _field(v if v is not None else "NOT_CALCULATED")
+        market_section = (
+            '<section><h2>02E / Engine A · 시장 회귀 (입력가격 · 미인증)</h2>'
+            '<p>비교 종목: ' + market_text("symbol")
+            + ' / 시장지수: ' + market_text("benchmark") + '</p><table>'
+            '<tr><th>회귀 상태</th><td>' + market_text("status") + '</td></tr>'
+            '<tr><th>수익률 정의</th><td>' + market_text("return_basis") + '</td></tr>'
+            '<tr><th>종목 기간 수익률 (%)</th><td>' + market_text("security_return_pct") + '</td></tr>'
+            '<tr><th>시장 기간 수익률 (%)</th><td>' + market_text("benchmark_return_pct") + '</td></tr>'
+            '<tr><th>Beta</th><td>' + market_text("beta") + '</td></tr>'
+            '<tr><th>일별 OLS 절편 (%)</th><td>' + market_text("regression_intercept_daily_pct") + '</td></tr>'
+            '<tr><th>표본내 R²</th><td>' + market_text("r_squared") + '</td></tr>'
+            '<tr><th>관측 수</th><td>' + market_text("observation_count") + '</td></tr>'
+            '</table><p>해당 회귀결과는 유동성 기여분이나 거품 비율이 아닙니다.'
+            ' SEC 연매출 변화율과의 병행 표시는 인과관계가 아닙니다.</p>'
+            '<p>선택 SEC 매출 변화율 (%): '
+            + _field(context["growth_pct_calculated_unverified"] if context is not None
+                     else "NO_LINKED_SEC_CONTEXT")
+            + '</p><p>업로드 SHA256: '
+            + _field(market["source"]["upload_sha256"])
+            + '</p><p>Guard 감사 체인에 시장 회귀 결과가 포함되지는 않았습니다.'
+            ' 출처 인증·이용권리·미래정보 누출 및 회귀 표본 적합성 미확인.</p></section>'
+        )
     state = _field(guard["decision"])
     decision_class = " reject" if guard["decision"] == "REJECT" else ""
     history_kind = ("4개 원본 · 이력 페이지" if index_kind == "PINNED_HISTORY"
@@ -325,7 +378,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
         '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section + cash_section + accounting_section +
+        + share_section + capital_section + cash_section + accounting_section + market_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +

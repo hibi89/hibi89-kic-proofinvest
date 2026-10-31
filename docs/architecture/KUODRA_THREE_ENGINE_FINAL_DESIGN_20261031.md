@@ -1,3 +1,15 @@
+## 2026-10-31 P44 Engine A first implementation — offline price and market regression
+
+**Scope (source + regression tests, pending exact commit CI):** proofinvest/market_reality.py reads bounded UTF-8 JSON (<=131072 bytes) with exact target SEC issuer CIK, as-of, ticker, a declared benchmark (S&P_500/NASDAQ_100/DJIA), explicit return_basis (PRICE_ONLY_CLOSE or ADJUSTED_CLOSE_TOTAL_RETURN_PROXY), and two matching lists of 31..501 ordered weekdays with strictly positive decimal prices (<=7 calendar-day gaps). Two separate source objects require vendor URL, SHA, publication date <= analysis as-of and >= final price observation. All source meta remain **UNAUTHENTICATED**. No web/API or trades.
+
+Compute aligned daily *simple* arithmetic returns, sample OLS beta Cov(stock,benchmark)/Var(benchmark), daily intercept = mean(stock return) minus beta * mean(benchmark return), in-sample R², period compounded security/index returns. Exact Decimal arithmetic before display rounding; zero benchmark variance => no beta/alpha/R²; zero security variance => no R². This is a descriptive one-factor historical regression, not CAPM risk-adjusted alpha, performance attribution, stock valuation or a liquidity/bubble percentage. Do not infer EPS/earnings contribution from alpha. No market beta-to-bubble red card.
+
+Existing localhost KUODRA upload flow provides optional Engine A source input. After the user-approved Guard review of the existing SEC triplet (no market influence on Guard), the regression can bind separately to the *same* issuer/as-of SEC 10-K revenue-growth report (filed-before-as-of, source SHA), generating user-readable context and HTML/JSON reports; market result is **not included in the existing Guard audit chain**. No persistent new market data. No direct provider authorization, real vintage/rights validation, independent SEC provenance or live price feed is claimed.
+
+Two compared options: (A) offline Decimal OLS + source/date inputs + optional SEC context, **chosen** for zero provider costs and reproducibility with typed checks; (B) call paid market analytics vendor + LLM to label speculative "bubble %" or future target, rejected for data licensing/provider cost/model error, causal overclaim and live API authorization requirements.
+
+Priority after P44: lawful time-as-of stock/index histories and genuine SEC filings, 3-engine report coherence with guard only after owner approvals, independent risk/valuation factors and factor-model diagnostics. Honest missing/conflicting data continues to withhold output. Existing Nov12 PDF-only preliminary approval stays frozen.
+
 # KUODRA — Three-Engine Final Architecture / P43 Development Contract
 Date: 2026-10-31 KST. Owner approved development of the full three-engine research system. Design lock is NOT a claim that every engine, AI feature, production site or live-data case is implemented.
 
