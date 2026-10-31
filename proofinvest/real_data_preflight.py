@@ -26,6 +26,7 @@ from .local_sec_packet import _read_regular_local, _MAX_FILE_BYTES
 from .market_price_csv import market_price_csv_to_json
 from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
 from .industry_packet_builder import build_industry_packet, _MAX_SECTOR_BYTES
+from .local_report_bundle import write_new_local_report_bundle
 from .market_data_evidence import validate_market_evidence
 from .market_reality import (
     MAX_UPLOAD_BYTES as MARKET_MAX, analyze_market_reality,
@@ -51,6 +52,8 @@ def _base(reason: str) -> dict[str, Any]:
         "peer_sec_companyfacts_check": None,
         "industry_input_mode": None,
         "industry_generated_sha256": None,
+        "report_bundle_sha256": None,
+        "report_bundle_created": False,
         "guard_decision_unchanged": None,
         "source_authenticated": False,
         "historical_market_vintage_authenticated": False,
@@ -128,6 +131,7 @@ def inspect_offline_data_files(
     industry_sector_unit: str | None = None,
     industry_target_name: str | None = None,
     industry_peer_names: list[str] | None = None,
+    output_report_zip: Path | None = None,
     sec_submissions: Path | None = None,
     sec_companyfacts: Path | None = None,
     sec_filing: Path | None = None,
@@ -144,6 +148,8 @@ def inspect_offline_data_files(
     blocked = _base("PRECHECK_FAILED")
     if type(apple_10k_24_cell_check) is not bool:
         return {**blocked, "reason_code": "INVALID_APPLE_CHECK_OPTION"}
+    if output_report_zip is not None and not isinstance(output_report_zip, Path):
+        return {**blocked, "reason_code": "INVALID_REPORT_OUTPUT_PATH"}
     direct_fields = (sec_submissions, sec_companyfacts, sec_filing,
                      issuer_cik, accession, as_of, collected_at)
     direct_present = any(v is not None for v in direct_fields)
@@ -432,6 +438,20 @@ def inspect_offline_data_files(
                 return {**blocked, "reason_code": "FINAL_LOCAL_HTML_INVALID"}
 
             ledger = report["three_engine_summary"]
+            # Explicit opt-in only: the default preflight remains NO-OUTPUT,
+            # and any export is ONE exclusive-create ZIP with no partial
+            # report JSON/HTML files or persistent SQLite.
+            saved_bundle_sha = None
+            if output_report_zip is not None:
+                try:
+                    saved_bundle_sha = write_new_local_report_bundle(
+                        output_report_zip, report, html,
+                    )
+                except (OSError, ValueError, TypeError, OverflowError):
+                    return {
+                        **blocked,
+                        "reason_code": "REPORT_BUNDLE_EXPORT_BLOCKED",
+                    }
             return {
                 **blocked, "status": "local_structure_pass_origin_unverified",
                 "reason_code": "LOCAL_ONLY_REVIEW_NOT_REAL_DATA_AUTHENTICATION",
@@ -466,6 +486,8 @@ def inspect_offline_data_files(
                     sha256(industry_raw).hexdigest()
                     if derived_enabled else None
                 ),
+                "report_bundle_sha256": saved_bundle_sha,
+                "report_bundle_created": saved_bundle_sha is not None,
                 "rendered_report_sha256_not_persisted": sha256(html).hexdigest(),
                 "limitations": [
                     "Matching local SHA and data contracts do not certify issuer, provider, license, or true publication time.",
@@ -517,6 +539,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Optional local original CompanyFacts file for every declared Engine C peer (max 8).")
     parser.add_argument("--peer-cik", action="append", dest="peer_ciks")
     parser.add_argument("--peer-accession", action="append", dest="peer_accessions")
+    parser.add_argument("--output-report-zip", type=Path,
+                        help="Explicit opt-in: exclusively create one local ZIP with validated JSON, safe HTML and SHA manifest. Existing files are never replaced.")
     parser.add_argument("--apple-10k-24-cell-check", action="store_true",
                         help="Fail closed unless the uploaded Apple FY2025 10-K HTML original matches 24 independently reviewed statement values; does not authenticate its origin.")
     args = parser.parse_args(argv)
@@ -542,6 +566,7 @@ def main(argv: list[str] | None = None) -> int:
         industry_sector_unit=args.industry_sector_unit,
         industry_target_name=args.industry_target_name,
         industry_peer_names=args.industry_peer_names,
+        output_report_zip=args.output_report_zip,
         sec_submissions=args.sec_submissions,
         sec_companyfacts=args.sec_companyfacts,
         sec_filing=args.sec_filing,
