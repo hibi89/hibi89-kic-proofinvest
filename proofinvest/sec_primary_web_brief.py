@@ -1,7 +1,7 @@
 """Read-only KUODRA brief of 28 SEC rendered-web manually reviewed cells.
 
 NOT source-byte authentication, Guard execution, actual A/B/C data, a live
-SEC response, misconduct proof or investment advice. No network or disk IO.
+SEC response, misconduct proof or investment advice. No network or filesystem writes; reads committed public evidence.
 """
 from __future__ import annotations
 import argparse

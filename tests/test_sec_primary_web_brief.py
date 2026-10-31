@@ -22,7 +22,7 @@ class WebBriefTests(unittest.TestCase):
 
     def test_html_no_script_and_all_metrics(self):
         html=b.render_web_only_brief_html(b.build_web_only_brief())
-        self.assertEqual(html.count("<tr><th>"),14)
+        self.assertEqual(html.count("</td></tr>"),14)
         self.assertIn("ORIGINAL UNVERIFIED",html)
         self.assertIn("GUARD NOT RUN",html)
         self.assertNotIn("<script",html)
