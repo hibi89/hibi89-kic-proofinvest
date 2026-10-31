@@ -1,3 +1,21 @@
+## P68 — Build Engine C industry input from local company and sector files
+
+This is a NEW optional LOCAL tool for a user who already lawfully holds original target+peer SEC CompanyFacts JSON and a normalized sector CSV, NOT a downloader and NOT publisher authentication. It replaces manual JSON revenue/sha transcription with verified offline calculations and SHA pinning. All peers must have two annual periods with exactly the same end dates; no FX/fiscal calendar adjustment is invented. Each SEC file <=24MB; total financial originals <=48MB; normalized CSV <=1MB.
+
+Normalized operator CSV must contain EXACTLY two rows and these two column names:
+
+    period_end,value
+    2024-09-30,200
+    2025-09-30,240
+
+These are SYNTHETIC EXAMPLE numbers, not economic evidence. The CSV values must come from a legally sourced primary publication; the program cannot verify that publication. The example below uses fictional SEC CIKs and records and MUST NOT be run unchanged. Replace each quoted path/name/accession and sector source URL/date/period with real values:
+
+    python -m proofinvest.industry_packet_builder --target-companyfacts "C:/Data/target-companyfacts.json" --target-cik 0000000001 --target-accession 0000000001-25-000001 --target-name "Example Target" --peer-companyfacts "C:/Data/peer-companyfacts.json" --peer-cik 0000000007 --peer-accession 0000000007-25-000001 --peer-name "Example Peer" --industry-csv "C:/Data/industry-normalized.csv" --sector-source-url "https://example.org/actual-publisher-source" --sector-published-at 2025-10-15 --industry-name "Example Industry" --series-name "Example Output Index" --series-kind PRODUCTION_INDEX --sector-unit index_points --as-of 2025-10-16 --prior-end 2024-09-30 --current-end 2025-09-30 --output-json "C:/Data/new-industry-vision.json"
+
+Repeat the four --peer-companyfacts / --peer-cik / --peer-accession / --peer-name flags in the same order for each peer (1–8). The tool reads bounded original local bytes, calculates annual revenue from selected same 10-K, checks sector two-point numerics/dates, derives SHA for each file, calls the existing Industry Vision+P66 raw-source gate and then exclusively CREATES a new JSON (exit 2 if filename already exists; no overwrite). Generated kuodra.industry-vision.v1 is uploadable to the existing P67 localhost Engine C interface with the matching SEC originals and to real_data_preflight --industry-json. It does NOT persist any raw issuer originals, send HTTP/AI calls, store Guard audit or place private data on GitHub.
+
+The reported sector publication URL/date is user-asserted; CompanyFacts URL and filing date are not true API snapshot custody. No issuer/market publisher provenance, licensing, historical point-in-time vintage, FX/GAAP peer normalization, corporate actions, future earnings or investment recommendations are proven. Real-data validation remains blocked until lawful original source files and rights are available. Synthetic exact-feature CI: https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41228921594 (3/3 success, 1,185 Python PASS).
+
 ## P67 — Localhost Engine C raw peer upload and downloadable evidence
 
 The existing localhost-only user workflow can now verify **the same P66 peer CompanyFacts evidence** without CLI. After providing your SEC three original files, issuer, accession, analysis as-of, fiscal dates and unique 10-K quote, upload a valid Engine C industry/peer JSON. Then enable the checkbox `경쟁사 SEC CompanyFacts 원본 검산 추가 (로컬, 출처 미인증)`. For **every declared peer** (1–8), select its locally held original SEC-format CompanyFacts JSON and enter the exact 10-K accession. Each file may be up to 24MB, total peer originals up to 48MB. Nothing is sent to SEC, Gemini or an external vendor. As usual use Preview → explicit consent to ephemeral SQLite → Guard.
