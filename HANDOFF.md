@@ -1,3 +1,16 @@
+## P105 real NVDA SEC 403 outcome — 2026-11-02 KST (user-provided execution evidence)
+
+1. **Goal and approval:** user authorized one NVDA SEC read-only bounded session, max 4 GET; performed locally in `C:\KIC-SEC-P105` from verified `lead/kic` SHA `5a2f68e2d31231684f0461a60c26399399dab06d`.
+2. **What happened:** user typed `READ SEC NVDA` and entered genuine masked SEC contact locally. One request attempted; response `SEC_ACCESS_DENIED_403` at `ticker_map`. No 10-K/CompanyFacts/submissions/original fetched. Program terminated without retry.
+3. **Evidence:** owner-shared CLI JSON `{"external_ai_called":false,"http_requests_attempted":1,"max_requests":4,"raw_sources_saved":false,"reason_code":"SEC_ACCESS_DENIED_403","report_status":"UNAVAILABLE","schema":"kuodra.owner-authorized-nvda-sec-once.v1","sec_contact_recorded":false,"stage":"ticker_map","status":"UNAVAILABLE","ticker":"NVDA","trade_executed":false}`. This is user-provided local execution evidence, not independently observed network trace.
+4. **Prior test:** functional SHA `eb5d0ff6a641bdad7d6efa431c8783096c2f0a76`; CI #41323847526 Python 1,361 PASS, Windows SQLite PASS, Chromium regression PASS, 3/3 success. No additional tests or code changes in this documentation commit.
+5. **Error and stop/pivot:** SEC 403 is remote access refusal. **DO NOT retry, proxy, change UA to evade, or bypass 403**. Do not mistake offline CI success for real SEC success. Potential network policy cause unverified; official SEC guidance/contact may be researched without another request.
+6. **Repo/branch/SHA:** `hibi89/hibi89-kic-proofinvest`, `lead/kic`, executed checkout `5a2f68e2d31231684f0461a60c26399399dab06d`; docs-only successor [skip ci], no code change. Local OneDrive working tree `ProofInvest-KIC-lead` previously had modified `docs/evidence/samsung_2024_cfs_revenue.json` and was not modified; standalone local clone is `C:\KIC-SEC-P105`.
+7. **Runtime:** Windows CMD, `RUN_P105_NVDA_SEC_PROBE.cmd`. No public Production URL/Vercel deployment, and no actual issuer A/B/C/Guard E2E.
+8. **Privacy/security/original:** Contact hidden at input, not in user-shared JSON; no raw source persisted, external AI, audit, payment, or trade. Frozen KIC V13 PDF not changed.
+9. **Next priority:** no further SEC network calls. Seek official SEC access clarification via documented support route or obtain lawfully accessible provider/user-uploaded issuer evidence with separate owner approval; validate one-ticker report offline. DAKER submission deadline 2026-11-12 10:00 KST remains owner-gated.
+10. **Update time and scope:** 2026-11-02 KST; local JSON owner-supplied, HTTP packet not independently verified. Last CI #41323847526. Historical subjective overall completion ~80% unchanged; no claimed live-data completion.
+
 ## P105 — 2026-11-02 01:00 KST, NVDA SEC owner-authorization local one-time probe
 
 1. **Goal/confirmed request/tech:** User approved only NVDA official SEC source read, maximum four HTTPS GETs, no new paid API, no saved raw files or external AI/trading. Python stdlib on Windows local, existing `proofinvest.ticker_sec_transport.collect_ticker_sec_sources`, masks genuine SEC contact.
