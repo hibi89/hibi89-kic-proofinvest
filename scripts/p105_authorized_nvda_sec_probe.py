@@ -140,8 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         "One bounded, owner-approved NVDA SEC research probe. "
         "Four official GETs MAX, no saves or retries."
     ))
-    parser.add_argument("--as-of", default=date.today().isoformat(),
-                        help="SEC filing cutoff YYYY-MM-DD (default: current local date)")
+    parser.add_argument("--as-of", default=datetime.now(timezone.utc).date().isoformat(),
+                        help="SEC filing cutoff YYYY-MM-DD (default: current UTC date)")
     args = parser.parse_args(argv)
     if not sys.stdin.isatty():
         print(json.dumps(_failure("INTERACTIVE_TERMINAL_REQUIRED"), sort_keys=True))

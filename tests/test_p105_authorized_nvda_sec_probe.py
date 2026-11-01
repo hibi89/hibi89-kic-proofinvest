@@ -17,8 +17,8 @@ UA = "KUODRA Unit Test research-unit@fixtures.dev"
 class ProbeTests(TestCase):
     def test_reject_unapproved_invalid_contact_date_before_http(self):
         cases = [
-            dict(as_of="2026-11-02", user_agent=UA, approved=False),
-            dict(as_of="2026-11-02", user_agent="fake", approved=True),
+            dict(as_of="2025-10-16", user_agent=UA, approved=False),
+            dict(as_of="2025-10-16", user_agent="fake", approved=True),
             dict(as_of="2100-01-01", user_agent=UA, approved=True),
             dict(as_of="bad", user_agent=UA, approved=True),
         ]
@@ -39,9 +39,9 @@ class ProbeTests(TestCase):
         with patch.object(probe, "collect_ticker_sec_sources",
                           return_value=(receipt, None)) as collect:
             result = probe.verify_nvda_once(
-                as_of="2026-11-02", user_agent=UA, approved=True)
+                as_of="2025-10-16", user_agent=UA, approved=True)
         collect.assert_called_once_with(
-            ticker="NVDA", as_of="2026-11-02", user_agent=UA,
+            ticker="NVDA", as_of="2025-10-16", user_agent=UA,
             allow_network=True, acknowledge_four_requests=True,
         )
         self.assertEqual(result["reason_code"], "SEC_ACCESS_DENIED_403")
@@ -81,7 +81,7 @@ class ProbeTests(TestCase):
         with patch.object(probe, "collect_ticker_sec_sources",
                           return_value=(receipt, raw)):
             result = probe.verify_nvda_once(
-                as_of="2026-11-02", user_agent=UA, approved=True)
+                as_of="2025-10-16", user_agent=UA, approved=True)
         self.assertEqual(result["reason_code"], "REQUEST_LIMIT_CONTRACT_INVALID")
         self.assertEqual(raw, {})
 
@@ -121,12 +121,12 @@ class ProbeTests(TestCase):
                           return_value=probe._failure("SEC_ACCESS_DENIED_403",
                                                       attempted=1)) as called, \
              redirect_stdout(out):
-            rc=probe.main(["--as-of","2026-11-02"])
+            rc=probe.main(["--as-of","2025-10-16"])
         self.assertEqual(rc,2)
         self.assertNotIn("research-unit@fixtures.dev",out.getvalue())
         self.assertEqual(called.call_count,1)
         self.assertEqual(called.call_args.kwargs["approved"],True)
-        self.assertEqual(called.call_args.kwargs["as_of"],"2026-11-02")
+        self.assertEqual(called.call_args.kwargs["as_of"],"2025-10-16")
 
 
 if __name__=="__main__":
