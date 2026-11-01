@@ -34,6 +34,7 @@ from .market_reality import (
 )
 from .sec_bundle_replay import _receipt_capture_clock
 from .sec_capture_bundle import _read_checked_capture_bundle
+from .operator_sec_zip import read_operator_sec_zip_file
 from .three_engine_research import bind_industry_to_sec, summarize_three_engines
 
 
@@ -43,6 +44,7 @@ def _base(reason: str) -> dict[str, Any]:
         "status": "blocked",
         "reason_code": reason,
         "sec_capture_digest_matched": False,
+        "operator_sec_zip_integrity_matched": False,
         "sec_input_mode": None,
         "sec_local_byte_sha256_computed": False,
         "issuer_cik": None,
@@ -112,6 +114,7 @@ def _apple_2025_original_table_gate(
 
 def inspect_offline_data_files(
     sec_bundle: Path | None = None, *, prior_end: str, current_end: str, needle: str,
+    operator_sec_zip: Path | None = None,
     market_csv: Path | None = None, symbol: str | None = None,
     benchmark: str | None = None, return_basis: str | None = None,
     market_source_url: str | None = None,
@@ -153,12 +156,37 @@ def inspect_offline_data_files(
     direct_fields = (sec_submissions, sec_companyfacts, sec_filing,
                      issuer_cik, accession, as_of, collected_at)
     direct_present = any(v is not None for v in direct_fields)
-    # Exactly one mode; no silent fallback to unrelated original files.
-    if sec_bundle is not None and direct_present:
+    # Three strictly exclusive modes:
+    # A) historical HTTP-capture receipt ZIP; B) operator-assembled ZIP
+    # (never falsely claims HTTP); C) explicit three independent local paths.
+    if ((sec_bundle is not None and (operator_sec_zip is not None or direct_present))
+            or (operator_sec_zip is not None and direct_present)):
         return {**blocked, "reason_code": "MIXED_SEC_INPUT_MODES_BLOCKED"}
-    if sec_bundle is None and not all(v is not None for v in direct_fields):
+    if (sec_bundle is None and operator_sec_zip is None
+            and not all(v is not None for v in direct_fields)):
         return {**blocked, "reason_code": "INCOMPLETE_DIRECT_SEC_THREE_FILES"}
-    if sec_bundle is not None:
+    operator_zip_match = False
+    if operator_sec_zip is not None:
+        try:
+            raws, claims = read_operator_sec_zip_file(operator_sec_zip)
+            cik, asof, acc = (
+                claims["issuer_cik"], claims["as_of"], claims["accession"],
+            )
+            timestamp = datetime.fromisoformat(
+                claims["collected_at"].replace("Z", "+00:00")
+            )
+            captured = timestamp.isoformat()
+            integrity = {
+                "sha256": {name: sha256(content).hexdigest()
+                           for name, content in raws.items()},
+            }
+        except (ValueError, TypeError, KeyError, OSError,
+                OverflowError, RecursionError, UnicodeError):
+            return {**blocked, "reason_code": "OPERATOR_SEC_ZIP_INVALID"}
+        input_mode = "OPERATOR_LOCAL_ZIP_NO_HTTP_UNAUTHENTICATED"
+        bundle_match = False  # NOT a verified SEC HTTP-capture transport receipt.
+        operator_zip_match = True
+    elif sec_bundle is not None:
         integrity, raws, receipt = _read_checked_capture_bundle(Path(sec_bundle))
         if (integrity.get("status") != "bundle_integrity_pass_origin_unverified"
                 or raws is None or receipt is None):
@@ -218,6 +246,7 @@ def inspect_offline_data_files(
         bundle_match = False
     blocked.update({
         "sec_capture_digest_matched": bundle_match,
+        "operator_sec_zip_integrity_matched": operator_zip_match,
         "sec_input_mode": input_mode, "sec_local_byte_sha256_computed": True,
         "issuer_cik": cik, "as_of_self_reported": asof,
         "sec_accession": acc,
@@ -506,6 +535,10 @@ def main(argv: list[str] | None = None) -> int:
         description="Offline, read-only KUODRA SEC + market + industry file preflight (NO provider API)."
     )
     parser.add_argument("--sec-bundle", type=Path)
+    parser.add_argument(
+        "--operator-sec-zip", type=Path,
+        help="User-assembled offline 3-source ZIP (manifest + SHA, NO HTTP capture claim).",
+    )
     parser.add_argument("--sec-submissions", type=Path)
     parser.add_argument("--sec-companyfacts", type=Path)
     parser.add_argument("--sec-filing", type=Path)
@@ -546,6 +579,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = inspect_offline_data_files(
         args.sec_bundle, prior_end=args.prior_end,
+        operator_sec_zip=args.operator_sec_zip,
         current_end=args.current_end, needle=args.needle,
         market_csv=args.market_csv, symbol=args.symbol,
         benchmark=args.benchmark, return_basis=args.return_basis,

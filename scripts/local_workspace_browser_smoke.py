@@ -703,6 +703,143 @@ def run(output: Path) -> dict:
                             )
                         finally:
                             apple_page.close()
+                        # P94: actual Chromium ZIP upload from user-assembled
+                        # synthetic SEC-shaped source bytes. ZIP is NOT a
+                        # provider HTTP receipt. No archive extraction or
+                        # persistent original/SQLite should occur here.
+                        from proofinvest.operator_sec_zip import (
+                            make_operator_sec_zip_bytes,
+                        )
+                        operator_zip_bytes = make_operator_sec_zip_bytes(
+                            submissions=synthetic_submissions(),
+                            companyfacts=json.dumps(synthetic_companyfacts()).encode(),
+                            original_filing=SYNTHETIC_HTML,
+                            issuer_cik=SYNTHETIC_CIK,
+                            accession=SYNTHETIC_ACCESSION,
+                            as_of=AS_OF, collected_at=COLLECTED_AT,
+                        )
+                        zip_page = browser.new_page(
+                            viewport={"width": 1440, "height": 1100},
+                        )
+                        try:
+                            zip_page.goto(URL, wait_until="domcontentloaded",
+                                          timeout=30000)
+                            expect(zip_page.get_by_text(
+                                "KUODRA — 오프라인 합성 데이터",
+                            )).to_be_visible(timeout=25000)
+                            zip_page.get_by_test_id("stSelectbox").first.click()
+                            zip_page.get_by_role(
+                                "option", name=MODE, exact=True,
+                            ).click()
+                            expect(zip_page.get_by_text(
+                                "KUODRA · 로컬 SEC 원본 3종 검토",
+                            )).to_be_visible(timeout=22000)
+                            zip_label = (
+                                "선택 · 사용자가 직접 준비한 SEC 원본 ZIP "
+                                "(위 개별 파일 4개 대신)"
+                            )
+                            zip_uploader = zip_page.get_by_test_id(
+                                "stFileUploader",
+                            ).filter(
+                                has=zip_page.get_by_text(zip_label, exact=True),
+                            ).locator('input[type="file"]')
+                            expect(zip_uploader).to_have_count(1)
+                            zip_uploader.set_input_files({
+                                "name": "operator-sec-synthetic.zip",
+                                "mimeType": "application/zip",
+                                "buffer": operator_zip_bytes,
+                            })
+                            expect(zip_page.get_by_role(
+                                "button", name="Remove operator-sec-synthetic.zip",
+                                exact=True,
+                            )).to_be_visible(timeout=20000)
+                            zip_page.get_by_role(
+                                "button",
+                                name="선택 ZIP 무결성·선언 정보 확인 (읽기 전용)",
+                            ).click()
+                            expect(zip_page.get_by_text(
+                                sha256(operator_zip_bytes).hexdigest(), exact=False,
+                            ).first).to_be_visible(timeout=20000)
+                            zip_page.get_by_role(
+                                "button",
+                                name="선택 ZIP에 선언된 CIK·접수번호·기준일 입력",
+                            ).click()
+                            for label, expected in (
+                                ("CIK 10자리", SYNTHETIC_CIK),
+                                ("SEC 접수번호", SYNTHETIC_ACCESSION),
+                                ("기준일 (YYYY-MM-DD)", AS_OF),
+                                ("사용자 주장 수집시각 (UTC ISO8601)",
+                                 COLLECTED_AT),
+                            ):
+                                expect(zip_page.get_by_label(
+                                    label, exact=True,
+                                )).to_have_value(expected, timeout=20000)
+                            # The ZIP is not enough to auto-run any Guard:
+                            # the user still selects the claim, preview,
+                            # and grants explicit disposable-audit consent.
+                            for label, amount in (
+                                ("현재 회계기간 종료일", "2025-09-30"),
+                                ("직전 회계기간 종료일", "2024-09-30"),
+                                ("원문 본문에서 고유한 인용 문구", PHRASE),
+                            ):
+                                field = zip_page.get_by_label(
+                                    label, exact=True,
+                                )
+                                field.fill(amount)
+                                field.press("Tab")
+                            zip_page.get_by_role(
+                                "button", name="1단계 · 원본 대조 미리보기",
+                            ).click()
+                            expect(zip_page.get_by_text(
+                                "출처 메타데이터 대조 · 아직 감사 DB 기록 없음",
+                            )).to_be_visible(timeout=30000)
+                            audit = zip_page.get_by_role(
+                                "button", name="2단계 · Guard 로컬 검증 실행",
+                            )
+                            expect(audit).to_be_disabled()
+                            zip_page.get_by_text(
+                                "임시 로컬 SQLite 생성·검증 후 자동 삭제에 동의",
+                                exact=True,
+                            ).click()
+                            expect(audit).to_be_enabled()
+                            audit.click()
+                            expect(zip_page.get_by_text(
+                                "로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증"
+                            )).to_be_visible(timeout=35000)
+                            with zip_page.expect_download(
+                                timeout=20000,
+                            ) as downloaded:
+                                zip_page.get_by_role(
+                                    "button", name="오프라인 분석 보고서 JSON",
+                                ).click()
+                            doc = json.loads(
+                                Path(downloaded.value.path()).read_text(
+                                    encoding="utf-8",
+                                )
+                            )
+                            if (doc["guard"]["decision"] != "HOLD"
+                                    or doc["issuer"]["cik"] != SYNTHETIC_CIK
+                                    or doc["source"]["companyfacts_sha256"] !=
+                                       sha256(json.dumps(
+                                           synthetic_companyfacts(),
+                                       ).encode()).hexdigest()
+                                    or doc["source"]["archived_original_sha256"] !=
+                                       sha256(SYNTHETIC_HTML).hexdigest()
+                                    or doc["limits"]["external_source_authenticated"]
+                                       is not False
+                                    or doc["limits"]["live_api_called"] is not False
+                                    or doc["limits"]["official_contest_submission"]
+                                       is not False
+                                    or doc["limits"]["trade_executed"] is not False):
+                                raise AssertionError(
+                                    "OPERATOR_ZIP_BROWSER_SOURCE_OR_GUARD_FAILED",
+                                )
+                            zip_page.screenshot(
+                                path=str(output / "kuodra-operator-zip-guard.png"),
+                                full_page=True,
+                            )
+                        finally:
+                            zip_page.close()
                         result = {
                             "schema": "kuodra.local-upload-browser-check.v1",
                             "status": "PASS", "uploads": 3, "historical_uploads": 4,
@@ -724,6 +861,7 @@ def run(output: Path) -> dict:
                                 "engine-c-peer-companyfacts-html-sha-included",
                                 "three-engine-ledger-json-html-download",
                                 "p59-apple-html-synthetic-upload-24-cells",
+                                "p94-operator-zip-local-only-guard-click-download",
 
                             ],
                             "source_authenticated": False,
@@ -740,6 +878,7 @@ def run(output: Path) -> dict:
                             "industry_sec_source_bound": True,
                             "all_three_engines_reported": True,
                             "apple_local_html_ui_synthetic_24_values_passed": True,
+                            "operator_zip_click_through_unverified_guard_passed": True,
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,

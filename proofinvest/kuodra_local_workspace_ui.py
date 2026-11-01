@@ -14,6 +14,10 @@ from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
 
 from .local_sec_packet import _MAX_FILE_BYTES
+from .operator_sec_zip import (
+    _MAX_ZIP_BYTES as OPERATOR_ZIP_MAX_BYTES,
+    inspect_operator_sec_zip_bytes, read_operator_sec_zip_bytes,
+)
 from .local_sec_html_report import render_local_sec_html
 from .kuodra_local_workspace import (
     preview_uploaded_triplet, review_uploaded_triplet, discover_uploaded_periods,
@@ -47,6 +51,33 @@ def _uploaded_sources(files) -> dict[str, bytes]:
     )):
         raise ValueError("THREE_OR_FOUR_BOUNDED_UPLOADS_REQUIRED")
     return {key: files[key].getvalue() for key in caps if files[key] is not None}
+
+
+def _selected_workspace_sources(
+    files, operator_archive, *, request: dict | None = None,
+) -> dict[str, bytes]:
+    """Exactly one source mode; reread SHA-bound ZIP at EACH explicit action.
+
+    Never keep original bytes in session_state. Even the ZIP's claimed issuer
+    and timestamps must match human-entered review request on Guard/preview.
+    """
+    if operator_archive is None:
+        return _uploaded_sources(files)
+    if any(upload is not None for upload in files.values()):
+        raise ValueError("OPERATOR_ZIP_CANNOT_MIX_INDIVIDUAL_UPLOADS")
+    if (type(operator_archive.size) is not int
+            or not 0 < operator_archive.size <= OPERATOR_ZIP_MAX_BYTES):
+        raise ValueError("OPERATOR_ZIP_UPLOAD_SIZE_INVALID")
+    raws, claims = read_operator_sec_zip_bytes(operator_archive.getvalue())
+    if request is not None and any(request.get(key) != claims[original]
+                                   for key, original in (
+                                       ("cik", "issuer_cik"),
+                                       ("accession", "accession"),
+                                       ("as_of", "as_of"),
+                                       ("collected_at", "collected_at"),
+                                   )):
+        raise ValueError("OPERATOR_ZIP_DECLARED_IDENTITY_OR_CLOCK_CHANGED")
+    return raws
 
 
 def render_local_apple_10k_original_check(
@@ -203,6 +234,50 @@ def render_local_workspace(st) -> None:
         "history_page": st.file_uploader("4. 이전 filings.files JSON (선택)", type=["json"],
                                          key="kuodra_history"),
     }
+    operator_archive = st.file_uploader(
+        "선택 · 사용자가 직접 준비한 SEC 원본 ZIP (위 개별 파일 4개 대신)",
+        type=["zip"], key="kuodra_operator_source_zip",
+        help="로컬 패키징 도구로 생성한 ZIP만 허용하며 외부 SEC 캡처 인증 아님.",
+    )
+    if operator_archive is not None:
+        st.caption("ZIP과 개별 파일은 함께 사용할 수 없습니다. "
+                   "ZIP은 로컬 메모리에서만 검증하며 원본을 풀어 저장하지 않습니다.")
+        if st.button("선택 ZIP 무결성·선언 정보 확인 (읽기 전용)",
+                     key="kuodra_check_operator_zip"):
+            try:
+                if any(item is not None for item in uploads.values()):
+                    raise ValueError("MIXED_SEC_UPLOAD_MODES")
+                if (type(operator_archive.size) is not int
+                        or not 0 < operator_archive.size <= OPERATOR_ZIP_MAX_BYTES):
+                    raise ValueError("OPERATOR_ZIP_SIZE_INVALID")
+                check = inspect_operator_sec_zip_bytes(operator_archive.getvalue())
+                st.json(check)
+            except (ValueError, TypeError, OSError, OverflowError,
+                    RecursionError, KeyError):
+                st.error("ZIP 검증 차단: 원본·해시·선언 식별자·파일 구조를 확인하십시오.")
+        if st.button("선택 ZIP에 선언된 CIK·접수번호·기준일 입력",
+                     key="kuodra_apply_operator_zip_claims"):
+            try:
+                if any(item is not None for item in uploads.values()):
+                    raise ValueError("MIXED_SEC_UPLOAD_MODES")
+                if (type(operator_archive.size) is not int
+                        or not 0 < operator_archive.size <= OPERATOR_ZIP_MAX_BYTES):
+                    raise ValueError("OPERATOR_ZIP_SIZE_INVALID")
+                _, claims = read_operator_sec_zip_bytes(operator_archive.getvalue())
+                for key, original in (
+                    ("kuodra_cik", "issuer_cik"),
+                    ("kuodra_accession", "accession"),
+                    ("kuodra_asof", "as_of"),
+                    ("kuodra_collected", "collected_at"),
+                ):
+                    st.session_state[key] = claims[original]
+                for key in ("kuodra_preview_receipt", "kuodra_discovery",
+                            "kuodra_filing_targets", "kuodra_pending_filing"):
+                    st.session_state.pop(key, None)
+                st.rerun()
+            except (ValueError, TypeError, OSError, OverflowError,
+                    RecursionError, KeyError):
+                st.error("ZIP 선언 정보 적용 차단: ZIP 원본 또는 중복 업로드를 확인하십시오.")
     history_page_name = st.text_input(
         "이력 페이지 파일명 (해당하는 경우 filings.files.name 그대로)",
         key="kuodra_history_name", max_chars=90,
@@ -213,7 +288,7 @@ def render_local_workspace(st) -> None:
     pending = st.session_state.pop("kuodra_pending_filing", None)
     if pending is not None:
         try:
-            exact_pins = _check_bytes(_uploaded_sources(uploads))
+            exact_pins = _check_bytes(_selected_workspace_sources(uploads, operator_archive))
             if (pending["source_sha256"] != exact_pins
                     or pending["history_page_name"] != (
                         history_page_name if uploads["history_page"] else None
@@ -241,7 +316,7 @@ def render_local_workspace(st) -> None:
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
             candidate_report = discover_uploaded_filing_targets(
-                _uploaded_sources(uploads),
+                _selected_workspace_sources(uploads, operator_archive),
                 as_of=as_of, collected_at=collected_at,
                 history_page_name=(history_page_name if uploads["history_page"] else None),
             )
@@ -253,7 +328,7 @@ def render_local_workspace(st) -> None:
         try:
             valid_candidates = (
                 candidate_report.get("source_sha256")
-                == _check_bytes(_uploaded_sources(uploads))
+                == _check_bytes(_selected_workspace_sources(uploads, operator_archive))
                 and candidate_report.get("as_of") == as_of
                 and candidate_report.get("collected_at") == collected_at
                 and candidate_report.get("history_page_name") == (
@@ -307,7 +382,7 @@ def render_local_workspace(st) -> None:
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
             found = discover_uploaded_periods(
-                _uploaded_sources(uploads),
+                _selected_workspace_sources(uploads, operator_archive),
                 cik=cik, accession=accession, as_of=as_of,
                 collected_at=collected_at,
                 show_local_needle_candidates=reveal_local_text,
@@ -324,7 +399,7 @@ def render_local_workspace(st) -> None:
         # just when the user clicks "apply"; changed uploads invalidate
         # earlier advice before it can be selected or disclosed.
         try:
-            current_digests = _check_bytes(_uploaded_sources(uploads))
+            current_digests = _check_bytes(_selected_workspace_sources(uploads, operator_archive))
             candidate_is_current = (
                 found.get("source_sha256") == current_digests
                 and found.get("issuer_cik") == cik
@@ -419,7 +494,9 @@ def render_local_workspace(st) -> None:
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
-            raw = _uploaded_sources(uploads)
+            raw = _selected_workspace_sources(
+                uploads, operator_archive, request=request,
+            )
             preview = preview_uploaded_triplet(raw, request)
             st.session_state["kuodra_preview_receipt"] = preview
         except (ValueError, TypeError, OSError, KeyError, OverflowError,
@@ -445,7 +522,9 @@ def render_local_workspace(st) -> None:
     if st.button("2단계 · Guard 로컬 검증 실행", disabled=not consent,
                  key="kuodra_run", type="primary"):
         try:
-            raw = _uploaded_sources(uploads)
+            raw = _selected_workspace_sources(
+                uploads, operator_archive, request=request,
+            )
             report, html = review_uploaded_triplet(
                 raw, request, expected_preview=receipt, consent=consent,
             )
