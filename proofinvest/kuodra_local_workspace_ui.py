@@ -492,6 +492,9 @@ def render_local_workspace(st) -> None:
     market_raw = render_local_market_reality(st, cik=cik, as_of=as_of)
 
     if st.button("1단계 · 원본 대조 미리보기", key="kuodra_preview"):
+        # A prior Guard consent must never carry into a NEW source/period
+        # review. Re-consent is required after each explicit preview.
+        st.session_state["kuodra_ephemeral_consent"] = False
         st.session_state.pop("kuodra_preview_receipt", None)
         try:
             raw = _selected_workspace_sources(

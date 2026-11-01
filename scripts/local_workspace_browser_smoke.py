@@ -846,6 +846,167 @@ def run(output: Path) -> dict:
                                 path=str(output / "kuodra-operator-zip-guard.png"),
                                 full_page=True,
                             )
+
+                            # P96 owner-local no-manual-industry-JSON workflow:
+                            # swap in a fully synthetic two-year CFO/NI issuer
+                            # ZIP, upload one peer CompanyFacts and the two-year
+                            # normalized sector CSV. The SAME uploaded peer is
+                            # reused by Engine C revenue, P91 current CFO/NI,
+                            # P92 trend and P93 period evidence.
+                            from tests.test_peer_cash_trend import extend_with_prior
+                            from tests.test_industry_packet_builder import (
+                                CSV as synthetic_sector_csv,
+                            )
+                            _, source_target, source_peers = extend_with_prior()
+                            strong_zip = make_operator_sec_zip_bytes(
+                                submissions=synthetic_submissions(),
+                                companyfacts=source_target[2],
+                                original_filing=SYNTHETIC_HTML,
+                                issuer_cik=SYNTHETIC_CIK,
+                                accession=SYNTHETIC_ACCESSION,
+                                as_of=AS_OF, collected_at=COLLECTED_AT,
+                            )
+                            zip_uploader.set_input_files({
+                                "name": "p96-annual-cash-cohort.zip",
+                                "mimeType": "application/zip",
+                                "buffer": strong_zip,
+                            })
+                            expect(zip_page.get_by_role(
+                                "button", name="Remove p96-annual-cash-cohort.zip",
+                                exact=True,
+                            )).to_be_visible(timeout=25000)
+                            zip_page.get_by_role(
+                                "button",
+                                name="선택 ZIP에 선언된 CIK·접수번호·기준일 입력",
+                            ).click()
+                            enable_builder = (
+                                "산업 CSV·경쟁사 CompanyFacts로 Engine C 구성 "
+                                "(로컬, 출처 미인증)"
+                            )
+                            zip_page.get_by_text(
+                                enable_builder, exact=True,
+                            ).click()
+                            for label, value in (
+                                ("분석 기업 표시명", "SYNTHETIC_TARGET"),
+                                ("산업 이름", "SYNTHETIC_INDUSTRY"),
+                                ("산업 지표명", "SYNTHETIC_PRODUCTION_INDEX"),
+                                ("산업 지표 단위", "index_points"),
+                                ("산업 CSV 출처 HTTPS URL (사용자 주장)",
+                                 "https://www.bea.gov/data/industry/synthetic-manual-normalization"),
+                                ("산업 CSV 공개일 (YYYY-MM-DD, 사용자 주장)",
+                                 "2025-10-15"),
+                                ("경쟁사 1 CIK 10자리", source_peers[0][0]),
+                                ("경쟁사 1 10-K 접수번호", source_peers[0][1]),
+                                ("경쟁사 1 표시명", "SYNTHETIC_PEER"),
+                            ):
+                                field = zip_page.get_by_label(label, exact=True)
+                                field.fill(value)
+                                field.press("Tab")
+                            for label, name, mime, payload in (
+                                ("2개 연도 산업 지표 CSV (period_end,value)",
+                                 "p96-synthetic-sector.csv", "text/csv",
+                                 synthetic_sector_csv),
+                                ("경쟁사 1 SEC CompanyFacts JSON",
+                                 "p96-synthetic-peer.json", "application/json",
+                                 source_peers[0][2]),
+                            ):
+                                locator = zip_page.get_by_test_id(
+                                    "stFileUploader",
+                                ).filter(
+                                    has=zip_page.get_by_text(label, exact=True),
+                                ).locator('input[type="file"]')
+                                expect(locator).to_have_count(1)
+                                locator.set_input_files({
+                                    "name": name, "mimeType": mime,
+                                    "buffer": payload,
+                                })
+                                expect(zip_page.get_by_role(
+                                    "button", name="Remove " + name,
+                                    exact=True,
+                                )).to_be_visible(timeout=20000)
+                            expect(zip_page.get_by_text(
+                                "원본 기반 Engine C 입력 구성 완료 · SEC 출처 미인증 · Guard 미실행",
+                                exact=True,
+                            )).to_be_visible(timeout=30000)
+                            expect(zip_page.get_by_text(
+                                "경쟁사 CompanyFacts를 다시 올릴 필요가 없습니다.",
+                                exact=False,
+                            )).to_be_visible(timeout=20000)
+                            expect(zip_page.get_by_text(
+                                "KUODRA · Engine C — Industry Vision",
+                                exact=True,
+                            )).to_be_visible(timeout=20000)
+                            zip_page.get_by_role(
+                                "button", name="1단계 · 원본 대조 미리보기",
+                            ).click()
+                            expect(zip_page.get_by_text(
+                                "출처 메타데이터 대조 · 아직 감사 DB 기록 없음",
+                            )).to_be_visible(timeout=30000)
+                            renewed_consent = zip_page.get_by_role(
+                                "button", name="2단계 · Guard 로컬 검증 실행",
+                            )
+                            # P96: operator must re-consent after the DIFFERENT
+                            # source ZIP is uploaded and freshly previewed.
+                            expect(renewed_consent).to_be_disabled(timeout=18000)
+                            zip_page.get_by_text(
+                                "임시 로컬 SQLite 생성·검증 후 자동 삭제에 동의",
+                                exact=True,
+                            ).click()
+                            expect(renewed_consent).to_be_enabled(timeout=12000)
+                            renewed_consent.click()
+                            expect(zip_page.get_by_text(
+                                "로컬 Guard 완료 · 임시 SQLite 삭제 · 외부 출처 미인증",
+                            )).to_be_visible(timeout=35000)
+                            with zip_page.expect_download(timeout=20000) as out:
+                                zip_page.get_by_role(
+                                    "button", name="오프라인 분석 보고서 JSON",
+                                ).click()
+                            full_report = json.loads(
+                                Path(out.value.path()).read_text(encoding="utf-8"),
+                            )
+                            comparison = full_report.get("peer_cash_conversion")
+                            check = full_report.get("peer_sec_companyfacts_check")
+                            if (full_report["guard"]["decision"] != "HOLD"
+                                    or full_report["source"]["companyfacts_sha256"] !=
+                                       sha256(source_target[2]).hexdigest()
+                                    or full_report.get("industry_vision", {}).get(
+                                        "status") != "OBSERVED_COMPARISON_UNVERIFIED"
+                                    or not isinstance(check, dict)
+                                    or check["peer_records"][0]["companyfacts_sha256"]
+                                       != sha256(source_peers[0][2]).hexdigest()
+                                    or not isinstance(comparison, dict)
+                                    or comparison["cash_conversion_target_pct"]
+                                       != "33.33"
+                                    or comparison["cash_conversion_peer_median_pct"]
+                                       != "50.00"
+                                    or comparison["two_year_target_minus_peer_change_pp"]
+                                       != "-91.67"
+                                    or comparison["period_comparability"][
+                                        "two_year_cash_median_eligible"] is not True
+                                    or comparison["guard_policy_modified"] is not False
+                                    or full_report["limits"]["live_api_called"] is not False
+                                    or full_report["limits"]["trade_executed"] is not False):
+                                raise AssertionError(
+                                    "P96_OWNER_LOCAL_INDUSTRY_SOURCE_UI_FAILED"
+                                )
+                            with zip_page.expect_download(timeout=20000) as out_html:
+                                zip_page.get_by_role(
+                                    "button", name="오프라인 분석 보고서 HTML",
+                                ).click()
+                            source_html = Path(
+                                out_html.value.path(),
+                            ).read_bytes().decode("utf-8")
+                            if ("경쟁사 현금전환 비교 (로컬)" not in source_html
+                                    or "-91.67" not in source_html
+                                    or "33.33" not in source_html
+                                    or "<script" in source_html.lower()):
+                                raise AssertionError(
+                                    "P96_SOURCE_BUILDER_HTML_NOT_LINKED"
+                                )
+                            zip_page.screenshot(
+                                path=str(output / "kuodra-p96-owner-sector-peer-ui.png"),
+                                full_page=True,
+                            )
                         finally:
                             zip_page.close()
                         result = {
@@ -871,6 +1032,7 @@ def run(output: Path) -> dict:
                                 "p59-apple-html-synthetic-upload-24-cells",
                                 "p94-operator-zip-local-only-guard-click-download",
                                 "p95-peer-accounting-and-period-ledger-html-download",
+                                "p96-owner-zip-sector-csv-peer-builder-two-year-positive",
 
                             ],
                             "source_authenticated": False,
@@ -888,6 +1050,8 @@ def run(output: Path) -> dict:
                             "all_three_engines_reported": True,
                             "apple_local_html_ui_synthetic_24_values_passed": True,
                             "operator_zip_click_through_unverified_guard_passed": True,
+                            "p96_owner_peer_builder_comparison_passed": True,
+                            "p96_source_builder_requires_fresh_guard_consent": True,
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,

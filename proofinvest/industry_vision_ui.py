@@ -6,22 +6,34 @@ from .industry_vision import (
 )
 
 
-def render_local_industry_vision(st, *, cik: str, as_of: str) -> bytes | None:
+def render_local_industry_vision(
+    st, *, cik: str, as_of: str,
+    generated_raw: bytes | None = None,
+) -> bytes | None:
     st.subheader("KUODRA · Engine C — Industry Vision")
     st.caption("선택한 기업 vs 동종 기업 vs 산업 성장률 / 시장 성장 동력과 위험. "
                "업로드 데이터만 비교하며 SEC·거시 API·LLM을 호출하지 않습니다.")
-    uploaded = st.file_uploader(
-        "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
-        type=["json"], key="kuodra_industry_vision",
-    )
-    if uploaded is None:
-        st.info("비교에 필요한 산업·경쟁사 원본 자료가 없습니다. 산업 성장 전망을 임의 생성하지 않습니다.")
-        return
-    try:
+    if generated_raw is None:
+        uploaded = st.file_uploader(
+            "산업·경쟁사 성장률 근거 JSON (선택, 최대 64 KiB)",
+            type=["json"], key="kuodra_industry_vision",
+        )
+        if uploaded is None:
+            st.info("비교에 필요한 산업·경쟁사 원본 자료가 없습니다. 산업 성장 전망을 임의 생성하지 않습니다.")
+            return
         if type(uploaded.size) is not int or not 0 < uploaded.size <= MAX_UPLOAD_BYTES:
+            st.error("산업 분석 차단: 업로드한 산업 JSON 크기가 허용값을 초과했습니다.")
+            return
+        raw = uploaded.getvalue()
+    else:
+        raw = generated_raw
+        st.caption("로컬 원본 CSV·CompanyFacts로 자동 구성한 Engine C 자료입니다. "
+                   "기존 업로드 JSON 대신 현재 검증된 입력만 사용합니다.")
+    try:
+        if type(raw) is not bytes or not 0 < len(raw) <= MAX_UPLOAD_BYTES:
             raise ValueError("INDUSTRY_JSON_TOO_LARGE")
         result = analyze_industry_vision(
-            parse_industry_vision_json(uploaded.getvalue()),
+            parse_industry_vision_json(raw),
             expected_issuer_cik=cik, analysis_as_of=as_of,
         )
     except (ValueError, TypeError, KeyError, RecursionError, OverflowError):
@@ -70,4 +82,4 @@ def render_local_industry_vision(st, *, cik: str, as_of: str) -> bytes | None:
              "ai_generated": False, "trade_signal": False})
     # Return bytes only from successfully validated, opt-in source input.
     # A later SEC-bound comparison must independently revalidate the input.
-    return uploaded.getvalue()
+    return raw
