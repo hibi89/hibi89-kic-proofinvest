@@ -1,3 +1,16 @@
+## P111 — 2026-11-02 KST; strict initial provider-response gate (CI pending)
+
+1. Scope: P110 dormant 2-GET transport and P109 offline pair only. P105 SEC 403 retry prohibition and frozen exact V13 PDF preserved; no frontend design changes or actual provider connection.
+2. Compare risk/cost: separate simplistic HTTP precheck enabled second paid/limited API call on malformed first response (rejected) vs reuse existing strict P109 source parser before second request (selected). Minimal one-function patch, no new package/vendor/credentials.
+3. Implementation: twelvedata_consent_client._precheck_payload now reuses twelvedata_offline_adapter._read_series with strict meta type USD timezone/interval, duplicate-key JSON, dates, finite positive close, requested period and session count. First bad NVDA response stops before NDX; bad second discards the pair and Guard HOLD. New tests test_twelvedata_consent_client.py including ETF/QQQ, wrong currency, malformed rows, nonfinite/duplicate keys and no raw secret echo.
+4. Official source analysis: authorization header supported and start_date+end_date bounds explicit. NDX exact plan entitlement and true data availability STILL UNVERIFIED; Twelve Data terms bar free commercial/external display, copyright for FRED NASDAQ100. Detailed docs/P111_PROVIDER_RIGHTS_AND_FIRST_RESPONSE_GATE.md.
+5. Verification: GitHub CI exact feature SHA pending at author time; no live calls, only mocked Python, existing Chromium and Windows regression. No positive right/production claim.
+6. Repo hibi89/hibi89-kic-proofinvest branch lead/kic, parent 4930a62e49ec3d7856484bf2408717e8dca9828d; touched source/test and short docs; preserve normal git revert recovery.
+7. Execution: default no network; no new CLI or key/config. P110 2-GET path still requires future user-supplied explicit owner approval and confirmed entitlement. No deployed Production/Vercel.
+8. Originals: frozen V13 PDF SHA256 64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece unchanged; no secrets/code transfer or user files uploaded.
+9. Next: Obtain written vendor Nasdaq-100 index symbol, account tier, license covering internal judge + any public display; compare cost if approved. Until then real A/B/C single-ticker live pipeline remains blocked; DAKER owner final submission due 2026-11-12 10:00 KST.
+10. Timestamp 2026-11-02 KST, CI unverified at author time. This entry must be reconciled with actual Actions run and precise SHA.
+
 ## P110 VERIFIED — 2026-11-02 KST; dormant consent-gated Twelve Data transport (10-point handoff)
 
 1. Goal/requirements: P109 and P108 tested historical research backend advance toward real one-ticker data while complying with owner approval, no P105 SEC HTTP403 bypass, no frontend redesign, no existing original/frozen PDF mutation.

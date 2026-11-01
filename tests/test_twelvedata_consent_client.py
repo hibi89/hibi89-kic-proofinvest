@@ -158,6 +158,91 @@ class ConsentClientTests(unittest.TestCase):
             self.assertNotIn("invalid apikey secret", json.dumps(r))
             self.assertNotIn("SECRET_TEST_TOKEN_1234", json.dumps(r))
 
+    def test_malformed_nvda_metadata_and_price_never_spend_ndx_credit(self):
+        stock, index = series_pair()
+        baseline = json.loads(stock)
+        bad_cases = {}
+        for name, field, value in (
+            ("etf_spoof", "type", "ETF"),
+            ("wrong_currency", "currency", "EUR"),
+            ("wrong_timezone", "exchange_timezone", "Etc/UTC"),
+            ("weekly_data", "interval", "1week"),
+            ("wrong_ticker", "symbol", "AAPL"),
+        ):
+            data = json.loads(stock)
+            data["meta"][field] = value
+            bad_cases[name] = json.dumps(data).encode()
+        for name, value in (
+            ("zero_close", "0"),
+            ("negative_close", "-2"),
+            ("nonfinite_close", "NaN"),
+            ("excel_formula", "=1+1"),
+        ):
+            data = json.loads(stock)
+            data["values"][0]["close"] = value
+            bad_cases[name] = json.dumps(data).encode()
+        data = json.loads(stock)
+        data["values"][1]["datetime"] = data["values"][0]["datetime"]
+        bad_cases["duplicate_day"] = json.dumps(data).encode()
+        data = json.loads(stock)
+        data["values"].reverse()
+        bad_cases["ascending_days"] = json.dumps(data).encode()
+        data = json.loads(stock)
+        data["values"][1]["datetime"] = "2025-02-25"
+        bad_cases["before_issuer_release"] = json.dumps(data).encode()
+        bad_cases["duplicate_json_key"] = stock.replace(
+            b'"status":"ok"', b'"status":"ok","status":"ok"', 1
+        )
+        for name, malformed in bad_cases.items():
+            calls = []
+            def transport(*_):
+                calls.append(True)
+                return FakeResponse(malformed if len(calls) == 1 else index)
+            with self.subTest(name=name):
+                r = cli.run_approved_internal_pair(
+                    **dates(), api_key="SECRET_TEST_TOKEN_1234",
+                    index_entitlement_confirmed=True,
+                    internal_test_rights_confirmed=True,
+                    allow_network=True, acknowledge_exactly_two_gets=True,
+                    opener=transport,
+                )
+                self.assertEqual(r["status"], "BLOCKED")
+                self.assertEqual(r["requests_attempted"], 1, r)
+                self.assertEqual(len(calls), 1, r)
+                self.assertEqual(r["reason_code"],
+                                 "PROVIDER_RESPONSE_IDENTITY_OR_WINDOW_REJECTED")
+                self.assertIsNone(r["analysis"])
+                self.assertNotIn("SECRET_TEST_TOKEN_1234", json.dumps(r))
+
+    def test_second_index_etf_or_currency_conflict_yields_no_partial_analysis(self):
+        stock, index = series_pair()
+        for modification in ("ETF", "QQQ", "wrong_close"):
+            broken = json.loads(index)
+            if modification == "ETF":
+                broken["meta"]["type"] = "ETF"
+            elif modification == "QQQ":
+                broken["meta"]["symbol"] = "QQQ"
+            else:
+                broken["values"][0]["close"] = "-1"
+            calls = []
+            def transport(*_):
+                calls.append(True)
+                return FakeResponse(
+                    stock if len(calls) == 1 else json.dumps(broken).encode()
+                )
+            with self.subTest(modification=modification):
+                r = cli.run_approved_internal_pair(
+                    **dates(), api_key="SECRET_TEST_TOKEN_1234",
+                    index_entitlement_confirmed=True,
+                    internal_test_rights_confirmed=True,
+                    allow_network=True, acknowledge_exactly_two_gets=True,
+                    opener=transport,
+                )
+                self.assertEqual(r["requests_attempted"], 2)
+                self.assertEqual(r["status"], "BLOCKED")
+                self.assertIsNone(r["analysis"])
+                self.assertEqual(r["guard_decision"], "HOLD")
+
     def test_partial_first_response_never_fabricates_real_data(self):
         stock, _ = series_pair()
         r = cli.run_approved_internal_pair(

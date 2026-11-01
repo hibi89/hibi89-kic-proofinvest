@@ -7,7 +7,6 @@ single trigger, no retry/redirect, no disk/cache/LLM/SEC/trade.
 from __future__ import annotations
 
 from datetime import date, timedelta
-import json
 import os
 import re
 from typing import Any, Callable
@@ -16,7 +15,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.error import HTTPError, URLError
 
 from .twelvedata_offline_adapter import (
-    MAX_RESPONSE_BYTES, run_private_twelvedata_p108,
+    MAX_RESPONSE_BYTES, _read_series, run_private_twelvedata_p108,
 )
 
 _ORIGIN = "https://api.twelvedata.com/time_series"
@@ -107,25 +106,29 @@ def _default_open(request: Request, timeout: float):
 
 
 def _precheck_payload(raw: bytes, symbol: str, start: str, end: str) -> bool:
-    """A bad/blocked first response consumes at most one GET, never the next."""
-    try:
-        obj = json.loads(raw.decode("utf-8"))
-        if (type(obj) is not dict or obj.get("status") != "ok"
-                or type(obj.get("meta")) is not dict
-                or obj["meta"].get("symbol") != symbol
-                or type(obj.get("values")) is not list
-                or not 31 <= len(obj["values"]) <= 501):
-            return False
-        for row in obj["values"]:
-            if type(row) is not dict or type(row.get("datetime")) is not str:
-                return False
-            dt = _day(row["datetime"])
-            if not start <= dt.isoformat() <= end:
-                return False
-        return True
-    except (UnicodeError, ValueError, TypeError, KeyError, RecursionError):
-        return False
+    """Full individual provider contract BEFORE spending another API credit.
 
+    Reuse the exact P109 parser: duplicate JSON keys, asset kind, USD/NY
+    timezone, interval, descending unique weekdays, positive finite close,
+    bounded 31-501 sessions. Also enforce the requested response window.
+    A malformed first NVDA response MUST NOT trigger the second NDX GET.
+    No origin/licensing claim is implied by this structural check.
+    """
+    if symbol not in ("NVDA", "NDX"):
+        return False
+    try:
+        earliest, latest = _day(start), _day(end)
+        series = _read_series(
+            raw, symbol=symbol,
+            market_kind="Common Stock" if symbol == "NVDA" else "Index",
+            as_of=latest, retrieved_at=latest,
+        )
+        return bool(series) and all(
+            earliest <= _day(when) <= latest for when in series
+        )
+    except (UnicodeError, ValueError, TypeError, KeyError,
+            RecursionError, OverflowError, ArithmeticError):
+        return False
 
 def run_approved_internal_pair(
     *, start_date: str, end_date: str, as_of: str,
