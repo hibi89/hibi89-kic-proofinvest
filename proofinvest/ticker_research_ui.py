@@ -157,6 +157,10 @@ def render_single_ticker_search(st) -> None:
         # This is NOT an original HTML text assertion or Engine B/Guard review.
         from .ticker_sec_financial_bridge import inspect_collected_annual_revenue
         revenue = inspect_collected_annual_revenue(result, raw_sources)
+        from .ticker_sec_original_guard_preview import inspect_original_guard_preview
+        original_preview = inspect_original_guard_preview(
+            result, raw_sources, expected_revenue=revenue,
+        )
         # No raw file bytes in state, downloads, JSON, HTML or long-lived cache.
         if raw_sources is not None:
             raw_sources.clear()
@@ -180,8 +184,23 @@ def render_single_ticker_search(st) -> None:
                     "engine_b_full_ready": False,
                     "guard_executed": False,
                 })
-                st.warning("같은 공시의 매출 산술만 확인했습니다. 원문 본문 인증·"
-                           "회계 착시 위험·시장/산업 전망·Guard 판단은 아직 완료되지 않았습니다.")
+                st.warning("같은 공시의 매출 산술만 확인했습니다. 출처 독립 인증·"
+                           "회계 착시 위험·시장/산업 전망은 아직 완료되지 않았습니다.")
+                st.subheader("10-K 원문 교차확인 · Guard 정책 미리보기")
+                st.json({
+                    "original_context_state": original_preview["status"],
+                    "reason_code": original_preview["reason_code"],
+                    "ixbrl_status": original_preview["ixbrl_status"],
+                    "ixbrl_reason": original_preview["ixbrl_reason"],
+                    "dei_status": original_preview["dei_status"],
+                    "dei_reason": original_preview["dei_reason"],
+                    "guard_policy_preview": original_preview["guard_preview"],
+                    "original_to_accession_authenticated": False,
+                    "guard_executed": False, "audit_written": False,
+                    "trade_executed": False,
+                })
+                st.caption("Guard 규칙 미리보기는 감사 실행·사람 승인·투자 허가가 아닙니다. "
+                           "원본 iXBRL 문맥 일치도 SEC 원본 진위 인증이 아닙니다.")
             else:
                 st.warning("연간 매출 검산 불가 · 누락/모순은 0이나 안전 판정으로 대체하지 않습니다.")
                 st.code(revenue.get("reason_code", "UNAVAILABLE"), language="text")
