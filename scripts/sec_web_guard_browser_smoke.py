@@ -160,8 +160,87 @@ def run(output: Path) -> dict:
                         assert [r["guard_decision"] for r in recorded] == [
                             "REJECT", "HOLD", "HOLD",
                         ]
+                        # P85: exercise the P84 custom textbox in ACTUAL Chromium,
+                        # reusing this local browser/server, not another test app.
+                        page.get_by_test_id("stSelectbox").nth(1).click()
+                        page.get_by_role(
+                            "option", name="직접 입력 — 성장률(%)", exact=True
+                        ).click()
+                        custom_input = page.get_by_test_id("stTextInput").locator("input")
+                        expect(custom_input).to_be_visible(timeout=15000)
+                        expect(_guard_metric(page)).to_have_count(0, timeout=15000)
+
+                        for claim, numeric, guard, filename in (
+                            ("8.25", "CONFLICT", "REJECT", "web-guard-custom-conflict.png"),
+                            ("6.43", "VERIFIED", "HOLD", "web-guard-custom-matched.png"),
+                        ):
+                            custom_input.fill(claim)
+                            # Typing cannot execute Guard or preserve the old result.
+                            expect(_guard_metric(page)).to_have_count(0, timeout=15000)
+                            expect(page.get_by_text(
+                                "버튼을 누르기 전에는 분석 함수·Guard를 실행하지 않습니다."
+                            )).to_be_visible(timeout=15000)
+                            page.get_by_role(
+                                "button", name="오프라인 수동 검산 → 데모 Guard 실행"
+                            ).click()
+                            expect(_guard_metric(page)).to_contain_text(
+                                guard, timeout=30000
+                            )
+                            expect(_numeric_metric(page)).to_contain_text(
+                                numeric, timeout=10000
+                            )
+                            if claim == "8.25":
+                                expect(page.get_by_text(
+                                    "가상 8.25% 성장 주장", exact=False
+                                )).to_be_visible(timeout=10000)
+                            if audit_path.exists():
+                                raise AssertionError("CUSTOM_DEMO_MUST_NOT_PERSIST_SQLITE")
+                            if external_requests:
+                                raise AssertionError("CUSTOM_DEMO_EXTERNAL_REQUEST")
+                            page.screenshot(path=str(output / filename), full_page=True)
+                            recorded.append({
+                                "case": "CUSTOM_CONFLICT" if claim == "8.25" else "CUSTOM_MATCHED",
+                                "claim_growth_pct": claim,
+                                "numeric_verdict": numeric,
+                                "guard_decision": guard,
+                                "issuer_source_authenticated": False,
+                                "sqlite_audit_created": False,
+                                "external_http_called": False,
+                                "trade_executed": False,
+                            })
+                            if claim == "8.25":
+                                custom_input.fill("NaN")
+                                expect(_guard_metric(page)).to_have_count(0, timeout=15000)
+                                page.get_by_role(
+                                    "button", name="오프라인 수동 검산 → 데모 Guard 실행"
+                                ).click()
+                                expect(page.get_by_text(
+                                    "입력값 또는 수동 근거", exact=False
+                                )).to_be_visible(timeout=10000)
+                                expect(_guard_metric(page)).to_have_count(0)
+                                expect(_numeric_metric(page)).to_have_count(0)
+                                if audit_path.exists() or external_requests:
+                                    raise AssertionError("INVALID_CUSTOM_CLAIM_SIDE_EFFECT")
+                                page.screenshot(
+                                    path=str(output / "web-guard-custom-invalid.png"),
+                                    full_page=True,
+                                )
+                                recorded.append({
+                                    "case": "CUSTOM_INVALID_NAN_BLOCKED",
+                                    "claim_growth_pct": None,
+                                    "numeric_verdict": "BLOCKED",
+                                    "guard_decision": None,
+                                    "issuer_source_authenticated": False,
+                                    "sqlite_audit_created": False,
+                                    "external_http_called": False,
+                                    "trade_executed": False,
+                                })
+
+                        assert [r["guard_decision"] for r in recorded] == [
+                            "REJECT", "HOLD", "HOLD", "REJECT", None, "HOLD",
+                        ]
                         receipt = {
-                            "schema": "kuodra.sec-web-guard-chromium-e2e.v1",
+                            "schema": "kuodra.sec-web-guard-chromium-e2e.v2",
                             "status": "PASS",
                             "runner": "ACTUAL_LOCAL_CHROMIUM_NOT_PRODUCTION",
                             "checked_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -170,6 +249,8 @@ def run(output: Path) -> dict:
                             "browser_scenarios": recorded,
                             "pre_click_guard_executed": False,
                             "prior_guard_result_cleared_on_claim_change": True,
+                            "custom_textbox_chromium_tested": True,
+                            "invalid_custom_claim_fail_closed": True,
                             "browser_external_requests": external_requests,
                             "sqlite_audit_created": False,
                             "external_sec_original_authenticated": False,

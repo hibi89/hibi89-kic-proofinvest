@@ -176,7 +176,7 @@ jobs:
       - name: Actual Chromium manual SEC WEB -> Guard click matrix (no external HTTP)
         run: |
           python -B -m scripts.sec_web_guard_browser_smoke /tmp/kic-manual-web-guard-browser
-          python -c 'import json; x=json.load(open("/tmp/kic-manual-web-guard-browser/web-guard-browser-evidence.json")); assert x["status"]=="PASS" and [r["guard_decision"] for r in x["browser_scenarios"]]==["REJECT","HOLD","HOLD"] and not x["browser_external_requests"] and x["sqlite_audit_created"] is False and x["external_sec_original_authenticated"] is False and x["contest_submitted"] is False'
+          python -c 'import json; x=json.load(open("/tmp/kic-manual-web-guard-browser/web-guard-browser-evidence.json")); assert x["status"]=="PASS" and [r["guard_decision"] for r in x["browser_scenarios"]]==["REJECT","HOLD","HOLD","REJECT",None,"HOLD"] and x["custom_textbox_chromium_tested"] is True and x["invalid_custom_claim_fail_closed"] is True and not x["browser_external_requests"] and x["sqlite_audit_created"] is False and x["external_sec_original_authenticated"] is False and x["contest_submitted"] is False'
       - name: Archive ACTUAL Chromium manual SEC WEB -> Guard screenshots and receipt (NO private PDF)
         uses: actions/upload-artifact@v4
         with:
@@ -186,6 +186,9 @@ jobs:
             /tmp/kic-manual-web-guard-browser/web-guard-conflict.png
             /tmp/kic-manual-web-guard-browser/web-guard-matched.png
             /tmp/kic-manual-web-guard-browser/web-guard-missing.png
+            /tmp/kic-manual-web-guard-browser/web-guard-custom-conflict.png
+            /tmp/kic-manual-web-guard-browser/web-guard-custom-invalid.png
+            /tmp/kic-manual-web-guard-browser/web-guard-custom-matched.png
             /tmp/kic-manual-web-guard-browser/web-guard-browser-evidence.json
           if-no-files-found: error
           retention-days: 14
