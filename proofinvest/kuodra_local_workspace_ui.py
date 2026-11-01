@@ -573,6 +573,21 @@ def render_local_workspace(st) -> None:
             st.caption("동일 회계기간의 사용자 제공 CompanyFacts 계산만 비교합니다. "
                        "원본 출처·권리·회계정책의 동등성 미인증. "
                        "한 회사라도 분모/현금흐름이 없으면 중위값을 공개하지 않습니다.")
+            st.subheader("Engine B × C · 2개 연도 현금전환 변화 (별도 비교)")
+            st.table([
+                {"비교": "대상 기업 변화 (pp)", "값":
+                 peer_cash["two_year_target_change_pp"] or "비교 보류"},
+                {"비교": "경쟁사 변화 중위값 (pp)", "값":
+                 peer_cash["two_year_peer_median_change_pp"] or "비교 보류"},
+                {"비교": "대상 − 경쟁사 중위 변화 (pp)", "값":
+                 peer_cash["two_year_target_minus_peer_change_pp"] or "비교 보류"},
+            ])
+            if peer_cash["two_year_trend_status"] != (
+                    "COMPLETE_TWO_YEAR_LOCAL_INPUTS_ORIGIN_UNVERIFIED"):
+                st.warning("직전·현재 회계연도의 순이익과 영업현금흐름이 "
+                           "모든 기업에서 확인되지 않아 2개 연도 변화 비교를 보류했습니다.")
+            st.caption("2개 연도 계산은 같은 10-K 접수번호의 회계기간과 "
+                       "수치만 사용하며 회계정책·SEC 출처는 미인증입니다.")
             st.json(peer_cash)
         if "industry_vision" in report:
             ind = report["industry_vision"]

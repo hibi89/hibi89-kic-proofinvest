@@ -395,10 +395,28 @@ def run(output: Path) -> dict:
                                 or peer_cash.get("issuer_source_authenticated") is not False
                                 or peer_cash.get("guard_policy_modified") is not False
                                 or peer_cash.get("audit_written") is not False
-                                or peer_cash.get("trade_executed") is not False):
+                                or peer_cash.get("trade_executed") is not False
+                                # P92: neither synthetic issuer nor peer
+                                # supplies the second year of cash/NI.
+                                or peer_cash.get("two_year_trend_status") !=
+                                   "INCOMPLETE_TWO_YEAR_CASH_EVIDENCE_WITHHELD"
+                                or peer_cash.get("two_year_eligible_peer_count") != 0
+                                or peer_cash.get("two_year_target_change_pp") is not None
+                                or peer_cash.get("two_year_peer_median_change_pp") is not None
+                                or peer_cash.get("two_year_target_minus_peer_change_pp")
+                                   is not None):
                             raise AssertionError("PEER_CASH_BROWSER_WITHHOLD_GATE_INVALID")
                         expect(page.get_by_text(
                             "Engine B × C · 발행사와 경쟁사 현금전환 비교 (로컬)",
+                            exact=True,
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "Engine B × C · 2개 연도 현금전환 변화 (별도 비교)",
+                            exact=True,
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "직전·현재 회계연도의 순이익과 영업현금흐름이 "
+                            "모든 기업에서 확인되지 않아 2개 연도 변화 비교를 보류했습니다.",
                             exact=True,
                         )).to_be_visible(timeout=20000)
                         ledger = json_report.get("three_engine_summary")

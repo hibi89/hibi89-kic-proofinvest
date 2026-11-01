@@ -17,6 +17,7 @@ from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
 from .industry_vision import parse_industry_vision_json, analyze_industry_vision
 from .local_sec_packet import _json_object, _MAX_FILE_BYTES
 from .sec_companyfacts import verify_sec_annual_revenue
+from .peer_cash_trend import review_two_year_cash_conversion
 
 _MAX_TOTAL_BYTES = 48_000_000
 _Q = Decimal("0.01")
@@ -115,8 +116,18 @@ def compare_peer_cash_conversion(
             parsed = Decimal(ratio)
             if not parsed.is_finite():
                 raise ValueError("PEER_CASH_NONFINITE_RATIO")
+        # P92 independent two-year check: current-year P91 comparison survives
+        # missing prior CFO/NI, but the trend and its cohort median are WITHHELD.
+        trend = review_two_year_cash_conversion(
+            raw, cik=cik, accession=accession,
+            prior_end=industry["prior_period_end"],
+            current_end=industry["current_period_end"],
+            as_of=industry["as_of"],
+            accounting=found, expected_filing_date=expected_filing,
+        )
         report_rows.append({
             "role": "TARGET" if pos == 0 else "PEER",
+            "cash_conversion_trend": trend,
             "cik": cik, "accession_operator_supplied": accession,
             "companyfacts_sha256": sha256(raw).hexdigest(),
             "revenue_growth_pct_from_source":
@@ -148,6 +159,24 @@ def compare_peer_cash_conversion(
         ))
         gap = (Decimal(report_rows[0]["cash_conversion_pct"]) -
                peer_median).quantize(_Q, rounding=ROUND_HALF_UP)
+    # Only compare two-year changes if EVERY selected firm has an eligible
+    # prior/current pair; missing peers must not bias the selected cohort.
+    trends_complete = all(
+        r["cash_conversion_trend"]["status"] ==
+        "TWO_YEAR_LOCAL_COMPARISON_ORIGIN_UNVERIFIED"
+        for r in report_rows
+    )
+    trend_median = None
+    trend_gap = None
+    if trends_complete:
+        trend_median = Decimal(median(
+            Decimal(row["cash_conversion_trend"]["change_pp"])
+            for row in report_rows[1:]
+        ))
+        trend_gap = (
+            Decimal(report_rows[0]["cash_conversion_trend"]["change_pp"])
+            - trend_median
+        ).quantize(_Q, rounding=ROUND_HALF_UP)
     return {
         "schema": "kuodra.offline-peer-cash-conversion.v1",
         "status": ("COMPLETE_LOCAL_INPUTS_ORIGIN_UNVERIFIED" if complete else
@@ -164,6 +193,25 @@ def compare_peer_cash_conversion(
             if peer_median is not None else None,
         "target_minus_peer_median_pp": str(gap) if gap is not None else None,
         "rows": report_rows,
+        "two_year_trend_status": (
+            "COMPLETE_TWO_YEAR_LOCAL_INPUTS_ORIGIN_UNVERIFIED" if trends_complete
+            else "INCOMPLETE_TWO_YEAR_CASH_EVIDENCE_WITHHELD"),
+        "two_year_eligible_peer_count": sum(
+            r["cash_conversion_trend"]["status"] ==
+            "TWO_YEAR_LOCAL_COMPARISON_ORIGIN_UNVERIFIED"
+            for r in report_rows[1:]
+        ),
+        "two_year_target_change_pp": (
+            report_rows[0]["cash_conversion_trend"]["change_pp"]
+            if trends_complete else None
+        ),
+        "two_year_peer_median_change_pp": (
+            format(trend_median.quantize(_Q, rounding=ROUND_HALF_UP), ".2f")
+            if trend_median is not None else None
+        ),
+        "two_year_target_minus_peer_change_pp": (
+            format(trend_gap, ".2f") if trend_gap is not None else None
+        ),
         "comparison_is_descriptive_not_ranking": True,
         "cross_issuer_accounting_policy_verified": False,
         "issuer_source_authenticated": False, "data_rights_verified": False,
