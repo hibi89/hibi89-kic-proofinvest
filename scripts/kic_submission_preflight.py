@@ -14,8 +14,9 @@ import os
 from pathlib import Path
 import stat
 
-FROZEN_SHA256 = "0bdbbf04f374a7ccb39cd15e1aa700a006514278b094d32bb05ac7db610e034e"
-FROZEN_BYTES = 513_113
+FROZEN_FILENAME = "KIC_KUODRA_V13_PRIVATE_GUARD_CONSISTENCY_20261101.pdf"
+FROZEN_SHA256 = "64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece"
+FROZEN_BYTES = 562_176
 FROZEN_PAGE_COUNT_FROM_PRIOR_AUDIT = 10
 # DAKER form says PDF uploads only, max 20 MB. Decimal MB is the
 # conservative bound when the site's exact MB interpretation is unknown.
@@ -27,6 +28,7 @@ def verify_candidate(
     *,
     expected_sha256: str = FROZEN_SHA256,
     expected_bytes: int = FROZEN_BYTES,
+    expected_filename: str = FROZEN_FILENAME,
 ) -> dict[str, object]:
     """Verify bytes against a pinned receipt, without reading PDF page contents.
 
@@ -55,6 +57,10 @@ def verify_candidate(
         meta = os.fstat(stream.fileno())
         if path.suffix.lower() != ".pdf":
             return _result(False, "PDF_EXTENSION_REQUIRED")
+        # The competition upload must use the reviewed V13 file name as well
+        # as identical bytes; synthetic tests explicitly override this pin.
+        if path.name != expected_filename:
+            return _result(False, "FROZEN_V13_FILENAME_REQUIRED")
         if meta.st_size > DAKER_MAX_UPLOAD_BYTES:
             return _result(False, "DAKER_PDF_SIZE_LIMIT_EXCEEDED")
         if meta.st_size != expected_bytes:

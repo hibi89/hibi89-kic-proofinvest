@@ -25,6 +25,7 @@ class SubmissionGuardTests(unittest.TestCase):
             self.path if path is None else path,
             expected_sha256=changes.get("sha", self.digest),
             expected_bytes=changes.get("size", len(self.good)),
+            expected_filename=changes.get("filename", self.path.name if path is None else Path(path).name),
         )
 
     def test_synthetic_matching_bytes_only_ready_for_user_review(self):
@@ -67,6 +68,28 @@ class SubmissionGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Symlinked"):
             self.verify(link)
 
+
+    def test_official_v13_pin_matches_separately_reviewed_file(self):
+        self.assertEqual(guard.FROZEN_FILENAME, "KIC_KUODRA_V13_PRIVATE_GUARD_CONSISTENCY_20261101.pdf")
+        self.assertEqual(guard.FROZEN_SHA256, "64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece")
+        self.assertEqual(guard.FROZEN_BYTES, 562176)
+        self.assertFalse(guard.FROZEN_SHA256.startswith("0bdbbf04"))
+
+    def test_old_named_pdf_rejected_even_if_identical_bytes(self):
+        older = self.root / "KIC_KUODRA_V12_PRIVATE_JUDGE_REVIEW_20261101.pdf"
+        older.write_bytes(self.good)
+        v = self.verify(older, filename=guard.FROZEN_FILENAME)
+        self.assertFalse(v["matched_pinned_byte_identity"])
+        self.assertEqual(v["reason"], "FROZEN_V13_FILENAME_REQUIRED")
+        self.assertFalse(v["officially_submitted"])
+
+    def test_expected_v13_named_fixture_does_not_bypass_pinned_hash(self):
+        path = self.root / guard.FROZEN_FILENAME
+        path.write_bytes(self.good)
+        v = guard.verify_candidate(path)
+        self.assertEqual(v["reason"], "BYTE_SIZE_MISMATCH")
+        self.assertEqual(v["decision"], "DO_NOT_UPLOAD")
+        self.assertFalse(v["receipt_verified"])
 
     def test_correct_bytes_with_wrong_extension_are_not_upload_ready(self):
         wrong = self.root / "renamed_final.txt"
