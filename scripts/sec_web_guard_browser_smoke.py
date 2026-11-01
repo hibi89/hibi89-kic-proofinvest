@@ -175,6 +175,7 @@ def run(output: Path) -> dict:
                             ("6.43", "VERIFIED", "HOLD", "web-guard-custom-matched.png"),
                         ):
                             custom_input.fill(claim)
+                            custom_input.press("Tab")  # commit Streamlit textbox on blur
                             # Typing cannot execute Guard or preserve the old result.
                             expect(_guard_metric(page)).to_have_count(0, timeout=15000)
                             expect(page.get_by_text(
@@ -210,6 +211,7 @@ def run(output: Path) -> dict:
                             })
                             if claim == "8.25":
                                 custom_input.fill("NaN")
+                                custom_input.press("Tab")  # commit before stale-result check
                                 expect(_guard_metric(page)).to_have_count(0, timeout=15000)
                                 page.get_by_role(
                                     "button", name="오프라인 수동 검산 → 데모 Guard 실행"
