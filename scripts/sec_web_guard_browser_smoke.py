@@ -118,6 +118,42 @@ def run(output: Path) -> dict:
                         for v in ("12.63pp", "-26.63pp", "-15.66pp", "387.22%"):
                             expect(page.get_by_text(v, exact=True)).to_be_visible()
                         expect(_guard_metric(page)).to_have_count(0)
+                        # Real browser download contains exact operands,
+                        # trace formulas and a self-consistency SHA, never auth.
+                        with page.expect_download(timeout=15000) as trace_info:
+                            page.get_by_role(
+                                "button",
+                                name="회계 근거 보고서 JSON 다운로드 (오프라인)",
+                                exact=True,
+                            ).click()
+                        trace_download = trace_info.value
+                        if trace_download.suggested_filename != (
+                                "kuodra-accounting-trace-OFFLINE.json"):
+                            raise AssertionError("ENGINE_B_TRACE_DOWNLOAD_FILENAME")
+                        import hashlib
+                        report = json.loads(Path(trace_download.path()).read_text(
+                            encoding="utf-8"
+                        ))
+                        report_copy = dict(report)
+                        digest = report_copy.pop("report_sha256", None)
+                        canonical = (json.dumps(
+                            report_copy, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":"), allow_nan=False,
+                        ) + "\n").encode("utf-8")
+                        if (report.get("schema") !=
+                                "kuodra.manual-sec-web-accounting-trace.v1"
+                                or digest != hashlib.sha256(canonical).hexdigest()
+                                or report.get("review_prompt_count") != 3
+                                or len(report.get("trace_cells", [])) != 7
+                                or [s["value"] for s in report["signals"]] != [
+                                    "12.63", "-26.63", "-15.66", "387.22"
+                                ]
+                                or report.get("digest_proves_sec_origin") is not False
+                                or report.get("source_authenticated") is not False
+                                or report.get("guard_decision_changed") is not False
+                                or report.get("external_http_called") is not False):
+                            raise AssertionError("ENGINE_B_TRACE_DOWNLOAD_INVALID")
+                        expect(_guard_metric(page)).to_have_count(0)
                         page.screenshot(path=str(output / "web-engine-b-click.png"),
                                         full_page=True)
                         page.screenshot(path=str(output / "web-guard-before-click.png"),
@@ -299,6 +335,7 @@ def run(output: Path) -> dict:
                             "engine_b_actual_chromium_click": True,
                             "engine_b_review_prompt_count": 3,
                             "engine_b_guard_not_executed": True,
+                            "engine_b_trace_download_verified": True,
                             "invalid_custom_claim_fail_closed": True,
                             "browser_external_requests": external_requests,
                             "sqlite_audit_created": False,

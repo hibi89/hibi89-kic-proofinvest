@@ -78,6 +78,27 @@ def render_manual_web_accounting_review(st) -> None:
     c3.metric("FCF 성장 격차", p[2]["difference_pp"] + "pp")
     c4.metric("총부채/자본 · 참고", p[3]["current_pct"] + "%")
     st.warning("3건은 검토 질문이며 회계부정 증거가 아닙니다. Guard·매매에 반영하지 않습니다.")
+    # Same click creates a deterministic, source-cell/formula-linked trace.
+    # Fail closed before exposing any download; no source bytes or secrets.
+    try:
+        from .sec_web_accounting_trace import (
+            build_accounting_trace, export_accounting_trace, canonical_json,
+        )
+        from hashlib import sha256
+        report = build_accounting_trace()
+        if report["triage_output_sha256"] != sha256(canonical_json(r)).hexdigest():
+            raise ValueError("WEB_B_TRACE_UI_SOURCE_MISMATCH")
+        trace_bytes = export_accounting_trace(report)
+    except (ValueError, TypeError, KeyError, ImportError, OSError, ArithmeticError):
+        st.error("Engine B 회계 근거 보고서 검증 실패 · 다운로드를 차단했습니다.")
+    else:
+        st.download_button(
+            "회계 근거 보고서 JSON 다운로드 (오프라인)",
+            data=trace_bytes, file_name="kuodra-accounting-trace-OFFLINE.json",
+            mime="application/json", on_click="ignore",
+            key="kuodra_engine_b_trace_download",
+            help="출처 수동 대조·산술 계산 재현용. 실제 SEC 원본/권리 인증 아님.",
+        )
     st.json({
         "schema": r["schema"], "source_basis": r["basis"], "manual_cells": 28,
         "source_authenticated": False, "original_sec_bytes_verified": False,
