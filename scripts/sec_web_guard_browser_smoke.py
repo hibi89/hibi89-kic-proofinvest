@@ -238,6 +238,34 @@ def run(output: Path) -> dict:
                                     "trade_executed": False,
                                 })
 
+                        # P87: actual browser download must agree with current
+                        # custom claim and cannot silently imply authenticated SEC.
+                        with page.expect_download(timeout=15000) as download_info:
+                            page.get_by_role(
+                                "button", name="검산 영수증 JSON 다운로드 (데모 전용)",
+                                exact=True,
+                            ).click()
+                        download = download_info.value
+                        if download.suggested_filename != "kuodra-sec-web-guard-DEMO.json":
+                            raise AssertionError("UNEXPECTED_DEMO_RECEIPT_FILENAME")
+                        receipt_payload = json.loads(
+                            Path(download.path()).read_text(encoding="utf-8")
+                        )
+                        if (receipt_payload.get("schema") !=
+                                "kuodra.manual-sec-web-guard-receipt.v1"
+                                or receipt_payload.get("status") !=
+                                "OFFLINE_DEMO_ONLY_ORIGINAL_UNVERIFIED"
+                                or receipt_payload.get("numeric_check", {}).get(
+                                    "claim_growth_pct") != "6.43"
+                                or receipt_payload["numeric_check"]["numeric_verdict"] != "VERIFIED"
+                                or receipt_payload["simulated_guard"]["decision"] != "HOLD"
+                                or receipt_payload["source"]["issuer_original_authenticated"] is not False
+                                or any(value is not False for value in
+                                       receipt_payload["limits"].values())
+                                or receipt_payload["simulated_guard"]["human_approved"] is not False):
+                            raise AssertionError("BROWSER_DOWNLOAD_TRUST_CONTRACT_BROKEN")
+                        if external_requests or audit_path.exists():
+                            raise AssertionError("DOWNLOAD_TRIGGERED_SIDE_EFFECT")
                         assert [r["guard_decision"] for r in recorded] == [
                             "REJECT", "HOLD", "HOLD", "REJECT", None, "HOLD",
                         ]
@@ -252,6 +280,7 @@ def run(output: Path) -> dict:
                             "pre_click_guard_executed": False,
                             "prior_guard_result_cleared_on_claim_change": True,
                             "custom_textbox_chromium_tested": True,
+                            "download_receipt_verified": True,
                             "invalid_custom_claim_fail_closed": True,
                             "browser_external_requests": external_requests,
                             "sqlite_audit_created": False,

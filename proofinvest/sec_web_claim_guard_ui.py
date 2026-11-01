@@ -7,6 +7,7 @@ network, persistent write, AI agent, actual investment authorization or trade.
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 
 from .sec_web_claim_guard_demo import _CLAIM, review_manual_web_growth_claim
 
@@ -77,6 +78,57 @@ def validate_manual_web_guard_ui_result(result: dict, claim: str | None) -> None
             or (("CLAIM_CONFLICT" in guard["reason_codes"]) != (state == "CONFLICT"))
             or (("CLAIM_UNAVAILABLE" in guard["reason_codes"]) != (state == "UNAVAILABLE"))):
         raise ValueError("WEB_GUARD_UI_UNTRUSTED_RESULT")
+
+
+def export_manual_web_guard_receipt(result: dict, claim: str | None) -> bytes:
+    """Deterministic reviewer download; validated subset, NOT SEC provenance proof.
+
+    The receipt contains only fixed reviewed-public-web metadata and user
+    numeric claims. No raw SEC bytes, private identity, audit or API payload.
+    """
+    validate_manual_web_guard_ui_result(result, claim)
+    receipt = {
+        "schema": "kuodra.manual-sec-web-guard-receipt.v1",
+        "status": "OFFLINE_DEMO_ONLY_ORIGINAL_UNVERIFIED",
+        "issuer": "Apple Inc.",
+        "source": {
+            "basis": "SEC_RENDERED_WEB_TEXT_MANUALLY_CHECKED_NOT_ORIGINAL",
+            "public_web_url": _SOURCE_URL,
+            "manual_cells_checked": 28,
+            "issuer_original_authenticated": False,
+        },
+        "numeric_check": {
+            "claim_growth_pct": result["claim_growth_pct"],
+            "manually_checked_growth_pct": result["manual_web_growth_pct"],
+            "claim_minus_manual_percentage_points": result["claim_minus_manual_web_pp"],
+            "numeric_verdict": result["numeric_verdict"],
+        },
+        "simulated_guard": {
+            "decision": result["guard"]["decision"],
+            "risk_evidence_present": False,
+            "human_approved": False,
+        },
+        "limits": {
+            "rights_verified": False,
+            "point_in_time_verified": False,
+            "real_sec_original_verified": False,
+            "real_abc_e2e_verified": False,
+            "live_llm_called": False,
+            "external_http_called": False,
+            "persistent_audit_written": False,
+            "trade_executed": False,
+            "official_contest_submission": False,
+        },
+        "not_investment_advice": True,
+    }
+    try:
+        data = (json.dumps(receipt, ensure_ascii=False, sort_keys=True,
+                           separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+    except (TypeError, ValueError, UnicodeError, OverflowError) as exc:
+        raise ValueError("WEB_GUARD_RECEIPT_BLOCKED") from exc
+    if len(data) > 4096:
+        raise ValueError("WEB_GUARD_RECEIPT_TOO_LARGE")
+    return data
 
 
 def render_manual_web_guard_ui(st) -> None:
@@ -152,6 +204,20 @@ def render_manual_web_guard_ui(st) -> None:
         "trade_executed": False,
         "contest_submitted": False,
     })
+    try:
+        receipt_bytes = export_manual_web_guard_receipt(result, claim)
+    except (ValueError, TypeError, KeyError, ArithmeticError):
+        st.error("검산 영수증 계약 검증 실패로 다운로드를 차단했습니다.")
+        return
+    st.download_button(
+        "검산 영수증 JSON 다운로드 (데모 전용)",
+        data=receipt_bytes,
+        file_name="kuodra-sec-web-guard-DEMO.json",
+        mime="application/json",
+        on_click="ignore",
+        key="manual_web_guard_receipt_download",
+        help="수동 SEC 웹 검산 + 시연용 Guard 결과만 담습니다. 원본 SEC 인증/공식 제출 증빙이 아닙니다.",
+    )
     st.caption(
         "이 결과는 증거 검토용 오프라인 데모이며 실제 SEC 원본 인증, "
         "시장·산업 데이터 검증, 실 LLM, 투자자 승인 또는 DAKER 제출이 아닙니다."
