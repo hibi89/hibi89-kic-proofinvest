@@ -6,18 +6,32 @@ network, persistent write, AI agent, actual investment authorization or trade.
 """
 from __future__ import annotations
 
-from .sec_web_claim_guard_demo import review_manual_web_growth_claim
+from decimal import Decimal
+
+from .sec_web_claim_guard_demo import _CLAIM, review_manual_web_growth_claim
 
 _CHOICES = {
     "30% 성장 주장 — 수동 검산과 충돌": "30",
     "6.43% 성장 주장 — 수동 검산과 일치": "6.43",
     "성장률 주장 없음 — 비교 불가": None,
 }
-_EXPECTED = {
-    "30": ("CONFLICT", "REJECT", "CLAIM_CONFLICT"),
-    "6.43": ("VERIFIED", "HOLD", "RISK_UNAVAILABLE"),
-    None: ("UNAVAILABLE", "HOLD", "CLAIM_UNAVAILABLE"),
-}
+_CUSTOM = "직접 입력 — 성장률(%)"
+_BASELINE = Decimal("6.43")
+
+
+def _expected_for_claim(claim: str | None) -> tuple[str, str, str, str | None]:
+    """Independently check a free-form claim before showing any Guard verdict."""
+    if claim is None:
+        return "UNAVAILABLE", "HOLD", "CLAIM_UNAVAILABLE", None
+    if type(claim) is not str or _CLAIM.fullmatch(claim) is None:
+        raise ValueError("WEB_GUARD_UI_UNTRUSTED_RESULT")
+    value = Decimal(claim)
+    if not Decimal("-100") <= value <= Decimal("999.99"):
+        raise ValueError("WEB_GUARD_UI_UNTRUSTED_RESULT")
+    diff = str(value - _BASELINE)
+    if value == _BASELINE:
+        return "VERIFIED", "HOLD", "RISK_UNAVAILABLE", diff
+    return "CONFLICT", "REJECT", "CLAIM_CONFLICT", diff
 _SOURCE_URL = (
     "https://www.sec.gov/Archives/edgar/data/"
     "320193/000032019325000079/aapl-20250927.htm"
@@ -33,10 +47,10 @@ _FALSE_FLAGS = (
 
 def validate_manual_web_guard_ui_result(result: dict, claim: str | None) -> None:
     """Fail closed before a single derived source or decision is rendered."""
-    if claim not in _EXPECTED or type(result) is not dict:
+    state, decision, reason, difference = _expected_for_claim(claim)
+    if type(result) is not dict:
         raise ValueError("WEB_GUARD_UI_UNTRUSTED_RESULT")
     guard = result.get("guard")
-    state, decision, reason = _EXPECTED[claim]
     if (type(guard) is not dict
             or result.get("schema") != "kuodra.sec-web-claim-guard-demo.v1"
             or result.get("mode") != "OFFLINE_MANUAL_SEC_WEB_NUMERIC_DEMO_NOT_REAL_SEC_SOURCE"
@@ -59,9 +73,9 @@ def validate_manual_web_guard_ui_result(result: dict, claim: str | None) -> None
             or type(guard.get("reason_codes")) is not list
             or reason not in guard["reason_codes"]
             or "RISK_UNAVAILABLE" not in guard["reason_codes"]
-            or (claim is None and result.get("claim_minus_manual_web_pp") is not None)
-            or (claim == "30" and result.get("claim_minus_manual_web_pp") != "23.57")
-            or (claim == "6.43" and result.get("claim_minus_manual_web_pp") != "0.00")):
+            or result.get("claim_minus_manual_web_pp") != difference
+            or (("CLAIM_CONFLICT" in guard["reason_codes"]) != (state == "CONFLICT"))
+            or (("CLAIM_UNAVAILABLE" in guard["reason_codes"]) != (state == "UNAVAILABLE"))):
         raise ValueError("WEB_GUARD_UI_UNTRUSTED_RESULT")
 
 
@@ -75,9 +89,17 @@ def render_manual_web_guard_ui(st) -> None:
         "시연용이며 실거래·투자권고·AI Agent 호출이 아닙니다."
     )
     choice = st.selectbox(
-        "검토할 매출 성장률 주장", list(_CHOICES), key="manual_web_guard_claim"
+        "검토할 매출 성장률 주장", [*_CHOICES, _CUSTOM],
+        key="manual_web_guard_claim",
     )
-    claim = _CHOICES[choice]
+    if choice == _CUSTOM:
+        claim = st.text_input(
+            "직접 입력: 성장률(%)", value="10.00", max_chars=7,
+            key="manual_web_guard_custom_claim",
+            help="-100부터 999.99까지, 소수 둘째 자리까지. 입력만으로 실행되지 않습니다.",
+        )
+    else:
+        claim = _CHOICES[choice]
     st.caption(
         "고정 수동근거: Apple FY2025/24 매출액 · 실제 SEC 원본/권리/PIT 미검증 · "
         "리스크 증빙 없음 · 외부 네트워크 0회 · SQLite 저장 0건"
@@ -91,7 +113,10 @@ def render_manual_web_guard_ui(st) -> None:
         result = review_manual_web_growth_claim(claim)
         validate_manual_web_guard_ui_result(result, claim)
     except (ImportError, ValueError, TypeError, KeyError, OSError, ArithmeticError):
-        st.error("수동 근거 또는 Guard 계약이 변경되어 결과를 차단했습니다.")
+        st.error(
+            "입력값 또는 수동 근거·Guard 계약이 유효하지 않아 결과를 차단했습니다. "
+            "숫자는 -100~999.99 범위이며 소수 둘째 자리까지만 입력할 수 있습니다."
+        )
         return
     one, two, three = st.columns(3)
     one.metric("매출 성장률 · 수동 검산", result["manual_web_growth_pct"] + "%")
@@ -105,7 +130,10 @@ def render_manual_web_guard_ui(st) -> None:
         {"단계": "Audit / Trade", "결과": "저장 0건 · 거래 0건"},
     ], use_container_width=True, hide_index=True)
     if result["guard"]["decision"] == "REJECT":
-        st.error("가상 30% 주장은 수동 검산 6.43%와 충돌 → 데모 REJECT")
+        st.error(
+            f"가상 {claim}% 성장 주장은 수동 검산 "
+            f"{result['manual_web_growth_pct']}%와 충돌 → 데모 REJECT"
+        )
     else:
         st.warning("데모 HOLD · 입력/리스크 증거 부족. 숫자 일치는 출처 진위 인증이 아닙니다.")
     st.json({
