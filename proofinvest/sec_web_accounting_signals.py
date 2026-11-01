@@ -100,7 +100,7 @@ def triage_manual_sec_web() -> dict:
         "schema": "kuodra.web-manual-accounting-triage.v1",
         "issuer": "Apple Inc.", "source_url": brief["source_url"],
         "basis": "SEC_RENDERED_WEB_TEXT_MANUALLY_CHECKED_NOT_ORIGINAL",
-        "manual_cells": 28, "years": ("FY2024", "FY2025"),
+        "manual_cells": 28, "years": ["FY2024", "FY2025"],
         "currency": "USD", "amount_unit": "millions",
         "prompts": prompts,
         "review_prompt_count": sum(p["review"] for p in prompts),
