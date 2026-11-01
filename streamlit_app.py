@@ -17,6 +17,7 @@ _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
 _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
+_SOURCE_SEC_WEB_GUARD = "KUODRA · Apple SEC 웹텍스트 수동검산 → Guard (오프라인)"
 _SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
 
 _DIRECT = "합성 fixture 직접 계산"
@@ -582,6 +583,13 @@ def render_app(st) -> None:
     sec_guard_ui = Path(__file__).resolve().parent / "proofinvest/local_sec_guard_ui.py"
     if sec_guard_ui.is_file():
         available_sources.append(_SOURCE_SEC_GUARD)
+    # P79 manual first-party WEB review is a distinct read-only demo,
+    # never automatically selected and never a genuine SEC raw source.
+    web_guard_module = Path(__file__).resolve().parent / "proofinvest/sec_web_claim_guard_ui.py"
+    web_guard_evidence = (Path(__file__).resolve().parent
+                          / "docs/evidence/apple_fy2025_sec_official_web_view_20261101.json")
+    if web_guard_module.is_file() and web_guard_evidence.is_file():
+        available_sources.append(_SOURCE_SEC_WEB_GUARD)
     # Raw original upload is NEVER shown by default or on a public bind.
     local_module = Path(__file__).resolve().parent / "proofinvest/kuodra_local_workspace_ui.py"
     if local_module.is_file():
@@ -596,10 +604,19 @@ def render_app(st) -> None:
         _SOURCE_SEC_GUARD in available_sources
         and st.query_params.get("demo") == "guard"
     )
-    initial_source = _SOURCE_SEC_GUARD if judge_link else _SOURCE_SYNTHETIC
+    web_guard_link = (
+        _SOURCE_SEC_WEB_GUARD in available_sources
+        and st.query_params.get("demo") == "sec-web-guard"
+    )
+    initial_source = (_SOURCE_SEC_WEB_GUARD if web_guard_link else
+                      _SOURCE_SEC_GUARD if judge_link else _SOURCE_SYNTHETIC)
     source = st.selectbox(
         "자료 유형", available_sources, index=available_sources.index(initial_source)
     )
+    if source == _SOURCE_SEC_WEB_GUARD:
+        from proofinvest.sec_web_claim_guard_ui import render_manual_web_guard_ui
+        render_manual_web_guard_ui(st)
+        return
     if source == _SOURCE_LOCAL_WORKSPACE:
         from proofinvest.kuodra_local_workspace_ui import render_local_workspace
         render_local_workspace(st)
