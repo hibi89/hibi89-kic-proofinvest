@@ -25,6 +25,7 @@ from .local_sec_html_report import render_local_sec_html
 from .local_sec_packet import _read_regular_local, _MAX_FILE_BYTES
 from .market_price_csv import market_price_csv_to_json
 from .industry_peer_companyfacts import bind_peer_companyfacts_to_industry
+from .peer_cash_conversion import compare_peer_cash_conversion
 from .industry_packet_builder import build_industry_packet, _MAX_SECTOR_BYTES
 from .local_report_bundle import write_new_local_report_bundle
 from .market_data_evidence import validate_market_evidence
@@ -52,6 +53,16 @@ def _base(reason: str) -> dict[str, Any]:
         "sec_accession": None,
         "apple_10k_original_table_check": None,
         "peer_sec_companyfacts_check": None,
+        "peer_cash_conversion_status": None,
+        "peer_cash_trend_status": None,
+        "peer_period_comparability_current_status": None,
+        "peer_period_comparability_two_year_status": None,
+        "peer_current_target_pct": None,
+        "peer_current_median_pct": None,
+        "peer_current_gap_pp": None,
+        "peer_two_year_target_change_pp": None,
+        "peer_two_year_median_change_pp": None,
+        "peer_two_year_gap_pp": None,
         "industry_input_mode": None,
         "industry_generated_sha256": None,
         "report_bundle_sha256": None,
@@ -460,7 +471,72 @@ def inspect_offline_data_files(
                             OverflowError, RecursionError, UnicodeError):
                         return {**blocked,
                                 "reason_code": "PEER_COMPANYFACTS_CHECK_BLOCKED"}
+                    # P95: the same exact already-read SEC-shaped originals
+                    # must feed P91/P92/P93 financial comparison as well as
+                    # existing Engine C revenue binding. No extra API or
+                    # selective peer exclusion: any required source conflict
+                    # blocks the peer analysis, not a fake "healthy" median.
+                    try:
+                        peer_cash = compare_peer_cash_conversion(
+                            industry_raw,
+                            target_source=(cik, acc, raws["companyfacts"]),
+                            peer_sources=peer_sources,
+                        )
+                        proven = {
+                            item["peer_cik"]: item
+                            for item in peer_receipt["peer_records"]
+                        }
+                        reported_rows = peer_cash["rows"]
+                        peer_check = peer_cash["period_comparability"]
+                        if (
+                            peer_cash["schema"] !=
+                            "kuodra.offline-peer-cash-conversion.v1"
+                            or peer_cash["issuer_cik"] != cik
+                            or peer_cash["as_of"] != asof
+                            or peer_cash["peer_count"] != len(peer_sources)
+                            or len(reported_rows) != len(peer_sources) + 1
+                            or reported_rows[0]["role"] != "TARGET"
+                            or reported_rows[0]["cik"] != cik
+                            or reported_rows[0]["companyfacts_sha256"] !=
+                               integrity["sha256"]["companyfacts"]
+                            or reported_rows[0]["accession_operator_supplied"] != acc
+                            or {row["cik"] for row in reported_rows[1:]} !=
+                               set(proven)
+                            or any(
+                                row["role"] != "PEER"
+                                or row["companyfacts_sha256"] !=
+                                   proven[row["cik"]]["companyfacts_sha256"]
+                                or row["accession_operator_supplied"] !=
+                                   proven[row["cik"]]["accession"]
+                                for row in reported_rows[1:]
+                            )
+                            or peer_check["schema"] !=
+                               "kuodra.peer-period-comparability-audit.v1"
+                            or peer_check["candidate_count"] != len(reported_rows)
+                            or any(peer_cash.get(flag) is not False for flag in (
+                                "issuer_source_authenticated",
+                                "data_rights_verified", "point_in_time_verified",
+                                "cross_issuer_accounting_policy_verified",
+                                "accounting_fraud_proven",
+                                "guard_policy_modified", "audit_written",
+                                "trade_executed", "live_sec_called", "ai_generated",
+                            ))
+                            or any(peer_check.get(flag) is not False for flag in (
+                                "cross_issuer_accounting_policy_verified",
+                                "original_source_authenticated",
+                                "historical_vintage_authenticated",
+                                "data_rights_verified",
+                                "guard_policy_modified", "audit_written",
+                                "trade_executed",
+                            ))
+                        ):
+                            raise ValueError("PEER_CASH_PREFLIGHT_CROSS_PIN_FAILED")
+                    except (ValueError, TypeError, KeyError, OSError,
+                            OverflowError, RecursionError, UnicodeError):
+                        return {**blocked,
+                                "reason_code": "PEER_CASH_SOURCE_CHECK_BLOCKED"}
                     report["peer_sec_companyfacts_check"] = peer_receipt
+                    report["peer_cash_conversion"] = peer_cash
             report["three_engine_summary"] = summarize_three_engines(report)
             html = render_local_sec_html(report)
             if not isinstance(html, bytes) or not html:
@@ -488,6 +564,48 @@ def inspect_offline_data_files(
                 "apple_10k_original_table_check": apple_table_receipt,
                 "peer_sec_companyfacts_check": report.get(
                     "peer_sec_companyfacts_check"
+                ),
+                # P95 default stdout is a small, provenance-conscious receipt;
+                # complete per-firm details are in optional reviewer ZIP.
+                "peer_cash_conversion_status": (
+                    report["peer_cash_conversion"]["status"]
+                    if peer_enabled else None
+                ),
+                "peer_cash_trend_status": (
+                    report["peer_cash_conversion"]["two_year_trend_status"]
+                    if peer_enabled else None
+                ),
+                "peer_period_comparability_current_status": (
+                    report["peer_cash_conversion"]["period_comparability"]["current_status"]
+                    if peer_enabled else None
+                ),
+                "peer_period_comparability_two_year_status": (
+                    report["peer_cash_conversion"]["period_comparability"]["two_year_status"]
+                    if peer_enabled else None
+                ),
+                "peer_current_target_pct": (
+                    report["peer_cash_conversion"]["cash_conversion_target_pct"]
+                    if peer_enabled else None
+                ),
+                "peer_current_median_pct": (
+                    report["peer_cash_conversion"]["cash_conversion_peer_median_pct"]
+                    if peer_enabled else None
+                ),
+                "peer_current_gap_pp": (
+                    report["peer_cash_conversion"]["target_minus_peer_median_pp"]
+                    if peer_enabled else None
+                ),
+                "peer_two_year_target_change_pp": (
+                    report["peer_cash_conversion"]["two_year_target_change_pp"]
+                    if peer_enabled else None
+                ),
+                "peer_two_year_median_change_pp": (
+                    report["peer_cash_conversion"]["two_year_peer_median_change_pp"]
+                    if peer_enabled else None
+                ),
+                "peer_two_year_gap_pp": (
+                    report["peer_cash_conversion"]["two_year_target_minus_peer_change_pp"]
+                    if peer_enabled else None
                 ),
                 "sec_revenue_status": report["verification"]["status"],
                 "accounting_status": report["accounting_integrity"]["status"],

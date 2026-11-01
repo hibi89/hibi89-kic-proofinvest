@@ -522,6 +522,14 @@ def run(output: Path) -> dict:
                                 or sha256(industry_raw).hexdigest().encode() not in html_bytes
                                 or peer_hash.encode() not in html_bytes
                                 or "경쟁사 CompanyFacts 로컬 검산".encode("utf-8") not in html_bytes
+                                # P95: optional local peer cash/period results
+                                # are now part of the same downloadable HTML.
+                                or "경쟁사 현금전환 비교 (로컬)".encode("utf-8") not in html_bytes
+                                or b"INCOMPLETE_ACCOUNTING_METRICS_COMPARISON_WITHHELD"
+                                   not in html_bytes
+                                or b"INCOMPLETE_CURRENT_ACCOUNTING_EVIDENCE"
+                                   not in html_bytes
+                                or b"WITHHELD" not in html_bytes
                                 or b"Guard " not in html_bytes
                                 or sha256(market_raw).hexdigest().encode() not in html_bytes):
                             raise AssertionError("HTML_REPORT_NOT_EVIDENCE_LINKED")
@@ -862,6 +870,7 @@ def run(output: Path) -> dict:
                                 "three-engine-ledger-json-html-download",
                                 "p59-apple-html-synthetic-upload-24-cells",
                                 "p94-operator-zip-local-only-guard-click-download",
+                                "p95-peer-accounting-and-period-ledger-html-download",
 
                             ],
                             "source_authenticated": False,

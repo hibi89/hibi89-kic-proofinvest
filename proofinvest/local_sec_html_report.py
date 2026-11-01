@@ -11,6 +11,7 @@ from typing import Any, Mapping
 
 from .sec_companyfacts import REVENUE_TAGS, _date as _sec_date
 from .industry_scenarios import build_industry_scenarios
+from .peer_cash_summary_html import render_cash_peer_section
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
 _CIK = re.compile(r"[0-9]{10}\Z")
@@ -562,6 +563,12 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
             '<td>Local SHA256</td><td>매출성장률 (%)</td></tr>'
             + "".join(peer_html) + "</table></section>"
         )
+    peer_cash_section = (
+        render_cash_peer_section(
+            report["peer_cash_conversion"], peer_check, issuer, source,
+        )
+        if report.get("peer_cash_conversion") is not None else ""
+    )
     ledger = report.get("three_engine_summary")
     ledger_section = ""
     if ledger is not None:
@@ -650,7 +657,7 @@ def render_local_sec_html(report: Mapping[str, Any]) -> bytes:
         '<tr><th>수치 비교 방식</th><td>(현재 / 이전 - 1) × 100, Decimal 소수점 둘째 자리 반올림</td></tr>'
         '<tr><th>비교 사유</th><td>' + _field(fin["reason_code"]) + '</td></tr>'
         '</table></section>'
-        + share_section + capital_section + cash_section + accounting_section + market_section + industry_section + peer_section + ledger_section +
+        + share_section + capital_section + cash_section + accounting_section + market_section + industry_section + peer_section + peer_cash_section + ledger_section +
         '<section><h2>03 / 근거 바이트 · 출처 상태</h2><table>'
         + digests +
         '<tr><th>HTML 본문 인용 검증</th><td>' +
