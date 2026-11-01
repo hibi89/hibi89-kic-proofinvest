@@ -374,6 +374,33 @@ def run(output: Path) -> dict:
                                 or peer_card.get("source_authenticated") is not False
                                 or peer_card.get("audit_written") is not False):
                             raise AssertionError("PEER_COMPANYFACTS_REAL_BROWSER_GATE_INVALID")
+                        # P91: the same already uploaded CompanyFacts contain
+                        # no NI/CFO fields. The new peer cash comparison must
+                        # be visible but WITHHELD, never silently score "healthy".
+                        peer_cash = json_report.get("peer_cash_conversion")
+                        if (not isinstance(peer_cash, dict)
+                                or peer_cash.get("schema") !=
+                                   "kuodra.offline-peer-cash-conversion.v1"
+                                or peer_cash.get("status") !=
+                                   "INCOMPLETE_ACCOUNTING_METRICS_COMPARISON_WITHHELD"
+                                or peer_cash.get("peer_count") != 1
+                                or peer_cash.get("eligible_peer_count") != 0
+                                or peer_cash.get("cash_conversion_target_pct") is not None
+                                or peer_cash.get("cash_conversion_peer_median_pct") is not None
+                                or peer_cash.get("target_minus_peer_median_pp") is not None
+                                or len(peer_cash.get("rows", [])) != 2
+                                or peer_cash["rows"][0]["companyfacts_sha256"] !=
+                                   json_report["source"]["companyfacts_sha256"]
+                                or peer_cash["rows"][1]["companyfacts_sha256"] != peer_hash
+                                or peer_cash.get("issuer_source_authenticated") is not False
+                                or peer_cash.get("guard_policy_modified") is not False
+                                or peer_cash.get("audit_written") is not False
+                                or peer_cash.get("trade_executed") is not False):
+                            raise AssertionError("PEER_CASH_BROWSER_WITHHOLD_GATE_INVALID")
+                        expect(page.get_by_text(
+                            "Engine B × C · 발행사와 경쟁사 현금전환 비교 (로컬)",
+                            exact=True,
+                        )).to_be_visible(timeout=20000)
                         ledger = json_report.get("three_engine_summary")
                         if (not isinstance(industry_card, dict)
                                 or industry_card.get("status") != "OBSERVED_COMPARISON_UNVERIFIED"

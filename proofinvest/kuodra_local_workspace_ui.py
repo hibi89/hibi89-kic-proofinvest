@@ -503,6 +503,32 @@ def render_local_workspace(st) -> None:
                            "수치·발행사·기간·해시가 일치하지 않아 통합 보고서에서 "
                            "제외했습니다. Guard 판정은 변경하지 않았습니다.")
                 html = render_local_sec_html(report)
+        # Optional peer cash conversion reuses the same explicit local
+        # uploads AFTER the SEC/Guard and peer-revenue binding checks.
+        # Partial accounting data is never represented as a healthy peer median.
+        if "peer_sec_companyfacts_check" in report:
+            try:
+                from .peer_cash_conversion import compare_peer_cash_conversion
+                peer_cash = compare_peer_cash_conversion(
+                    industry_raw,
+                    target_source=(cik, accession, raw["companyfacts"]),
+                    peer_sources=[
+                        (peer_cik, peer_accession, upload.getvalue())
+                        for peer_cik, peer_accession, upload in peer_inputs
+                    ],
+                )
+                if (peer_cash["issuer_cik"] != cik
+                        or peer_cash["as_of"] != as_of
+                        or peer_cash["issuer_source_authenticated"] is not False
+                        or peer_cash["guard_policy_modified"] is not False
+                        or peer_cash["audit_written"] is not False
+                        or peer_cash["trade_executed"] is not False):
+                    raise ValueError("PEER_CASH_UI_TRUST_MISMATCH")
+                report["peer_cash_conversion"] = peer_cash
+            except (ValueError, TypeError, KeyError, OSError, OverflowError,
+                    RecursionError, UnicodeError):
+                st.warning("경쟁사 현금전환 비교 근거가 불완전하여 "
+                           "별도 비교를 제외했습니다. 기존 SEC·Guard는 유지합니다.")
         # This is NOT a new Guard decision and is not a calibrated score.
         report["three_engine_summary"] = summarize_three_engines(report)
         html = render_local_sec_html(report)
@@ -533,6 +559,21 @@ def render_local_workspace(st) -> None:
             st.json(report["peer_sec_companyfacts_check"])
             st.caption("경쟁사 파일의 숫자·해시 대조만 통과했습니다. SEC 출처·권리·"
                        "실제 게시일·동종 기업 간 회계기간 비교 가능성은 미인증입니다.")
+        if "peer_cash_conversion" in report:
+            st.subheader("Engine B × C · 발행사와 경쟁사 현금전환 비교 (로컬)")
+            peer_cash = report["peer_cash_conversion"]
+            st.table([
+                {"대상": "선택 기업", "현금전환율 (%)":
+                 peer_cash["cash_conversion_target_pct"] or "비교 보류"},
+                {"대상": "경쟁사 중위", "현금전환율 (%)":
+                 peer_cash["cash_conversion_peer_median_pct"] or "비교 보류"},
+                {"대상": "차이 (pp)", "현금전환율 (%)":
+                 peer_cash["target_minus_peer_median_pp"] or "비교 보류"},
+            ])
+            st.caption("동일 회계기간의 사용자 제공 CompanyFacts 계산만 비교합니다. "
+                       "원본 출처·권리·회계정책의 동등성 미인증. "
+                       "한 회사라도 분모/현금흐름이 없으면 중위값을 공개하지 않습니다.")
+            st.json(peer_cash)
         if "industry_vision" in report:
             ind = report["industry_vision"]
             st.table([
