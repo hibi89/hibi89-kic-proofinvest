@@ -858,6 +858,38 @@ def run(output: Path) -> dict:
                                 CSV as synthetic_sector_csv,
                             )
                             _, source_target, source_peers = extend_with_prior()
+                            # A fresh Chromium tab prevents prior download-button
+                            # rerun state from masking the new upload workflow.
+                            # It also tests that P96 is discoverable from a clean
+                            # local user session without any previous Guard state.
+                            zip_page.close()
+                            zip_page = browser.new_page(
+                                viewport={"width": 1440, "height": 1100},
+                            )
+                            zip_page.goto(
+                                URL, wait_until="domcontentloaded", timeout=30000,
+                            )
+                            expect(zip_page.get_by_text(
+                                "KUODRA — 오프라인 합성 데이터",
+                            )).to_be_visible(timeout=25000)
+                            zip_page.get_by_test_id("stSelectbox").first.click()
+                            zip_page.get_by_role(
+                                "option", name=MODE, exact=True,
+                            ).click()
+                            expect(zip_page.get_by_text(
+                                "KUODRA · 로컬 SEC 원본 3종 검토",
+                                exact=True,
+                            )).to_be_visible(timeout=24000)
+                            expect(zip_page.get_by_text(
+                                "산업 CSV·경쟁사 CompanyFacts로 Engine C 구성 "
+                                "(로컬, 출처 미인증)", exact=True,
+                            )).to_be_visible(timeout=22000)
+                            zip_uploader = zip_page.get_by_test_id(
+                                "stFileUploader",
+                            ).filter(
+                                has=zip_page.get_by_text(zip_label, exact=True),
+                            ).locator('input[type="file"]')
+                            expect(zip_uploader).to_have_count(1)
                             strong_zip = make_operator_sec_zip_bytes(
                                 submissions=synthetic_submissions(),
                                 companyfacts=source_target[2],
