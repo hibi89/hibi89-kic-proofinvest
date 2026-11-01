@@ -968,6 +968,76 @@ def run(output: Path) -> dict:
                                 field = zip_page.get_by_label(label, exact=True)
                                 field.fill(value)
                                 field.press("Tab")
+                            # Streamlit uses a websocket rerun for each
+                            # text-field blur and upload. The last P96 CI
+                            # Aria snapshot showed the sector uploader still
+                            # mounted but empty after set_input_files; there
+                            # was no evidence of a backend SEC/CSV rejection.
+                            # Isolate that lifecycle race with a bounded
+                            # one-time retry of the SAME synthetic bytes and
+                            # preserve first-failure DOM evidence. This does
+                            # not change application source/Guard behavior.
+                            def upload_p96_after_rerun(label, name, mime, payload):
+                                for attempt in (1, 2):
+                                    uploader = zip_page.get_by_test_id(
+                                        "stFileUploader",
+                                    ).filter(
+                                        has=zip_page.get_by_text(
+                                            label, exact=True,
+                                        ),
+                                    ).locator('input[type="file"]')
+                                    expect(uploader).to_have_count(1)
+                                    uploader.set_input_files({
+                                        "name": name, "mimeType": mime,
+                                        "buffer": payload,
+                                    })
+                                    try:
+                                        expect(zip_page.get_by_role(
+                                            "button",
+                                            name="Remove " + name,
+                                            exact=True,
+                                        )).to_be_visible(timeout=12000)
+                                        return attempt
+                                    except AssertionError as exc:
+                                        # Test-only diagnostics: no operator
+                                        # originals or authenticated URL.
+                                        try:
+                                            file_names = uploader.evaluate(
+                                                "(el) => Array.from(el.files || []).map(f => f.name)"
+                                            )
+                                        except Exception:
+                                            file_names = ["uploader_remounted"]
+                                        diagnostics = {
+                                            "step": "p96_source_upload_ack",
+                                            "filename": name,
+                                            "attempt": attempt,
+                                            "input_file_names": file_names,
+                                            "aria": zip_page.locator(
+                                                "body",
+                                            ).aria_snapshot()[:24000],
+                                        }
+                                        (output / (
+                                            "p96-upload-"
+                                            + name.rsplit(".", 1)[0]
+                                            + "-attempt-"
+                                            + str(attempt) + ".json"
+                                        )).write_text(
+                                            json.dumps(
+                                                diagnostics, ensure_ascii=False,
+                                            ), encoding="utf-8",
+                                        )
+                                        if attempt == 2:
+                                            raise AssertionError(
+                                                "P96_FILE_UPLOADER_RERUN_ACK_FAILED: "
+                                                + name,
+                                            ) from exc
+                                        # A new rerun must finish mounting the
+                                        # uploader before a SINGLE retry.
+                                        expect(zip_page.get_by_text(
+                                            label, exact=True,
+                                        )).to_be_visible(timeout=12000)
+                                raise AssertionError("P96_UPLOAD_RETRY_EXHAUSTED")
+
                             for label, name, mime, payload in (
                                 ("2개 연도 산업 지표 CSV (period_end,value)",
                                  "p96-synthetic-sector.csv", "text/csv",
@@ -976,20 +1046,7 @@ def run(output: Path) -> dict:
                                  "p96-synthetic-peer.json", "application/json",
                                  source_peers[0][2]),
                             ):
-                                locator = zip_page.get_by_test_id(
-                                    "stFileUploader",
-                                ).filter(
-                                    has=zip_page.get_by_text(label, exact=True),
-                                ).locator('input[type="file"]')
-                                expect(locator).to_have_count(1)
-                                locator.set_input_files({
-                                    "name": name, "mimeType": mime,
-                                    "buffer": payload,
-                                })
-                                expect(zip_page.get_by_role(
-                                    "button", name="Remove " + name,
-                                    exact=True,
-                                )).to_be_visible(timeout=20000)
+                                upload_p96_after_rerun(label, name, mime, payload)
                             expect(zip_page.get_by_text(
                                 "원본 기반 Engine C 입력 구성 완료 · SEC 출처 미인증 · Guard 미실행",
                                 exact=True,
