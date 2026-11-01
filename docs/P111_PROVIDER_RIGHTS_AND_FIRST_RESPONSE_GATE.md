@@ -13,6 +13,11 @@
 1. Directly treat `NDX` catalog/support pages and operator flags as commercial access evidence: lower coding effort, but material license and index identity risk. **Rejected.**
 2. Preserve the dormant two-request provider adapter, and re-use exact strict P109 parser on *first* HTTP response before even spending the possible second credit. **Selected:** no new service, secrets, cost or API traffic; reduced risk of wasting quota on wrong type, duplicate dates, invalid prices. It does NOT prove NDX access or vendor rights.
 
+## CI evidence — finished 2026-11-02 KST
+- Functional commit: `74818cb3447130689c3341aa69fb5aa8549b7e45` on `lead/kic`.
+- [GitHub Actions #41330955984](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41330955984): 3/3 SUCCESS; Python 1408/1408 PASS, Windows SQLite PASS, existing Chromium A/B/C/Guard/report PASS.
+- Not tested: real Twelve Data HTTP, NDX account/index access, public licensing, paid API, real production, new UI.
+
 ## Current true status and recovery
 - Provider licensed/verified index identifier: **UNVERIFIED**; Basic external display: **NOT ALLOWED BY DEFAULT**; secure key transfer: **NOT AUTHORIZED**.
 - P111 fixes `proofinvest/twelvedata_consent_client.py` first-response parser, adds exact negative tests. P110 default remains no HTTP; user owner approvals still required for any external transfer or payment. Original data, source files and V13 PDF unchanged.
