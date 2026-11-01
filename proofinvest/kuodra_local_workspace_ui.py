@@ -480,12 +480,44 @@ def render_local_workspace(st) -> None:
     from .ml_explainability_ui import render_local_ml_evaluation
     render_local_ml_evaluation(st, cik=cik, as_of=as_of)
 
-    # Independent, read-only market/peer comparison; cannot affect Guard.
-    from .industry_vision_ui import render_local_industry_vision
-    industry_raw = render_local_industry_vision(st, cik=cik, as_of=as_of)
-    peer_requested, peer_inputs = _render_peer_companyfacts_inputs(
-        st, industry_raw,
+    # P96: the optional user-owned normalized sector CSV and 1-8 raw peer
+    # CompanyFacts reuse the already-validated offline packet builder.
+    # No generated industry JSON, SEC original or peer bytes are saved in
+    # app session_state; only Streamlit's own uploader widget has the file.
+    from .industry_source_builder_ui import render_local_industry_builder
+    generated_industry, generated_peer_inputs = render_local_industry_builder(
+        st, uploaded_target_sources=uploads,
+        operator_archive=operator_archive, request=request,
+        source_loader=_selected_workspace_sources,
     )
+    from .industry_vision_ui import render_local_industry_vision
+    builder_active = st.session_state.get(
+        "kuodra_build_industry_from_sources", False,
+    ) is True
+    if builder_active:
+        # Explicit builder mode never falls back to an older manually
+        # uploaded industry JSON when its current evidence fails validation.
+        industry_raw = (
+            render_local_industry_vision(
+                st, cik=cik, as_of=as_of,
+                generated_raw=generated_industry,
+            ) if generated_industry is not None else None
+        )
+        peer_requested, peer_inputs = (
+            (True, generated_peer_inputs)
+            if industry_raw is not None else (False, [])
+        )
+        if industry_raw is not None:
+            st.caption(
+                "경쟁사 CompanyFacts를 다시 올릴 필요가 없습니다. "
+                "Guard 실행 시 동일한 원본과 SHA·접수번호를 다시 확인합니다."
+            )
+    else:
+        # Original manual industry JSON + peer upload path stays unchanged.
+        industry_raw = render_local_industry_vision(st, cik=cik, as_of=as_of)
+        peer_requested, peer_inputs = _render_peer_companyfacts_inputs(
+            st, industry_raw,
+        )
 
     # Price data is user-provided; analysis is separate from audited SEC facts.
     from .market_reality_ui import render_local_market_reality
