@@ -152,10 +152,39 @@ def render_single_ticker_search(st) -> None:
             ticker=ticker, as_of=as_of, user_agent=user_agent,
             allow_network=True, acknowledge_four_requests=True,
         )
+        # P101: match exact SHA-pinned four-source SEC receipt and a single
+        # 10-K's annual CompanyFacts before displaying descriptive figures.
+        # This is NOT an original HTML text assertion or Engine B/Guard review.
+        from .ticker_sec_financial_bridge import inspect_collected_annual_revenue
+        revenue = inspect_collected_annual_revenue(result, raw_sources)
         # No raw file bytes in state, downloads, JSON, HTML or long-lived cache.
         if raw_sources is not None:
             raw_sources.clear()
         _display_receipt(st, result, online=True)
+        if result.get("status") == "four_sec_responses_in_memory_unverified":
+            st.subheader("SEC 같은 10-K 연간 매출 검산 (부분 분석)")
+            if revenue.get("status") == "REVENUE_CALCULATED_UNVERIFIED":
+                st.json({
+                    "ticker": revenue["ticker"],
+                    "cik": revenue["issuer_cik"],
+                    "accession": revenue["accession"],
+                    "current_end": revenue["current_end"],
+                    "prior_end": revenue["prior_end"],
+                    "current_usd": revenue["current_usd"],
+                    "prior_usd": revenue["prior_usd"],
+                    "revenue_growth_pct_unverified": revenue["growth_pct"],
+                    "companyfacts_sha256": revenue["companyfacts_sha256"],
+                    "original_10k_sha256": revenue["original_10k_sha256"],
+                    "source_authenticated": False,
+                    "original_10k_text_verified": False,
+                    "engine_b_full_ready": False,
+                    "guard_executed": False,
+                })
+                st.warning("같은 공시의 매출 산술만 확인했습니다. 원문 본문 인증·"
+                           "회계 착시 위험·시장/산업 전망·Guard 판단은 아직 완료되지 않았습니다.")
+            else:
+                st.warning("연간 매출 검산 불가 · 누락/모순은 0이나 안전 판정으로 대체하지 않습니다.")
+                st.code(revenue.get("reason_code", "UNAVAILABLE"), language="text")
     elif not valid:
         st.error("유효한 티커와 오늘(UTC) 이전의 조회 기준일을 입력하십시오.")
 
