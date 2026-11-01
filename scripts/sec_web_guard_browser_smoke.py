@@ -114,10 +114,10 @@ def run(output: Path) -> dict:
                                 expect(page.get_by_text(
                                     "버튼을 누르기 전에는 분석 함수·Guard를 실행하지 않습니다."
                                 )).to_be_visible(timeout=15000)
-                            else:
-                                expect(page.get_by_text(
-                                    "30% 성장 주장 — 수동 검산과 충돌"
-                                ).first).to_be_visible(timeout=15000)
+                            # The Streamlit combobox input value is not a
+                            # standalone text node (Playwright aria snapshot
+                            # confirms the selected value). The actual Guard
+                            # verdict after clicking is the durable assertion.
 
                             page.get_by_role(
                                 "button", name="오프라인 수동 검산 → 데모 Guard 실행",
