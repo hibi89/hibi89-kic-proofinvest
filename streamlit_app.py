@@ -19,6 +19,7 @@ _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연
 _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
 _SOURCE_SEC_WEB_GUARD = "KUODRA · Apple SEC 웹텍스트 수동검산 → Guard (오프라인)"
 _SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
+_SOURCE_TICKER_SEARCH = "KUODRA · 종목 1개 검색 (로컬 전용)"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -596,6 +597,9 @@ def render_app(st) -> None:
         from proofinvest.kuodra_local_workspace_ui import local_workspace_enabled
         if local_workspace_enabled(st):
             available_sources.append(_SOURCE_LOCAL_WORKSPACE)
+            ticker_ui_file = Path(__file__).resolve().parent / "proofinvest/ticker_research_ui.py"
+            if ticker_ui_file.is_file():
+                available_sources.append(_SOURCE_TICKER_SEARCH)
     # Deep-link for a judge: ?demo=guard selects the actual offline
     # SEC->Guard walkthrough, but never executes it or calls external APIs.
     # Other query values and the public synthetic recovery ZIP keep the
@@ -620,6 +624,10 @@ def render_app(st) -> None:
     if source == _SOURCE_LOCAL_WORKSPACE:
         from proofinvest.kuodra_local_workspace_ui import render_local_workspace
         render_local_workspace(st)
+        return
+    if source == _SOURCE_TICKER_SEARCH:
+        from proofinvest.ticker_research_ui import render_single_ticker_search
+        render_single_ticker_search(st)
         return
     if source == _SOURCE_SEC_GUARD:
         from proofinvest.local_sec_guard_ui import render_synthetic_guard_ui

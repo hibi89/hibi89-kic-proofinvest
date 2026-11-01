@@ -67,6 +67,39 @@ def run(output: Path) -> dict:
                         expect(page.get_by_text("KUODRA — 오프라인 합성 데이터")).to_be_visible(
                             timeout=25000
                         )
+                        # P100 actual localhost Chromium smoke: only an
+                        # enabled loopback UI exposes the ticker route.
+                        # Its SEC live control remains disabled without a
+                        # separate owner-level network enable switch.
+                        ticker_page = browser.new_page(
+                            viewport={"width": 1440, "height": 1100},
+                        )
+                        try:
+                            ticker_page.goto(
+                                URL, wait_until="domcontentloaded", timeout=30000,
+                            )
+                            expect(ticker_page.get_by_text(
+                                "KUODRA — 오프라인 합성 데이터",
+                            )).to_be_visible(timeout=25000)
+                            ticker_page.get_by_test_id("stSelectbox").first.click()
+                            ticker_page.get_by_role(
+                                "option",
+                                name="KUODRA · 종목 1개 검색 (로컬 전용)",
+                                exact=True,
+                            ).click()
+                            expect(ticker_page.get_by_text(
+                                "KUODRA · 종목 하나 검색", exact=True,
+                            )).to_be_visible(timeout=25000)
+                            expect(ticker_page.get_by_role(
+                                "button", name="SEC 원문 4종 자동 수집 실행",
+                                exact=True,
+                            )).to_be_disabled(timeout=12000)
+                            expect(ticker_page.get_by_text(
+                                "로컬 공시 목록으로 출처 계획 확인 (개발·검증용)",
+                                exact=True,
+                            )).to_be_visible(timeout=12000)
+                        finally:
+                            ticker_page.close()
                         page.get_by_test_id("stSelectbox").first.click()
                         page.get_by_role("option", name=MODE, exact=True).click()
                         expect(page.get_by_text("KUODRA · 로컬 SEC 원본 3종 검토")).to_be_visible(
