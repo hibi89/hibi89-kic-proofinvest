@@ -124,8 +124,8 @@ class LocalSecGuardUiTests(unittest.TestCase):
         render_shell(st)
         st.markdown.assert_called_once()
         html = st.markdown.call_args.args[0]
-        self.assertIn("PROOF", html)
-        self.assertIn("INVEST", html)
+        self.assertIn("KUO<span>DRA</span>", html)
+        self.assertNotIn("PROOF<span>INVEST</span>", html)
         self.assertNotIn("http://", html)
         self.assertNotIn("https://", html)
         self.assertIn("prefers-color-scheme", html)

@@ -85,6 +85,15 @@ def run(output: Path) -> dict:
 
                         page.goto(URL + "/?demo=sec-web-guard",
                                   wait_until="domcontentloaded", timeout=30000)
+                        expect(page).to_have_title(
+                            "KUODRA | 오프라인 출처 시연", timeout=30000
+                        )
+                        expect(page.locator(".pi-brand")).to_contain_text(
+                            "KUODRA", timeout=15000
+                        )
+                        expect(page.locator(".pi-brand")).not_to_contain_text(
+                            "PROOFINVEST", timeout=15000
+                        )
                         expect(page.get_by_text(
                             "KUODRA · Apple SEC 웹 수동검산 → 데모 Guard"
                         )).to_be_visible(timeout=30000)

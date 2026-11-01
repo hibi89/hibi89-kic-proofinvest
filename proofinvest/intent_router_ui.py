@@ -9,7 +9,7 @@ from .intent_router import route_question
 
 
 def render_router(st) -> None:
-    st.title("ProofInvest — 질문별 로컬 도구 선택")
+    st.title("KUODRA — 질문별 로컬 도구 선택")
     st.warning(
         "RULE_BASED_OFFLINE_NOT_LLM · 한국어/영어 키워드 기반 시연입니다. "
         "자율 LLM Planner, 실제 SEC API 자동 수집, 원문 인증, 실거래 기능이 아닙니다."

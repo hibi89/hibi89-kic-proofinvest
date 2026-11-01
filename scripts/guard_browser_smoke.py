@@ -76,12 +76,12 @@ def run(output: Path) -> dict:
                             device_scale_factor=1,
                         )
                         page.goto(URL, wait_until="domcontentloaded", timeout=30000)
-                        expect(page.get_by_text("ProofInvest — 오프라인 합성 데이터")).to_be_visible(timeout=20000)
+                        expect(page.get_by_text("KUODRA — 오프라인 합성 데이터")).to_be_visible(timeout=20000)
 
                         # The first custom dropdown chooses the manually curated SEC case.
                         page.get_by_test_id("stSelectbox").first.click()
                         page.get_by_role("option", name=SEC_MODE).click()
-                        expect(page.get_by_text("ProofInvest — SEC 10-K 연매출 검산 (오프라인)")).to_be_visible(timeout=15000)
+                        expect(page.get_by_text("KUODRA — SEC 10-K 연매출 검산 (오프라인)")).to_be_visible(timeout=15000)
                         expect(page.get_by_text("HOLD", exact=True).first).to_be_visible(timeout=15000)
 
                         db = Path(home) / ".proofinvest-guard" / "audit.sqlite"
@@ -174,7 +174,7 @@ def run(output: Path) -> dict:
                                 if attempt == 1:
                                     raise
                         expect(page.get_by_text(
-                            "ProofInvest — 질문별 로컬 도구 선택"
+                            "KUODRA — 질문별 로컬 도구 선택"
                         )).to_be_visible(timeout=15000)
                         page.get_by_role(
                             "button", name="로컬 도구 선택·검증"
@@ -308,7 +308,7 @@ def run(output: Path) -> dict:
                             "SEC→Guard 감사 연결 — 합성 오프라인", timeout=15000
                         )
                         expect(page.get_by_text(
-                            "ProofInvest — SEC 근거부터 Guard 감사까지"
+                            "KUODRA — SEC 근거부터 Guard 감사까지"
                         )).to_be_visible(timeout=15000)
                         expect(page.get_by_text(
                             "실행 전에는 DB를 만들지 않습니다.", exact=False
@@ -492,7 +492,7 @@ def run(output: Path) -> dict:
                             judge.goto(URL + "/?demo=guard",
                                        wait_until="domcontentloaded", timeout=30000)
                             expect(judge.get_by_text(
-                                "ProofInvest — SEC 근거부터 Guard 감사까지"
+                                "KUODRA — SEC 근거부터 Guard 감사까지"
                             )).to_be_visible(timeout=20000)
                             expect(judge.get_by_text(
                                 "실행 전에는 DB를 만들지 않습니다.", exact=False

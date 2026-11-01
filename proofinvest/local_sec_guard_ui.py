@@ -349,7 +349,7 @@ def render_judge_evidence_trace_html(report: dict[str, Any]) -> str:
 
 def render_synthetic_guard_ui(st) -> None:
     """Judge-first overview, with every decision backed by the real offline path."""
-    st.title("ProofInvest — SEC 근거부터 Guard 감사까지")
+    st.title("KUODRA — SEC 근거부터 Guard 감사까지")
     st.markdown(
         '<div class="pi-eyebrow">CASE REVIEW / 01 — 실증 가능한 오프라인 경로</div>',
         unsafe_allow_html=True,
@@ -368,7 +368,7 @@ def render_synthetic_guard_ui(st) -> None:
 <div class="pi-judge-hero">
   <div class="pi-judge-kicker">THE EVIDENCE-FIRST DECISION</div>
   <h2>숫자가 맞아도, 근거가 부족하면 승인하지 않는다.</h2>
-  <p>ProofInvest는 원문 근거와 수치를 교차 검증하고, 불확실성을
+  <p>KUODRA는 원문 근거와 수치를 교차 검증하고, 불확실성을
   HOLD 또는 REJECT로 남깁니다. 아래는 실제 SEC 조회가 아닌
   합성 데이터 기반 시연입니다.</p>
 </div>

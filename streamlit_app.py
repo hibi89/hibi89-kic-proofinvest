@@ -162,7 +162,7 @@ def _read_guard_history_rows(db_path: Path) -> tuple[list[tuple], list[tuple]]:
 
 def _render_sec_curated_case(st) -> None:
     """Use the SEC-format local data verifier; never imply live SEC connectivity."""
-    st.title("ProofInvest — SEC 10-K 연매출 검산 (오프라인)")
+    st.title("KUODRA — SEC 10-K 연매출 검산 (오프라인)")
     st.warning(
         "MANUALLY_CURATED_SEC_EXCERPT · Apple FY2025 10-K의 공개 수치를 수동 발췌한 기록입니다. "
         "SEC CompanyFacts API 실시간 조회·원본 자동수집·LLM Agent·투자 권고가 아닙니다."
@@ -377,7 +377,7 @@ def _render_sec_live_case(st) -> None:
     """Explicit-on-click one-issuer SEC HTTP; no automatic background requests."""
     import os
 
-    st.title("ProofInvest — SEC 공식 CompanyConcept 조회")
+    st.title("KUODRA — SEC 공식 CompanyConcept 조회")
     st.warning(
         "NETWORK_OPT_IN · Apple FY2025 수치 확인용 SEC HTTPS 조회(버튼 클릭 시 1회). "
         "연결된 실 API 결과라도 공시 내용의 독립적인 원문 인증·LLM Agent 분석·"
@@ -483,7 +483,7 @@ def _valid_dl_archive_receipt(receipt: object) -> bool:
 
 def _render_dl_archive_case(st) -> None:
     """Run a synthetic archived-byte replay only when the user selects it."""
-    st.title("ProofInvest — DL 원문 근거 추적 (합성 시연)")
+    st.title("KUODRA — DL 원문 근거 추적 (합성 시연)")
     st.warning(
         "SYNTHETIC_ONLY · 실제 존재하지 않는 기업/접수번호와 인공 HTML 사용. "
         "로컬 원문 바이트/해시/위치 연결만 확인하며 SEC 원문 진위·재무 사실을 인증하지 않습니다."
@@ -557,7 +557,7 @@ def _render_dl_archive_case(st) -> None:
 
 
 def render_app(st) -> None:
-    st.set_page_config(page_title="ProofInvest | 오프라인 출처 시연", layout="wide")
+    st.set_page_config(page_title="KUODRA | 오프라인 출처 시연", layout="wide")
     # Optional static design layer; synthetic recovery archives omit this module.
     design_file = Path(__file__).resolve().parent / "proofinvest/ui_theme.py"
     if design_file.is_file():
@@ -639,10 +639,10 @@ def render_app(st) -> None:
         _render_sec_live_case(st)
         return
     if source == _SOURCE_MANUAL:
-        st.title("ProofInvest — 실제 발행사 수동기록 검산")
+        st.title("KUODRA — 실제 발행사 수동기록 검산")
         _render_manual_case(st)
         return
-    st.title("ProofInvest — 오프라인 합성 데이터")
+    st.title("KUODRA — 오프라인 합성 데이터")
     st.warning(
         "SYNTHETIC_FIXTURE · 교육용 가상 데이터 · 외부 공시 원본 미인증. "
         "실제 기업 분석, 투자 권고, DAKER 공식 제출물이 아닙니다."

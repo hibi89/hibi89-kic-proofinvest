@@ -92,7 +92,7 @@ section.main > div.block-container { max-width: 1180px; padding-top: 1.9rem; }
 }
 </style>
 <div class="pi-shell">
-  <div class="pi-brand">PROOF<span>INVEST</span> <span style="font-size:.65em;font-weight:500">/ EVIDENCE LAB</span></div>
+  <div class="pi-brand">KUO<span>DRA</span> <span style="font-size:.65em;font-weight:500">/ EVIDENCE LAB · OFFLINE REVIEW</span></div>
   <div class="pi-subbrand">공시 근거 · 수치 검산 · 위험 보류 · 사람 중심 통제</div>
 </div>
 """,

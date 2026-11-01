@@ -64,7 +64,7 @@ def run(output: Path) -> dict:
                     try:
                         page = browser.new_page(viewport={"width": 1440, "height": 1100})
                         page.goto(URL, wait_until="domcontentloaded", timeout=30000)
-                        expect(page.get_by_text("ProofInvest — 오프라인 합성 데이터")).to_be_visible(
+                        expect(page.get_by_text("KUODRA — 오프라인 합성 데이터")).to_be_visible(
                             timeout=25000
                         )
                         page.get_by_test_id("stSelectbox").first.click()
@@ -466,7 +466,7 @@ def run(output: Path) -> dict:
                         try:
                             hist.goto(URL, wait_until="domcontentloaded", timeout=30000)
                             expect(hist.get_by_text(
-                                "ProofInvest — 오프라인 합성 데이터"
+                                "KUODRA — 오프라인 합성 데이터"
                             )).to_be_visible(timeout=25000)
                             hist.get_by_test_id("stSelectbox").first.click()
                             hist.get_by_role("option", name=MODE, exact=True).click()
@@ -584,7 +584,7 @@ def run(output: Path) -> dict:
                         try:
                             apple_page.goto(URL, wait_until="domcontentloaded", timeout=30000)
                             expect(apple_page.get_by_text(
-                                "ProofInvest — 오프라인 합성 데이터"
+                                "KUODRA — 오프라인 합성 데이터"
                             )).to_be_visible(timeout=25000)
                             apple_page.get_by_test_id("stSelectbox").first.click()
                             apple_page.get_by_role(
