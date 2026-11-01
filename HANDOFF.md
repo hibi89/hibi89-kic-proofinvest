@@ -1,3 +1,10 @@
+## P106 2026-11-02 KST — historical NVIDIA issuer IR offline evidence (SEC 403 unchanged)
+
+- P105 remains hard STOP: one SEC GET, HTTP 403 at ticker_map, no retry or bypass, no real SEC data. Alternative official NVIDIA 2025-02-26 issuer IR release was reviewed publicly without calling SEC; manually transcribed GAAP FY25 vs FY24 USD-millions numbers are available in new docs/evidence/nvda_fy2025_issuer_ir.json.
+- New offline CLI proofinvest.issuer_ir_replay computes FY25 revenue growth 114.20%, OCF/net income 87.94%, receivables YoY 130.67%; wrong claims conflict, invalid evidence unavailable, Guard HOLD. Status VERIFIED is only arithmetic against historical manual source, NOT external origin, live source or full A/B/C. No trade, AI, API, database write or source redistribution.
+- Tests: isolated local 9/9 PASS; GitHub full CI and deployment will be checked after commit. Details + official DAKER 2026-11-12 10:00 KST seven-section 10-page exact-frozen-V13 approval/submit/receipt checklist at docs/P106_NVDA_IR_REPLAY_AND_PRELIMINARY_GATE.md. Frozen PDF and existing engines untouched; not submitted.
+- Branch lead/kic, base SHA 1093767cc65d3047ac0596c57bac345cc3ad07f6; this documentation prefix accompanies additive functional change in the SAME commit. Revert via ordinary git revert, no force push.
+
 ## P105 real NVDA SEC 403 outcome — 2026-11-02 KST (user-provided execution evidence)
 
 1. **Goal and approval:** user authorized one NVDA SEC read-only bounded session, max 4 GET; performed locally in `C:\KIC-SEC-P105` from verified `lead/kic` SHA `5a2f68e2d31231684f0461a60c26399399dab06d`.

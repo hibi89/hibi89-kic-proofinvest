@@ -1,0 +1,28 @@
+{
+  "schema": "kuodra.issuer-ir-manual-financials.v1",
+  "ticker": "NVDA",
+  "issuer": "NVIDIA Corporation",
+  "source_type": "ISSUER_IR_PRESS_RELEASE_UNAUDITED",
+  "source_url": "https://investor.nvidia.com/news/press-release-details/2025/NVIDIA-Announces-Financial-Results-for-Fourth-Quarter-and-Fiscal-2025/",
+  "publication_date": "2025-02-26",
+  "source_review_date": "2026-11-02",
+  "source_review_method": "manual_web_review_not_authenticated_live_fetch",
+  "unit": "USD_MILLIONS",
+  "basis": "GAAP_CONSOLIDATED",
+  "periods": {
+    "FY2025": {
+      "fiscal_end": "2025-01-26",
+      "revenue": "130497",
+      "net_income": "72880",
+      "operating_cash_flow": "64089",
+      "accounts_receivable_net": "23065"
+    },
+    "FY2024": {
+      "fiscal_end": "2024-01-28",
+      "revenue": "60922",
+      "net_income": "29760",
+      "operating_cash_flow": "28090",
+      "accounts_receivable_net": "9999"
+    }
+  }
+}
