@@ -131,7 +131,10 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
         accession = recent["accessionNumber"][i]
         filename = recent["primaryDocument"][i]
         if (type(accession) is not str or not _ACCESSION.fullmatch(accession)
-                or accession[:10] != issuer
+                # The accession prefix is the CIK of the submitting
+                # account, which may be a third-party EDGAR filing agent.
+                # Issuer identity is bound to THIS issuer's Submissions JSON
+                # and later checked against CompanyFacts and original iXBRL.
                 or type(filename) is not str or not _DOCUMENT.fullmatch(filename)
                 or ".." in filename):
             _bad("UNSAFE_FILING_IDENTIFIER")
@@ -149,6 +152,11 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
                 f"{accession.replace('-', '')}/{filename}")
     return {"form": "10-K", "accession": accession, "filing_date": filing.isoformat(),
             "report_date": report, "original_filing_url": original,
+            "issuer_cik": issuer,
+            # This prefix is NOT an issuer validation or independent agent
+            # identity proof. Keep the two identities explicit for reviewers.
+            "accession_submitter_cik_from_identifier": accession[:10],
+            "accession_prefix_matches_issuer": accession[:10] == issuer,
             "submissions_sha256": sha256(raw).hexdigest(),
             "point_in_time_verified": False, "original_authenticated": False}
 

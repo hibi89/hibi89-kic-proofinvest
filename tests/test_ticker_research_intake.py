@@ -136,14 +136,26 @@ class SingleTickerIntakeTests(TestCase):
                              "10k_source_plan_unverified")
 
 
-    def test_foreign_accession_cannot_be_constructed_for_issuer(self):
+    def test_valid_agent_submitted_accession_uses_issuer_archive_directory(self):
+        # Submitter != issuer: company submissions metadata, not the
+        # accession's prefix, identifies the company whose filing is listed.
         obj = json.loads(submissions())
         obj["filings"]["recent"]["accessionNumber"][1] = "0000999999-25-000020"
         actual = intake.build_ticker_source_plan(
             ticker="NVDA", ticker_map=mapping(),
             submissions=json.dumps(obj).encode(), as_of="2025-10-16")
-        self.assertEqual(actual["status"], "unavailable")
-        self.assertEqual(actual["reason_code"], "UNSAFE_FILING_IDENTIFIER")
+        self.assertEqual(actual["status"], "10k_source_plan_unverified")
+        filing = actual["latest_10k"]
+        self.assertEqual(filing["accession"], "0000999999-25-000020")
+        self.assertEqual(filing["issuer_cik"], "0001045810")
+        self.assertEqual(filing["accession_submitter_cik_from_identifier"], "0000999999")
+        self.assertFalse(filing["accession_prefix_matches_issuer"])
+        self.assertEqual(
+            filing["original_filing_url"],
+            "https://www.sec.gov/Archives/edgar/data/1045810/"
+            "000099999925000020/annual2025.htm",
+        )
+        self.assertFalse(filing["original_authenticated"])
 
 
 
