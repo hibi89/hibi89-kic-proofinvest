@@ -131,6 +131,7 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
         accession = recent["accessionNumber"][i]
         filename = recent["primaryDocument"][i]
         if (type(accession) is not str or not _ACCESSION.fullmatch(accession)
+                or accession[:10] != issuer
                 or type(filename) is not str or not _DOCUMENT.fullmatch(filename)
                 or ".." in filename):
             _bad("UNSAFE_FILING_IDENTIFIER")

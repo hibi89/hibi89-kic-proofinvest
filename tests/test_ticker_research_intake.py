@@ -136,6 +136,17 @@ class SingleTickerIntakeTests(TestCase):
                              "10k_source_plan_unverified")
 
 
+    def test_foreign_accession_cannot_be_constructed_for_issuer(self):
+        obj = json.loads(submissions())
+        obj["filings"]["recent"]["accessionNumber"][1] = "0000999999-25-000020"
+        actual = intake.build_ticker_source_plan(
+            ticker="NVDA", ticker_map=mapping(),
+            submissions=json.dumps(obj).encode(), as_of="2025-10-16")
+        self.assertEqual(actual["status"], "unavailable")
+        self.assertEqual(actual["reason_code"], "UNSAFE_FILING_IDENTIFIER")
+
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()
