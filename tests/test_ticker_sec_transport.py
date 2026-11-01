@@ -125,10 +125,12 @@ class SingleTickerTransportTests(unittest.TestCase):
         self.assertEqual(len(seen), 2)
         self.assertEqual(result["stage"], "submissions")
 
-    def test_foreign_accession_fails_before_facts(self):
+    def test_malformed_accession_fails_before_facts(self):
         src = payloads()
         wrong = json.loads(submissions())
-        wrong["filings"]["recent"]["accessionNumber"][1] = "0000999999-25-000020"
+        # A valid third-party accession is allowed for this issuer.
+        # Malformed identifiers must still stop before CompanyFacts.
+        wrong["filings"]["recent"]["accessionNumber"][1] = "0000999999-25-NOTDIG"
         url = t.SEC_API + "/submissions/CIK0001045810.json"
         src[url] = Response(json.dumps(wrong).encode(), url)
         with patch.object(t, "_open_once", side_effect=lambda req, **_: src[req.full_url]), patch.object(t.time, "sleep"):
