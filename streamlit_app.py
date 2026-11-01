@@ -20,6 +20,7 @@ _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
 _SOURCE_SEC_WEB_GUARD = "KUODRA · Apple SEC 웹텍스트 수동검산 → Guard (오프라인)"
 _SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
 _SOURCE_TICKER_SEARCH = "KUODRA · 종목 1개 검색 (로컬 전용)"
+_SOURCE_NVDA_IR_HISTORY = "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -600,6 +601,11 @@ def render_app(st) -> None:
             ticker_ui_file = Path(__file__).resolve().parent / "proofinvest/ticker_research_ui.py"
             if ticker_ui_file.is_file():
                 available_sources.append(_SOURCE_TICKER_SEARCH)
+            # Separate historical issuer-IR reference: never SEC or live market data.
+            ir_ui_file = Path(__file__).resolve().parent / "proofinvest/issuer_ir_local_ui.py"
+            ir_facts = Path(__file__).resolve().parent / "docs/evidence/nvda_fy2025_issuer_ir.json"
+            if ir_ui_file.is_file() and ir_facts.is_file():
+                available_sources.append(_SOURCE_NVDA_IR_HISTORY)
     # Deep-link for a judge: ?demo=guard selects the actual offline
     # SEC->Guard walkthrough, but never executes it or calls external APIs.
     # Other query values and the public synthetic recovery ZIP keep the
@@ -628,6 +634,10 @@ def render_app(st) -> None:
     if source == _SOURCE_TICKER_SEARCH:
         from proofinvest.ticker_research_ui import render_single_ticker_search
         render_single_ticker_search(st)
+        return
+    if source == _SOURCE_NVDA_IR_HISTORY:
+        from proofinvest.issuer_ir_local_ui import render_nvda_ir_local
+        render_nvda_ir_local(st)
         return
     if source == _SOURCE_SEC_GUARD:
         from proofinvest.local_sec_guard_ui import render_synthetic_guard_ui

@@ -1,3 +1,16 @@
+## P107 — 2026-11-02 KST (offline historical issuer IR → separate local-only dashboard)
+
+1. Goal/requirements: preserve P105 SEC hard STOP on 403, existing one-ticker SEC flow and frozen V13 PDF, provide useful UI for P106 historical publicly reported NVIDIA GAAP figures; no new paid/live API, trading, data transfer or external approval implied.
+2. Comparison: integrate NVIDIA static source into existing SEC ticker search (confuses live SEC source and manual historical evidence) vs **separate loopback+opt-in local historical issuer panel** (selected). No change to existing network/Guard/UI default. Missing evidence blocks rendering and report export.
+3. Implementation: added proofinvest/issuer_ir_local_ui.py, tests/test_issuer_ir_local_ui.py; minimal streamlit_app.py registration. Shows FY2025 revenue YoY 114.20%, cash conversion 87.94%, manual claim verified/conflict/unavailable and explicit A/C UNAVAILABLE, B PARTIAL, Guard HOLD. Downloaded JSON carries local evidence hash and source-rights/origin disclaimers; no SEC or AI claim.
+4. Test path: python -B -m unittest tests.test_issuer_ir_replay tests.test_issuer_ir_local_ui -v; GitHub offline full CI (Python, Windows SQLite, Chromium) must pass for functional SHA; this entry is implementation intent until exact CI confirms. No real Production exists.
+5. Safety/stop: SEC P105 remains one GET 403 no retry/proxy/UA evasion; IR report is historical manual arithmetics only, not SEC/market/peer E2E, not B financial fraud verdict; no AI/LLM, paid API, SQLite write or trading.
+6. Repo/branch: hibi89/hibi89-kic-proofinvest lead/kic, parent b3e51eee94b28ee4141fdf49c0a1c8e4a18ad0a7; additive source + tests and minimal selector, normal git revert recovery only. Historical V13 10-page PDF in Library unchanged (SHA256 64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece).
+7. Run: enable KUODRA_ENABLE_LOCAL_SOURCE_UI=1, localhost/127.0.0.1 bound Streamlit, choose "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"; normal app remains synthetic by default, historical mode does no HTTP. Public bind disabled. Production/Vercel N/A.
+8. Deadline: DAKER 2026-11-12 10:00 KST private exact V13 PDF owner approval + team leader final submission + '최종' receipt still pending; no DAKER write or PDF update.
+9. Next: check exact functional GitHub CI; diagnose one failure if needed; investigate alternate licensed on-demand issuer-market and peer data with user approval (not SEC retries). Submission remains owner-gated.
+10. Recorded 2026-11-02 KST with scope: P107 code newly submitted; CI evidence recorded separately, not assume production pass.
+
 ## P106 verified final integration — 2026-11-02 KST (documentation-only successor)
 
 1. Goal: continue after P105 owner-local SEC 403 without retry; add alternative real historical issuer IR numeric replay and frozen KIC PDF owner submission readiness.
