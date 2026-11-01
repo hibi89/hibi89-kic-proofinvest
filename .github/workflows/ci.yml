@@ -173,6 +173,22 @@ jobs:
       - name: Click through actual browser UI and verify SQLite
         run: |
           python -B -m scripts.guard_browser_smoke /tmp/kic-guard-browser
+      - name: Actual Chromium manual SEC WEB -> Guard click matrix (no external HTTP)
+        run: |
+          python -B -m scripts.sec_web_guard_browser_smoke /tmp/kic-manual-web-guard-browser
+          python -c 'import json; x=json.load(open("/tmp/kic-manual-web-guard-browser/web-guard-browser-evidence.json")); assert x["status"]=="PASS" and [r["guard_decision"] for r in x["browser_scenarios"]]==["REJECT","HOLD","HOLD"] and not x["browser_external_requests"] and x["sqlite_audit_created"] is False and x["external_sec_original_authenticated"] is False and x["contest_submitted"] is False'
+      - name: Archive ACTUAL Chromium manual SEC WEB -> Guard screenshots and receipt (NO private PDF)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-manual-sec-web-guard-chromium-e2e
+          path: |
+            /tmp/kic-manual-web-guard-browser/web-guard-before-click.png
+            /tmp/kic-manual-web-guard-browser/web-guard-conflict.png
+            /tmp/kic-manual-web-guard-browser/web-guard-matched.png
+            /tmp/kic-manual-web-guard-browser/web-guard-missing.png
+            /tmp/kic-manual-web-guard-browser/web-guard-browser-evidence.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Chromium CSV source + 3 engines → SEC Guard → JSON and HTML
         run: |
           python -B -m scripts.local_workspace_browser_smoke /tmp/kic-local-upload-browser
@@ -214,6 +230,7 @@ jobs:
           name: proofinvest-guard-browser-debug
           path: |
             /tmp/kic-guard-browser/streamlit-server.log
+            /tmp/kic-manual-web-guard-browser/web-guard-streamlit.log
             /tmp/kic-guard-browser/mock-proposal-select-diagnostics.json
             /tmp/kic-guard-browser/mock-proposal-menu-after-open.png
             /tmp/kic-guard-browser/mock-proposal-select-trace.zip
