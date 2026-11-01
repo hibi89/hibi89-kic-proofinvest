@@ -911,6 +911,19 @@ def run(output: Path) -> dict:
                                 "button",
                                 name="선택 ZIP에 선언된 CIK·접수번호·기준일 입력",
                             ).click()
+                            # A newly opened tab has no previously selected
+                            # fiscal periods or source-span literal. Supply
+                            # all three independently before peer-source build.
+                            for label, amount in (
+                                ("현재 회계기간 종료일", "2025-09-30"),
+                                ("직전 회계기간 종료일", "2024-09-30"),
+                                ("원문 본문에서 고유한 인용 문구", PHRASE),
+                            ):
+                                field = zip_page.get_by_label(
+                                    label, exact=True,
+                                )
+                                field.fill(amount)
+                                field.press("Tab")
                             enable_builder = (
                                 "산업 CSV·경쟁사 CompanyFacts로 Engine C 구성 "
                                 "(로컬, 출처 미인증)"
