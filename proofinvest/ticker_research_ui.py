@@ -142,6 +142,18 @@ def render_single_ticker_search(st) -> None:
     except (TypeError, ValueError):
         pass
     can_fetch = bool(enabled and accepted and valid and _valid_contact(user_agent))
+    # Optional developer/source-contract fixtures until lawful price and peer
+    # providers have been approved; never required for routine ticker input.
+    st.caption("Engine A/C 자료: 공급자 연동 검증 대기. 아래 파일은 개발용 "
+               "소스 계약 검증이며 자동 수집을 대체하지 않습니다.")
+    market_source = st.file_uploader(
+        "주가·지수 시계열 JSON (개발·검증용 선택)",
+        type=["json"], key="kuodra_p104_market_json",
+    )
+    industry_source = st.file_uploader(
+        "산업·경쟁사 비교 JSON (개발·검증용 선택)",
+        type=["json"], key="kuodra_p104_industry_json",
+    )
     if st.button("SEC 원문 4종 자동 수집 실행", key="kuodra_p100_live",
                  disabled=not can_fetch):
         if not can_fetch:
@@ -161,6 +173,18 @@ def render_single_ticker_search(st) -> None:
         original_preview = inspect_original_guard_preview(
             result, raw_sources, expected_revenue=revenue,
         )
+        from .ticker_market_industry_bridge import evaluate_ticker_a_c
+        try:
+            market_data = (_read_uploaded(market_source, 131072)
+                           if market_source is not None else None)
+            industry_data = (_read_uploaded(industry_source, 65536)
+                             if industry_source is not None else None)
+            supplementary = evaluate_ticker_a_c(
+                result, raw_sources,
+                market_json=market_data, industry_json=industry_data,
+            )
+        except (TypeError, ValueError, OSError, RecursionError):
+            supplementary = None
         # No raw file bytes in state, downloads, JSON, HTML or long-lived cache.
         if raw_sources is not None:
             raw_sources.clear()
@@ -201,6 +225,21 @@ def render_single_ticker_search(st) -> None:
                 })
                 st.caption("Guard 규칙 미리보기는 감사 실행·사람 승인·투자 허가가 아닙니다. "
                            "원본 iXBRL 문맥 일치도 SEC 원본 진위 인증이 아닙니다.")
+                st.subheader("Engine A/C · 동일 종목 출처 비교 (부분 분석)")
+                if supplementary is not None:
+                    st.json({
+                        "engine_a": supplementary["engine_a"],
+                        "engine_c": supplementary["engine_c"],
+                        "source_authenticated": False,
+                        "source_rights_verified": False,
+                        "all_three_engines_ready": False,
+                        "guard_executed": False,
+                        "trade_executed": False,
+                    })
+                else:
+                    st.warning("추가 시장·산업 자료의 형식 또는 크기를 확인할 수 없습니다.")
+                st.caption("공급자·이용권리 및 과거 데이터 기준시점 미검증. "
+                           "분석이 있는 경우에도 확정된 거품·사기·미래 전망으로 해석하지 않습니다.")
             else:
                 st.warning("연간 매출 검산 불가 · 누락/모순은 0이나 안전 판정으로 대체하지 않습니다.")
                 st.code(revenue.get("reason_code", "UNAVAILABLE"), language="text")
