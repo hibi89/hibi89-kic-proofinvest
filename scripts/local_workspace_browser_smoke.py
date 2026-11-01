@@ -911,6 +911,27 @@ def run(output: Path) -> dict:
                                 "button",
                                 name="선택 ZIP에 선언된 CIK·접수번호·기준일 입력",
                             ).click()
+                            # Streamlit's apply button reruns the widget tree.
+                            # Independently set and assert operator-visible
+                            # identity fields after that rerun, rather than
+                            # proceeding on a potentially stale pre-rerun DOM.
+                            # The app will still fail closed if ANY typed value
+                            # conflicts with the ZIP's SHA-bound claims.
+                            for label, actual in (
+                                ("CIK 10자리", SYNTHETIC_CIK),
+                                ("SEC 접수번호", SYNTHETIC_ACCESSION),
+                                ("기준일 (YYYY-MM-DD)", AS_OF),
+                                ("사용자 주장 수집시각 (UTC ISO8601)",
+                                 COLLECTED_AT),
+                            ):
+                                field = zip_page.get_by_label(
+                                    label, exact=True,
+                                )
+                                field.fill(actual)
+                                field.press("Tab")
+                                expect(field).to_have_value(
+                                    actual, timeout=20000,
+                                )
                             # A newly opened tab has no previously selected
                             # fiscal periods or source-span literal. Supply
                             # all three independently before peer-source build.
