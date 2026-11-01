@@ -75,11 +75,11 @@ class IrLocalDashboardTests(unittest.TestCase):
         with patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}):
             st = FakeSt()
             ui.render_nvda_ir_local(st)
-        downloads = [a for typ, a, _ in st.events if typ == "download_button"]
+        downloads = [(a, kwargs) for typ, a, kwargs in st.events if typ == "download_button"]
         self.assertEqual(len(downloads), 1)
-        self.assertIn("UNAUTHENTICATED.json", st.events[-1][2]["file_name"])
-        self.assertIn('"full_abc_completed": false', downloads[0][1])
-        self.assertIn('"network_requests": 0', downloads[0][1])
+        self.assertIn("UNAUTHENTICATED.json", downloads[0][1]["file_name"])
+        self.assertIn('"full_abc_completed": false', downloads[0][1]["data"])
+        self.assertIn('"network_requests": 0', downloads[0][1]["data"])
         self.assertFalse(any(typ == "error" for typ, _, _ in st.events))
 
     def test_conflict_ui_no_approval(self):
@@ -105,7 +105,8 @@ class StreamlitIssuerHistorySmoke(unittest.TestCase):
         from streamlit.testing.v1 import AppTest
         from proofinvest import kuodra_local_workspace_ui as flags
         app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
-        with patch.object(flags, "local_workspace_enabled", return_value=True):
+        with patch.object(flags, "local_workspace_enabled", return_value=True), patch.object(
+                ui, "local_workspace_enabled", return_value=True):
             at = AppTest.from_file(str(app)).run(timeout=20)
             self.assertFalse(at.exception)
             label = "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"
