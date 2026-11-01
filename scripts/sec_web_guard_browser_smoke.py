@@ -115,8 +115,12 @@ def run(output: Path) -> dict:
                         expect(page.get_by_test_id("stMetric").filter(
                             has_text="회계 검토 질문 · 이상행위 확정 아님"
                         )).to_contain_text("3건", timeout=30000)
+                        # Streamlit renders some values both in a Glide table
+                        # cell and a metric paragraph; Playwright strict mode
+                        # rejects ambiguous duplicate locators. Presence of
+                        # any exact value suffices for this existing UI smoke.
                         for v in ("12.63pp", "-26.63pp", "-15.66pp", "387.22%"):
-                            expect(page.get_by_text(v, exact=True)).to_be_visible()
+                            expect(page.get_by_text(v, exact=True).first).to_be_visible()
                         expect(_guard_metric(page)).to_have_count(0)
                         # Real browser download contains exact operands,
                         # trace formulas and a self-consistency SHA, never auth.
