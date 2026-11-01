@@ -105,6 +105,21 @@ def run(output: Path) -> dict:
                         expect(page.get_by_text(
                             "버튼을 누르기 전에는 분석 함수·Guard를 실행하지 않습니다."
                         )).to_be_visible()
+                        # Independent Engine B click must not execute Guard.
+                        expect(page.get_by_text(
+                            "별도 버튼을 누르기 전에는 Engine B를 실행하지 않습니다."
+                        )).to_be_visible()
+                        page.get_by_role(
+                            "button", name="Engine B 오프라인 회계 신호 계산"
+                        ).click()
+                        expect(page.get_by_test_id("stMetric").filter(
+                            has_text="회계 검토 질문 · 이상행위 확정 아님"
+                        )).to_contain_text("3건", timeout=30000)
+                        for v in ("12.63pp", "-26.63pp", "-15.66pp", "387.22%"):
+                            expect(page.get_by_text(v, exact=True)).to_be_visible()
+                        expect(_guard_metric(page)).to_have_count(0)
+                        page.screenshot(path=str(output / "web-engine-b-click.png"),
+                                        full_page=True)
                         page.screenshot(path=str(output / "web-guard-before-click.png"),
                                         full_page=True)
 
@@ -281,6 +296,9 @@ def run(output: Path) -> dict:
                             "prior_guard_result_cleared_on_claim_change": True,
                             "custom_textbox_chromium_tested": True,
                             "download_receipt_verified": True,
+                            "engine_b_actual_chromium_click": True,
+                            "engine_b_review_prompt_count": 3,
+                            "engine_b_guard_not_executed": True,
                             "invalid_custom_claim_fail_closed": True,
                             "browser_external_requests": external_requests,
                             "sqlite_audit_created": False,

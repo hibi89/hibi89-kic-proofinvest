@@ -157,8 +157,11 @@ def render_manual_web_guard_ui(st) -> None:
         "리스크 증빙 없음 · 외부 네트워크 0회 · SQLite 저장 0건"
     )
     st.markdown("[SEC FY2025 10-K 공개 웹페이지](" + _SOURCE_URL + ")")
-    if not st.button("오프라인 수동 검산 → 데모 Guard 실행",
-                     key="manual_web_guard_run"):
+    run_guard = st.button("오프라인 수동 검산 → 데모 Guard 실행",
+                          key="manual_web_guard_run")
+    from .sec_web_accounting_ui import render_manual_web_accounting_review
+    render_manual_web_accounting_review(st)
+    if not run_guard:
         st.info("버튼을 누르기 전에는 분석 함수·Guard를 실행하지 않습니다.")
         return
     try:
