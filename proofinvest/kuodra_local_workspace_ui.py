@@ -588,6 +588,32 @@ def render_local_workspace(st) -> None:
                            "모든 기업에서 확인되지 않아 2개 연도 변화 비교를 보류했습니다.")
             st.caption("2개 연도 계산은 같은 10-K 접수번호의 회계기간과 "
                        "수치만 사용하며 회계정책·SEC 출처는 미인증입니다.")
+            st.subheader("Engine B × C · 회계기간·근거 일치 점검")
+            comparability = peer_cash["period_comparability"]
+            st.table([
+                {"점검": "올해 연간현금흐름 구간", "상태":
+                 comparability["current_status"]},
+                {"점검": "직전·올해 연간 구간", "상태":
+                 comparability["two_year_status"]},
+                {"점검": "US-GAAP 매출 항목 비교", "상태":
+                 comparability["revenue_concept_status"]},
+                {"점검": "현재 연도 현금전환 미확인 기업", "상태":
+                 str(comparability["missing_current_count"])},
+                {"점검": "2개 연도 변화 미확인 기업", "상태":
+                 str(comparability["missing_two_year_count"])},
+            ])
+            if (not comparability["current_cash_median_eligible"]
+                    or not comparability["two_year_cash_median_eligible"]):
+                st.warning("일부 기업의 연간 기간·필수 회계 수치가 맞지 않아 "
+                           "해당 비교 결과를 공개하지 않았습니다. "
+                           "아래 JSON에서 기업별 원인을 확인하십시오.")
+            if comparability["revenue_concept_status"] == (
+                    "DIFFERENT_US_GAAP_REVENUE_TAGS_REVIEW_REQUIRED"):
+                st.warning("기업 간 매출 US-GAAP 개념명이 달라 "
+                           "동일 정의 여부를 별도로 검토해야 합니다.")
+            st.caption("기간 시작일과 항목명은 사용자 제공 파일 내부의 구조적 "
+                       "일치만 확인합니다. 회계정책·연결범위·SEC 발행 인증·"
+                       "데이터 사용권은 확인하지 않았습니다.")
             st.json(peer_cash)
         if "industry_vision" in report:
             ind = report["industry_vision"]

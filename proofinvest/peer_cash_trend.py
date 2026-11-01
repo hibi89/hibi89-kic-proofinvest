@@ -80,6 +80,10 @@ def review_two_year_cash_conversion(
         "prior_operating_cashflow_usd": None,
         "prior_end": prior_end,
         "current_end": current_end,
+        # Derived from the selected SAME 10-K annual cash/income facts.
+        # Required to block cross-issuer fiscal-window mismatches in P93.
+        "current_annual_start": None,
+        "prior_annual_start": None,
         "filing_date_operator_supplied": expected_filing_date,
         "companyfacts_sha256": sha256(companyfacts_json).hexdigest(),
         "same_accession_and_filing_date_checked": False,
@@ -118,6 +122,7 @@ def review_two_year_cash_conversion(
             or str(current_income[0]) != accounting.get("net_income_usd")
             or _pct(current_cfo[0], current_income[0]) != now):
         raise ValueError("PEER_TREND_CURRENT_FACT_CONFLICT")
+    result["current_annual_start"] = current_cfo[1]
 
     try:
         prior_cfo = _annual(usgaap, _CFO, accession=accession,
@@ -131,6 +136,7 @@ def review_two_year_cash_conversion(
             or prior_cfo[2] != expected_filing_date):
         result["reason_code"] = "PRIOR_PERIOD_OR_FILING_DATE_CONFLICT"
         return result
+    result["prior_annual_start"] = prior_cfo[1]
     if prior_income[0] <= 0:
         result["reason_code"] = "PRIOR_NON_POSITIVE_NET_INCOME"
         return result

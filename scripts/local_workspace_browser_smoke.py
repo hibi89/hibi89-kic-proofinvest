@@ -406,6 +406,33 @@ def run(output: Path) -> dict:
                                 or peer_cash.get("two_year_target_minus_peer_change_pp")
                                    is not None):
                             raise AssertionError("PEER_CASH_BROWSER_WITHHOLD_GATE_INVALID")
+                        # P93: actual browser JSON must distinguish absent
+                        # financial facts from annual-window compatibility;
+                        # the synthetic upload has no CFO/NI for either firm.
+                        period_check = peer_cash.get("period_comparability")
+                        if (not isinstance(period_check, dict)
+                                or period_check.get("schema") !=
+                                   "kuodra.peer-period-comparability-audit.v1"
+                                or period_check.get("current_status") !=
+                                   "INCOMPLETE_CURRENT_ACCOUNTING_EVIDENCE"
+                                or period_check.get("two_year_status") !=
+                                   "CURRENT_WINDOW_BLOCKS_TREND_COMPARISON"
+                                or period_check.get("missing_current_count") != 2
+                                or period_check.get("missing_two_year_count") != 2
+                                or period_check.get("candidate_count") != 2
+                                or period_check.get("current_cash_median_eligible")
+                                   is not False
+                                or period_check.get("two_year_cash_median_eligible")
+                                   is not False
+                                or period_check.get("revenue_concept_status") !=
+                                   "SAME_US_GAAP_TAG_LOCAL_ONLY"
+                                or period_check.get("original_source_authenticated")
+                                   is not False
+                                or period_check.get("cross_issuer_accounting_policy_verified")
+                                   is not False
+                                or period_check.get("guard_policy_modified")
+                                   is not False):
+                            raise AssertionError("PEER_PERIOD_COMPARABILITY_BROWSER_GATE_INVALID")
                         expect(page.get_by_text(
                             "Engine B × C · 발행사와 경쟁사 현금전환 비교 (로컬)",
                             exact=True,
@@ -418,6 +445,9 @@ def run(output: Path) -> dict:
                             "직전·현재 회계연도의 순이익과 영업현금흐름이 "
                             "모든 기업에서 확인되지 않아 2개 연도 변화 비교를 보류했습니다.",
                             exact=True,
+                        )).to_be_visible(timeout=20000)
+                        expect(page.get_by_text(
+                            "Engine B × C · 회계기간·근거 일치 점검", exact=True,
                         )).to_be_visible(timeout=20000)
                         ledger = json_report.get("three_engine_summary")
                         if (not isinstance(industry_card, dict)

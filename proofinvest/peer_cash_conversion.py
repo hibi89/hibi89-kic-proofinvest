@@ -18,6 +18,7 @@ from .industry_vision import parse_industry_vision_json, analyze_industry_vision
 from .local_sec_packet import _json_object, _MAX_FILE_BYTES
 from .sec_companyfacts import verify_sec_annual_revenue
 from .peer_cash_trend import review_two_year_cash_conversion
+from .peer_period_comparability import assess_peer_period_comparability
 
 _MAX_TOTAL_BYTES = 48_000_000
 _Q = Decimal("0.01")
@@ -90,6 +91,32 @@ def compare_peer_cash_conversion(
     for pos, (cik, accession, raw) in enumerate(entries):
         expected_filing = (target_revenue["filing_date"] if pos == 0
                            else peer_records[cik]["filing_date_self_reported"])
+        # Re-read the verified annual-revenue concept and actual start dates
+        # from each exact local CompanyFacts file. The peer revenue verifier
+        # has already checked issuer, accession and source SHA independently.
+        declared = (industry["target"] if pos == 0 else next(
+            peer for peer in industry["peers"] if peer["cik"] == cik
+        ))
+        revenue = target_revenue if pos == 0 else verify_sec_annual_revenue(
+            _json_object(raw, limit=_MAX_FILE_BYTES),
+            cik=cik, accession=accession,
+            prior_end=industry["prior_period_end"],
+            current_end=industry["current_period_end"],
+            as_of=industry["as_of"],
+        )
+        if (revenue.get("status") != "calculated_unverified"
+                or revenue.get("source_rights_verified") is not False
+                or revenue.get("authenticated_external_source") is not False
+                or revenue.get("live_api_called") is not False
+                or revenue.get("filing_date") != expected_filing
+                or Decimal(revenue["prior_usd"]) !=
+                Decimal(declared["prior_revenue_usd"])
+                or Decimal(revenue["current_usd"]) !=
+                Decimal(declared["current_revenue_usd"])
+                or type(revenue.get("annual_period_starts")) is not list
+                or len(revenue["annual_period_starts"]) != 2
+                or type(revenue.get("revenue_concept")) is not str):
+            raise ValueError("PEER_CASH_REVENUE_PERIOD_OR_TAG_UNTRUSTED")
         found = review_accounting_integrity(
             raw, cik=cik, accession=accession,
             current_end=industry["current_period_end"],
@@ -128,6 +155,8 @@ def compare_peer_cash_conversion(
         report_rows.append({
             "role": "TARGET" if pos == 0 else "PEER",
             "cash_conversion_trend": trend,
+            "revenue_concept": revenue["revenue_concept"],
+            "revenue_period_starts": list(revenue["annual_period_starts"]),
             "cik": cik, "accession_operator_supplied": accession,
             "companyfacts_sha256": sha256(raw).hexdigest(),
             "revenue_growth_pct_from_source":
@@ -148,9 +177,18 @@ def compare_peer_cash_conversion(
             "filing_date_self_reported": expected_filing,
             "source_authenticated": False,
         })
-    # Do not publish a cherry-picked median if even one named peer is missing
-    # an eligible denominator, annual statement or coherent same-filing facts.
-    complete = all(row["cash_conversion_pct"] is not None for row in report_rows)
+    # P93 structural cohort gate: the same labelled fiscal YEAR-END is not
+    # proof the selected 10-K annual statements START on the same date.
+    comparability = assess_peer_period_comparability(
+        report_rows, prior_end=industry["prior_period_end"],
+        current_end=industry["current_period_end"],
+    )
+    # Do not publish a cherry-picked median when data are missing, actual
+    # annual windows differ, or CFO/NI annual windows mismatch revenue.
+    values_complete = all(
+        row["cash_conversion_pct"] is not None for row in report_rows
+    )
+    complete = values_complete and comparability["current_cash_median_eligible"]
     peer_median = None
     gap = None
     if complete:
@@ -161,10 +199,13 @@ def compare_peer_cash_conversion(
                peer_median).quantize(_Q, rounding=ROUND_HALF_UP)
     # Only compare two-year changes if EVERY selected firm has an eligible
     # prior/current pair; missing peers must not bias the selected cohort.
-    trends_complete = all(
+    trend_values_complete = all(
         r["cash_conversion_trend"]["status"] ==
         "TWO_YEAR_LOCAL_COMPARISON_ORIGIN_UNVERIFIED"
         for r in report_rows
+    )
+    trends_complete = (
+        trend_values_complete and comparability["two_year_cash_median_eligible"]
     )
     trend_median = None
     trend_gap = None
@@ -179,8 +220,11 @@ def compare_peer_cash_conversion(
         ).quantize(_Q, rounding=ROUND_HALF_UP)
     return {
         "schema": "kuodra.offline-peer-cash-conversion.v1",
-        "status": ("COMPLETE_LOCAL_INPUTS_ORIGIN_UNVERIFIED" if complete else
-                   "INCOMPLETE_ACCOUNTING_METRICS_COMPARISON_WITHHELD"),
+        "status": (
+            "COMPLETE_LOCAL_INPUTS_ORIGIN_UNVERIFIED" if complete
+            else "PERIOD_WINDOW_COMPARISON_WITHHELD" if values_complete
+            else "INCOMPLETE_ACCOUNTING_METRICS_COMPARISON_WITHHELD"
+        ),
         "issuer_cik": industry["issuer_cik"], "as_of": industry["as_of"],
         "periods": overview["periods"], "industry": overview["industry"],
         "peer_count": len(peers),
@@ -193,9 +237,14 @@ def compare_peer_cash_conversion(
             if peer_median is not None else None,
         "target_minus_peer_median_pp": str(gap) if gap is not None else None,
         "rows": report_rows,
+        "period_comparability": comparability,
         "two_year_trend_status": (
-            "COMPLETE_TWO_YEAR_LOCAL_INPUTS_ORIGIN_UNVERIFIED" if trends_complete
-            else "INCOMPLETE_TWO_YEAR_CASH_EVIDENCE_WITHHELD"),
+            "COMPLETE_TWO_YEAR_LOCAL_INPUTS_ORIGIN_UNVERIFIED"
+            if trends_complete else
+            "PERIOD_WINDOW_TWO_YEAR_COMPARISON_WITHHELD"
+            if trend_values_complete else
+            "INCOMPLETE_TWO_YEAR_CASH_EVIDENCE_WITHHELD"
+        ),
         "two_year_eligible_peer_count": sum(
             r["cash_conversion_trend"]["status"] ==
             "TWO_YEAR_LOCAL_COMPARISON_ORIGIN_UNVERIFIED"
