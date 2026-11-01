@@ -53,7 +53,9 @@ class SingleTickerTransportTests(unittest.TestCase):
             for args in (dict(), dict(allow_network=False),
                          dict(allow_network=True),
                          dict(acknowledge_four_requests=True)):
-                report, raws = t.collect_ticker_sec_sources(**args)
+                report, raws = t.collect_ticker_sec_sources(
+                    ticker="NVDA", as_of="2025-10-16", **args
+                )
                 self.assertEqual(report["status"], "unavailable")
                 self.assertEqual(report["http_requests_attempted"], 0)
                 self.assertIsNone(raws)
