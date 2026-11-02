@@ -73,6 +73,40 @@ class TickerUiTests(unittest.TestCase):
                 self.assertFalse(st.buttons)
             self.assertTrue(ui.ticker_search_enabled(FakeSt()))
 
+    def test_p125_owner_can_review_public_supplier_terms_without_network(self):
+        st = FakeSt(clicked="시장 데이터 이용권한 사전 점검 (네트워크 없음)")
+        with (
+            patch.dict(os.environ, {
+                "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                "KUODRA_ENABLE_SEC_FETCH_UI": "1",
+            }),
+            patch.object(transport, "collect_ticker_sec_sources",
+                         side_effect=AssertionError("SEC API FORBIDDEN")) as fetch,
+            patch("urllib.request.urlopen",
+                  side_effect=AssertionError("VENDOR NETWORK FORBIDDEN")),
+        ):
+            ui.render_single_ticker_search(st)
+        fetch.assert_not_called()
+        reports = [v for k, v in st.messages if k == "json"
+                   and isinstance(v, dict)
+                   and v.get("schema") == "kuodra.p125-market-and-sec-license-gaps.v1"]
+        self.assertEqual(len(reports), 1)
+        r = reports[0]
+        self.assertEqual(r["status"], "BLOCKED_NO_LICENSED_LIVE_E2E_YET")
+        self.assertEqual(r["sec_access"], "P105_SEC_ACCESS_DENIED_403_NO_RETRY")
+        self.assertFalse(r["sec_http_attempted"])
+        self.assertFalse(r["ndx_data_authorized"])
+        self.assertFalse(r["ai_processing_authorized"])
+        self.assertEqual([p["provider"] for p in r["providers"]],
+                         ["massive", "twelve_data", "fred", "nasdaq_gids"])
+        self.assertEqual(r["providers"][2]["license_blocker_codes"][0],
+                         "FRED_API_AI_SYSTEM_USE_RESTRICTIONS_APPLY")
+        self.assertTrue(all(p["guard_decision"] == "HOLD"
+                            and p["request_execution_authorized"] is False
+                            and p["network_requests_executed"] == 0
+                            for p in r["providers"]))
+        self.assertFalse(any(k == "download" for k, _ in st.messages))
+
     def test_default_approved_ui_not_callable_without_extra_live_gate(self):
         st = FakeSt(clicked="SEC 원문 4종 자동 수집 실행",
                     checks={"kuodra_p100_approve_four": True},

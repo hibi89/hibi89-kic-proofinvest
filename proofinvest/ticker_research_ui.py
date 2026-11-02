@@ -251,6 +251,35 @@ def render_single_ticker_search(st) -> None:
     elif not valid:
         st.error("유효한 티커와 오늘(UTC) 이전의 조회 기준일을 입력하십시오.")
 
+    # P125: show the verified PUBLIC terms blockers in the exact on-demand
+    # user flow. This is never a vendor HTTP/API call or entitlement grant.
+    if st.button(
+        "시장 데이터 이용권한 사전 점검 (네트워크 없음)",
+        key="kuodra_p125_license_preflight",
+    ):
+        from .provider_rights_preflight import evaluate_provider
+        st.subheader("실사용 데이터 공급자 이용권한 · 아직 미확인")
+        st.warning(
+            "SEC P105 403 재요청 금지. 시장 지수의 무료 조회/가격표/시계열 공개는 "
+            "심사 공개, AI 처리, 재배포, 상용 대시보드 이용 허가가 아닙니다."
+        )
+        results = [
+            evaluate_provider(provider=name, intended_use="contest_judge_demo")
+            for name in ("massive", "twelve_data", "fred", "nasdaq_gids")
+        ]
+        st.json({
+            "schema": "kuodra.p125-market-and-sec-license-gaps.v1",
+            "status": "BLOCKED_NO_LICENSED_LIVE_E2E_YET",
+            "sec_access": "P105_SEC_ACCESS_DENIED_403_NO_RETRY",
+            "sec_http_attempted": False,
+            "source_legal_review_scope": "PUBLIC_TERMS_NOT_USER_ENTITLEMENTS",
+            "ndx_data_authorized": False,
+            "judge_demo_external_display_authorized": False,
+            "ai_processing_authorized": False,
+            "owner_approved_paid_services": False,
+            "providers": results,
+            "next_action": "OBTAIN_OWNER_APPROVAL_AND_LICENSE_SCOPE_BEFORE_INTEGRATION",
+        })
     st.subheader("로컬 공시 목록으로 출처 계획 확인 (개발·검증용)")
     st.caption("이 부분은 자동 수집의 대체 사용 경로가 아닌 오프라인 검증용입니다. "
                "사용자가 전체 시장 자료를 준비할 필요는 없습니다.")

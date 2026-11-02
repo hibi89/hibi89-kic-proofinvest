@@ -94,6 +94,16 @@ def run(output: Path) -> dict:
                                 "button", name="SEC 원문 4종 자동 수집 실행",
                                 exact=True,
                             )).to_be_disabled(timeout=12000)
+                            # P125 official supplier-rights review stays purely
+                            # local, with SEC 403 permanent hold and no fees.
+                            ticker_page.get_by_role(
+                                "button", name="시장 데이터 이용권한 사전 점검 (네트워크 없음)",
+                                exact=True,
+                            ).click()
+                            expect(ticker_page.get_by_text(
+                                "실사용 데이터 공급자 이용권한 · 아직 미확인",
+                                exact=True,
+                            )).to_be_visible(timeout=16000)
                             expect(ticker_page.get_by_text(
                                 "로컬 공시 목록으로 출처 계획 확인 (개발·검증용)",
                                 exact=True,
@@ -1416,6 +1426,7 @@ def run(output: Path) -> dict:
                             "p122_local_workflow_trace_visible": True,
                             "p123_human_acknowledgement_browser_verified": True,
                             "p124_local_engine_b_cash_replay_visible": True,
+                            "p125_offline_vendor_licensing_review_visible": True,
                             "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,

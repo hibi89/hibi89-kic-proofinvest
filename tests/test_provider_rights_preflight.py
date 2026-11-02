@@ -38,6 +38,32 @@ class ProviderRightsPreflightTests(unittest.TestCase):
         self.assertIn("COPYRIGHT", a["published_ndx_coverage"])
         self.assertIn("LICENSE", b["published_ndx_coverage"])
 
+    def test_p125_official_terms_blockers_are_specific_not_universal_licenses(self):
+        expected = {
+            "massive": "PERSONAL_SUBSCRIPTION_EXCLUDES_BUSINESS_AND_THIRD_PARTY_APPLICATION",
+            "twelve_data": "FREE_TIER_COMMERCIAL_USE_PROHIBITED",
+            "fred": "FRED_API_AI_SYSTEM_USE_RESTRICTIONS_APPLY",
+            "nasdaq_gids": "GIDS_NEW_CLIENT_DELAYED_LICENSE_NOT_OFFERED_SINCE_2026_09_01",
+        }
+        for provider, issue in expected.items():
+            with self.subTest(provider=provider):
+                r = evaluate_provider(provider=provider,
+                                      intended_use="contest_judge_demo")
+                self.assertEqual(r["public_terms_reviewed_kst"], "2026-11-03")
+                self.assertIn(issue, r["license_blocker_codes"])
+                self.assertTrue(r["official_terms_url"].startswith("https://"))
+                self.assertTrue(r["official_secondary_url"].startswith("https://"))
+                self.assertTrue(r["required_next_evidence"])
+                for key in ("intended_use_is_already_licensed",
+                            "ai_system_use_rights_verified",
+                            "exact_instrument_and_lookback_coverage_verified",
+                            "source_update_time_verified",
+                            "request_execution_authorized",
+                            "redistribution_permission_verified",
+                            "owner_network_approval_received"):
+                    self.assertIs(r[key], False, (provider, key))
+                self.assertEqual(r["network_requests_executed"], 0)
+
     def test_invalid_provider_or_usage_cannot_fallback_to_cheaper_plan(self):
         for provider, use in (("qqq", "internal_research"), ("massive", "offline_fixture"),
                               ("MASSIVE", "contest_judge_demo"), (None, "public_dashboard"),
