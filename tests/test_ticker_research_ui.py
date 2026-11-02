@@ -235,9 +235,9 @@ class TickerUiTests(unittest.TestCase):
                     and isinstance(v, dict)
                     and v.get("mode") == "DETERMINISTIC_LOCAL_TOOLS_NOT_LLM_AGENT"]
         self.assertEqual(len(workflow), 1)
-        self.assertEqual(workflow[0]["tool_calls_executed"], 6)
-        self.assertEqual(workflow[0]["tool_budget"], 6)
-        self.assertEqual(len(workflow[0]["tool_trace"]), 6)
+        self.assertEqual(workflow[0]["tool_calls_executed"], 7)
+        self.assertEqual(workflow[0]["tool_budget"], 7)
+        self.assertEqual(len(workflow[0]["tool_trace"]), 7)
         self.assertEqual(workflow[0]["status"], "READY_FOR_HUMAN_REVIEW_UNVERIFIED")
         self.assertFalse(workflow[0]["ai_agent_executed"])
         self.assertFalse(workflow[0]["official_contest_submission"])
