@@ -98,6 +98,121 @@ def run(output: Path) -> dict:
                                 "로컬 공시 목록으로 출처 계획 확인 (개발·검증용)",
                                 exact=True,
                             )).to_be_visible(timeout=12000)
+                            # P117: *real* Chromium upload, click and report
+                            # download. Source fixture builder uses patched
+                            # fake HTTP in the test process, never SEC traffic.
+                            from tests.test_ticker_sec_financial_bridge import (
+                                valid_case as p117_valid_case,
+                            )
+                            from tests.test_ticker_sec_original_guard_preview import (
+                                valid_xhtml as p117_original,
+                            )
+                            _, p117_files = p117_valid_case()
+                            as_of_input = ticker_page.get_by_label(
+                                "조회 기준일 (YYYY-MM-DD)", exact=True,
+                            )
+                            as_of_input.fill("2025-10-16")
+                            as_of_input.press("Tab")
+                            expect(as_of_input).to_have_value("2025-10-16")
+
+                            def upload_p117(label, name, mime, payload):
+                                uploader = ticker_page.get_by_test_id(
+                                    "stFileUploader",
+                                ).filter(
+                                    has=ticker_page.get_by_text(
+                                        label, exact=True,
+                                    ),
+                                ).locator('input[type="file"]')
+                                expect(uploader).to_have_count(1)
+                                uploader.set_input_files({
+                                    "name": name, "mimeType": mime,
+                                    "buffer": payload,
+                                })
+                                expect(ticker_page.get_by_role(
+                                    "button", name="Remove " + name,
+                                    exact=True,
+                                )).to_be_visible(timeout=22000)
+
+                            for label, name, mime, payload in (
+                                ("SEC ticker 목록 JSON (로컬 선택)",
+                                 "p117-ticker.json", "application/json",
+                                 p117_files["ticker_map"]),
+                                ("선택 기업 SEC submissions.json (선택)",
+                                 "p117-submissions.json", "application/json",
+                                 p117_files["submissions"]),
+                                ("CompanyFacts JSON (로컬 검산용 선택)",
+                                 "p117-companyfacts.json", "application/json",
+                                 p117_files["companyfacts"]),
+                            ):
+                                upload_p117(label, name, mime, payload)
+                            ticker_page.get_by_role(
+                                "button", name="로컬 원본으로 출처 계획 확인",
+                            ).click()
+                            expect(ticker_page.get_by_text(
+                                "로컬 매출 검산에는 ticker 목록, submissions, "
+                                "CompanyFacts, 같은 10-K 원문 모두 필요합니다.",
+                                exact=True,
+                            )).to_be_visible(timeout=18000)
+                            expect(ticker_page.get_by_role(
+                                "button",
+                                name="로컬 4종 출처 검산 보고서 JSON (미인증)",
+                            )).to_have_count(0)
+                            upload_p117(
+                                "동일 10-K 원문 HTML/XHTML (로컬 문맥 검토용 선택)",
+                                "p117-original.xhtml", "application/xhtml+xml",
+                                p117_original(),
+                            )
+                            ticker_page.get_by_role(
+                                "button", name="로컬 원본으로 출처 계획 확인",
+                            ).click()
+                            expect(ticker_page.get_by_text(
+                                "로컬 SEC 자료 검산 · 미인증 결과", exact=True,
+                            )).to_be_visible(timeout=22000)
+                            expect(ticker_page.get_by_test_id("stMetric").filter(
+                                has_text="연매출 성장률 (로컬 미인증)",
+                            )).to_contain_text("100.00%", timeout=22000)
+                            expect(ticker_page.get_by_test_id("stMetric").filter(
+                                has_text="Guard 정책 미리보기 (미실행)",
+                            )).to_contain_text("HOLD", timeout=22000)
+                            with ticker_page.expect_download(timeout=20000) as saved:
+                                ticker_page.get_by_role(
+                                    "button",
+                                    name="로컬 4종 출처 검산 보고서 JSON (미인증)",
+                                ).click()
+                            downloaded = saved.value
+                            if downloaded.suggested_filename != (
+                                    "kuodra-local-four-source-UNVERIFIED.json"):
+                                raise AssertionError("P117_REPORT_FILENAME")
+                            p117_report = json.loads(Path(
+                                downloaded.path(),
+                            ).read_text(encoding="utf-8"))
+                            p117_digest = p117_report.pop("report_sha256", None)
+                            p117_canonical = (
+                                json.dumps(p117_report, ensure_ascii=False,
+                                           sort_keys=True, separators=(",", ":"),
+                                           allow_nan=False) + "\n"
+                            ).encode("utf-8")
+                            p117_report["report_sha256"] = p117_digest
+                            if (
+                                p117_digest != sha256(p117_canonical).hexdigest()
+                                or p117_report["verification"]["growth_pct"]
+                                   != "100.00"
+                                or p117_report["guard_policy_preview"] != "HOLD"
+                                or p117_report["source_sha256"]["companyfacts"]
+                                   != sha256(p117_files["companyfacts"]).hexdigest()
+                                or p117_report["source_sha256"]["original_10k"]
+                                   != sha256(p117_original()).hexdigest()
+                                or p117_report["limits"]["external_http_requests"] != 0
+                                or p117_report["limits"]["source_authenticated"] is not False
+                                or p117_report["limits"]["guard_executed"] is not False
+                                or p117_report["limits"]["trade_executed"] is not False
+                                or (Path(home) / ".proofinvest-guard" / "audit.sqlite").exists()
+                            ):
+                                raise AssertionError("P117_REAL_BROWSER_REPORT_INVALID")
+                            ticker_page.screenshot(
+                                path=str(output / "kuodra-p117-four-source-browser.png"),
+                                full_page=True,
+                            )
                         finally:
                             ticker_page.close()
                         page.get_by_test_id("stSelectbox").first.click()
@@ -1189,6 +1304,7 @@ def run(output: Path) -> dict:
                                 "p94-operator-zip-local-only-guard-click-download",
                                 "p95-peer-accounting-and-period-ledger-html-download",
                                 "p96-owner-zip-sector-csv-peer-builder-two-year-positive",
+                                "p117-four-source-real-chromium-upload-and-report",
 
                             ],
                             "source_authenticated": False,
@@ -1208,6 +1324,8 @@ def run(output: Path) -> dict:
                             "operator_zip_click_through_unverified_guard_passed": True,
                             "p96_owner_peer_builder_comparison_passed": True,
                             "p96_source_builder_requires_fresh_guard_consent": True,
+                            "p117_four_source_chromium_report_verified": True,
+                            "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
                             "persisted_audit_db": False,

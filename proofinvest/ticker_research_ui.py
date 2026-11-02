@@ -351,6 +351,27 @@ def render_single_ticker_search(st) -> None:
             })
             st.warning("로컬 업로드 자료의 진위·제공 권한은 확인되지 않았습니다. "
                        "Guard는 정책 미리보기이며 투자 실행이나 APPROVE가 아닙니다.")
+            # Local download is explicitly triggered by the user. No raw
+            # original, contact, HTML or token enters this bounded report.
+            if (revenue.get("status") == "REVENUE_CALCULATED_UNVERIFIED"
+                    and type(original_check.get("guard_preview")) is dict):
+                from .ticker_local_report import (
+                    make_local_report, report_json_bytes,
+                )
+                local_report = make_local_report(
+                    local_receipt, revenue, original_check, supplementary,
+                )
+                st.metric("연매출 성장률 (로컬 미인증)",
+                          str(revenue["growth_pct"]) + "%")
+                st.metric("Guard 정책 미리보기 (미실행)",
+                          local_report["guard_policy_preview"])
+                st.download_button(
+                    "로컬 4종 출처 검산 보고서 JSON (미인증)",
+                    data=report_json_bytes(local_report),
+                    file_name="kuodra-local-four-source-UNVERIFIED.json",
+                    mime="application/json",
+                    key="kuodra_p117_local_report",
+                )
         except (ValueError, TypeError, KeyError, OSError, RecursionError):
             st.warning("로컬 파일 크기·형식 또는 교차검증에 실패했습니다.")
         finally:

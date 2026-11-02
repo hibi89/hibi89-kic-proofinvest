@@ -50,6 +50,14 @@ class FakeSt:
     def button(self, label, **kwargs):
         self.buttons.append((label, kwargs.get("disabled", False)))
         return label == self.clicked and not kwargs.get("disabled", False)
+    def metric(self, label, value, **kwargs):
+        self.messages.append(("metric", (label, value)))
+    def download_button(self, label, *, data, file_name, mime, **kwargs):
+        self.messages.append(("download", {
+            "label": label, "data": data,
+            "file_name": file_name, "mime": mime,
+        }))
+        return False
 
 
 class TickerUiTests(unittest.TestCase):
@@ -226,6 +234,15 @@ class TickerUiTests(unittest.TestCase):
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["trade_executed"])
         self.assertTrue(st.buttons[0][1])  # Live button stays P105-blocked.
+        reports = [v for k, v in st.messages if k == "download"]
+        self.assertEqual(len(reports), 1)
+        from proofinvest.ticker_local_report import report_json_bytes
+        report = __import__("json").loads(reports[0]["data"])
+        self.assertEqual(report["verification"]["growth_pct"], "100.00")
+        self.assertEqual(report["guard_policy_preview"], "HOLD")
+        self.assertEqual(report["limits"]["external_http_requests"], 0)
+        self.assertFalse(report["limits"]["source_authenticated"])
+        self.assertEqual(len(report["source_sha256"]["companyfacts"]), 64)
 
     def test_p116_partial_upload_never_claims_financial_verification(self):
         st = FakeSt(clicked="로컬 원본으로 출처 계획 확인",
