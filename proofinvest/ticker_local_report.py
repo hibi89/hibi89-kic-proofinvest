@@ -65,6 +65,8 @@ def make_local_report(receipt: dict, revenue: dict, original: dict,
             or type(supplementary.get("engine_a")) is not dict
             or type(supplementary.get("engine_c")) is not dict):
         raise ValueError("LOCAL_A_C_TRUST_INVALID")
+    from .ticker_source_rights_ledger import build_local_rights_ledger
+    rights_ledger = build_local_rights_ledger(receipt, supplementary)
     report = {
         "schema": "kuodra.local-four-source-review-report.v1",
         "status": "STRUCTURAL_ARITHMETIC_ONLY_UNVERIFIED",
@@ -76,6 +78,7 @@ def make_local_report(receipt: dict, revenue: dict, original: dict,
             "as_of": receipt["requested_as_of"],
         },
         "source_sha256": dict(receipt["source_sha256"]),
+        "source_rights_ledger": rights_ledger,
         "verification": {
             "status": revenue["status"],
             "current_end": revenue["current_end"],

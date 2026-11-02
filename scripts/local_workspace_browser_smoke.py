@@ -168,6 +168,14 @@ def run(output: Path) -> dict:
                             expect(ticker_page.get_by_text(
                                 "로컬 SEC 자료 검산 · 미인증 결과", exact=True,
                             )).to_be_visible(timeout=22000)
+                            expect(ticker_page.get_by_text(
+                                "출처·이용권리 사전 점검 · 외부 사용 차단",
+                                exact=True,
+                            )).to_be_visible(timeout=22000)
+                            expect(ticker_page.get_by_text(
+                                "외부 공유·대회 공개·상용 재사용 권한은 확인되지 않았습니다.",
+                                exact=False,
+                            )).to_be_visible(timeout=22000)
                             expect(ticker_page.get_by_test_id("stMetric").filter(
                                 has_text="연매출 성장률 (로컬 미인증)",
                             )).to_contain_text("100.00%", timeout=22000)
@@ -198,6 +206,13 @@ def run(output: Path) -> dict:
                                 or p117_report["verification"]["growth_pct"]
                                    != "100.00"
                                 or p117_report["guard_policy_preview"] != "HOLD"
+                                or p117_report["source_rights_ledger"]["status"]
+                                   != "EXTERNAL_USE_BLOCKED_RIGHTS_NOT_VERIFIED"
+                                or p117_report["source_rights_ledger"][
+                                    "contest_public_submission_allowed"] is not False
+                                or p117_report["source_rights_ledger"][
+                                    "external_sharing_allowed"] is not False
+                                or len(p117_report["source_rights_ledger"]["sources"]) != 6
                                 or p117_report["source_sha256"]["companyfacts"]
                                    != sha256(p117_files["companyfacts"]).hexdigest()
                                 or p117_report["source_sha256"]["original_10k"]

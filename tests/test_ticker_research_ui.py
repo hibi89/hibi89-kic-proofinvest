@@ -240,6 +240,14 @@ class TickerUiTests(unittest.TestCase):
         report = __import__("json").loads(reports[0]["data"])
         self.assertEqual(report["verification"]["growth_pct"], "100.00")
         self.assertEqual(report["guard_policy_preview"], "HOLD")
+        self.assertEqual(report["source_rights_ledger"]["status"],
+                         "EXTERNAL_USE_BLOCKED_RIGHTS_NOT_VERIFIED")
+        self.assertFalse(report["source_rights_ledger"]["external_sharing_allowed"])
+        self.assertEqual(len(report["source_rights_ledger"]["sources"]), 6)
+        self.assertTrue(any(
+            kind == "subheader" and "이용권리 사전 점검" in value
+            for kind, value in st.messages
+        ))
         self.assertEqual(report["limits"]["external_http_requests"], 0)
         self.assertFalse(report["limits"]["source_authenticated"])
         self.assertEqual(len(report["source_sha256"]["companyfacts"]), 64)

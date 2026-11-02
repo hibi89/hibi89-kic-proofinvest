@@ -361,6 +361,22 @@ def render_single_ticker_search(st) -> None:
                 local_report = make_local_report(
                     local_receipt, revenue, original_check, supplementary,
                 )
+                st.subheader("출처·이용권리 사전 점검 · 외부 사용 차단")
+                st.json({
+                    "status": local_report["source_rights_ledger"]["status"],
+                    "sources": [{
+                        "role": asset["role"],
+                        "raw_sha256": asset["raw_sha256"],
+                        "origin_authenticated": False,
+                        "external_display_rights_verified": False,
+                        "redistribution_rights_verified": False,
+                    } for asset in local_report["source_rights_ledger"]["sources"]],
+                    "contest_public_submission_allowed": False,
+                    "external_sharing_allowed": False,
+                    "commercial_reuse_allowed": False,
+                })
+                st.caption("원본 해시는 파일 무결성 식별자일 뿐입니다. "
+                           "외부 공유·대회 공개·상용 재사용 권한은 확인되지 않았습니다.")
                 st.metric("연매출 성장률 (로컬 미인증)",
                           str(revenue["growth_pct"]) + "%")
                 st.metric("Guard 정책 미리보기 (미실행)",
