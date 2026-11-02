@@ -95,10 +95,12 @@ def run_local_ticker_workflow(
         original = inspect_original_guard_preview(
             receipt, sources, expected_revenue=revenue)
         guard = original.get("guard_preview")
+        # A Guard REJECT for unreadable/missing original is a safe policy
+        # decision, but not sufficient evidence to generate a source report.
+        # Explicit original identity conflict remains reviewable with REJECT.
         ok = (original.get("status") in (
             "ORIGINAL_CONTEXT_MATCH_UNVERIFIED",
             "ORIGINAL_SELF_CLAIM_CONFLICT",
-            "ORIGINAL_EVIDENCE_UNAVAILABLE",
         ) and type(guard) is dict
             and guard.get("decision") in ("HOLD", "REJECT")
             and guard.get("trade_executed") is False
