@@ -78,7 +78,7 @@ def inspect_ticker_engine_b(
                 or reviewed.get("live_api_called") is not False):
             return _blocked("ACCOUNTING_SOURCE_PERIOD_TRUST_INVALID", digest)
         return {
-            **_blocked(""), "status": "REVIEWED_UNVERIFIED",
+            **_blocked("", digest), "status": "REVIEWED_UNVERIFIED",
             "reason_code": "DESCRIPTIVE_CASH_EARNINGS_AND_WC_ONLY",
             "net_income_usd": reviewed["net_income_usd"],
             "operating_cashflow_usd": reviewed["operating_cashflow_usd"],
