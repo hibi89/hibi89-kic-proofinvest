@@ -296,12 +296,8 @@ def render_single_ticker_search(st) -> None:
             return
         raw_local = None
         try:
-            from .ticker_sec_financial_bridge import (
-                _LIMITS, inspect_collected_annual_revenue,
-            )
-            from .ticker_local_sources import prepare_local_ticker_sources
-            from .ticker_sec_original_guard_preview import inspect_original_guard_preview
-            from .ticker_market_industry_bridge import evaluate_ticker_a_c
+            from .ticker_sec_financial_bridge import _LIMITS
+            from .ticker_local_workflow import run_local_ticker_workflow
 
             raw_local = {
                 "ticker_map": mapped,
@@ -311,23 +307,34 @@ def render_single_ticker_search(st) -> None:
                 "original_10k": _read_uploaded(
                     original_local, _LIMITS["original_10k"]),
             }
-            local_receipt = prepare_local_ticker_sources(
-                ticker=ticker, as_of=as_of, sources=raw_local)
-            if local_receipt.get("status") != "local_four_sources_unverified":
-                st.warning("로컬 원본 4종의 기업·공시·파일 계약 불일치")
-                st.code(local_receipt.get("reason_code", "UNAVAILABLE"),
-                        language="text")
-                return
-            revenue = inspect_collected_annual_revenue(local_receipt, raw_local)
-            original_check = inspect_original_guard_preview(
-                local_receipt, raw_local, expected_revenue=revenue)
             market_data = (_read_uploaded(market_source, 131072)
                            if market_source is not None else None)
             industry_data = (_read_uploaded(industry_source, 65536)
                              if industry_source is not None else None)
-            supplementary = evaluate_ticker_a_c(
-                local_receipt, raw_local, market_json=market_data,
-                industry_json=industry_data)
+            workflow = run_local_ticker_workflow(
+                ticker=ticker, as_of=as_of, sources=raw_local,
+                market_json=market_data, industry_json=industry_data,
+            )
+            st.subheader("로컬 분석 단계별 실행 기록 · AI/거래 미실행")
+            st.json({
+                "mode": workflow["mode"], "status": workflow["status"],
+                "reason_code": workflow["reason_code"],
+                "next_action": workflow["next_action"],
+                "tool_calls_executed": workflow["tool_calls_executed"],
+                "tool_budget": workflow["tool_budget"],
+                "tool_trace": workflow["tool_trace"],
+                "ai_agent_executed": False, "network_requests": 0,
+                "guard_executed": False, "trade_executed": False,
+                "official_contest_submission": False,
+            })
+            if workflow["status"] != "READY_FOR_HUMAN_REVIEW_UNVERIFIED":
+                st.warning("로컬 원본 분석이 중단됐습니다. 차단 단계를 확인해 주세요.")
+                st.code(workflow["reason_code"], language="text")
+                return
+            local_receipt = workflow["receipt"]
+            revenue = workflow["revenue"]
+            original_check = workflow["original"]
+            supplementary = workflow["supplementary"]
             st.subheader("로컬 SEC 자료 검산 · 미인증 결과")
             st.json({
                 "source_mode": "LOCAL_USER_FILES_NOT_SEC_AUTHENTICATED",
@@ -355,12 +362,8 @@ def render_single_ticker_search(st) -> None:
             # original, contact, HTML or token enters this bounded report.
             if (revenue.get("status") == "REVENUE_CALCULATED_UNVERIFIED"
                     and type(original_check.get("guard_preview")) is dict):
-                from .ticker_local_report import (
-                    make_local_report, report_json_bytes,
-                )
-                local_report = make_local_report(
-                    local_receipt, revenue, original_check, supplementary,
-                )
+                from .ticker_local_report import report_json_bytes
+                local_report = workflow["report"]
                 st.subheader("출처·이용권리 사전 점검 · 외부 사용 차단")
                 st.json({
                     "status": local_report["source_rights_ledger"]["status"],

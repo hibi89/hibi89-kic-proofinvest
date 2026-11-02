@@ -231,6 +231,16 @@ class TickerUiTests(unittest.TestCase):
         self.assertEqual(result["growth_pct_unverified"], "100.00")
         self.assertEqual(result["guard_policy_preview"]["decision"], "HOLD")
         self.assertEqual(result["http_requests_attempted"], 0)
+        workflow = [v for kind, v in st.messages if kind == "json"
+                    and isinstance(v, dict)
+                    and v.get("mode") == "DETERMINISTIC_LOCAL_TOOLS_NOT_LLM_AGENT"]
+        self.assertEqual(len(workflow), 1)
+        self.assertEqual(workflow[0]["tool_calls_executed"], 6)
+        self.assertEqual(workflow[0]["tool_budget"], 6)
+        self.assertEqual(len(workflow[0]["tool_trace"]), 6)
+        self.assertEqual(workflow[0]["status"], "READY_FOR_HUMAN_REVIEW_UNVERIFIED")
+        self.assertFalse(workflow[0]["ai_agent_executed"])
+        self.assertFalse(workflow[0]["official_contest_submission"])
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["trade_executed"])
         self.assertTrue(st.buttons[0][1])  # Live button stays P105-blocked.

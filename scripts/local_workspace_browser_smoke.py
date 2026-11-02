@@ -166,6 +166,10 @@ def run(output: Path) -> dict:
                                 "button", name="로컬 원본으로 출처 계획 확인",
                             ).click()
                             expect(ticker_page.get_by_text(
+                                "로컬 분석 단계별 실행 기록 · AI/거래 미실행",
+                                exact=True,
+                            )).to_be_visible(timeout=22000)
+                            expect(ticker_page.get_by_text(
                                 "로컬 SEC 자료 검산 · 미인증 결과", exact=True,
                             )).to_be_visible(timeout=22000)
                             expect(ticker_page.get_by_text(
@@ -1340,6 +1344,7 @@ def run(output: Path) -> dict:
                             "p96_owner_peer_builder_comparison_passed": True,
                             "p96_source_builder_requires_fresh_guard_consent": True,
                             "p117_four_source_chromium_report_verified": True,
+                            "p122_local_workflow_trace_visible": True,
                             "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
