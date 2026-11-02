@@ -232,6 +232,65 @@ def run(output: Path) -> dict:
                                 path=str(output / "kuodra-p117-four-source-browser.png"),
                                 full_page=True,
                             )
+                            # P123: an explicit second user action replays all
+                            # original files; no reviewer identity is authenticated.
+                            ticker_page.get_by_label(
+                                "검토 표시명 (영문/숫자/한글/밑줄, 실명 금지)",
+                                exact=True,
+                            ).fill("QA_Browser")
+                            ticker_page.get_by_label(
+                                "검토 사유 (10~240자, 개인정보 입력 금지)",
+                                exact=True,
+                            ).fill("업로드 로컬 자료는 미인증이고 Guard HOLD임을 확인함")
+                            ticker_page.get_by_text(
+                                "원본 미인증·이용권리 미확인·Guard HOLD/REJECT 유지에 동의합니다",
+                                exact=True,
+                            ).click()
+                            ticker_page.get_by_role(
+                                "button", name="6단계 재검증 후 로컬 확인 기록 생성",
+                                exact=True,
+                            ).click()
+                            expect(ticker_page.get_by_text(
+                                "로컬 검토 확인 기록 생성 · 신원/원본/권한 미인증",
+                                exact=True,
+                            )).to_be_visible(timeout=22000)
+                            with ticker_page.expect_download(timeout=20000) as acked:
+                                ticker_page.get_by_role(
+                                    "button", name="로컬 사람 검토 확인 JSON (승인 아님)",
+                                    exact=True,
+                                ).click()
+                            human = acked.value
+                            if human.suggested_filename != (
+                                    "kuodra-local-review-ACK-UNVERIFIED.json"):
+                                raise AssertionError("P123_ACK_FILENAME_INVALID")
+                            human_receipt = json.loads(Path(
+                                human.path()).read_text(encoding="utf-8"))
+                            rsha = human_receipt.pop("receipt_sha256", None)
+                            rcanonical = (json.dumps(
+                                human_receipt, ensure_ascii=False, sort_keys=True,
+                                separators=(",", ":"), allow_nan=False,
+                            ) + "\n").encode("utf-8")
+                            human_receipt["receipt_sha256"] = rsha
+                            if (
+                                rsha != sha256(rcanonical).hexdigest()
+                                or human_receipt["report_sha256"] != p117_digest
+                                or human_receipt["status"]
+                                   != "ACKNOWLEDGED_UNVERIFIED_LOCAL_ONLY"
+                                or human_receipt["guard_policy_preview_unchanged"]
+                                   != "HOLD"
+                                or human_receipt["reviewer_identity_authenticated"] is not False
+                                or human_receipt["source_rights_verified"] is not False
+                                or human_receipt["human_approved"] is not False
+                                or human_receipt["audit_written"] is not False
+                                or human_receipt["trade_executed"] is not False
+                                or human_receipt["external_http_requests"] != 0
+                                or (Path(home) / ".proofinvest-guard" / "audit.sqlite").exists()
+                            ):
+                                raise AssertionError("P123_ACK_TRUST_CONTRACT_INVALID")
+                            ticker_page.screenshot(
+                                path=str(output / "kuodra-p123-review-browser.png"),
+                                full_page=True,
+                            )
                         finally:
                             ticker_page.close()
                         page.get_by_test_id("stSelectbox").first.click()
@@ -1345,6 +1404,7 @@ def run(output: Path) -> dict:
                             "p96_source_builder_requires_fresh_guard_consent": True,
                             "p117_four_source_chromium_report_verified": True,
                             "p122_local_workflow_trace_visible": True,
+                            "p123_human_acknowledgement_browser_verified": True,
                             "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,

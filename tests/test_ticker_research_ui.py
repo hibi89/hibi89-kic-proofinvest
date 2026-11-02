@@ -262,6 +262,61 @@ class TickerUiTests(unittest.TestCase):
         self.assertFalse(report["limits"]["source_authenticated"])
         self.assertEqual(len(report["source_sha256"]["companyfacts"]), 64)
 
+    def test_p123_reviewer_ack_requires_explicit_click_and_replays_original(self):
+        from tests.test_ticker_sec_financial_bridge import valid_case
+        from tests.test_ticker_sec_original_guard_preview import valid_xhtml
+        from proofinvest.ticker_local_report import report_json_bytes
+        import json
+        _, sources = valid_case()
+        uploads = {
+            "kuodra_p100_ticker_map": Uploaded(sources["ticker_map"]),
+            "kuodra_p100_submissions": Uploaded(sources["submissions"]),
+            "kuodra_p116_companyfacts": Uploaded(sources["companyfacts"]),
+            "kuodra_p116_original": Uploaded(valid_xhtml()),
+        }
+        values = {
+            "kuodra_p100_as_of": "2025-10-16",
+            "kuodra_p123_alias": "Reviewer_123",
+            "kuodra_p123_note": "원본 미인증과 HOLD 상태를 확인하고 검토 기록을 남김",
+        }
+        blocked = FakeSt(
+            clicked="6단계 재검증 후 로컬 확인 기록 생성",
+            uploads=uploads, values=values,
+        )
+        with patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}):
+            ui.render_single_ticker_search(blocked)
+        self.assertTrue(any(label.startswith("6단계 재검증 후") and disabled
+                            for label, disabled in blocked.buttons))
+        self.assertFalse(any(
+            kind == "download" and "로컬 사람 검토" in v["label"]
+            for kind, v in blocked.messages if kind == "download"))
+        st = FakeSt(
+            clicked="6단계 재검증 후 로컬 확인 기록 생성",
+            uploads=uploads, values=values,
+            checks={"kuodra_p123_ack": True},
+        )
+        with (
+            patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}),
+            patch.object(transport, "_open_once",
+                         side_effect=AssertionError("NO LIVE SEC")) as http,
+        ):
+            ui.render_single_ticker_search(st)
+        http.assert_not_called()
+        downloads = [v for kind, v in st.messages if kind == "download"]
+        self.assertEqual(len(downloads), 2)
+        evidence = json.loads(downloads[0]["data"])
+        human = json.loads(downloads[1]["data"])
+        self.assertEqual(human["report_sha256"], evidence["report_sha256"])
+        self.assertEqual(human["status"], "ACKNOWLEDGED_UNVERIFIED_LOCAL_ONLY")
+        self.assertEqual(human["guard_policy_preview_unchanged"], "HOLD")
+        self.assertEqual(human["reviewer_alias_unverified"], "Reviewer_123")
+        self.assertFalse(human["human_approved"])
+        self.assertFalse(human["audit_written"])
+        self.assertFalse(human["source_rights_verified"])
+        self.assertEqual(human["external_http_requests"], 0)
+        self.assertEqual(downloads[1]["file_name"],
+                         "kuodra-local-review-ACK-UNVERIFIED.json")
+
     def test_p116_partial_upload_never_claims_financial_verification(self):
         st = FakeSt(clicked="로컬 원본으로 출처 계획 확인",
                     values={"kuodra_p100_as_of": "2025-10-16"},

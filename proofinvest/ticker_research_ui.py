@@ -271,8 +271,34 @@ def render_single_ticker_search(st) -> None:
         type=["html", "htm", "xhtml", "xml", "txt"],
         key="kuodra_p116_original",
     )
-    if st.button("로컬 원본으로 출처 계획 확인", key="kuodra_p100_offline",
-                 disabled=ticker_map is None or not valid):
+    # P123: separate explicit human act; each click rereads source uploads
+    # and independently replays the report before producing any receipt.
+    # Do not cache original bytes, account/identity claims or review receipts.
+    st.subheader("사람의 로컬 검토 확인 · 승인/감사 아님")
+    st.caption("표시명은 본인 확인이 되지 않습니다. 개인 식별정보를 입력하지 마십시오. "
+               "확인 기록은 별도 다운로드할 때만 생성하며 투자·제출 허가가 아닙니다.")
+    reviewer_alias = st.text_input(
+        "검토 표시명 (영문/숫자/한글/밑줄, 실명 금지)",
+        value="", max_chars=40, key="kuodra_p123_alias",
+    )
+    review_note = st.text_input(
+        "검토 사유 (10~240자, 개인정보 입력 금지)",
+        value="", max_chars=240, key="kuodra_p123_note",
+    )
+    local_ack = st.checkbox(
+        "원본 미인증·이용권리 미확인·Guard HOLD/REJECT 유지에 동의합니다",
+        value=False, key="kuodra_p123_ack",
+    )
+    human_review_clicked = st.button(
+        "6단계 재검증 후 로컬 확인 기록 생성",
+        key="kuodra_p123_review",
+        disabled=ticker_map is None or not valid or not local_ack,
+    )
+    source_plan_clicked = st.button(
+        "로컬 원본으로 출처 계획 확인", key="kuodra_p100_offline",
+        disabled=ticker_map is None or not valid,
+    )
+    if source_plan_clicked or human_review_clicked:
         try:
             mapped = _read_uploaded(ticker_map, MAX_MAP_BYTES)
             filings = (_read_uploaded(submissions, MAX_SUBMISSIONS_BYTES)
@@ -380,6 +406,42 @@ def render_single_ticker_search(st) -> None:
                 })
                 st.caption("원본 해시는 파일 무결성 식별자일 뿐입니다. "
                            "외부 공유·대회 공개·상용 재사용 권한은 확인되지 않았습니다.")
+                if human_review_clicked:
+                    from .ticker_human_acknowledgement import (
+                        acknowledge_local_ticker_report,
+                        acknowledgement_json_bytes,
+                    )
+                    try:
+                        human_receipt = acknowledge_local_ticker_report(
+                            local_report, sources=raw_local,
+                            reviewer_alias=reviewer_alias,
+                            review_note=review_note,
+                            explicit_acknowledgement=local_ack,
+                            market_json=market_data,
+                            industry_json=industry_data,
+                        )
+                    except (ValueError, TypeError, KeyError, RecursionError):
+                        st.warning("검토 확인 차단: 표시명·사유 또는 원본 재검증을 확인하십시오.")
+                    else:
+                        st.success("로컬 검토 확인 기록 생성 · 신원/원본/권한 미인증")
+                        st.json({
+                            "status": human_receipt["status"],
+                            "report_sha256": human_receipt["report_sha256"],
+                            "receipt_sha256": human_receipt["receipt_sha256"],
+                            "guard_policy_preview_unchanged":
+                                human_receipt["guard_policy_preview_unchanged"],
+                            "human_approved": False,
+                            "audit_written": False,
+                            "source_rights_verified": False,
+                            "trade_executed": False,
+                        })
+                        st.download_button(
+                            "로컬 사람 검토 확인 JSON (승인 아님)",
+                            data=acknowledgement_json_bytes(human_receipt),
+                            file_name="kuodra-local-review-ACK-UNVERIFIED.json",
+                            mime="application/json",
+                            key="kuodra_p123_ack_download",
+                        )
                 st.metric("연매출 성장률 (로컬 미인증)",
                           str(revenue["growth_pct"]) + "%")
                 st.metric("Guard 정책 미리보기 (미실행)",
