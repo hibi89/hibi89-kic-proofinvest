@@ -46,7 +46,23 @@ class SingleTickerTransportTests(unittest.TestCase):
     def collect(self, **changes):
         args = dict(ticker="NVDA", as_of="2025-10-16", user_agent=UA,
                     allow_network=True, acknowledge_four_requests=True)
-        return t.collect_ticker_sec_sources(**(args | changes))
+        # Old mocked four-GET contract remains regression-testable; the
+        # production P105 403 HOLD is separately tested without a bypass.
+        with patch.object(t, "P105_SEC_403_HOLD", False):
+            return t.collect_ticker_sec_sources(**(args | changes))
+
+    def test_p105_403_hold_overrides_even_explicit_live_consent(self):
+        with patch.object(t, "_open_once", side_effect=AssertionError("HTTP ATTEMPT")) as net:
+            receipt, raws = t.collect_ticker_sec_sources(
+                ticker="NVDA", as_of="2025-10-16", user_agent=UA,
+                allow_network=True, acknowledge_four_requests=True,
+            )
+        net.assert_not_called()
+        self.assertEqual(receipt["reason_code"], "SEC_P105_403_RETRY_PROHIBITED")
+        self.assertEqual(receipt["stage"], "preflight")
+        self.assertEqual(receipt["http_requests_attempted"], 0)
+        self.assertFalse(receipt["live_sec_http_called"])
+        self.assertIsNone(raws)
 
     def test_no_http_default_opt_in_and_double_ack(self):
         with patch.object(t, "_open_once", side_effect=AssertionError("SOCKET")) as op:

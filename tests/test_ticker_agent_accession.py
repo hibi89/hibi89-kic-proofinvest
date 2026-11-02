@@ -57,7 +57,8 @@ def run_mocked(sources):
     def get(request, *, timeout):
         attempted.append(request.full_url)
         return sources[request.full_url]
-    with patch.object(transport, "_open_once", side_effect=get), \
+    with patch.object(transport, "P105_SEC_403_HOLD", False), \
+            patch.object(transport, "_open_once", side_effect=get), \
             patch.object(transport.time, "sleep", return_value=None):
         result, raw = transport.collect_ticker_sec_sources(
             ticker="NVDA", as_of="2025-10-16",

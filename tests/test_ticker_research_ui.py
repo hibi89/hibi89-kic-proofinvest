@@ -93,6 +93,23 @@ class TickerUiTests(unittest.TestCase):
                 fetch.assert_not_called()
                 self.assertTrue(st.buttons[0][1])
 
+    def test_p105_hold_disables_live_button_despite_owner_ui_switches(self):
+        st = FakeSt(clicked="SEC 원문 4종 자동 수집 실행",
+                    checks={"kuodra_p100_approve_four": True},
+                    values={"kuodra_p100_sec_contact": UA,
+                            "kuodra_p100_as_of": "2025-10-16"})
+        with patch.dict(os.environ, {
+            "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+            "KUODRA_ENABLE_SEC_FETCH_UI": "1",
+        }), patch.object(transport, "collect_ticker_sec_sources",
+                         side_effect=AssertionError("FORBIDDEN_HTTP")) as fetch:
+            ui.render_single_ticker_search(st)
+        fetch.assert_not_called()
+        self.assertTrue(st.buttons[0][1])
+        self.assertTrue(any(kind == "warning" and "403" in val
+                            for kind, val in st.messages))
+        self.assertNotIn(UA, repr(st.messages))
+
     def test_enabled_genuine_contact_single_click_and_no_raw_retention(self):
         st = FakeSt(clicked="SEC 원문 4종 자동 수집 실행",
                     checks={"kuodra_p100_approve_four": True},
@@ -116,8 +133,9 @@ class TickerUiTests(unittest.TestCase):
         with patch.dict(os.environ, {
             "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
             "KUODRA_ENABLE_SEC_FETCH_UI": "1",
-        }), patch.object(transport, "collect_ticker_sec_sources",
-                        return_value=(result, raws)) as fetch:
+        }), patch.object(ui, "P105_SEC_403_HOLD", False), patch.object(
+                transport, "collect_ticker_sec_sources",
+                return_value=(result, raws)) as fetch:
             ui.render_single_ticker_search(st)
         fetch.assert_called_once_with(
             ticker="NVDA", as_of="2025-10-16", user_agent=UA,

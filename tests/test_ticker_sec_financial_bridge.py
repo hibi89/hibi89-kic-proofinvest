@@ -32,7 +32,8 @@ def valid_case():
     )
     def fake(request, *, timeout):
         return source[request.full_url]
-    with patch.object(transport, "_open_once", side_effect=fake), \
+    with patch.object(transport, "P105_SEC_403_HOLD", False), \
+            patch.object(transport, "_open_once", side_effect=fake), \
             patch.object(transport.time, "sleep", return_value=None):
         receipt, raw = transport.collect_ticker_sec_sources(
             ticker="NVDA", as_of="2025-10-16", user_agent=UA,

@@ -26,6 +26,10 @@ from .ticker_research_intake import (
 MAX_FETCH_COUNT = 4
 TIMEOUT_SECONDS = 12
 PAUSE_SECONDS = 0.35
+# The owner's one-time P105 SEC probe returned HTTP 403 on 2026-11-02.
+# This is an intentional non-configurable production HOLD, not an environment
+# switch. Reopening requires a separately approved source-code policy change.
+P105_SEC_403_HOLD = True
 _MAX_ORIGINAL_BYTES = 24_000_000
 _ALLOWED_ORIGINAL_TYPES = {"text/html", "application/xhtml+xml", "text/plain"}
 _ALLOWED_JSON_TYPES = {"application/json"}
@@ -136,6 +140,10 @@ def collect_ticker_sec_sources(
                  "reason_code": reason, "live_sec_http_called":
                  receipt["http_requests_attempted"] > 0}, None)
 
+    # Prevent a second SEC attempt even if a stale local UI opt-in or
+    # command-line approval is provided. Offline planners remain available.
+    if P105_SEC_403_HOLD:
+        return fail("SEC_P105_403_RETRY_PROHIBITED", "preflight")
     if allow_network is not True or acknowledge_four_requests is not True:
         return fail("EXPLICIT_FOUR_REQUEST_APPROVAL_REQUIRED", "preflight")
     if not _valid_contact(user_agent):

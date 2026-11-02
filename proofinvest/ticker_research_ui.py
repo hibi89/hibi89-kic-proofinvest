@@ -15,6 +15,7 @@ from .ticker_research_intake import (
     MAX_MAP_BYTES, MAX_SUBMISSIONS_BYTES, build_ticker_source_plan,
 )
 from .sec_api_client import _valid_contact
+from .ticker_sec_transport import P105_SEC_403_HOLD
 
 LIVE_GATE = "KUODRA_ENABLE_SEC_FETCH_UI"
 MAX_ONLINE_GETS = 4
@@ -114,8 +115,12 @@ def render_single_ticker_search(st) -> None:
         max_chars=10, key="kuodra_p100_as_of",
     )
 
-    enabled = os.environ.get(LIVE_GATE) == "1"
-    if not enabled:
+    enabled = os.environ.get(LIVE_GATE) == "1" and not P105_SEC_403_HOLD
+    if P105_SEC_403_HOLD:
+        st.warning("SEC P105 HTTP 403 확인: 기존 수집 경로의 재요청은 중단되었습니다. "
+                   "환경변수와 화면 동의만으로 재개할 수 없습니다. "
+                   "로컬 자료 출처 계획 확인은 계속 사용할 수 있습니다.")
+    elif not enabled:
         st.warning("SEC 네트워크 검색: 관리자 승인 대기. "
                    "별도 환경설정 KUODRA_ENABLE_SEC_FETCH_UI=1 없이는 요청할 수 없습니다.")
     st.subheader("공식 SEC 자동 조회 (명시적 승인 필요)")
