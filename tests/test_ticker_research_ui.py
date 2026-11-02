@@ -304,8 +304,11 @@ class TickerUiTests(unittest.TestCase):
         http.assert_not_called()
         downloads = [v for kind, v in st.messages if kind == "download"]
         self.assertEqual(len(downloads), 2)
-        evidence = json.loads(downloads[0]["data"])
-        human = json.loads(downloads[1]["data"])
+        by_name = {v["file_name"]: v for v in downloads}
+        evidence = json.loads(
+            by_name["kuodra-local-four-source-UNVERIFIED.json"]["data"])
+        human = json.loads(
+            by_name["kuodra-local-review-ACK-UNVERIFIED.json"]["data"])
         self.assertEqual(human["report_sha256"], evidence["report_sha256"])
         self.assertEqual(human["status"], "ACKNOWLEDGED_UNVERIFIED_LOCAL_ONLY")
         self.assertEqual(human["guard_policy_preview_unchanged"], "HOLD")
@@ -314,8 +317,7 @@ class TickerUiTests(unittest.TestCase):
         self.assertFalse(human["audit_written"])
         self.assertFalse(human["source_rights_verified"])
         self.assertEqual(human["external_http_requests"], 0)
-        self.assertEqual(downloads[1]["file_name"],
-                         "kuodra-local-review-ACK-UNVERIFIED.json")
+        self.assertIn("kuodra-local-review-ACK-UNVERIFIED.json", by_name)
 
     def test_p116_partial_upload_never_claims_financial_verification(self):
         st = FakeSt(clicked="로컬 원본으로 출처 계획 확인",
