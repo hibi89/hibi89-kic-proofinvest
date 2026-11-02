@@ -101,13 +101,13 @@ def run(output: Path) -> dict:
                             # P117: *real* Chromium upload, click and report
                             # download. Source fixture builder uses patched
                             # fake HTTP in the test process, never SEC traffic.
-                            from tests.test_ticker_sec_financial_bridge import (
-                                valid_case as p117_valid_case,
+                            from tests.test_ticker_engine_b_bridge import (
+                                source_with_accounting_facts,
                             )
                             from tests.test_ticker_sec_original_guard_preview import (
                                 valid_xhtml as p117_original,
                             )
-                            _, p117_files = p117_valid_case()
+                            p117_files = source_with_accounting_facts()
                             as_of_input = ticker_page.get_by_label(
                                 "조회 기준일 (YYYY-MM-DD)", exact=True,
                             )
@@ -173,6 +173,10 @@ def run(output: Path) -> dict:
                                 "로컬 SEC 자료 검산 · 미인증 결과", exact=True,
                             )).to_be_visible(timeout=22000)
                             expect(ticker_page.get_by_text(
+                                "Engine B · 10-K 회계·현금흐름 검토 (미인증)",
+                                exact=True,
+                            )).to_be_visible(timeout=22000)
+                            expect(ticker_page.get_by_text(
                                 "출처·이용권리 사전 점검 · 외부 사용 차단",
                                 exact=True,
                             )).to_be_visible(timeout=22000)
@@ -210,6 +214,12 @@ def run(output: Path) -> dict:
                                 or p117_report["verification"]["growth_pct"]
                                    != "100.00"
                                 or p117_report["guard_policy_preview"] != "HOLD"
+                                or p117_report["engine_b"]["status"]
+                                   != "REVIEWED_UNVERIFIED"
+                                or p117_report["engine_b"]["net_income_usd"] != "60"
+                                or p117_report["engine_b"]["operating_cashflow_usd"] != "20"
+                                or p117_report["engine_b"]["cash_to_net_income_pct"] != "33.33"
+                                or p117_report["engine_b"]["accounting_fraud_proven"] is not False
                                 or p117_report["source_rights_ledger"]["status"]
                                    != "EXTERNAL_USE_BLOCKED_RIGHTS_NOT_VERIFIED"
                                 or p117_report["source_rights_ledger"][
@@ -1405,6 +1415,7 @@ def run(output: Path) -> dict:
                             "p117_four_source_chromium_report_verified": True,
                             "p122_local_workflow_trace_visible": True,
                             "p123_human_acknowledgement_browser_verified": True,
+                            "p124_local_engine_b_cash_replay_visible": True,
                             "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,

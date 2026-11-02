@@ -372,6 +372,7 @@ def render_single_ticker_search(st) -> None:
                 "growth_pct_unverified": revenue.get("growth_pct"),
                 "original_status": original_check.get("status"),
                 "guard_policy_preview": original_check.get("guard_preview"),
+                "engine_b": workflow["engine_b"]["status"],
                 "engine_a": supplementary["engine_a"]["status"],
                 "engine_c": supplementary["engine_c"]["status"],
                 "source_authenticated": False,
@@ -442,6 +443,11 @@ def render_single_ticker_search(st) -> None:
                             mime="application/json",
                             key="kuodra_p123_ack_download",
                         )
+                st.subheader("Engine B · 10-K 회계·현금흐름 검토 (미인증)")
+                st.json(workflow["engine_b"])
+                st.caption("수익·현금흐름 및 운전자본 비교는 같은 접수번호의 "
+                           "로컬 CompanyFacts 기반 설명용 신호입니다. "
+                           "공시 출처 미인증이며 회계 사기·투자 판단으로 확정하지 않습니다.")
                 st.metric("연매출 성장률 (로컬 미인증)",
                           str(revenue["growth_pct"]) + "%")
                 st.metric("Guard 정책 미리보기 (미실행)",

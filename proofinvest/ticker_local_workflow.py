@@ -16,13 +16,14 @@ def _empty(reason: str) -> dict[str, Any]:
         "status": "BLOCKED",
         "reason_code": reason,
         "next_action": "REVIEW_LOCAL_INPUTS",
-        "tool_budget": 6,
+        "tool_budget": 7,
         "tool_calls_executed": 0,
         "tool_trace": [],
         "receipt": None,
         "revenue": None,
         "original": None,
         "supplementary": None,
+        "engine_b": None,
         "report": None,
         "network_requests": 0,
         "guard_executed": False,
@@ -69,6 +70,7 @@ def run_local_ticker_workflow(
         from .ticker_sec_financial_bridge import inspect_collected_annual_revenue
         from .ticker_sec_original_guard_preview import inspect_original_guard_preview
         from .ticker_market_industry_bridge import evaluate_ticker_a_c
+        from .ticker_engine_b_bridge import inspect_ticker_engine_b
         from .ticker_local_report import make_local_report, verify_local_report
 
         receipt = prepare_local_ticker_sources(
@@ -115,6 +117,28 @@ def run_local_ticker_workflow(
             return out
         out["original"] = original
 
+        engine_b = inspect_ticker_engine_b(
+            receipt, sources, expected_revenue=revenue,
+            expected_original=original,
+        )
+        b_ok = (
+            engine_b.get("status") in ("REVIEWED_UNVERIFIED", "UNAVAILABLE")
+            and engine_b.get("source_authenticated") is False
+            and engine_b.get("source_rights_verified") is False
+            and engine_b.get("accounting_fraud_proven") is False
+            and engine_b.get("guard_executed") is False
+            and engine_b.get("trade_executed") is False
+            and engine_b.get("companyfacts_sha256") ==
+                receipt["source_sha256"]["companyfacts"]
+        )
+        step("inspect_ticker_engine_b", engine_b.get("status", "UNAVAILABLE"),
+             accepted=b_ok)
+        if not b_ok:
+            out.update(reason_code="ENGINE_B_TRUST_CONTRACT_INVALID",
+                       next_action="REVIEW_CASHFLOW_SOURCE_AND_PERIOD")
+            return out
+        out["engine_b"] = engine_b
+
         supplementary = evaluate_ticker_a_c(
             receipt, sources, market_json=market_json,
             industry_json=industry_json)
@@ -132,7 +156,8 @@ def run_local_ticker_workflow(
             return out
         out["supplementary"] = supplementary
 
-        report = make_local_report(receipt, revenue, original, supplementary)
+        report = make_local_report(
+            receipt, revenue, original, supplementary, engine_b=engine_b)
         step("make_local_report", report["status"], accepted=True)
 
         verification = verify_local_report(

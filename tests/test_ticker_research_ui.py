@@ -250,6 +250,9 @@ class TickerUiTests(unittest.TestCase):
         report = __import__("json").loads(reports[0]["data"])
         self.assertEqual(report["verification"]["growth_pct"], "100.00")
         self.assertEqual(report["guard_policy_preview"], "HOLD")
+        self.assertEqual(report["engine_b"]["status"], "UNAVAILABLE")
+        self.assertTrue(any(kind == "subheader" and "Engine B" in val
+                            for kind, val in st.messages))
         self.assertEqual(report["source_rights_ledger"]["status"],
                          "EXTERNAL_USE_BLOCKED_RIGHTS_NOT_VERIFIED")
         self.assertFalse(report["source_rights_ledger"]["external_sharing_allowed"])

@@ -23,11 +23,12 @@ class LocalTickerWorkflowTests(unittest.TestCase):
                 ticker="NVDA", as_of="2025-10-16", sources=raws)
         net.assert_not_called()
         self.assertEqual(workflow["status"], "READY_FOR_HUMAN_REVIEW_UNVERIFIED")
-        self.assertEqual(workflow["tool_calls_executed"], 6)
-        self.assertEqual(len(workflow["tool_trace"]), 6)
+        self.assertEqual(workflow["tool_calls_executed"], 7)
+        self.assertEqual(len(workflow["tool_trace"]), 7)
         self.assertEqual([x["tool"] for x in workflow["tool_trace"]], [
             "prepare_local_ticker_sources", "inspect_collected_annual_revenue",
-            "inspect_original_guard_preview", "evaluate_ticker_a_c",
+            "inspect_original_guard_preview", "inspect_ticker_engine_b",
+            "evaluate_ticker_a_c",
             "make_local_report", "verify_local_report",
         ])
         self.assertTrue(all(x["accepted"] and x["network_requests"] == 0
@@ -63,7 +64,7 @@ class LocalTickerWorkflowTests(unittest.TestCase):
                 self.assertIsNone(w["report"])
                 self.assertFalse(w["guard_executed"])
                 self.assertFalse(w["official_contest_submission"])
-                self.assertLess(w["tool_calls_executed"], 6)
+                self.assertLess(w["tool_calls_executed"], 7)
         wrong_ticker = run_local_ticker_workflow(
             ticker="AAPL", as_of="2025-10-16", sources=raws)
         self.assertEqual(wrong_ticker["reason_code"],
@@ -118,7 +119,7 @@ class LocalTickerWorkflowTests(unittest.TestCase):
         self.assertEqual(w["reason_code"], "INDEPENDENT_REPLAY_FAILED")
         self.assertEqual(w["status"], "BLOCKED")
         self.assertIsNone(w["report"])
-        self.assertEqual(w["tool_calls_executed"], 6)
+        self.assertEqual(w["tool_calls_executed"], 7)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def make_local_report(receipt: dict, revenue: dict, original: dict,
-                      supplementary: dict) -> dict:
+                      supplementary: dict, *, engine_b: dict | None = None) -> dict:
     if (type(receipt) is not dict or type(revenue) is not dict
             or type(original) is not dict or type(supplementary) is not dict):
         raise ValueError("LOCAL_REPORT_INPUT_INVALID")
@@ -65,6 +65,17 @@ def make_local_report(receipt: dict, revenue: dict, original: dict,
             or type(supplementary.get("engine_a")) is not dict
             or type(supplementary.get("engine_c")) is not dict):
         raise ValueError("LOCAL_A_C_TRUST_INVALID")
+    if engine_b is not None and (
+            type(engine_b) is not dict
+            or engine_b.get("schema") != "kuodra.ticker-engine-b-source-join.v1"
+            or engine_b.get("status") not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE")
+            or engine_b.get("companyfacts_sha256") != receipt["source_sha256"]["companyfacts"]
+            or any(engine_b.get(k) is not False for k in (
+                "source_authenticated", "source_rights_verified",
+                "accounting_fraud_proven", "guard_executed",
+                "audit_written", "trade_executed"))
+            or engine_b.get("external_http_requests") != 0):
+        raise ValueError("LOCAL_ENGINE_B_TRUST_INVALID")
     from .ticker_source_rights_ledger import build_local_rights_ledger
     rights_ledger = build_local_rights_ledger(receipt, supplementary)
     report = {
@@ -102,6 +113,8 @@ def make_local_report(receipt: dict, revenue: dict, original: dict,
             "trade_executed": False, "official_contest_submission": False,
         },
     }
+    if engine_b is not None:
+        report["engine_b"] = engine_b
     canonical = (json.dumps(report, ensure_ascii=False, sort_keys=True,
                             separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
     report["report_sha256"] = sha256(canonical).hexdigest()
@@ -185,7 +198,17 @@ def verify_local_report(
         supplement = evaluate_ticker_a_c(
             receipt, sources, market_json=market_json,
             industry_json=industry_json)
-        expected = make_local_report(receipt, revenue, original, supplement)
+        if "engine_b" in report:
+            from .ticker_engine_b_bridge import inspect_ticker_engine_b
+            b = inspect_ticker_engine_b(
+                receipt, sources, expected_revenue=revenue,
+                expected_original=original,
+            )
+            expected = make_local_report(
+                receipt, revenue, original, supplement, engine_b=b)
+        else:
+            # Exact legacy P117-P123 reports remain independently replayable.
+            expected = make_local_report(receipt, revenue, original, supplement)
         if expected != report:
             return _verification("FAIL", "REPORT_SEMANTIC_REPLAY_MISMATCH")
         return _verification("PASS", "EXACT_LOCAL_BYTES_AND_CALCULATIONS_MATCH")
