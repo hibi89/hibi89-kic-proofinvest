@@ -1,6 +1,6 @@
-"""P101 read-only SEC transport -> same-10-K annual revenue bridge.
+"""P101/P116 read-only SEC-shaped bytes -> same-10-K annual revenue bridge.
 
-Consumes only P99's in-memory source bytes and exact SHA-pinned receipt.
+Consumes P99 live HTTP or P116 unauthenticated local bytes with pinned receipts.
 Does NOT authenticate SEC origin, inspect full 10-K text, forecast, execute
 Guard/AI/trades, or infer A/C indicators from a single issuer's revenue.
 """
@@ -51,10 +51,23 @@ def inspect_collected_annual_revenue(
     try:
         if type(receipt) is not dict or type(raw_sources) is not dict:
             return _unavailable("SOURCE_RECEIPT_MISSING")
-        if (receipt.get("schema") != "kuodra.single-ticker-sec-transport.v1"
-                or receipt.get("status") != "four_sec_responses_in_memory_unverified"
-                or receipt.get("http_requests_attempted") != 4
-                or receipt.get("live_sec_http_called") is not True
+        live_receipt = (
+            receipt.get("schema") == "kuodra.single-ticker-sec-transport.v1"
+            and receipt.get("status") == "four_sec_responses_in_memory_unverified"
+            and receipt.get("http_requests_attempted") == 4
+            and receipt.get("live_sec_http_called") is True
+        )
+        local_receipt = (
+            receipt.get("schema") == "kuodra.local-sec-source-receipt.v1"
+            and receipt.get("status") == "local_four_sources_unverified"
+            and receipt.get("source_kind") == "CALLER_SUPPLIED_LOCAL_UNAUTHENTICATED"
+            and receipt.get("http_requests_attempted") == 0
+            and receipt.get("network_requests") == 0
+            and receipt.get("live_sec_http_called") is False
+            and receipt.get("live_data_retrieved") is False
+            and receipt.get("raw_companyfacts_financial_values_verified") is False
+        )
+        if (not (live_receipt or local_receipt)
                 or any(receipt.get(key) is not False for key in (
                     "source_authenticated", "source_rights_verified",
                     "point_in_time_verified", "full_a_b_c_ready",
@@ -152,6 +165,8 @@ def inspect_collected_annual_revenue(
             **_unavailable(""),
             "status": "REVENUE_CALCULATED_UNVERIFIED",
             "reason_code": "SAME_10K_STRUCTURAL_ARITHMETIC_ONLY",
+            "input_mode": ("LOCAL_UPLOAD_UNAUTHENTICATED" if local_receipt
+                           else "LIVE_TRANSPORT_UNAUTHENTICATED"),
             "ticker": ticker, "issuer_cik": cik, "accession": accession,
             "filing_date": filing["filing_date"], "as_of": as_of,
             "current_end": current_end, "prior_end": prior_end,

@@ -262,6 +262,15 @@ def render_single_ticker_search(st) -> None:
         "선택 기업 SEC submissions.json (선택)",
         type=["json"], key="kuodra_p100_submissions",
     )
+    companyfacts_local = st.file_uploader(
+        "CompanyFacts JSON (로컬 검산용 선택)",
+        type=["json"], key="kuodra_p116_companyfacts",
+    )
+    original_local = st.file_uploader(
+        "동일 10-K 원문 HTML/XHTML (로컬 문맥 검토용 선택)",
+        type=["html", "htm", "xhtml", "xml", "txt"],
+        key="kuodra_p116_original",
+    )
     if st.button("로컬 원본으로 출처 계획 확인", key="kuodra_p100_offline",
                  disabled=ticker_map is None or not valid):
         try:
@@ -276,3 +285,74 @@ def render_single_ticker_search(st) -> None:
             st.warning("로컬 자료의 형식·크기·기업 식별 정보를 확인할 수 없습니다.")
             return
         _display_receipt(st, result, online=False)
+        # P116: no SEC HTTP. With all four uploaded files, reuse source-SHA-
+        # bound arithmetic and read-only Guard policy preview. A local file
+        # is never claimed to be SEC-authenticated even if its URL looks valid.
+        if companyfacts_local is None and original_local is None:
+            return
+        if submissions is None or companyfacts_local is None or original_local is None:
+            st.warning("로컬 매출 검산에는 ticker 목록, submissions, "
+                       "CompanyFacts, 같은 10-K 원문 모두 필요합니다.")
+            return
+        raw_local = None
+        try:
+            from .ticker_sec_financial_bridge import (
+                _LIMITS, inspect_collected_annual_revenue,
+            )
+            from .ticker_local_sources import prepare_local_ticker_sources
+            from .ticker_sec_original_guard_preview import inspect_original_guard_preview
+            from .ticker_market_industry_bridge import evaluate_ticker_a_c
+
+            raw_local = {
+                "ticker_map": mapped,
+                "submissions": filings,
+                "companyfacts": _read_uploaded(
+                    companyfacts_local, _LIMITS["companyfacts"]),
+                "original_10k": _read_uploaded(
+                    original_local, _LIMITS["original_10k"]),
+            }
+            local_receipt = prepare_local_ticker_sources(
+                ticker=ticker, as_of=as_of, sources=raw_local)
+            if local_receipt.get("status") != "local_four_sources_unverified":
+                st.warning("로컬 원본 4종의 기업·공시·파일 계약 불일치")
+                st.code(local_receipt.get("reason_code", "UNAVAILABLE"),
+                        language="text")
+                return
+            revenue = inspect_collected_annual_revenue(local_receipt, raw_local)
+            original_check = inspect_original_guard_preview(
+                local_receipt, raw_local, expected_revenue=revenue)
+            market_data = (_read_uploaded(market_source, 131072)
+                           if market_source is not None else None)
+            industry_data = (_read_uploaded(industry_source, 65536)
+                             if industry_source is not None else None)
+            supplementary = evaluate_ticker_a_c(
+                local_receipt, raw_local, market_json=market_data,
+                industry_json=industry_data)
+            st.subheader("로컬 SEC 자료 검산 · 미인증 결과")
+            st.json({
+                "source_mode": "LOCAL_USER_FILES_NOT_SEC_AUTHENTICATED",
+                "ticker": local_receipt["ticker"],
+                "cik": local_receipt["cik"],
+                "accession": local_receipt["selected_10k_accession"],
+                "input_mode": revenue.get("input_mode"),
+                "financial_status": revenue.get("status"),
+                "growth_pct_unverified": revenue.get("growth_pct"),
+                "original_status": original_check.get("status"),
+                "guard_policy_preview": original_check.get("guard_preview"),
+                "engine_a": supplementary["engine_a"]["status"],
+                "engine_c": supplementary["engine_c"]["status"],
+                "source_authenticated": False,
+                "source_rights_verified": False,
+                "guard_executed": False,
+                "audit_written": False,
+                "ai_agent_executed": False,
+                "trade_executed": False,
+                "http_requests_attempted": 0,
+            })
+            st.warning("로컬 업로드 자료의 진위·제공 권한은 확인되지 않았습니다. "
+                       "Guard는 정책 미리보기이며 투자 실행이나 APPROVE가 아닙니다.")
+        except (ValueError, TypeError, KeyError, OSError, RecursionError):
+            st.warning("로컬 파일 크기·형식 또는 교차검증에 실패했습니다.")
+        finally:
+            if type(raw_local) is dict:
+                raw_local.clear()

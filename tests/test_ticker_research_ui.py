@@ -193,6 +193,56 @@ class TickerUiTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ui._read_uploaded(wrong, ui.MAX_MAP_BYTES)
 
+    def test_p116_offline_four_source_ui_reuses_guard_without_sec_http(self):
+        from tests.test_ticker_sec_financial_bridge import valid_case
+        from tests.test_ticker_sec_original_guard_preview import valid_xhtml
+        _live_receipt, sources = valid_case()  # Existing mocked transport only.
+        st = FakeSt(
+            clicked="로컬 원본으로 출처 계획 확인",
+            values={"kuodra_p100_as_of": "2025-10-16"},
+            uploads={
+                "kuodra_p100_ticker_map": Uploaded(sources["ticker_map"]),
+                "kuodra_p100_submissions": Uploaded(sources["submissions"]),
+                "kuodra_p116_companyfacts": Uploaded(sources["companyfacts"]),
+                "kuodra_p116_original": Uploaded(valid_xhtml()),
+            },
+        )
+        with patch.dict(os.environ, {
+            "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+            "KUODRA_ENABLE_SEC_FETCH_UI": "1",
+        }), patch.object(transport, "_open_once",
+                         side_effect=AssertionError("NO SEC RETRY")) as http:
+            ui.render_single_ticker_search(st)
+        http.assert_not_called()
+        previews = [v for k, v in st.messages
+                    if k == "json" and isinstance(v, dict)
+                    and v.get("source_mode") == "LOCAL_USER_FILES_NOT_SEC_AUTHENTICATED"]
+        self.assertEqual(len(previews), 1)
+        result = previews[0]
+        self.assertEqual(result["financial_status"], "REVENUE_CALCULATED_UNVERIFIED")
+        self.assertEqual(result["growth_pct_unverified"], "100.00")
+        self.assertEqual(result["guard_policy_preview"]["decision"], "HOLD")
+        self.assertEqual(result["http_requests_attempted"], 0)
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["trade_executed"])
+        self.assertTrue(st.buttons[0][1])  # Live button stays P105-blocked.
+
+    def test_p116_partial_upload_never_claims_financial_verification(self):
+        st = FakeSt(clicked="로컬 원본으로 출처 계획 확인",
+                    values={"kuodra_p100_as_of": "2025-10-16"},
+                    uploads={"kuodra_p100_ticker_map": Uploaded(mapping()),
+                             "kuodra_p100_submissions": Uploaded(submissions()),
+                             "kuodra_p116_companyfacts": Uploaded(b"{}")})
+        with patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}), \
+                patch.object(transport, "_open_once",
+                             side_effect=AssertionError("NO SEC HTTP")) as net:
+            ui.render_single_ticker_search(st)
+        net.assert_not_called()
+        self.assertFalse(any(k == "json" and isinstance(v, dict)
+                             and "growth_pct_unverified" in v for k, v in st.messages))
+        self.assertTrue(any(k == "warning" and "4종" not in v
+                            for k, v in st.messages))
+
     def test_unverified_contract_hides_authentication_claim(self):
         st = FakeSt()
         ui._display_receipt(st, {"status": "four_sec_responses_in_memory_unverified",
