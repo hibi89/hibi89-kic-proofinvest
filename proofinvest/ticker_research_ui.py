@@ -209,12 +209,13 @@ def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
     state = getattr(st, "session_state", None)
     if state is None:
         return
-    cached = state.get(_P153_LINKED_CACHE_KEY)
-    if cached is None:
-        return
+    from .linked_report_session_cache import (
+        clear_linked_reports, discard_linked_report, find_linked_report,
+    )
     if not approved:
-        state.pop(_P153_LINKED_CACHE_KEY, None)
+        clear_linked_reports(state)
         return
+    fingerprint = None
     try:
         fingerprint = _p153_uploaded_input_digest(
             ticker=ticker, as_of=as_of, operator_zip=operator_zip,
@@ -222,6 +223,16 @@ def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
             companyfacts_local=companyfacts_local, original_local=original_local,
             market_source=market_source, industry_source=industry_source,
         )
+        latest = state.get(_P153_LINKED_CACHE_KEY)
+        # The P153 latest record has precedence, including when corrupted:
+        # do not bypass a tampered current record with a historical copy.
+        if (type(latest) is dict and latest.get("fingerprint") == fingerprint):
+            cached = latest
+        else:
+            cached = find_linked_report(state, fingerprint)
+            if cached is None:
+                state.pop(_P153_LINKED_CACHE_KEY, None)
+                return
         if (type(cached) is not dict
                 or set(cached) != {"fingerprint", "data"}
                 or cached.get("fingerprint") != fingerprint
@@ -238,7 +249,10 @@ def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
             raise ValueError("CACHED_LINKED_RECEIPT_REVALIDATION_FAILED")
     except (ValueError, TypeError, KeyError, AttributeError,
             OverflowError, UnicodeError, RecursionError):
-        state.pop(_P153_LINKED_CACHE_KEY, None)
+        if fingerprint is None:
+            state.pop(_P153_LINKED_CACHE_KEY, None)
+        else:
+            discard_linked_report(state, fingerprint)
         return
     st.subheader("이전 검산 완료 · 통합 증거 JSON (현재 세션에서만 유지)")
     st.json({
@@ -984,12 +998,17 @@ def render_single_ticker_search(st) -> None:
                                             UnicodeError, RecursionError):
                                         state.pop(_P153_LINKED_CACHE_KEY, None)
                                     else:
-                                        # Only canonical, independently replayed
-                                        # derived bytes enter session_state.
-                                        state[_P153_LINKED_CACHE_KEY] = {
-                                            "fingerprint": current_digest,
-                                            "data": linked_holder["safe_bytes"],
-                                        }
+                                        # Keep a small bounded archive so an
+                                        # explicitly clicked A -> B -> A source
+                                        # switch can redisplay A without a
+                                        # duplicate licensed market GET.
+                                        from .linked_report_session_cache import (
+                                            keep_linked_report,
+                                        )
+                                        keep_linked_report(
+                                            state, current_digest,
+                                            linked_holder["safe_bytes"],
+                                        )
                                 st.download_button(
                                     "통합 검산 근거 JSON (로컬 전용 · 미인증)",
                                     data=linked_holder["safe_bytes"],
