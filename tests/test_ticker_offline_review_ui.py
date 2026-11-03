@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from proofinvest import ticker_research_ui as ui
 from proofinvest.ticker_review_packet import inspect_review_packet_bytes
+from proofinvest.ticker_source_clearance_packet import inspect_source_clearance_packet
 from tests.test_ticker_market_pair_evidence import _prepared, _body
 from tests.test_ticker_research_ui import FakeSt, Uploaded
 
@@ -81,6 +82,29 @@ class InitialOfflineReviewUiTests(unittest.TestCase):
         self.assertEqual(outputs[0]["guard_policy_preview"], "HOLD")
         self.assertIs(outputs[0]["source_rights_verified"], False)
         self.assertEqual(outputs[0]["network_requests"], 0)
+
+    def test_first_local_packet_also_downloads_separate_rights_gap_receipt(self):
+        st = render(ui_inputs())
+        labels = {value["label"]: value for kind, value in st.messages
+                  if kind == "download"}
+        self.assertIn(_DOWNLOAD, labels)
+        gap = "원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)"
+        self.assertIn(gap, labels)
+        self.assertEqual(
+            labels[gap]["file_name"],
+            "kuodra-source-rights-GAPS-UNVERIFIED.json",
+        )
+        checks = inspect_source_clearance_packet(
+            labels[gap]["data"], review_packet=labels[_DOWNLOAD]["data"],
+        )
+        self.assertEqual(
+            checks["status"],
+            "MATCHED_REPORT_EXTERNAL_CLEARANCES_STILL_PENDING",
+        )
+        self.assertFalse(checks["source_rights_verified"])
+        self.assertFalse(checks["external_sharing_allowed"])
+        self.assertNotIn("close_observations", repr(labels[gap]))
+        self.assertNotIn("Time Series (Daily)", repr(labels[gap]))
 
     def test_wrong_ndx_response_disables_download_and_does_not_call_provider(self):
         uploads = ui_inputs()
