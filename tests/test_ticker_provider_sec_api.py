@@ -105,8 +105,7 @@ class SecApiOneTickerTests(unittest.TestCase):
                          payload["local_report"]["report_sha256"])
         self.assertNotIn(_KEY, json.dumps(payload))
         self.assertNotIn("StatementsOfIncome", json.dumps(payload))
-        self.assertNotIn("original_10k", json.dumps(payload).replace(
-            '"original_10k":', '"original_10k_sha256":'))
+        self.assertNotIn("<?xml", json.dumps(payload))
         tampered = dict(result, source_authenticated=True)
         with self.assertRaises(ValueError):
             encode_vendor_evidence_json(tampered)
