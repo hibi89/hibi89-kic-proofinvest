@@ -1,3 +1,16 @@
+## P148 Vendor POST endpoint gate — 2026-11-04 KST
+
+1. Goal: harden KUODRA one-ticker vendor API request scope while preserving approved workflow.
+2. Decision: allow POST only to provider query root, instead of any same-host path; minimal fail-closed change.
+3. Source: `proofinvest/ticker_provider_sec_api.py` rejects other POST paths before opener.
+4. Test: `tests/test_ticker_provider_sec_api.py` checks unexpected POST path and zero network opener calls.
+5. Verification: GitHub source/test commits verified, runtime and CI not yet verified. No measured completion increase claimed.
+6. Repo: `hibi89/hibi89-kic-proofinvest`, `lead/kic`; feature SHA `3c7aa2b75d1815878a15c3eace6d101a24c451a6`, test SHA `3a04305c4039e294546733bfcda84766b9477fc0`.
+7. Production: not deployed; release HOLD; live provider schema/rights unverified.
+8. Original V13 PDF and operator data unchanged; no secrets, payments or SEC 403 retries.
+9. Next: run full regression for exact feature/test SHA; while CI pending proceed with independently testable core data pipeline. Need owner approval for licensed vendor calls.
+10. Updated 2026-11-04 KST; docs SHA is not test evidence.
+
 ## P147 HTTP METHOD ALLOWLIST — 2026-11-04 KST
 
 1. Goal: harden KUODRA's gated sec-api.io read-only vendor path without changing existing four/seven request flow.
