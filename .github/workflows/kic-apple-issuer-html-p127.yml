@@ -1,0 +1,33 @@
+# P127: exactly one Apple issuer-hosted public HTML GET, never the SEC host.
+# Intentionally triggered only by this workflow's first addition/update.
+# No owner/private data, no credentials, no artifacts, no raw-file persistence.
+# A blocked numeric review fails this isolated one-off job rather than
+# claiming a validated raw publisher/origin/market-source E2E.
+name: KIC Apple FY2025 issuer HTML one-shot P127
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-apple-issuer-html-p127.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kic-apple-fy2025-issuer-one-shot-p127
+  cancel-in-progress: false
+
+jobs:
+  apple-issuer-raw-html:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout no credential persistence
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: One exact issuer-hosted HTTPS GET, bounded bytes and no retries
+        run: python -B -m proofinvest.apple_issuer_original_probe_once
