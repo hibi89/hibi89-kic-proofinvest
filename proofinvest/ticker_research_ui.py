@@ -97,6 +97,121 @@ def _display_receipt(st, result: dict, *, online: bool) -> None:
             "재무 사실 대조는 아직 연결하지 않았습니다. 자동 투자 추천이 아닙니다.")
 
 
+_P153_LINKED_CACHE_KEY = "kuodra_p153_linked_report_cache"
+
+
+def _p153_uploaded_input_digest(
+    *, ticker, as_of, operator_zip, ticker_map, submissions,
+    companyfacts_local, original_local, market_source, industry_source,
+) -> str:
+    """Bind a redacted receipt to exact user uploads; never retain their bytes.
+
+    Local read/hash only. The raw files are NOT cached in Streamlit session
+    state; the digest is a session-local invalidation key, not SEC provenance.
+    """
+    from hashlib import sha256
+    from .operator_sec_zip import _MAX_ZIP_BYTES
+    from .ticker_sec_financial_bridge import _LIMITS
+
+    individual = (ticker_map, submissions, companyfacts_local, original_local)
+    if operator_zip is not None:
+        if any(item is not None for item in individual):
+            raise ValueError("ZIP_AND_FOUR_SOURCE_CONFLICT")
+        fields = (("operator_zip", operator_zip, _MAX_ZIP_BYTES),)
+    else:
+        if any(item is None for item in individual):
+            raise ValueError("FOUR_SOURCE_INPUT_REQUIRED")
+        fields = (
+            ("ticker_map", ticker_map, MAX_MAP_BYTES),
+            ("submissions", submissions, MAX_SUBMISSIONS_BYTES),
+            ("companyfacts", companyfacts_local, _LIMITS["companyfacts"]),
+            ("original_10k", original_local, _LIMITS["original_10k"]),
+        )
+    fields += (
+        ("optional_market", market_source, 131072),
+        ("optional_industry", industry_source, 65536),
+    )
+    if type(ticker) is not str or type(as_of) is not str:
+        raise ValueError("TICKER_OR_CUTOFF_INVALID")
+    digest = sha256(b"kuodra.p153.private-session-upload-binding.v1\x00")
+    for token in (ticker, as_of):
+        encoded = token.encode("utf-8")
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+    for role, upload, maximum in fields:
+        digest.update(role.encode("ascii") + b"\x00")
+        if upload is None:
+            digest.update(b"MISSING\x00")
+        else:
+            raw = _read_uploaded(upload, maximum)
+            digest.update(len(raw).to_bytes(8, "big"))
+            digest.update(sha256(raw).digest())
+    return digest.hexdigest()
+
+
+def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
+                                     operator_zip, ticker_map, submissions,
+                                     companyfacts_local, original_local,
+                                     market_source, industry_source) -> None:
+    """Display only a previously validated 16 KiB redacted export on rerun.
+
+    No vendor request, local raw-byte storage, automatic regeneration or
+    source-rights elevation. Any changed input revokes this download.
+    """
+    state = getattr(st, "session_state", None)
+    if state is None:
+        return
+    cached = state.get(_P153_LINKED_CACHE_KEY)
+    if cached is None:
+        return
+    if not approved:
+        state.pop(_P153_LINKED_CACHE_KEY, None)
+        return
+    try:
+        fingerprint = _p153_uploaded_input_digest(
+            ticker=ticker, as_of=as_of, operator_zip=operator_zip,
+            ticker_map=ticker_map, submissions=submissions,
+            companyfacts_local=companyfacts_local, original_local=original_local,
+            market_source=market_source, industry_source=industry_source,
+        )
+        if (type(cached) is not dict
+                or set(cached) != {"fingerprint", "data"}
+                or cached.get("fingerprint") != fingerprint
+                or type(cached.get("data")) is not bytes
+                or not 0 < len(cached["data"]) <= 16384):
+            raise ValueError("CACHED_LINKED_RECEIPT_INVALID")
+        from .ticker_market_pair_evidence import linked_evidence_json_bytes
+        import json
+        report = json.loads(cached["data"].decode("utf-8"))
+        if (type(report) is not dict
+                or report.get("issuer", {}).get("ticker") != ticker
+                or report.get("issuer", {}).get("as_of") != as_of
+                or linked_evidence_json_bytes(report) != cached["data"]):
+            raise ValueError("CACHED_LINKED_RECEIPT_REVALIDATION_FAILED")
+    except (ValueError, TypeError, KeyError, AttributeError,
+            OverflowError, UnicodeError, RecursionError):
+        state.pop(_P153_LINKED_CACHE_KEY, None)
+        return
+    st.subheader("이전 검산 완료 · 통합 증거 JSON (현재 세션에서만 유지)")
+    st.json({
+        "status": report["status"],
+        "ticker": ticker, "as_of": as_of,
+        "matched_period_start": report["premium_engine_a"]["matched_period_start"],
+        "matched_period_end": report["premium_engine_a"]["matched_period_end"],
+        "evidence_sha256": report["evidence_sha256"],
+        "guard_policy_preview": "HOLD",
+        "source_authenticated": False, "source_rights_verified": False,
+        "external_sharing_allowed": False, "trade_executed": False,
+        "provider_requests_on_rerun": 0,
+    })
+    st.download_button(
+        "통합 검산 근거 JSON (로컬 전용 · 미인증)",
+        data=cached["data"],
+        file_name="kuodra-local-market-linked-UNVERIFIED.json",
+        mime="application/json", key="kuodra_p143_linked_market_report",
+    )
+
+
 def render_single_ticker_search(st) -> None:
     if not ticker_search_enabled(st):
         st.error("종목 검색은 로컬 서버에서만 활성화됩니다.")
@@ -787,6 +902,28 @@ def render_single_ticker_search(st) -> None:
                                     "source_rights_verified": False,
                                     "full_a_b_c_ready": False,
                                 })
+                                if state is not None:
+                                    try:
+                                        current_digest = _p153_uploaded_input_digest(
+                                            ticker=key, as_of=as_of,
+                                            operator_zip=operator_zip,
+                                            ticker_map=ticker_map,
+                                            submissions=submissions,
+                                            companyfacts_local=companyfacts_local,
+                                            original_local=original_local,
+                                            market_source=market_source,
+                                            industry_source=industry_source,
+                                        )
+                                    except (ValueError, TypeError, OSError,
+                                            UnicodeError, RecursionError):
+                                        state.pop(_P153_LINKED_CACHE_KEY, None)
+                                    else:
+                                        # Only canonical, independently replayed
+                                        # derived bytes enter session_state.
+                                        state[_P153_LINKED_CACHE_KEY] = {
+                                            "fingerprint": current_digest,
+                                            "data": linked_holder["safe_bytes"],
+                                        }
                                 st.download_button(
                                     "통합 검산 근거 JSON (로컬 전용 · 미인증)",
                                     data=linked_holder["safe_bytes"],
@@ -890,3 +1027,14 @@ def render_single_ticker_search(st) -> None:
         finally:
             if type(raw_local) is dict:
                 raw_local.clear()
+    else:
+        # A download-button interaction reruns Streamlit without another
+        # network authorization. Redisplay only the bound redacted receipt.
+        _p153_render_cached_linked_report(
+            st, ticker=key, as_of=as_of,
+            approved=bool(pair_approved and pair_ack and valid),
+            operator_zip=operator_zip, ticker_map=ticker_map,
+            submissions=submissions, companyfacts_local=companyfacts_local,
+            original_local=original_local, market_source=market_source,
+            industry_source=industry_source,
+        )
