@@ -32,9 +32,10 @@ class DownloadPairCliTests(unittest.TestCase):
             a.write_bytes(packet)
             b.write_bytes(gaps)
             out = StringIO()
-            with redirect_stdout(out), (
+            with (
+                redirect_stdout(out),
                 patch("urllib.request.urlopen",
-                      side_effect=AssertionError("CLI_NETWORK_FORBIDDEN")) as net
+                      side_effect=AssertionError("CLI_NETWORK_FORBIDDEN")) as net,
             ):
                 code = main([str(a), str(b)])
             net.assert_not_called()
