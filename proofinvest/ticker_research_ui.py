@@ -100,6 +100,54 @@ def _display_receipt(st, result: dict, *, online: bool) -> None:
 _P153_LINKED_CACHE_KEY = "kuodra_p153_linked_report_cache"
 
 
+def _p154_pair_source_fingerprint(*, ticker, as_of, receipt,
+                                  market_json, industry_json) -> str:
+    """One paid-attempt key per exact independently reviewed source set.
+
+    Pure local metadata hashing: no original bytes, token or provider URL
+    enters session_state. Changing a 10-K, issuer, ticker, as-of or optional
+    A/C input permits a NEW separately clicked request while an unchanged
+    set cannot trigger another paid request.
+    """
+    from hashlib import sha256
+    import json
+    import re
+
+    if (type(ticker) is not str or type(as_of) is not str
+            or type(receipt) is not dict):
+        raise ValueError("PAIR_FINGERPRINT_IDENTITY_INVALID")
+    hashes = receipt.get("source_sha256")
+    expected = {"ticker_map", "submissions", "companyfacts", "original_10k"}
+    if (type(hashes) is not dict or set(hashes) != expected
+            or any(type(v) is not str or re.fullmatch(
+                r"[0-9a-f]{64}", v) is None for v in hashes.values())):
+        raise ValueError("PAIR_FINGERPRINT_SOURCE_HASHES_INVALID")
+    for optional in (market_json, industry_json):
+        if optional is not None and type(optional) is not bytes:
+            raise ValueError("PAIR_FINGERPRINT_OPTIONAL_INVALID")
+    identity = {
+        "schema": "kuodra.p154.explicit-paid-attempt.v1",
+        "ticker": ticker,
+        "as_of": as_of,
+        "cik": receipt.get("cik"),
+        "accession": receipt.get("selected_10k_accession"),
+        "sources": hashes,
+        "market_sha256": (
+            sha256(market_json).hexdigest() if market_json is not None else None),
+        "industry_sha256": (
+            sha256(industry_json).hexdigest() if industry_json is not None else None),
+    }
+    if (type(identity["cik"]) is not str
+            or re.fullmatch(r"[0-9]{10}", identity["cik"]) is None
+            or type(identity["accession"]) is not str
+            or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}",
+                            identity["accession"]) is None):
+        raise ValueError("PAIR_FINGERPRINT_FILING_INVALID")
+    encoded = json.dumps(identity, sort_keys=True, separators=(",", ":"),
+                         allow_nan=False).encode("utf-8")
+    return sha256(encoded).hexdigest()
+
+
 def _p153_uploaded_input_digest(
     *, ticker, as_of, operator_zip, ticker_map, submissions,
     companyfacts_local, original_local, market_source, industry_source,
@@ -805,12 +853,23 @@ def render_single_ticker_search(st) -> None:
                     # session; it is recorded BEFORE vendor calls to block
                     # repeated reruns and provider cost spikes.
                     state = getattr(st, "session_state", None)
-                    fingerprint = (
-                        str(local_receipt["cik"]) + ":" + as_of + ":" +
-                        str(local_receipt["source_sha256"]["companyfacts"])
+                    fingerprint = _p154_pair_source_fingerprint(
+                        ticker=key, as_of=as_of, receipt=local_receipt,
+                        market_json=market_data, industry_json=industry_data,
                     )
                     if state is not None and state.get("kuodra_p141_pair_attempt") == fingerprint:
-                        st.warning("동일 종목·공시·기준일 중복 API 호출을 차단했습니다.")
+                        st.warning("동일 입력의 중복 유료 조회를 차단했습니다. "
+                                   "기존 검산 보고서가 있으면 아래에 표시합니다.")
+                        _p153_render_cached_linked_report(
+                            st, ticker=key, as_of=as_of,
+                            approved=bool(pair_approved and pair_ack and valid),
+                            operator_zip=operator_zip, ticker_map=ticker_map,
+                            submissions=submissions,
+                            companyfacts_local=companyfacts_local,
+                            original_local=original_local,
+                            market_source=market_source,
+                            industry_source=industry_source,
+                        )
                     else:
                         if state is not None:
                             state["kuodra_p141_pair_attempt"] = fingerprint
