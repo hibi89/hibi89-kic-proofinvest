@@ -102,6 +102,7 @@ class SourceClearanceReportTests(unittest.TestCase):
             lambda x: x["issuer"].__setitem__("ticker", "AAPL"),
             lambda x: x["market_window"].__setitem__("matched_sessions", 31),
             lambda x: x.__setitem__("unresolved_clearances", []),
+            lambda x: x.__setitem__("raw_provider_response", "SECRET"),
         ]
         for mutation in cases:
             modified = deepcopy(original)
