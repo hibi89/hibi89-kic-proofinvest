@@ -45,6 +45,85 @@ class ReviewPacketTests(unittest.TestCase):
         self.assertNotIn(b"apikey", raw.lower())
         self.assertNotIn(b"<html", raw.lower())
 
+    def test_independent_replay_against_original_uploads_passes_without_network(self):
+        from proofinvest.ticker_review_packet import (
+            verify_review_packet_against_sources,
+        )
+        prepared = _prepared()
+        workflow, sources, market, industry, stock, index = prepared
+        raw = review_packet_json_bytes(build_review_packet(_build(prepared)))
+        result = verify_review_packet_against_sources(
+            raw, workflow=workflow, sources=sources,
+            stock=stock, index=index, market_json=market,
+            industry_json=industry,
+        )
+        self.assertEqual(result["status"], "PASS_UNVERIFIED_ORIGIN", result)
+        self.assertTrue(result["packet_internal_integrity_passed"])
+        self.assertTrue(result["local_source_replay_verified"])
+        self.assertTrue(result["market_math_recomputed"])
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["source_rights_verified"])
+        self.assertFalse(result["trade_executed"])
+
+    def test_self_consistent_packet_with_different_original_fails_replay(self):
+        from proofinvest.ticker_review_packet import (
+            verify_review_packet_against_sources,
+        )
+        prepared = _prepared()
+        workflow, sources, market, industry, stock, index = prepared
+        raw = review_packet_json_bytes(build_review_packet(_build(prepared)))
+        changed_sources = dict(sources)
+        changed_sources["original_10k"] = b"OTHER ORIGINAL"
+        result = verify_review_packet_against_sources(
+            raw, workflow=workflow, sources=changed_sources,
+            stock=stock, index=index, market_json=market,
+            industry_json=industry,
+        )
+        self.assertEqual(result["status"], "FAIL")
+        self.assertTrue(result["packet_internal_integrity_passed"])
+        self.assertFalse(result["local_source_replay_verified"])
+        self.assertEqual(result["reason_code"], "SOURCE_OR_MARKET_REPLAY_MISMATCH")
+
+    def test_different_stock_and_market_inputs_fail_independent_replay(self):
+        from proofinvest.ticker_review_packet import (
+            verify_review_packet_against_sources,
+        )
+        prepared = _prepared()
+        workflow, sources, market, industry, stock, index = prepared
+        raw = review_packet_json_bytes(build_review_packet(_build(prepared)))
+        changed_stock = deepcopy(stock)
+        changed_stock["close_observations"][5]["close"] = "9000"
+        for role, edited in (
+            ("stock", {"stock": changed_stock}),
+            ("industry", {"industry_json": b"DIFFERENT"}),
+        ):
+            kwargs = dict(workflow=workflow, sources=sources,
+                          stock=stock, index=index, market_json=market,
+                          industry_json=industry)
+            kwargs.update(edited)
+            result = verify_review_packet_against_sources(raw, **kwargs)
+            with self.subTest(role=role):
+                self.assertEqual(result["status"], "FAIL")
+                self.assertTrue(result["packet_internal_integrity_passed"])
+                self.assertFalse(result["market_math_recomputed"])
+                self.assertFalse(result["source_authenticated"])
+
+    def test_corrupted_packet_fails_before_source_replay(self):
+        from proofinvest.ticker_review_packet import (
+            verify_review_packet_against_sources,
+        )
+        prepared = _prepared()
+        workflow, sources, market, industry, stock, index = prepared
+        raw = review_packet_json_bytes(build_review_packet(_build(prepared)))
+        result = verify_review_packet_against_sources(
+            raw + b"garbage", workflow=workflow, sources=sources,
+            stock=stock, index=index, market_json=market,
+            industry_json=industry,
+        )
+        self.assertEqual(result["status"], "FAIL")
+        self.assertFalse(result["packet_internal_integrity_passed"])
+        self.assertFalse(result["local_source_replay_verified"])
+
     def test_modified_source_receipt_cannot_be_hidden_by_new_packet_hash(self):
         packet = build_review_packet(_build(_prepared()))
         changed = deepcopy(packet)
