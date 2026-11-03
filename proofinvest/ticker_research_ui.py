@@ -280,6 +280,89 @@ def render_single_ticker_search(st) -> None:
             "providers": results,
             "next_action": "OBTAIN_OWNER_APPROVAL_AND_LICENSE_SCOPE_BEFORE_INTEGRATION",
         })
+    # P126: a genuine issuer-reported historical *manual* case exists
+    # independently of the unavailable automatic SEC/data-provider path.
+    # No bytes are fetched and no claim of official-source authentication.
+    if isinstance(ticker, str) and ticker.strip().upper() == "AAPL":
+        st.subheader("Apple FY2025 · 공개공시 수동검산 (과거 사례)")
+        st.caption(
+            "이미 확인한 Apple 2025년 10-K/발표자료의 전사 수치만 재계산합니다. "
+            "현재 실적·실시간 SEC 조회/시장지수 분석/원본 바이트 인증이 아닙니다."
+        )
+        from .ticker_apple_historical import review_apple_fy2025_historical
+        from datetime import date
+        history_eligible = False
+        try:
+            history_eligible = (
+                valid and date.fromisoformat(as_of) >= date(2025, 10, 31)
+            )
+        except (ValueError, TypeError):
+            pass
+        if st.button(
+            "Apple FY2025 원문·발표 수동기록 재검산 (네트워크 없음)",
+            key="kuodra_p126_apple_manual",
+            disabled=not history_eligible,
+        ):
+            manual_result = review_apple_fy2025_historical(
+                ticker=ticker, as_of=as_of,
+            )
+            if (
+                manual_result.get("status")
+                    != "HISTORICAL_MANUAL_NUMBERS_CROSSCHECKED"
+                or manual_result.get("source_authenticated") is not False
+                or manual_result.get("source_rights_verified") is not False
+                or manual_result.get("original_html_authenticated") is not False
+                or manual_result.get("raw_sec_api_used") is not False
+                or manual_result.get("guard_executed") is not False
+                or manual_result.get("audit_written") is not False
+                or manual_result.get("trade_executed") is not False
+                or manual_result.get("network_requests") != 0
+                or manual_result.get("guard_policy_preview", {}).get("decision")
+                    != "HOLD"
+            ):
+                st.error("Apple 수동자료 교차검산 실패 · 투자 판단을 표시하지 않습니다.")
+            else:
+                st.success("Apple FY2025 수동발췌 10-K·발표 수치 대조 통과 (원본 미인증)")
+                st.metric(
+                    "2025년 Apple 연매출 성장률 · 수동 기록",
+                    manual_result["sales_growth_pct"] + "%",
+                )
+                st.metric(
+                    "2025년 Apple 현금흐름−CAPEX 대리치 · 백만 USD",
+                    manual_result["cashflow_minus_capex_2025_usd_millions"],
+                )
+                st.json({
+                    "status": manual_result["status"],
+                    "issuer_cik": manual_result["issuer_cik"],
+                    "accession": manual_result["accession"],
+                    "filed_at": manual_result["filed_at"],
+                    "fiscal_end": manual_result["fiscal_end"],
+                    "manual_10k_source": manual_result["issuer_hosted_10k_url"],
+                    "issuer_press_source": manual_result["issuer_press_release_url"],
+                    "manual_sources_sha256": {
+                        "10k": manual_result["manual_10k_json_sha256"],
+                        "press": manual_result["manual_press_json_sha256"],
+                        "curated": manual_result["manual_companyfacts_excerpt_sha256"],
+                    },
+                    "sales_2025_usd_millions": manual_result["sales_2025_usd_millions"],
+                    "sales_2024_usd_millions": manual_result["sales_2024_usd_millions"],
+                    "sales_growth_pct": manual_result["sales_growth_pct"],
+                    "receivables_minus_sales_growth_pp":
+                        manual_result["receivables_minus_sales_growth_pp"],
+                    "guard_preview": manual_result["guard_policy_preview"],
+                    "source_authenticated": False,
+                    "source_rights_verified": False,
+                    "as_of_latest_filing_researched": False,
+                    "current_live_market_data": False,
+                    "ai_agent_executed": False,
+                    "trade_executed": False,
+                })
+                st.warning(
+                    "수치는 과거 Apple 발행자료의 수동 전사 결과입니다. "
+                    "원문 바이트·최신 공시·지수/가격 데이터·이용권한 미인증. "
+                    "FCF 대리치는 비GAAP이며 Guard는 HOLD 미리보기만 수행합니다."
+                )
+
     st.subheader("로컬 공시 목록으로 출처 계획 확인 (개발·검증용)")
     st.caption("이 부분은 자동 수집의 대체 사용 경로가 아닌 오프라인 검증용입니다. "
                "사용자가 전체 시장 자료를 준비할 필요는 없습니다.")

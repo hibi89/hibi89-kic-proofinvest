@@ -73,6 +73,65 @@ class TickerUiTests(unittest.TestCase):
                 self.assertFalse(st.buttons)
             self.assertTrue(ui.ticker_search_enabled(FakeSt()))
 
+    def test_p126_existing_ticker_page_runs_real_apple_manual_case_only_on_click(self):
+        st = FakeSt(
+            clicked="Apple FY2025 원문·발표 수동기록 재검산 (네트워크 없음)",
+            values={"kuodra_p100_ticker": "AAPL",
+                    "kuodra_p100_as_of": "2025-11-01"},
+        )
+        with (
+            patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}),
+            patch.object(transport, "collect_ticker_sec_sources",
+                         side_effect=AssertionError("SEC HTTP FORBIDDEN")) as remote,
+            patch("urllib.request.urlopen",
+                  side_effect=AssertionError("NO VENDOR NETWORK")),
+        ):
+            ui.render_single_ticker_search(st)
+        remote.assert_not_called()
+        shown = [val for kind, val in st.messages
+                 if kind == "json" and isinstance(val, dict)
+                 and val.get("status") == "HISTORICAL_MANUAL_NUMBERS_CROSSCHECKED"]
+        self.assertEqual(len(shown), 1)
+        result = shown[0]
+        self.assertEqual(result["sales_growth_pct"], "6.43")
+        self.assertEqual(result["sales_2025_usd_millions"], "416161")
+        self.assertEqual(result["guard_preview"]["decision"], "HOLD")
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["source_rights_verified"])
+        self.assertFalse(result["current_live_market_data"])
+        self.assertFalse(result["ai_agent_executed"])
+        self.assertFalse(result["trade_executed"])
+        self.assertTrue(any(k == "metric" and v[1] == "6.43%"
+                            for k, v in st.messages))
+        self.assertFalse(any(k == "download" for k, _ in st.messages))
+        self.assertFalse(any(k == "error" for k, _ in st.messages))
+
+    def test_p126_before_filing_or_wrong_issuer_cannot_run_case(self):
+        for ticker, as_of in (("AAPL", "2025-10-30"),
+                              ("NVDA", "2025-11-01")):
+            st = FakeSt(
+                clicked="Apple FY2025 원문·발표 수동기록 재검산 (네트워크 없음)",
+                values={"kuodra_p100_ticker": ticker,
+                        "kuodra_p100_as_of": as_of},
+            )
+            with patch.dict(os.environ, {
+                "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+            }), patch("proofinvest.ticker_apple_historical.review_apple_fy2025_historical",
+                      side_effect=AssertionError("NOT AUTHORIZED TO RUN")) as replay:
+                ui.render_single_ticker_search(st)
+            replay.assert_not_called()
+            self.assertFalse(any(
+                k == "json" and isinstance(v, dict)
+                and v.get("status") == "HISTORICAL_MANUAL_NUMBERS_CROSSCHECKED"
+                for k, v in st.messages))
+            if ticker == "AAPL":
+                buttons = [blocked for label, blocked in st.buttons
+                           if label.startswith("Apple FY2025 원문")]
+                self.assertEqual(buttons, [True])
+            else:
+                self.assertFalse(any(label.startswith("Apple FY2025 원문")
+                                     for label, blocked in st.buttons))
+
     def test_p125_owner_can_review_public_supplier_terms_without_network(self):
         st = FakeSt(clicked="시장 데이터 이용권한 사전 점검 (네트워크 없음)")
         with (

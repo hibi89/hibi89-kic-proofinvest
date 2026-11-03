@@ -108,6 +108,46 @@ def run(output: Path) -> dict:
                                 "로컬 공시 목록으로 출처 계획 확인 (개발·검증용)",
                                 exact=True,
                             )).to_be_visible(timeout=12000)
+                            # P126: historical REAL issuer-reported numbers
+                            # already manually transcribed in repository are
+                            # viewable for AAPL without a new SEC/API request.
+                            apple_ticker = ticker_page.get_by_label(
+                                "미국 주식 티커 (예: NVDA)", exact=True,
+                            )
+                            apple_ticker.fill("AAPL")
+                            apple_ticker.press("Tab")
+                            apple_as_of = ticker_page.get_by_label(
+                                "조회 기준일 (YYYY-MM-DD)", exact=True,
+                            )
+                            apple_as_of.fill("2025-11-01")
+                            apple_as_of.press("Tab")
+                            apple_button = ticker_page.get_by_role(
+                                "button",
+                                name="Apple FY2025 원문·발표 수동기록 재검산 (네트워크 없음)",
+                                exact=True,
+                            )
+                            expect(apple_button).to_be_enabled(timeout=20000)
+                            apple_button.click()
+                            expect(ticker_page.get_by_text(
+                                "Apple FY2025 수동발췌 10-K·발표 수치 대조 통과 (원본 미인증)",
+                                exact=True,
+                            )).to_be_visible(timeout=20000)
+                            expect(ticker_page.get_by_text(
+                                "2025년 Apple 연매출 성장률 · 수동 기록",
+                                exact=True,
+                            )).to_be_visible(timeout=16000)
+                            expect(ticker_page.get_by_text(
+                                "6.43%", exact=True,
+                            ).first).to_be_visible(timeout=16000)
+                            # Restore original NVDA test route. Apple source
+                            # facts may not be silently substituted for NVDA.
+                            apple_ticker.fill("NVDA")
+                            apple_ticker.press("Tab")
+                            expect(ticker_page.get_by_role(
+                                "button",
+                                name="Apple FY2025 원문·발표 수동기록 재검산 (네트워크 없음)",
+                                exact=True,
+                            )).to_have_count(0)
                             # P117: *real* Chromium upload, click and report
                             # download. Source fixture builder uses patched
                             # fake HTTP in the test process, never SEC traffic.
@@ -1427,6 +1467,7 @@ def run(output: Path) -> dict:
                             "p123_human_acknowledgement_browser_verified": True,
                             "p124_local_engine_b_cash_replay_visible": True,
                             "p125_offline_vendor_licensing_review_visible": True,
+                            "p126_historical_apple_ticker_real_chromium": True,
                             "p117_original_sha256": sha256(p117_original()).hexdigest(),
                             "combined_risk_score_available": False,
                             "network_sec_requests": 0,
