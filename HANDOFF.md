@@ -1,3 +1,16 @@
+## P147 HTTP METHOD ALLOWLIST — 2026-11-04 KST
+
+1. Goal: harden KUODRA's gated sec-api.io read-only vendor path without changing existing four/seven request flow.
+2. Decision: reject all HTTP methods other than GET/POST at transport boundary before opener creation, preserving existing host, payload and redirect restrictions.
+3. Implementation: `proofinvest/ticker_provider_sec_api.py` adds explicit method allowlist.
+4. Test: `tests/test_ticker_provider_sec_api.py` adds DELETE/no-network-opener regression case.
+5. Verification: code committed, but new test execution and CI result NOT VERIFIED; combined status response for latest test SHA contained no statuses. Do not report PASS.
+6. Repo/branch/SHAs: `hibi89/hibi89-kic-proofinvest`, `lead/kic`; source `daf063e07a6d6fe5af0d16e768d1354c5f2513c7`, test `c51c5a91ee5afe467172cddd6f7740151166fc12`.
+7. Production: no deployment, URL, live vendor call or browser verification; RELEASE HOLD.
+8. Originals: approved V13 PDF and existing operator source files unchanged; no secret or paid provider account used; SEC P105 403 no-retry remains.
+9. Next: check CI for exact latest SHA, fix any failure, then licensed real provider shape and industry cohort/NDX rights checks. Real external calls and submission require separate approval.
+10. Updated 2026-11-04 KST; scope limited to GitHub source/test inspection and writes; document SHA is not evidence of passing CI.
+
 ## P146 P145 VENDOR POST FIX + BOUNDED SAME-FISCAL ONE-PEER ENGINE C PARTIAL — 2026-11-03 KST
 
 1. **Goal, confirmed requirements, technology:** Advance KUODRA single ticker → independently authorized vendor issuer 10-K source → Decimal analysis Engine A/B/C → human Guard HOLD → traceable report, without touching frozen approved V13 PDF. After P145's no-routine-upload third-party source path, fill part of missing Engine C by optionally comparing ONE issuer in the vendor-supplied industry to the target, using matched annual USD fiscal periods, while explicitly prohibiting extrapolation to the whole sector. Existing Python3.11 stdlib, Streamlit, vendor api.sec-api.io; no LLM or trades.
