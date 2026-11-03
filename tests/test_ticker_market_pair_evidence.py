@@ -104,6 +104,26 @@ class LinkedEvidenceTests(unittest.TestCase):
             window["matched_period_end"])
         self.assertEqual(_verify(report, _prepared())["status"], "PASS")
 
+    def test_linked_builder_rejects_future_window_claim_from_adapter(self):
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        prepared = _prepared()
+        workflow, _raw, _market, _industry, stock, index = prepared
+        issuer = workflow["report"]["issuer"]
+        clean = analyze_price_index_pair(
+            stock=stock, index=index,
+            ticker=issuer["ticker"], issuer_cik=issuer["cik"],
+            filing_date=issuer["filing_date"], as_of=issuer["as_of"])
+        self.assertEqual(
+            clean["status"], "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED")
+        fake = deepcopy(clean)
+        fake["matched_period_end"] = "2099-01-01"
+        with patch("proofinvest.market_pair_engine_a.analyze_price_index_pair",
+                   return_value=fake):
+            result = _build(prepared)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["reason_code"],
+                         "MARKET_FILING_CUTOFF_MISMATCH")
+
     def test_rehashed_future_period_still_fails_safe_export(self):
         from hashlib import sha256
         report = deepcopy(_build(_prepared()))
