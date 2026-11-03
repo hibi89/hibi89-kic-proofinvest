@@ -175,6 +175,45 @@ def explanation_json_bytes(result: Any) -> bytes:
                    or len(f["interpretation"]) > 240
                    for f in result["findings"])):
         raise ValueError("EXPLANATION_EXPORT_CONTRACT_INVALID")
+    # Only fixed authored interpretation sentences may leave the local UI.
+    # A recalculated hash must not turn arbitrary comments into an export.
+    notes = (
+        (
+            "두 가격 수익률의 단순 관측 차이입니다. "
+            "초과수익 알파, 주가 거품, 인과관계 또는 매매 신호가 아닙니다."
+        ),
+        (
+            "가격 분산 또는 수익률 정보가 불충분합니다. "
+            "베타나 시장 대비 판단을 확정할 수 없습니다."
+        ),
+        (
+            "10-K 회계·현금흐름 로컬 검토 결과가 존재하지만 "
+            "공시 원본의 진위가 미인증이며 회계부정을 입증하지 않습니다."
+        ),
+        "검증 가능한 회계·현금흐름 지표가 부족해 판단을 보류합니다.",
+        (
+            "동종기업 비교는 로컬 입력에 따른 관측치일 뿐 "
+            "산업 전체의 대표 표본이나 미래 전망이 아닙니다."
+        ),
+        "유효한 업종·동종기업 비교 근거가 부족해 판단을 보류합니다.",
+    )
+    a, b, c = result["findings"]
+    if (a["interpretation"] not in notes[:2]
+            or b["interpretation"] not in notes[2:4]
+            or c["interpretation"] not in notes[4:]
+            or a["basis"] != "PRICE_ONLY_CLOSE_VS_ACTUAL_NASDAQ_100"
+            or a["status"] not in (
+                "REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE")
+            or b["status"] not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE")
+            or c["status"] not in (
+                "OBSERVED_COMPARISON_UNVERIFIED", "INSUFFICIENT_EVIDENCE",
+                "UNAVAILABLE")
+            or result["notice"] != (
+                "로컬 수학적 재검산만 확인됨. 출처 진위·재배포 권한·시장 시점은 "
+                "별도 인증되지 않았으며 사람의 검토가 필요합니다.")
+            or type(a["matched_sessions"]) is not int
+            or not 31 <= a["matched_sessions"] <= 100):
+        raise ValueError("EXPLANATION_EXPORT_CONTRACT_INVALID")
     digest = result.get("explanation_sha256")
     if type(digest) is not str or hex64.fullmatch(digest) is None:
         raise ValueError("EXPLANATION_EXPORT_INVALID")
