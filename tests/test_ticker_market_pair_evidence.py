@@ -307,10 +307,74 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertEqual(payload["guard_policy_preview"], "HOLD")
         self.assertEqual(payload["engine_c"]["status"],
                          "OBSERVED_COMPARISON_UNVERIFIED")
+        market_window = payload["premium_engine_a"]
+        self.assertLess(payload["issuer"]["filing_date"], market_window["matched_period_start"])
+        self.assertLessEqual(market_window["matched_period_end"], payload["issuer"]["as_of"])
+        self.assertTrue(any(
+            kind == "json" and type(value) is dict
+            and value.get("matched_period_end") == market_window["matched_period_end"]
+            for kind, value in st.messages
+        ))
         self.assertFalse(payload["source_authenticated"])
         self.assertFalse(payload["external_sharing_allowed"])
         self.assertNotIn(_KEY, repr(st.messages))
         self.assertNotIn("close_observations", repr(payload))
+
+    def test_invalid_linked_export_does_not_hide_safe_local_download(self):
+        # Regression: a stricter derived JSON contract must not suppress the
+        # independently replayed four-source report or trigger another GET.
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        _, raw, market, industry, stock, index = _prepared()
+        st = FakeSt(
+            clicked="로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads={
+                "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+                "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+                "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+                "kuodra_p116_original": Uploaded(raw["original_10k"]),
+                "kuodra_p104_market_json": Uploaded(market),
+                "kuodra_p104_industry_json": Uploaded(industry),
+            },
+        )
+        def allowed_fake_pair(**kwargs):
+            kwargs["validated_pair_callback"](stock, index)
+            return analyze_price_index_pair(
+                stock=stock, index=index, ticker=kwargs["ticker"],
+                issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"], as_of=kwargs["as_of"])
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY}, clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("LIVE_SEC_FORBIDDEN")) as net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=allowed_fake_pair) as pair,
+            patch("proofinvest.ticker_market_pair_evidence.linked_evidence_json_bytes",
+                  side_effect=ValueError("synthetic output contract mismatch")),
+        ):
+            ui.render_single_ticker_search(st)
+        net.assert_not_called()
+        pair.assert_called_once()
+        labels = [item["label"] for kind, item in st.messages if kind == "download"]
+        self.assertIn("로컬 4종 출처 검산 보고서 JSON (미인증)", labels)
+        self.assertNotIn("통합 검산 근거 JSON (로컬 전용 · 미인증)", labels)
+        self.assertTrue(any(
+            kind == "warning" and "통합 증거 JSON은" in msg
+            for kind, msg in st.messages
+        ))
+        self.assertTrue(any(
+            kind == "code" and msg == "LINKED_EXPORT_CONTRACT_FAILED"
+            for kind, msg in st.messages
+        ))
+        self.assertNotIn(_KEY, repr(st.messages))
 
     def test_no_callback_without_explicit_approval(self):
         seen = []
