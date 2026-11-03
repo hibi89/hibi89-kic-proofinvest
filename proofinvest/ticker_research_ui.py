@@ -543,6 +543,10 @@ def render_single_ticker_search(st) -> None:
             })
             st.warning("로컬 업로드 자료의 진위·제공 권한은 확인되지 않았습니다. "
                        "Guard는 정책 미리보기이며 투자 실행이나 APPROVE가 아닙니다.")
+            # Present source-bound A/B/C numeric values only after the
+            # existing seven-stage independent local report replay passes.
+            from .ticker_local_dashboard import render_local_ticker_dashboard
+            render_local_ticker_dashboard(st, workflow)
             # Local download is explicitly triggered by the user. No raw
             # original, contact, HTML or token enters this bounded report.
             if (revenue.get("status") == "REVENUE_CALCULATED_UNVERIFIED"
