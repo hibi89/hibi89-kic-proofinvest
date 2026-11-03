@@ -170,7 +170,6 @@ def fetch_daily_close(*, ticker: str, as_of: str, api_key: str | None,
     return result
 
 
-
 def render_daily_price_panel(st: Any, *, ticker: str, as_of: str,
                              ticker_valid: bool) -> None:
     """Dependency-free Streamlit-like UI; never queries without a real click.
