@@ -173,7 +173,7 @@ class SecApiOneTickerTests(unittest.TestCase):
 
     def test_vendor_button_disabled_without_env_even_click_intent(self):
         st = FakeSt(clicked="승인된 공급자로 10-K 조회 → A/B/C·Guard·근거 보고서 (최대 4회)")
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"}, clear=True):
             ui.render_single_ticker_search(st)
         matched = [off for title, off in st.buttons if title.startswith("승인된 공급자로 10-K")]
         self.assertEqual(matched, [True])

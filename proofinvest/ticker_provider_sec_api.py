@@ -173,7 +173,7 @@ def _filing(raw: bytes, *, ticker: str, cik: str,
                 or p.query or p.fragment or p.username or p.password
                 or not p.path.startswith(expected_path)
                 or not __import__("re").fullmatch(
-                    r"[A-Za-z0-9_.-]+\\.(?:htm|html|xhtml)", p.path[len(expected_path):])):
+                    r"[A-Za-z0-9_.-]+\.(?:htm|html|xhtml)", p.path[len(expected_path):])):
             raise ValueError("VENDOR_ORIGINAL_URI_INVALID")
         eligible.append((filing_day, acc, report_date,
                          p.path[len(expected_path):]))
