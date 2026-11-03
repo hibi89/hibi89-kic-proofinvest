@@ -67,6 +67,8 @@ def _vendor_http(method: str, url: str, payload: bytes | None,
             "api.sec-api.io", "edgar-mirror.sec-api.io")
             or parts.username or parts.password or parts.fragment):
         raise ValueError("INVALID_VENDOR_HOST")
+    if method not in ("GET", "POST"):
+        raise ValueError("VENDOR_HTTP_METHOD_NOT_ALLOWED")
     if method == "POST" and (parts.netloc != "api.sec-api.io" or
                              type(payload) is not bytes or
                              not 0 < len(payload) <= 20_000):
