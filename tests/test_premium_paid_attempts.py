@@ -33,6 +33,29 @@ class PremiumPaidAttemptTests(unittest.TestCase):
         self.assertEqual(register_premium_pair_attempt(state, fp(5)), "NEW")
         self.assertEqual(register_premium_pair_attempt(state, fp(5)), "DUPLICATE")
 
+    def test_preupgrade_a_then_b_then_a_does_not_rebill(self):
+        # P154 wrote only the last attempt. P157 migration must preserve it
+        # before a different B is recorded in the P155 bounded ledger.
+        state = {"kuodra_p141_pair_attempt": fp(1)}
+        self.assertEqual(register_premium_pair_attempt(state, fp(2)), "NEW")
+        self.assertEqual(state[_HISTORY_KEY], [fp(1), fp(2)])
+        self.assertEqual(register_premium_pair_attempt(state, fp(1)), "DUPLICATE")
+        self.assertEqual(register_premium_pair_attempt(state, fp(2)), "DUPLICATE")
+        self.assertEqual(state[_HISTORY_KEY], [fp(1), fp(2)])
+
+    def test_legacy_marker_migrates_even_on_duplicate_first_click(self):
+        state = {"kuodra_p141_pair_attempt": fp(1)}
+        self.assertEqual(register_premium_pair_attempt(state, fp(1)), "DUPLICATE")
+        self.assertEqual(state[_HISTORY_KEY], [fp(1)])
+        self.assertEqual(register_premium_pair_attempt(state, fp(2)), "NEW")
+        self.assertEqual(register_premium_pair_attempt(state, fp(1)), "DUPLICATE")
+
+    def test_corrupt_legacy_fails_closed_before_new_paid_call(self):
+        for legacy in ("bad", "", True, 4, ["x"]):
+            state = {"kuodra_p141_pair_attempt": legacy}
+            self.assertEqual(register_premium_pair_attempt(state, fp(2)), "INVALID")
+            self.assertNotIn(_HISTORY_KEY, state)
+
     def test_bounded_history_and_session_limit(self):
         state = {}
         for i in range(1, 68):
