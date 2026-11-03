@@ -251,6 +251,54 @@ def render_single_ticker_search(st) -> None:
     elif not valid:
         st.error("유효한 티커와 오늘(UTC) 이전의 조회 기준일을 입력하십시오.")
 
+    # P140: one-ticker real daily-close provider bridge. Disabled by
+    # default; separate operator license/key approval is a hard runtime gate.
+    # Even after a successful request, this is price-only evidence, NOT
+    # issuer-verified SEC evidence or Engine A beta/alpha analysis.
+    st.subheader("일별 주가 자동 조회 · 공급자 권한 승인 후 사용")
+    st.caption("Alpha Vantage 일별 종가, 종목당 버튼 클릭 시 최대 1회 GET. "
+               "무료 한도·재사용/표시 권리는 별도 확인 대상입니다. "
+               "SEC 403 재시도·매매·백그라운드 자동 수집은 없습니다.")
+    av_active = (
+        os.environ.get("KUODRA_ENABLE_ALPHA_VANTAGE_DAILY") == "1"
+        and os.environ.get("KUODRA_ALPHA_VANTAGE_RIGHTS_APPROVED") == "1"
+        and bool(os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"))
+    )
+    if not av_active:
+        st.warning("주가 API 비활성: 공급자 계정·이용권한·비밀키 설정 승인 대기.")
+    av_ack = st.checkbox(
+        "이번 종목에 한하여 허용된 Alpha Vantage 일별 조회 1회를 실행합니다",
+        value=False, key="kuodra_p140_av_ack",
+    )
+    if st.button(
+        "승인된 일별 종가 1회 조회",
+        key="kuodra_p140_av_once", disabled=not (av_active and av_ack and valid),
+    ):
+        from .market_provider_alpha_vantage import fetch_daily_close
+        av = fetch_daily_close(
+            ticker=key, as_of=as_of,
+            api_key=os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"),
+            explicit_click=True, rights_approved=True,
+        )
+        if av["status"] == "PRICE_ONLY_UNVERIFIED":
+            st.metric("최근 일별 종가 · 제공자 응답, 미인증",
+                      av["close_observations"][-1]["close"])
+            st.json({
+                "ticker": av["ticker"], "as_of": av["as_of"],
+                "first_date": av["first_date"], "last_date": av["last_date"],
+                "point_count": av["point_count"], "basis": av["basis"],
+                "provider": av["provider"], "source_sha256": av["source_sha256"],
+                "requests_attempted": av["requests_attempted"],
+                "issuer_authenticated": False,
+                "market_data_rights_verified": False,
+                "full_a_b_c_ready": False, "trade_executed": False,
+            })
+            st.warning("일별 종가만 수집했습니다. 실제 지수·기업공시와의 기간 결합, "
+                       "공급자 이용권한 및 Engine A/B/C 전체 검증은 아직 완료되지 않았습니다.")
+        else:
+            st.warning("주가 조회 불가 또는 제공자 응답 검증 실패; 재시도하지 않습니다.")
+            st.code(av["reason_code"], language="text")
+
     # P125: show the verified PUBLIC terms blockers in the exact on-demand
     # user flow. This is never a vendor HTTP/API call or entitlement grant.
     if st.button(
