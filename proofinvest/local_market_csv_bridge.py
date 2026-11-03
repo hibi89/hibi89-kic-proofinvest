@@ -154,7 +154,26 @@ def _lineage_values(stock: dict, index: dict, *, packet: bytes) -> dict:
     }
 
 
-def build_csv_lineage_receipt(*, stock: dict, index: dict, packet: bytes) -> bytes:
+def build_csv_lineage_receipt(
+    *, stock: dict, index: dict, packet: bytes,
+    stock_csv_raw: bytes, index_csv_raw: bytes,
+) -> bytes:
+    """Bind both original CSV byte bodies to the actual converted market rows."""
+    reviewed = inspect_review_packet_bytes(packet)
+    as_of = json.loads(packet.decode("utf-8"))["issuer"]["as_of"]
+    for item, raw, ticker, is_index in (
+        (stock, stock_csv_raw, reviewed["ticker"], False),
+        (index, index_csv_raw, "NDX", True),
+    ):
+        if (type(item) is not dict or type(raw) is not bytes
+                or item.get("raw_csv_sha256") != sha256(raw).hexdigest()):
+            raise ValueError("CSV_LINEAGE_ORIGINAL_BYTES_CHANGED")
+        recreated = normalize_market_csv(
+            raw, symbol=ticker, as_of=as_of, is_index=is_index,
+        )
+        if (recreated["normalized_json"] != item.get("normalized_json")
+                or recreated["raw_csv_sha256"] != item["raw_csv_sha256"]):
+            raise ValueError("CSV_LINEAGE_RENORMALIZATION_MISMATCH")
     obj = _lineage_values(stock, index, packet=packet)
     obj["receipt_sha256"] = sha256(_encode(obj)).hexdigest()
     data = _encode(obj)
