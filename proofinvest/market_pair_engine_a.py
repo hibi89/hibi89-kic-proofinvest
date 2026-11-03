@@ -41,7 +41,7 @@ def _date(x: Any) -> date:
     return day
 
 
-def _points(receipt: dict, *, kind: str) -> dict[str, str]:
+def _points(receipt: dict, *, kind: str, cutoff: date) -> dict[str, str]:
     rows = receipt.get("close_observations")
     if type(rows) is not list or not 31 <= len(rows) <= 100:
         raise ValueError("INVALID_PRICE_POINT_COUNT")
@@ -53,6 +53,10 @@ def _points(receipt: dict, *, kind: str) -> dict[str, str]:
         observed = _date(day)
         if observed.weekday() >= 5 or type(value) is not str or not _VALUE.fullmatch(value):
             raise ValueError("PRICE_POINT_INVALID")
+        # Defense in depth: even an in-memory receipt that did not pass the
+        # provider parser must never introduce post-as-of prices into Engine A.
+        if observed > cutoff:
+            raise ValueError("FUTURE_PRICE_OBSERVATION")
         if day in points or not (0 < float(value) < 1e10):
             raise ValueError("DUPLICATE_OR_BAD_PRICE")
         points[day] = value
@@ -111,8 +115,8 @@ def build_market_reality_payload(*, stock: dict, index: dict,
         h = x.get("source_sha256")
         if type(h) is not str or not _SHA.fullmatch(h):
             raise ValueError("SOURCE_HASH_INVALID")
-    stock_map = _points(stock, kind="stock")
-    index_map = _points(index, kind="index")
+    stock_map = _points(stock, kind="stock", cutoff=cutoff)
+    index_map = _points(index, kind="index", cutoff=cutoff)
     common = sorted(set(stock_map) & set(index_map))
     # Missing sessions must not be quietly forward-filled or interpolated.
     if (len(common) < 31 or len(common) * 5 < len(stock_map) * 4
@@ -121,6 +125,8 @@ def build_market_reality_payload(*, stock: dict, index: dict,
     common = common[-100:]
     if _date(common[0]) <= filing:
         raise ValueError("PRICE_WINDOW_NOT_AFTER_SEC_FILING")
+    if _date(common[-1]) > cutoff:
+        raise ValueError("FUTURE_PRICE_OR_INDEX_FOR_AS_OF")
     if (cutoff - _date(common[-1])).days > 7:
         raise ValueError("STALE_PRICE_OR_INDEX_FOR_AS_OF")
     for older, newer in zip(common, common[1:]):
@@ -170,6 +176,8 @@ def analyze_price_index_pair(*, stock: dict, index: dict, ticker: str,
             "benchmark": benchmark, "stock_response_sha256": stock["source_sha256"],
             "index_response_sha256": index["source_sha256"],
             "matched_observation_count": len(payload["index"]["observations"]),
+            "matched_period_start": payload["index"]["observations"][0]["date"],
+            "matched_period_end": payload["index"]["observations"][-1]["date"],
             "source_payload_sha256": sha256(data).hexdigest(),
             "market_analysis": {
                 "status": result["status"],
