@@ -416,6 +416,18 @@ def render_single_ticker_search(st) -> None:
     st.subheader("로컬 공시 목록으로 출처 계획 확인 (개발·검증용)")
     st.caption("이 부분은 자동 수집의 대체 사용 경로가 아닌 오프라인 검증용입니다. "
                "사용자가 전체 시장 자료를 준비할 필요는 없습니다.")
+    # P144: existing operator 3-source ZIP is a single-upload fallback.
+    # Its self-reported submissions ticker becomes an explicitly untrusted
+    # derived map, never an official company_tickers.json authentication.
+    from .operator_sec_zip import _MAX_ZIP_BYTES
+    operator_zip = st.file_uploader(
+        "기존 3원본 ZIP 하나로 로컬 분석 (개발용 · 출처 미인증)",
+        type=["zip"], key="kuodra_p144_operator_zip",
+    )
+    if operator_zip is not None:
+        st.caption("기존 operator SEC ZIP 형식만 지원합니다. "
+                   "티커/CIK는 ZIP 내 자체 주장으로 검증하며, 공식 발행자 인증이 아닙니다. "
+                   "ZIP 선택 시 아래 4개 개별 SEC 파일은 비워 두십시오.")
     ticker_map = st.file_uploader(
         "SEC ticker 목록 JSON (로컬 선택)",
         type=["json"], key="kuodra_p100_ticker_map",
@@ -451,14 +463,15 @@ def render_single_ticker_search(st) -> None:
         "원본 미인증·이용권리 미확인·Guard HOLD/REJECT 유지에 동의합니다",
         value=False, key="kuodra_p123_ack",
     )
+    source_selected = ticker_map is not None or operator_zip is not None
     human_review_clicked = st.button(
         "6단계 재검증 후 로컬 확인 기록 생성",
         key="kuodra_p123_review",
-        disabled=ticker_map is None or not valid or not local_ack,
+        disabled=not source_selected or not valid or not local_ack,
     )
     source_plan_clicked = st.button(
         "로컬 원본으로 출처 계획 확인", key="kuodra_p100_offline",
-        disabled=ticker_map is None or not valid,
+        disabled=not source_selected or not valid,
     )
     # P141: one click can run both a pinned local SEC replay and (only with
     # separate Premium market-data permission) two licensed vendor GETs.
@@ -477,44 +490,63 @@ def render_single_ticker_search(st) -> None:
         "로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
         key="kuodra_p141_pair_run",
         disabled=not (pair_approved and pair_ack and valid and
-                      all(x is not None for x in (
-                          ticker_map, submissions, companyfacts_local, original_local))),
+                      (operator_zip is not None or
+                       all(x is not None for x in (
+                           ticker_map, submissions, companyfacts_local, original_local)))),
     )
     if source_plan_clicked or human_review_clicked or pair_clicked:
+        raw_local = None
+        using_zip = operator_zip is not None
+        if using_zip and any(x is not None for x in (
+                ticker_map, submissions, companyfacts_local, original_local)):
+            st.warning("ZIP과 개별 SEC 파일을 동시에 선택할 수 없습니다.")
+            return
         try:
-            mapped = _read_uploaded(ticker_map, MAX_MAP_BYTES)
-            filings = (_read_uploaded(submissions, MAX_SUBMISSIONS_BYTES)
-                       if submissions is not None else None)
+            if using_zip:
+                from .ticker_operator_zip_bridge import restore_operator_zip_for_ticker
+                raw_local, zip_receipt = restore_operator_zip_for_ticker(
+                    _read_uploaded(operator_zip, _MAX_ZIP_BYTES),
+                    ticker=key, as_of=as_of,
+                )
+                mapped, filings = raw_local["ticker_map"], raw_local["submissions"]
+                st.json(zip_receipt)
+                st.warning("ZIP 내 ticker 목록으로 복원된 로컬 출처 지도입니다. "
+                           "공식 SEC ticker_map 원본이 아니며 원본 진위·권리는 미검증입니다.")
+            else:
+                mapped = _read_uploaded(ticker_map, MAX_MAP_BYTES)
+                filings = (_read_uploaded(submissions, MAX_SUBMISSIONS_BYTES)
+                           if submissions is not None else None)
             result = build_ticker_source_plan(
                 ticker=ticker, ticker_map=mapped, submissions=filings,
                 as_of=as_of,
             )
         except (ValueError, TypeError, OSError, RecursionError):
+            if type(raw_local) is dict:
+                raw_local.clear()
             st.warning("로컬 자료의 형식·크기·기업 식별 정보를 확인할 수 없습니다.")
             return
         _display_receipt(st, result, online=False)
-        # P116: no SEC HTTP. With all four uploaded files, reuse source-SHA-
-        # bound arithmetic and read-only Guard policy preview. A local file
-        # is never claimed to be SEC-authenticated even if its URL looks valid.
-        if companyfacts_local is None and original_local is None:
+        # P116: no SEC HTTP, unchanged seven-step arithmetic and Guard.
+        if not using_zip and companyfacts_local is None and original_local is None:
             return
-        if submissions is None or companyfacts_local is None or original_local is None:
+        if not using_zip and (submissions is None or
+                             companyfacts_local is None or original_local is None):
             st.warning("로컬 매출 검산에는 ticker 목록, submissions, "
                        "CompanyFacts, 같은 10-K 원문 모두 필요합니다.")
             return
-        raw_local = None
         try:
             from .ticker_sec_financial_bridge import _LIMITS
             from .ticker_local_workflow import run_local_ticker_workflow
 
-            raw_local = {
-                "ticker_map": mapped,
-                "submissions": filings,
-                "companyfacts": _read_uploaded(
-                    companyfacts_local, _LIMITS["companyfacts"]),
-                "original_10k": _read_uploaded(
-                    original_local, _LIMITS["original_10k"]),
-            }
+            if not using_zip:
+                raw_local = {
+                    "ticker_map": mapped,
+                    "submissions": filings,
+                    "companyfacts": _read_uploaded(
+                        companyfacts_local, _LIMITS["companyfacts"]),
+                    "original_10k": _read_uploaded(
+                        original_local, _LIMITS["original_10k"]),
+                }
             market_data = (_read_uploaded(market_source, 131072)
                            if market_source is not None else None)
             industry_data = (_read_uploaded(industry_source, 65536)
