@@ -48,21 +48,16 @@ def run(output: Path) -> dict:
     output.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="kuodra-p165-browser-home-") as home:
-        env = dict(os.environ)
+        # Do not inherit ANY KUODRA provider secrets/approval switches from
+        # runner or developer env; CI is an entirely offline review exercise.
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith("KUODRA_")}
         env.update({
             "HOME": home,
             "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
             "KUODRA_ENABLE_SEC_FETCH_UI": "0",
             "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
         })
-        for name in (
-            "KUODRA_ALPHA_VANTAGE_API_KEY",
-            "KUODRA_ENABLE_ALPHA_VANTAGE_DAILY",
-            "KUODRA_ENABLE_ALPHA_VANTAGE_INDEX",
-            "KUODRA_ALPHA_VANTAGE_INDEX_PREMIUM_APPROVED",
-            "KUODRA_ALPHA_VANTAGE_RIGHTS_APPROVED",
-        ):
-            env.pop(name, None)
 
         with (output / "p165-streamlit-server.log").open("wb") as log:
             server = subprocess.Popen([
