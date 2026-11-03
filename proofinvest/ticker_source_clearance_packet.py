@@ -173,9 +173,33 @@ def inspect_source_clearance_packet(raw: Any, *, review_packet: Any) -> dict[str
         obj["receipt_sha256"] = digest
         if raw != _canonical(obj):
             raise ValueError("CLEARANCE_RECEIPT_NONCANONICAL")
+        packet_data = json.loads(review_packet.decode("utf-8"))
+        linked = packet_data["linked_evidence"]
+        issuer = linked["issuer"]
+        p = linked["premium_engine_a"]
+        expected_digests = {
+            **linked["four_source_sha256"],
+            "stock_daily": p["stock_response_sha256"],
+            "nasdaq100_index_daily": p["index_response_sha256"],
+            "market_json": linked["local_engine_a"]["input_sha256"],
+            "industry_json": linked["engine_c"]["input_sha256"],
+        }
+        expected_issuer = {key: issuer[key] for key in (
+            "ticker", "cik", "accession", "filing_date", "as_of",
+        )}
+        expected_window = {
+            "benchmark": "NASDAQ_100", "index_symbol": "NDX",
+            "return_basis": "PRICE_ONLY_CLOSE",
+            "first_date": p["matched_period_start"],
+            "last_date": p["matched_period_end"],
+            "matched_sessions": p["matched_observation_count"],
+            "origin_or_market_vintage_proven": False,
+        }
         if (obj.get("schema") != _SCHEMA or obj.get("status") != _STATUS
                 or obj.get("packet_sha256") != sha256(review_packet).hexdigest()
                 or obj.get("linked_evidence_sha256") != checked["linked_evidence_sha256"]
+                or obj.get("issuer") != expected_issuer
+                or obj.get("market_window") != expected_window
                 or obj.get("guard_policy_preview") != "HOLD"
                 or obj.get("unresolved_clearances") != list(_UNVERIFIED)
                 or any(obj.get(k) is not False for k in (
@@ -186,6 +210,21 @@ def inspect_source_clearance_packet(raw: Any, *, review_packet: Any) -> dict[str
                 or obj.get("paid_requests") != 0
                 or type(obj.get("files")) is not list
                 or [x.get("role") for x in obj["files"]] != list(_ROLES)
+                or any(
+                    x.get("sha256") != expected_digests[x["role"]]
+                    or type(x.get("bytes")) is not int
+                    or (
+                        x["bytes"] > 0 and x["input_state"] != "EXACT_LOCAL_BYTES_MATCHED"
+                    )
+                    or (
+                        x["bytes"] == 0 and (
+                            x["sha256"] is not None
+                            or x["input_state"] != "OPTIONAL_SOURCE_NOT_BOUND"
+                        )
+                    )
+                    or x["bytes"] < 0
+                    for x in obj["files"]
+                )
                 or any(
                     type(x) is not dict or set(x) != {
                         "role", "sha256", "bytes", "input_state",
