@@ -172,6 +172,37 @@ class InitialOfflineReviewUiTests(unittest.TestCase):
                 self.assertFalse(any(k == "download" and v["label"] == _DOWNLOAD
                                      for k, v in st.messages))
 
+    def test_json_mode_downloads_readable_print_report_without_source_rows(self):
+        st = render(ui_inputs())
+        labels = {v["label"]: v for kind, v in st.messages if kind == "download"}
+        html_name = "단일 종목 A/B/C HTML 보고서 다운로드 (오프라인·미인증)"
+        self.assertIn(html_name, labels)
+        h = labels[html_name]
+        self.assertEqual(h["mime"], "text/html")
+        self.assertEqual(h["file_name"],
+                         "kuodra-single-ticker-review-UNVERIFIED.html")
+        self.assertIn(b"Content-Security-Policy", h["data"])
+        self.assertIn(b"Engine A", h["data"])
+        self.assertIn(b"Engine B", h["data"])
+        self.assertIn(b"Engine C", h["data"])
+        self.assertNotIn(b"<script", h["data"].lower())
+        self.assertNotIn(b"Time Series (Daily)", h["data"])
+
+    def test_csv_mode_html_follows_original_csv_lineage_and_is_not_investment_advice(self):
+        uploads = ui_inputs()
+        del uploads["kuodra_p167_stock"]
+        del uploads["kuodra_p167_ndx"]
+        uploads["kuodra_p169_stock_csv"] = Uploaded(local_csv("NVDA"))
+        uploads["kuodra_p169_ndx_csv"] = Uploaded(local_csv("NDX", 10000))
+        st = render(uploads)
+        labels = {v["label"]: v for kind, v in st.messages if kind == "download"}
+        html = labels["단일 종목 A/B/C HTML 보고서 다운로드 (오프라인·미인증)"]["data"]
+        self.assertIn("CSV 원본→정규화 JSON 계보 연결: PASS".encode(), html)
+        self.assertIn("투자".encode(), html)
+        self.assertIn(b"HOLD", html)
+        self.assertNotIn(b"symbol,date,close", html)
+        self.assertNotIn(b"<script", html.lower())
+
     def test_no_click_or_no_consent_blocks_analysis(self):
         for kwargs in ({"clicked": None}, {"ack": False}):
             with self.subTest(kwargs=kwargs), patch(
