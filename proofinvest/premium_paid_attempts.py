@@ -27,14 +27,24 @@ def register_premium_pair_attempt(state: Any, fingerprint: Any) -> str:
         return "NEW"  # Preserve simple Streamlit-compatible test doubles.
     try:
         history = state.get(_HISTORY_KEY, [])
+        legacy = state.get(_LEGACY_KEY)
         if (type(history) is not list or len(history) > _MAX_HISTORY
                 or any(type(item) is not str or _SHA256.fullmatch(item) is None
                        for item in history)
-                or len(history) != len(set(history))):
+                or len(history) != len(set(history))
+                or (legacy is not None
+                    and (type(legacy) is not str
+                         or _SHA256.fullmatch(legacy) is None))):
             return "INVALID"  # Do not issue a paid request with corrupt state.
-        if fingerprint in history or state.get(_LEGACY_KEY) == fingerprint:
+        # P157: migrate a P141/P154 single last-attempt marker *before*
+        # allowing a different input. Otherwise an upgraded A -> B -> A
+        # session loses the original A and may issue a second paid GET.
+        if legacy is not None and legacy not in history:
+            history = (history + [legacy])[-_MAX_HISTORY:]
+            state[_HISTORY_KEY] = history
+        if fingerprint in history:
             return "DUPLICATE"
-        # The old single-attempt marker is retained for pre-P155 sessions.
+        # Register BEFORE network; bounded distinct hashes, no source bytes.
         state[_HISTORY_KEY] = history[-(_MAX_HISTORY - 1):] + [fingerprint]
         state[_LEGACY_KEY] = fingerprint
         return "NEW"
