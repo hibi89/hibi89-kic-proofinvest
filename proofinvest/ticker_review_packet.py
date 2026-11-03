@@ -148,3 +148,61 @@ def inspect_review_packet_bytes(raw: Any) -> dict:
         "external_sharing_allowed": False,
         "trade_executed": False,
     }
+
+
+def verify_review_packet_against_sources(
+    raw_packet: Any, *, workflow: Any, sources: Any, stock: Any, index: Any,
+    market_json: bytes | None = None, industry_json: bytes | None = None,
+) -> dict[str, Any]:
+    """Independently replay a downloaded packet against supplied source inputs.
+
+    Unlike inspect_review_packet_bytes, this requires the actual local SEC
+    originals and in-memory stock / index receipts. Neither this replay nor
+    a supplied vendor receipt authenticates SEC/provider origin or grants
+    legal use, redistribution or trading permission. Never performs network.
+    """
+    outcome = {
+        "schema": "kuodra.review-packet-independent-replay.v1",
+        "status": "FAIL",
+        "reason_code": "PACKET_OR_ORIGINAL_SOURCES_INVALID",
+        "packet_internal_integrity_passed": False,
+        "local_source_replay_verified": False,
+        "market_math_recomputed": False,
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "ai_agent_executed": False,
+        "guard_executed": False,
+        "trade_executed": False,
+        "external_sharing_allowed": False,
+    }
+    try:
+        # Strict canonical packet validation must precede any source replay.
+        inspected = inspect_review_packet_bytes(raw_packet)
+        if inspected["status"] != "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED":
+            return outcome
+        outcome["packet_internal_integrity_passed"] = True
+        packet = json.loads(raw_packet.decode("utf-8"))
+        from .ticker_market_pair_evidence import verify_linked_market_evidence
+        verified = verify_linked_market_evidence(
+            packet["linked_evidence"],
+            workflow=workflow, sources=sources, stock=stock, index=index,
+            market_json=market_json, industry_json=industry_json,
+        )
+        if (verified.get("status") != "PASS"
+                or verified.get("local_replay_verified") is not True
+                or verified.get("market_math_recomputed") is not True
+                or verified.get("network_requests") != 0
+                or verified.get("source_authenticated") is not False
+                or verified.get("source_rights_verified") is not False):
+            outcome["reason_code"] = "SOURCE_OR_MARKET_REPLAY_MISMATCH"
+            return outcome
+        outcome.update(
+            status="PASS_UNVERIFIED_ORIGIN",
+            reason_code="EXACT_LOCAL_AND_MARKET_MATH_REPLAY",
+            local_source_replay_verified=True,
+            market_math_recomputed=True,
+        )
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError,
+            UnicodeError, RecursionError, json.JSONDecodeError):
+        return outcome
+    return outcome
