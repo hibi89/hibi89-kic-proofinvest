@@ -57,6 +57,15 @@ def fake_call(payloads, recorded):
 
 
 class SecApiOneTickerTests(unittest.TestCase):
+    def test_vendor_http_rejects_unsupported_method_before_network(self):
+        from proofinvest.ticker_provider_sec_api import _vendor_http
+        with patch("proofinvest.ticker_provider_sec_api.build_opener") as opener:
+            with self.assertRaisesRegex(ValueError, "VENDOR_HTTP_METHOD_NOT_ALLOWED"):
+                _vendor_http("DELETE", "https://api.sec-api.io/mapping/ticker/NVDA",
+                             None, _KEY, 1024)
+            opener.assert_not_called()
+
+
     def invoke(self, **changes):
         bodies = vendor_responses()
         observed = []
