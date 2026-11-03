@@ -155,7 +155,7 @@ def explanation_json_bytes(result: Any) -> bytes:
                 if type(f) is dict] != ["A", "B", "C"]):
         raise ValueError("EXPLANATION_EXPORT_CONTRACT_INVALID")
     import re
-    hex64 = re.compile(r"[0-9a-f]{64}\\Z", re.ASCII)
+    hex64 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
     hashes = [result.get("linked_evidence_sha256")] + [
         value for value in result["source_hashes"].values()
         if value is not None
