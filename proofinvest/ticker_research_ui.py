@@ -1188,13 +1188,13 @@ def render_single_ticker_search(st) -> None:
                         "로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
                         data=result["review_packet"],
                         file_name="kuodra-offline-a-b-c-review-UNVERIFIED.json",
-                        mime="application/json", key="kuodra_p167_packet_download",
+                        mime="application/json", on_click="ignore", key="kuodra_p167_packet_download",
                     )
                     st.download_button(
                         "원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)",
                         data=result["source_clearance_report"],
                         file_name="kuodra-source-rights-GAPS-UNVERIFIED.json",
-                        mime="application/json", key="kuodra_p168_rights_gaps",
+                        mime="application/json", on_click="ignore", key="kuodra_p168_rights_gaps",
                     )
                     st.info("원본 8종의 파일 해시와 시장 검토기간, "
                             "발행자 인증·구매 권한·공개/재배포 허가에 필요한 "
