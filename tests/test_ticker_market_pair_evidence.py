@@ -159,6 +159,67 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertEqual(seen[0]["status"], "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED")
         self.assertNotIn(_KEY, repr(seen))
 
+    def test_real_ui_button_exports_linked_json_after_local_replay(self):
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        prepared = _prepared()
+        _, raw, market, industry, stock, index = prepared
+        uploads = {
+            "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+            "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+            "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+            "kuodra_p116_original": Uploaded(raw["original_10k"]),
+            "kuodra_p104_market_json": Uploaded(market),
+            "kuodra_p104_industry_json": Uploaded(industry),
+        }
+        label = "로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)"
+        st = FakeSt(
+            clicked=label,
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads=uploads,
+        )
+        def vendor(**kwargs):
+            self.assertEqual(kwargs["ticker"], "NVDA")
+            kwargs["validated_pair_callback"](stock, index)
+            output = analyze_price_index_pair(
+                stock=stock, index=index, ticker=kwargs["ticker"],
+                issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"],
+                as_of=kwargs["as_of"])
+            output["network_requests"] = 2
+            return output
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY}, clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("REAL_SEC_FORBIDDEN")) as net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=vendor) as vendor_mock,
+        ):
+            ui.render_single_ticker_search(st)
+        net.assert_not_called()
+        vendor_mock.assert_called_once()
+        exports = [value for kind, value in st.messages
+                   if kind == "download" and
+                   value["label"] == "통합 검산 근거 JSON (로컬 전용 · 미인증)"]
+        self.assertEqual(len(exports), 1, st.messages)
+        payload = json.loads(exports[0]["data"])
+        self.assertEqual(payload["status"],
+                         "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED")
+        self.assertEqual(payload["guard_policy_preview"], "HOLD")
+        self.assertEqual(payload["engine_c"]["status"],
+                         "OBSERVED_COMPARISON_UNVERIFIED")
+        self.assertFalse(payload["source_authenticated"])
+        self.assertFalse(payload["external_sharing_allowed"])
+        self.assertNotIn(_KEY, repr(st.messages))
+        self.assertNotIn("close_observations", repr(payload))
+
     def test_no_callback_without_explicit_approval(self):
         seen = []
         with patch.dict(os.environ, {}, clear=True):
