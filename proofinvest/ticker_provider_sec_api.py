@@ -268,6 +268,55 @@ def _submissions(*, cik: str, accession: str, filed: str,
     }, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
 
 
+def encode_vendor_evidence_json(result: dict[str, Any]) -> bytes:
+    """Export a vendor-identified envelope, never an ambiguous SEC report.
+
+    In particular the nested P117 report's sec.gov source_urls are reference
+    identities, NOT proof these response bodies came from the SEC host.
+    """
+    if (type(result) is not dict
+            or result.get("status") != "SOURCE_REPLAYED_UNVERIFIED"
+            or result.get("source_kind") !=
+                    "THIRD_PARTY_XBRL_TO_SEC_SHAPED_UNAUTHENTICATED"
+            or result.get("provider_http_requests_attempted") != 4
+            or any(result.get(flag) is not False for flag in (
+                "source_authenticated", "source_rights_verified",
+                "redistribution_allowed", "original_edgar_bytes_authenticated",
+                "trade_executed", "full_a_b_c_ready"))):
+        raise ValueError("VENDOR_EXPORT_UNVERIFIED_CONTRACT")
+    report = result.get("report")
+    if (type(report) is not dict
+            or report.get("guard_policy_preview") != "HOLD"
+            or type(report.get("report_sha256")) is not str
+            or len(report["report_sha256"]) != 64):
+        raise ValueError("VENDOR_EXPORT_REPORT_INVALID")
+    package = {
+        "schema": "kuodra.third-party-xbrl-derived-review-package.v1",
+        "status": "LOCAL_REPLAYED_THIRD_PARTY_ORIGIN_UNVERIFIED",
+        "source_kind": result["source_kind"], "vendor": result["vendor"],
+        "provider_documentation": "https://sec-api.io/api-reference",
+        "ticker": result["ticker"], "issuer_cik": result["issuer_cik"],
+        "as_of": result["as_of"], "accession": result["accession"],
+        "filing_date": result["filing_date"], "fiscal_end": result["fiscal_end"],
+        "derived_sec_shaped_data_not_original_sec_json": True,
+        "original_edgar_bytes_authenticated": False,
+        "independent_provider_response_authenticated": False,
+        "issuer_filing_publication_time_verified": False,
+        "source_rights_verified": False, "redistribution_allowed": False,
+        "full_a_b_c_ready": False, "trade_executed": False,
+        "guard_policy_preview_only": "HOLD",
+        "original_local_report_sha256": report["report_sha256"],
+        "source_sha256": result["source_sha256"],
+        "vendor_response_sha256": result["raw_vendor_response_sha256"],
+        "local_report": report,
+    }
+    raw = (json.dumps(package, sort_keys=True, ensure_ascii=False,
+                      separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+    if len(raw) > 32768:
+        raise ValueError("VENDOR_EXPORT_TOO_LARGE")
+    return raw
+
+
 def run_sec_api_on_demand(
     *, ticker: str, as_of: str, api_key: str | None,
     explicit_click: bool = False, operator_retrieval_approved: bool = False,

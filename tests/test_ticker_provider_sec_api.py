@@ -7,7 +7,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from proofinvest.ticker_provider_sec_api import run_sec_api_on_demand
+from proofinvest.ticker_provider_sec_api import run_sec_api_on_demand, encode_vendor_evidence_json
 from proofinvest import ticker_research_ui as ui
 from tests.test_ticker_market_industry_bridge import scenario
 from tests.test_ticker_research_ui import FakeSt
@@ -92,6 +92,24 @@ class SecApiOneTickerTests(unittest.TestCase):
                          "THIRD_PARTY_XBRL_TO_SEC_SHAPED_UNAUTHENTICATED")
         self.assertNotIn(_KEY, json.dumps(result))
         self.assertNotIn("<?xml", json.dumps(result))
+
+    def test_export_bundle_explicitly_marks_vendor_derived_sec_shaped_data(self):
+        result, seen = self.invoke()
+        self.assertEqual(result["status"], "SOURCE_REPLAYED_UNVERIFIED")
+        payload = json.loads(encode_vendor_evidence_json(result))
+        self.assertEqual(payload["vendor"], "SEC_API_IO")
+        self.assertTrue(payload["derived_sec_shaped_data_not_original_sec_json"])
+        self.assertFalse(payload["source_rights_verified"])
+        self.assertFalse(payload["redistribution_allowed"])
+        self.assertEqual(payload["original_local_report_sha256"],
+                         payload["local_report"]["report_sha256"])
+        self.assertNotIn(_KEY, json.dumps(payload))
+        self.assertNotIn("StatementsOfIncome", json.dumps(payload))
+        self.assertNotIn("original_10k", json.dumps(payload).replace(
+            '"original_10k":', '"original_10k_sha256":'))
+        tampered = dict(result, source_authenticated=True)
+        with self.assertRaises(ValueError):
+            encode_vendor_evidence_json(tampered)
 
     def test_environment_or_click_missing_prevents_any_vendor_transport(self):
         seen = []
@@ -198,6 +216,11 @@ class SecApiOneTickerTests(unittest.TestCase):
                             val["file_name"] == "kuodra-vendor-local-review-UNVERIFIED.json"
                             for kind, val in st.messages))
         self.assertNotIn(_KEY, str(st.messages))
+        for kind, value in st.messages:
+            if kind == "download" and value["file_name"].startswith("kuodra-vendor-"):
+                document = json.loads(value["data"])
+                self.assertTrue(document["derived_sec_shaped_data_not_original_sec_json"])
+                self.assertEqual(document["vendor"], "SEC_API_IO")
 
 
 if __name__ == "__main__":

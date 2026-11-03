@@ -455,12 +455,10 @@ def render_single_ticker_search(st) -> None:
                 report = vendor.get("report")
                 if type(report) is dict:
                     st.json(vendor["dashboard"])
-                    from .ticker_local_report import verify_local_report
+                    from .ticker_provider_sec_api import encode_vendor_evidence_json
                     st.download_button(
                         "제3자 공시 출처·Guard 로컬 검토 JSON (미인증)",
-                        data=(__import__("json").dumps(
-                            report, sort_keys=True, ensure_ascii=False,
-                            separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8"),
+                        data=encode_vendor_evidence_json(vendor),
                         file_name="kuodra-vendor-local-review-UNVERIFIED.json",
                         mime="application/json", key="kuodra_p145_vendor_report",
                     )
