@@ -460,7 +460,27 @@ def render_single_ticker_search(st) -> None:
         "로컬 원본으로 출처 계획 확인", key="kuodra_p100_offline",
         disabled=ticker_map is None or not valid,
     )
-    if source_plan_clicked or human_review_clicked:
+    # P141: one click can run both a pinned local SEC replay and (only with
+    # separate Premium market-data permission) two licensed vendor GETs.
+    # The click label explicitly says network; old offline button stays offline.
+    pair_approved = all(os.environ.get(k) == "1" for k in (
+        "KUODRA_ENABLE_ALPHA_VANTAGE_DAILY",
+        "KUODRA_ENABLE_ALPHA_VANTAGE_INDEX",
+        "KUODRA_ALPHA_VANTAGE_INDEX_PREMIUM_APPROVED",
+        "KUODRA_ALPHA_VANTAGE_RIGHTS_APPROVED",
+    )) and bool(os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"))
+    pair_ack = st.checkbox(
+        "별도 승인된 Premium NDX + 종목 주가 총 최대 2회 외부 조회에 동의합니다",
+        value=False, key="kuodra_p141_pair_ack",
+    )
+    pair_clicked = st.button(
+        "로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
+        key="kuodra_p141_pair_run",
+        disabled=not (pair_approved and pair_ack and valid and
+                      all(x is not None for x in (
+                          ticker_map, submissions, companyfacts_local, original_local))),
+    )
+    if source_plan_clicked or human_review_clicked or pair_clicked:
         try:
             mapped = _read_uploaded(ticker_map, MAX_MAP_BYTES)
             filings = (_read_uploaded(submissions, MAX_SUBMISSIONS_BYTES)
@@ -551,6 +571,59 @@ def render_single_ticker_search(st) -> None:
             # existing seven-stage independent local report replay passes.
             from .ticker_local_dashboard import render_local_ticker_dashboard
             render_local_ticker_dashboard(st, workflow)
+            if pair_clicked:
+                # Never initiate a paid query until source identity, fiscal
+                # period and independent local report replay all succeeded.
+                guard = original_check.get("guard_preview")
+                if type(guard) is not dict or guard.get("decision") != "HOLD":
+                    st.warning("Guard REJECT/원문 불일치: Premium 외부 조회를 차단합니다.")
+                else:
+                    from .market_pair_engine_a import fetch_and_analyze_market_pair
+                    # One attempt per analyzed source set in this Streamlit
+                    # session; it is recorded BEFORE vendor calls to block
+                    # repeated reruns and provider cost spikes.
+                    state = getattr(st, "session_state", None)
+                    fingerprint = (
+                        str(local_receipt["cik"]) + ":" + as_of + ":" +
+                        str(local_receipt["source_sha256"]["companyfacts"])
+                    )
+                    if state is not None and state.get("kuodra_p141_pair_attempt") == fingerprint:
+                        st.warning("동일 종목·공시·기준일 중복 API 호출을 차단했습니다.")
+                    else:
+                        if state is not None:
+                            state["kuodra_p141_pair_attempt"] = fingerprint
+                        market_result = fetch_and_analyze_market_pair(
+                            ticker=key, issuer_cik=local_receipt["cik"],
+                            filing_date=revenue["filing_date"], as_of=as_of,
+                            api_key=os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"),
+                            benchmark="NASDAQ_100", explicit_click=True,
+                            provider_rights_approved=True,
+                            premium_entitlement_approved=True,
+                        )
+                        st.subheader("실제 종목·NASDAQ-100 자료 기반 Engine A (미인증)")
+                        if market_result["status"] == "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED":
+                            analyzed = market_result["market_analysis"]
+                            st.metric("종목/지수 수익률 (원시 종가)",
+                                      str(analyzed["security_return_pct"]) + "% / " +
+                                      str(analyzed["benchmark_return_pct"]) + "%")
+                            st.metric("OLS 베타 (투자 추천 아님)",
+                                      str(analyzed["beta"]) if analyzed["beta"] is not None
+                                      else "산출 불가")
+                            st.json({
+                                "matched_observation_count": market_result["matched_observation_count"],
+                                "stock_source_sha256": market_result["stock_response_sha256"],
+                                "index_source_sha256": market_result["index_response_sha256"],
+                                "vendor_requests_attempted": market_result["network_requests"],
+                                "source_authenticated": False,
+                                "source_rights_verified": False,
+                                "guard_executed": False,
+                                "ai_agent_executed": False, "trade_executed": False,
+                            })
+                            st.warning("Premium 이용권한과 실제 응답 출처·시점은 별도 검증 필요. "
+                                       "Engine B/C와의 결합 결과가 아니며 외부 공유·매매를 허용하지 않습니다.")
+                        else:
+                            st.warning("적법한 지수·종목 증거 확보 또는 기간 정합성 부족으로 분석 보류.")
+                            st.code(market_result["reason_code"], language="text")
             # Local download is explicitly triggered by the user. No raw
             # original, contact, HTML or token enters this bounded report.
             if (revenue.get("status") == "REVENUE_CALCULATED_UNVERIFIED"
