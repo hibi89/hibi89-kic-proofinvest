@@ -320,6 +320,108 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertNotIn(_KEY, repr(st.messages))
         self.assertNotIn("close_observations", repr(payload))
 
+    def test_p154_duplicate_paid_click_reuses_export_but_changed_source_can_run(self):
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        _, raw, market, industry, stock, index = _prepared()
+        button = "로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)"
+        st = FakeSt(
+            clicked=button,
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads={
+                "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+                "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+                "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+                "kuodra_p116_original": Uploaded(raw["original_10k"]),
+                "kuodra_p104_market_json": Uploaded(market),
+                "kuodra_p104_industry_json": Uploaded(industry),
+            },
+        )
+        st.session_state = {}
+        def vendor(**kwargs):
+            kwargs["validated_pair_callback"](stock, index)
+            result = analyze_price_index_pair(
+                stock=stock, index=index,
+                ticker=kwargs["ticker"], issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"], as_of=kwargs["as_of"],
+            )
+            result["network_requests"] = 2
+            return result
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY}, clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("LIVE_SEC_FORBIDDEN")) as net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=vendor) as paid_pair,
+        ):
+            ui.render_single_ticker_search(st)
+            first = st.session_state["kuodra_p141_pair_attempt"]
+            self.assertEqual(len(first), 64)
+            self.assertIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            paid_pair.assert_called_once()
+            st.messages.clear()
+            # The user may click the same enabled paid button again.
+            # This MUST not incur an extra market-data request and MUST
+            # still show the already validated export on that click.
+            ui.render_single_ticker_search(st)
+            paid_pair.assert_called_once()
+            self.assertTrue(any(
+                kind == "download" and value["label"] ==
+                "통합 검산 근거 JSON (로컬 전용 · 미인증)"
+                for kind, value in st.messages))
+            self.assertTrue(any(
+                kind == "json" and type(value) is dict
+                and value.get("provider_requests_on_rerun") == 0
+                for kind, value in st.messages))
+
+            # A distinct, valid local A/C source set is a new analysis:
+            # an independent explicit click is allowed, not silently billed.
+            st.uploads.pop("kuodra_p104_industry_json")
+            st.messages.clear()
+            ui.render_single_ticker_search(st)
+            self.assertEqual(paid_pair.call_count, 2)
+            self.assertNotEqual(st.session_state["kuodra_p141_pair_attempt"], first)
+            self.assertTrue(any(
+                kind == "download" and value["label"] ==
+                "통합 검산 근거 JSON (로컬 전용 · 미인증)"
+                for kind, value in st.messages))
+            net.assert_not_called()
+        self.assertNotIn(_KEY, repr(st.session_state))
+
+    def test_p154_fingerprint_binds_all_sources_accession_and_optional_inputs(self):
+        from proofinvest import ticker_research_ui as ui
+        prepared = _prepared()
+        workflow, raw, market, industry, _stock, _index = prepared
+        receipt = workflow["receipt"]
+        base = dict(ticker="NVDA", as_of="2026-02-01", receipt=receipt,
+                    market_json=market, industry_json=industry)
+        first = ui._p154_pair_source_fingerprint(**base)
+        self.assertEqual(len(first), 64)
+        self.assertNotIn("NVDA", first)
+        modified = dict(base, industry_json=None)
+        self.assertNotEqual(ui._p154_pair_source_fingerprint(**modified), first)
+        modified = dict(base, market_json=None)
+        self.assertNotEqual(ui._p154_pair_source_fingerprint(**modified), first)
+        modified = dict(base, as_of="2026-02-02")
+        self.assertNotEqual(ui._p154_pair_source_fingerprint(**modified), first)
+        modified = dict(base, receipt=deepcopy(receipt))
+        modified["receipt"]["source_sha256"]["original_10k"] = "0" * 64
+        self.assertNotEqual(ui._p154_pair_source_fingerprint(**modified), first)
+        modified = dict(base, receipt=deepcopy(receipt))
+        modified["receipt"]["selected_10k_accession"] = "0001045810-25-999999"
+        self.assertNotEqual(ui._p154_pair_source_fingerprint(**modified), first)
+        modified = dict(base, receipt=deepcopy(receipt))
+        modified["receipt"]["source_sha256"]["companyfacts"] = "bad"
+        with self.assertRaisesRegex(ValueError, "PAIR_FINGERPRINT_SOURCE"):
+            ui._p154_pair_source_fingerprint(**modified)
+
     def test_session_rerun_keeps_safe_report_without_extra_paid_get(self):
         from proofinvest import ticker_research_ui as ui
         from proofinvest import ticker_sec_transport as sec_transport
