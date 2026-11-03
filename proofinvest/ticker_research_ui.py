@@ -857,9 +857,16 @@ def render_single_ticker_search(st) -> None:
                         ticker=key, as_of=as_of, receipt=local_receipt,
                         market_json=market_data, industry_json=industry_data,
                     )
-                    if state is not None and state.get("kuodra_p141_pair_attempt") == fingerprint:
-                        st.warning("동일 입력의 중복 유료 조회를 차단했습니다. "
-                                   "기존 검산 보고서가 있으면 아래에 표시합니다.")
+                    from .premium_paid_attempts import register_premium_pair_attempt
+                    attempt = register_premium_pair_attempt(state, fingerprint)
+                    if attempt == "INVALID":
+                        # Never risk a duplicate paid call when the session's
+                        # previously registered request history is corrupted.
+                        st.warning("유료 조회 이력 검증 실패: 추가 API 요청을 차단합니다. "
+                                   "새 세션에서만 별도 승인 후 다시 시작할 수 있습니다.")
+                    elif attempt == "DUPLICATE":
+                        st.warning("이 세션에서 동일 자료로 이미 유료 조회를 시도했습니다. "
+                                   "추가 API 호출 없이 기존 보고서만 확인합니다.")
                         _p153_render_cached_linked_report(
                             st, ticker=key, as_of=as_of,
                             approved=bool(pair_approved and pair_ack and valid),
@@ -871,8 +878,8 @@ def render_single_ticker_search(st) -> None:
                             industry_source=industry_source,
                         )
                     else:
-                        if state is not None:
-                            state["kuodra_p141_pair_attempt"] = fingerprint
+                        # register_premium_pair_attempt wrote the bounded
+                        # session ledger BEFORE either supplier HTTP GET.
                         # Build a separate redacted report while the
                         # receipt pair is still in memory. Both the original
                         # seven-step report and Engine A math are replayed.
