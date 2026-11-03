@@ -371,12 +371,64 @@ def _render_p158_source_linked_interpretation(
         )
 
 
+
+def _render_p164_downloaded_packet_inspector(st) -> None:
+    """Independently inspect a downloaded review JSON on localhost.
+
+    This checks strict canonical bytes, schemas, arithmetic self-consistency
+    and packet digests. It never fetches, caches, uploads externally or
+    claims the separate original SEC / market-source replay was repeated.
+    """
+    st.subheader("다운로드한 A/B/C 검토 패키지 재검사 (오프라인)")
+    st.caption("로컬 JSON의 내부 무결성만 확인합니다. 원본 SEC·주가·지수 "
+               "재검산이나 발행자 인증·재배포 권한 검증이 아닙니다.")
+    selected = st.file_uploader(
+        "이전에 다운로드한 검토 패키지 JSON (28KiB 이하)",
+        type=["json"], key="kuodra_p164_packet_file",
+    )
+    clicked = st.button(
+        "다운로드 패키지 무결성 검사 (네트워크 없음)",
+        key="kuodra_p164_packet_inspect",
+        disabled=selected is None,
+    )
+    if not clicked:
+        return
+    try:
+        from .ticker_review_packet import inspect_review_packet_bytes
+        checked = inspect_review_packet_bytes(_read_uploaded(selected, 28672))
+    except (ValueError, TypeError, AttributeError, OverflowError,
+            RecursionError, UnicodeError):
+        st.warning("검토 패키지 크기·형식·내부 증거 연결 또는 무결성 검사 실패. "
+                   "원본 내용을 신뢰하거나 외부에 공유하지 마십시오.")
+        st.code("REVIEW_PACKET_OFFLINE_INTEGRITY_FAILED", language="text")
+        return
+    st.json({
+        "status": checked["status"],
+        "ticker": checked["ticker"],
+        "packet_sha256": checked["packet_sha256"],
+        "linked_evidence_sha256": checked["linked_evidence_sha256"],
+        "guard_policy_preview": "HOLD",
+        "packet_internal_integrity_passed": True,
+        "original_sources_replayed_in_this_check": False,
+        "market_math_independently_recomputed_in_this_check": False,
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "external_sharing_allowed": False,
+        "network_requests": 0,
+        "trade_executed": False,
+    })
+    st.warning("내부 무결성 통과는 공급자 원문 인증, 독립적인 원본 재검산, "
+               "사용권리 또는 투자·제출 승인이 아닙니다.")
+
+
+
 def render_single_ticker_search(st) -> None:
     if not ticker_search_enabled(st):
         st.error("종목 검색은 로컬 서버에서만 활성화됩니다.")
         return
 
     st.title("KUODRA · 종목 하나 검색")
+    _render_p164_downloaded_packet_inspector(st)
     st.caption("티커 1개 → SEC 기업 CIK 확인 → 공시 목록 → CompanyFacts → "
                "10-K 원문. 대규모 종목 추천·전체 시장 크롤링은 제공하지 않습니다.")
     ticker = st.text_input(
