@@ -723,7 +723,22 @@ def render_single_ticker_search(st) -> None:
                             if (linked.get("status") ==
                                     "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED"
                                     and check.get("status") == "PASS"):
-                                linked_holder["report"] = linked
+                                # Serialize at the verification boundary. If a
+                                # later exporter contract rejects this result,
+                                # the main local report must still be usable.
+                                from .ticker_market_pair_evidence import (
+                                    linked_evidence_json_bytes,
+                                )
+                                try:
+                                    safe_bytes = linked_evidence_json_bytes(linked)
+                                except (ValueError, TypeError, KeyError,
+                                        OverflowError, RecursionError):
+                                    linked_holder["reason"] = "LINKED_EXPORT_CONTRACT_FAILED"
+                                else:
+                                    linked_holder["report"] = linked
+                                    linked_holder["safe_bytes"] = safe_bytes
+                            else:
+                                linked_holder["reason"] = "LINKED_INDEPENDENT_REPLAY_FAILED"
                         market_result = fetch_and_analyze_market_pair(
                             ticker=key, issuer_cik=local_receipt["cik"],
                             filing_date=revenue["filing_date"], as_of=as_of,
@@ -744,6 +759,10 @@ def render_single_ticker_search(st) -> None:
                                       else "산출 불가")
                             st.json({
                                 "matched_observation_count": market_result["matched_observation_count"],
+                                "matched_period_start": market_result["matched_period_start"],
+                                "matched_period_end": market_result["matched_period_end"],
+                                "as_of": as_of,
+                                "filing_date": revenue["filing_date"],
                                 "stock_source_sha256": market_result["stock_response_sha256"],
                                 "index_source_sha256": market_result["index_response_sha256"],
                                 "vendor_requests_attempted": market_result["network_requests"],
@@ -753,7 +772,6 @@ def render_single_ticker_search(st) -> None:
                                 "ai_agent_executed": False, "trade_executed": False,
                             })
                             if "report" in linked_holder:
-                                from .ticker_market_pair_evidence import linked_evidence_json_bytes
                                 linked = linked_holder["report"]
                                 st.subheader("7단계 SEC·B/C + 실제 지수 Engine A 통합 증거")
                                 st.json({
@@ -762,6 +780,8 @@ def render_single_ticker_search(st) -> None:
                                     "evidence_sha256": linked["evidence_sha256"],
                                     "engine_b": linked["engine_b"]["status"],
                                     "engine_c": linked["engine_c"]["status"],
+                                    "matched_period_start": linked["premium_engine_a"]["matched_period_start"],
+                                    "matched_period_end": linked["premium_engine_a"]["matched_period_end"],
                                     "market_math_recomputed": True,
                                     "source_authenticated": False,
                                     "source_rights_verified": False,
@@ -769,10 +789,21 @@ def render_single_ticker_search(st) -> None:
                                 })
                                 st.download_button(
                                     "통합 검산 근거 JSON (로컬 전용 · 미인증)",
-                                    data=linked_evidence_json_bytes(linked),
+                                    data=linked_holder["safe_bytes"],
                                     file_name="kuodra-local-market-linked-UNVERIFIED.json",
                                     mime="application/json",
                                     key="kuodra_p143_linked_market_report",
+                                )
+                            else:
+                                # A failed derived export does NOT discard the
+                                # independently verified four-source report.
+                                st.warning(
+                                    "통합 증거 JSON은 독립 검산 또는 출력 계약 오류로 "
+                                    "차단했습니다. 아래 로컬 공시 보고서는 별도로 유지됩니다."
+                                )
+                                st.code(
+                                    linked_holder.get("reason", "LINKED_EVIDENCE_UNAVAILABLE"),
+                                    language="text",
                                 )
                             st.warning("실제 응답 출처·시점·재배포 권리는 별도 검증 필요. "
                                        "통합 보고서는 로컬 수치 재검산만 증명하며 "
