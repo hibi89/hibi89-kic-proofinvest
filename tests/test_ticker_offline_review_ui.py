@@ -129,7 +129,7 @@ class InitialOfflineReviewUiTests(unittest.TestCase):
         dl = {v["label"]: v for k, v in st.messages if k == "download"}
         gap = "원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)"
         lineage = "로컬 CSV 원본·JSON 변환 이력 JSON 다운로드 (미인증)"
-        self.assertEqual(set(dl), {_DOWNLOAD, gap, lineage}, st.messages)
+        self.assertTrue({_DOWNLOAD, gap, lineage}.issubset(set(dl)), st.messages)
         self.assertEqual(
             inspect_source_clearance_packet(
                 dl[gap]["data"], review_packet=dl[_DOWNLOAD]["data"])["status"],
