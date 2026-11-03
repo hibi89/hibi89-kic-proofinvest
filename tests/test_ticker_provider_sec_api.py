@@ -57,6 +57,14 @@ def fake_call(payloads, recorded):
 
 
 class SecApiOneTickerTests(unittest.TestCase):
+    def test_vendor_post_rejects_query_string_without_network(self):
+        from proofinvest.ticker_provider_sec_api import _vendor_http
+        with patch("proofinvest.ticker_provider_sec_api.build_opener") as opener:
+            with self.assertRaisesRegex(ValueError, "VENDOR_POST_QUERY_NOT_ALLOWED"):
+                _vendor_http("POST", "https://api.sec-api.io/?unexpected=1",
+                             b"{}", _KEY, 1024)
+            opener.assert_not_called()
+
     def test_vendor_post_rejects_unexpected_endpoint_without_network(self):
         from proofinvest.ticker_provider_sec_api import _vendor_http
         with patch("proofinvest.ticker_provider_sec_api.build_opener") as opener:
