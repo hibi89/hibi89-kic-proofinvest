@@ -41,6 +41,8 @@ def reviewed_workflow():
                          "security_return_pct": "12.50", "benchmark_return_pct": "8.00",
                          "beta": "1.10", "r_squared": "0.25"},
             "engine_c": {"status": "OBSERVED_COMPARISON_UNVERIFIED",
+                         "peer_count": 1,
+                         "cohort_source_scope": "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED",
                          "input_sha256": "e" * 64, "source_authenticated": False,
                          "provider_rights_verified": False,
                          "peer_median_growth_pct": "15.00",
@@ -83,11 +85,14 @@ class DashboardUnitTests(TestCase):
         self.assertEqual(result["engine_a"]["beta"], "1.10")
         self.assertEqual(result["engine_b"]["cash_to_net_income_pct"], "95.00")
         self.assertEqual(result["engine_c"]["growth_gap_to_industry_pp"], "80.00")
+        self.assertEqual(result["engine_c"]["peer_count"], 1)
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["investment_recommendation"])
         st = FakeStreamlit()
         render_local_ticker_dashboard(st, workflow)
         self.assertIn(("metric", ("OLS 베타 (인과관계 아님)", "1.10")), st.events)
+        self.assertIn(("metric", ("입력 동종기업 표본 수", "1")), st.events)
+        self.assertTrue(any(k == "warning" and "표본이 1개뿐" in v for k, v in st.events))
         self.assertFalse(any(k == "code" for k, _ in st.events))
 
     def test_missing_market_industry_are_unavailable_not_zero(self):
@@ -142,6 +147,19 @@ class DashboardUnitTests(TestCase):
                     self.assertIsNone(out["engine_a"]["beta"])
                 else:
                     self.assertEqual(out["status"], "BLOCKED")
+
+    def test_invalid_peer_sample_count_or_source_scope_blocks_metrics(self):
+        for key, bad in (
+            ("peer_count", -1), ("peer_count", 9),
+            ("peer_count", "1"), ("cohort_source_scope", "VERIFIED"),
+        ):
+            workflow = reviewed_workflow()
+            workflow["supplementary"]["engine_c"][key] = bad
+            with self.subTest(key=key, bad=bad):
+                result = summarize_local_ticker_dashboard(workflow)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertEqual(result["reason_code"],
+                                 "ENGINE_C_PEER_COHORT_CONTRACT_INVALID")
 
     def test_bad_structures_fail_closed_not_crash(self):
         for value in (None, {}, "wrong", reviewed_workflow() | {"tool_trace": None},
