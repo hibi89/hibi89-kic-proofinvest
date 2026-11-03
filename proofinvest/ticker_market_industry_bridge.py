@@ -143,6 +143,19 @@ def evaluate_ticker_a_c(
                     "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED"
                     or type(cohort.get("peer_count")) is not int
                     or cohort["peer_count"] != len(industry["peers"])
+                    or type(industry.get("peer_growth_observation_count")) is not int
+                    or not 0 <= industry["peer_growth_observation_count"] <= cohort["peer_count"]
+                    or industry.get("peer_growth_sample_scope") != (
+                        "NO_COMPARABLE_PEER_GROWTH"
+                        if industry["peer_growth_observation_count"] == 0 else
+                        "SPARSE_PEER_GROWTH_UNVERIFIED"
+                        if industry["peer_growth_observation_count"] < 3 else
+                        "COMPARATIVE_PEER_GROWTH_UNVERIFIED"
+                    )
+                    or (industry["peer_median_growth_pct"] is None) != (
+                        industry["peer_growth_observation_count"] == 0)
+                    or (industry["growth_gap_to_peer_median_pp"] is not None
+                        and industry["peer_growth_observation_count"] == 0)
                     or cohort.get("source_authenticated") is not False
                     or cohort.get("rights_verified") is not False
                     or Decimal(target["prior_revenue_usd"]) != Decimal(revenue["prior_usd"])
@@ -167,6 +180,8 @@ def evaluate_ticker_a_c(
                 "industry": industry["industry"],
                 "industry_measure": industry["industry_series"]["kind"],
                 "peer_count": cohort["peer_count"],
+                "peer_growth_observation_count": industry["peer_growth_observation_count"],
+                "peer_growth_sample_scope": industry["peer_growth_sample_scope"],
                 "cohort_source_scope": cohort["status"],
                 "peer_median_growth_pct": industry["peer_median_growth_pct"],
                 "growth_gap_to_industry_pp":
