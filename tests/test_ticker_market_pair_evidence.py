@@ -589,6 +589,8 @@ class LinkedEvidenceTests(unittest.TestCase):
                             clear=True):
                 ui.render_single_ticker_search(st)
             self.assertNotIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            from proofinvest.linked_report_session_cache import HISTORY_KEY
+            self.assertNotIn(HISTORY_KEY, st.session_state)
             net.assert_not_called()
 
     def test_invalid_linked_export_does_not_hide_safe_local_download(self):
