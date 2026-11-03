@@ -402,6 +402,8 @@ def _render_p164_downloaded_packet_inspector(st) -> None:
                    "원본 내용을 신뢰하거나 외부에 공유하지 마십시오.")
         st.code("REVIEW_PACKET_OFFLINE_INTEGRITY_FAILED", language="text")
         return
+    st.success("검토 패키지 내부 무결성 PASS (원본·공급자 인증 아님)")
+    st.metric("검사 대상 종목 (미인증)", checked["ticker"])
     st.json({
         "status": checked["status"],
         "ticker": checked["ticker"],
