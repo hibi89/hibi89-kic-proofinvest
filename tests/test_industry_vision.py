@@ -126,6 +126,22 @@ class IndustryVisionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "DUPLICATE_COMPANY_CIK"):
             analyze_industry_vision(a)
 
+    def test_peer_and_sector_sources_cannot_impersonate_another_issuer(self):
+        for failure in ("target_id", "same_digest", "sector_digest"):
+            case = fixture()
+            if failure == "target_id":
+                case["peers"][0]["prior_source_id"] = "target-old"
+            elif failure == "same_digest":
+                case["sources"][2]["sha256"] = case["sources"][0]["sha256"]
+            else:
+                case["sources"][5]["sha256"] = case["sources"][3]["sha256"]
+            with self.subTest(failure=failure), self.assertRaisesRegex(
+                    ValueError, "COHORT_CROSS_ISSUER_SOURCE_COLLISION"):
+                analyze_industry_vision(case)
+        report = analyze_industry_vision(fixture())
+        self.assertEqual(report["cohort_evidence"]["peer_count"], 1)
+        self.assertFalse(report["cohort_evidence"]["source_authenticated"])
+
     def test_unverifiable_source_url_rejected(self):
         for url in ("http://www.bea.gov", "https://localhost/report",
                     "https://user:pass@www.bea.gov/a",
