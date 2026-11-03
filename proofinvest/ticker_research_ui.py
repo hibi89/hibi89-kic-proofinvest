@@ -1289,6 +1289,37 @@ def render_single_ticker_search(st) -> None:
                             mime="text/html", on_click="ignore",
                             key="kuodra_p170_reviewer_html_download",
                         )
+                        # P171: single self-contained ZIP for a reviewer.
+                        # Only already validated/redacted files; no originals
+                        # or provider data rows are added to the archive.
+                        try:
+                            from .ticker_review_bundle import (
+                                build_review_bundle_bytes,
+                                inspect_review_bundle_bytes,
+                            )
+                            review_zip = build_review_bundle_bytes(
+                                review_packet=result["review_packet"],
+                                rights_gap_report=result["source_clearance_report"],
+                                csv_lineage=(result["csv_lineage_receipt"]
+                                             if csv_mode else None),
+                            )
+                            zip_check = inspect_review_bundle_bytes(review_zip)
+                            if zip_check["status"] != (
+                                    "INTERNAL_CONTENT_VERIFIED_ORIGIN_RIGHTS_PENDING"):
+                                raise ValueError("REVIEW_ZIP_CHECK_FAILED")
+                        except (ValueError, TypeError, KeyError, UnicodeError,
+                                RecursionError, OverflowError):
+                            st.warning("단일 증거 묶음 ZIP 생성 실패. "
+                                       "기존 JSON/HTML 파일은 개별 검토하십시오.")
+                            st.code("REVIEW_ZIP_SOURCE_LINK_INVALID", language="text")
+                        else:
+                            st.download_button(
+                                "단일 종목 근거 묶음 ZIP 다운로드 (로컬·미인증)",
+                                data=review_zip,
+                                file_name="kuodra-review-evidence-UNVERIFIED.zip",
+                                mime="application/zip", on_click="ignore",
+                                key="kuodra_p171_evidence_zip_download",
+                            )
                     st.info("원본 8종의 파일 해시와 시장 검토기간, "
                             "발행자 인증·구매 권한·공개/재배포 허가에 필요한 "
                             "미확인 항목을 분리 기록했습니다. 이 확인표도 "
