@@ -164,6 +164,7 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
         },
         "engine_c": {
             "status": c["status"],
+            "peer_count": c.get("peer_count") if c_ok and type(c.get("peer_count")) is int and 0 <= c["peer_count"] <= 8 else None,
             "peer_median_growth_pct": _number(c.get("peer_median_growth_pct")) if c_ok else None,
             "growth_gap_to_industry_pp": _number(c.get("growth_gap_to_industry_pp")) if c_ok else None,
         },
