@@ -199,7 +199,7 @@ jobs:
       - name: P165/P166 actual Chromium packet and original SEC + NDX replay
         run: |
           python -B -m scripts.review_packet_browser_smoke /tmp/kic-p165-review-packet-browser
-          python -c 'import json; x=json.load(open("/tmp/kic-p165-review-packet-browser/p165-review-packet-browser.json")); assert x["status"]=="PASS" and x["synthetic_only"] is True and x["real_chromium"] is True and x["valid_reupload_internal_integrity_passed"] is True and x["passive_upload_no_approval"] is True and x["changed_bytes_rejected"] is True and x["oversized_bytes_rejected"] is True and x["live_sec_button_disabled"] is True and x["browser_external_requests"]==0 and x["sqlite_guard_audit_written"] is False and x["publisher_source_authenticated"] is False and x["vendor_rights_verified"] is False and x["synthetic_original_sec_and_price_replayed_in_browser"] is True and x["tampered_original_blocked_in_browser"] is True and x["trade_executed"] is False'
+          python -c 'import json; x=json.load(open("/tmp/kic-p165-review-packet-browser/p165-review-packet-browser.json")); assert x["status"]=="PASS" and x["synthetic_only"] is True and x["real_chromium"] is True and x["valid_reupload_internal_integrity_passed"] is True and x["passive_upload_no_approval"] is True and x["changed_bytes_rejected"] is True and x["oversized_bytes_rejected"] is True and x["live_sec_button_disabled"] is True and x["browser_external_requests"]==0 and x["sqlite_guard_audit_written"] is False and x["publisher_source_authenticated"] is False and x["vendor_rights_verified"] is False and x["synthetic_original_sec_and_price_replayed_in_browser"] is True and x["tampered_original_blocked_in_browser"] is True and x["initial_offline_review_packet_generated_and_downloaded"] is True and x["initial_review_wrong_index_rejected"] is True and x["trade_executed"] is False'
       - name: Archive P165 real Chromium reviewer evidence (synthetic only)
         uses: actions/upload-artifact@v4
         with:
@@ -209,6 +209,8 @@ jobs:
             /tmp/kic-p165-review-packet-browser/p165-rejected-packet-browser.png
             /tmp/kic-p165-review-packet-browser/p166-valid-source-browser.png
             /tmp/kic-p165-review-packet-browser/p166-rejected-source-browser.png
+            /tmp/kic-p165-review-packet-browser/p167-first-offline-packet-browser.png
+            /tmp/kic-p165-review-packet-browser/p167-wrong-index-blocked-browser.png
             /tmp/kic-p165-review-packet-browser/p165-review-packet-browser.json
           if-no-files-found: error
           retention-days: 14
