@@ -272,6 +272,47 @@ def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
         file_name="kuodra-local-market-linked-UNVERIFIED.json",
         mime="application/json", key="kuodra_p143_linked_market_report",
     )
+    _render_p158_source_linked_interpretation(st, report)
+
+
+def _render_p158_source_linked_interpretation(st, linked: dict) -> None:
+    """Display deterministic review notes only for strict validated evidence.
+
+    The caller must have independently replayed the original source inputs.
+    The explanation is descriptive, not an LLM execution or investment advice.
+    """
+    try:
+        from .ticker_evidence_explanation import (
+            explain_linked_market_receipt, explanation_json_bytes,
+        )
+        interpretation = explain_linked_market_receipt(linked)
+        safe_json = explanation_json_bytes(interpretation)
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError,
+            RecursionError, UnicodeError):
+        st.warning("A/B/C 근거 해석이 불가능합니다. 원본 검산 JSON은 유지됩니다.")
+        return
+    st.subheader("Engine A/B/C · 출처 연결 설명 (규칙 기반 · AI 미실행)")
+    st.json({
+        "ticker": interpretation["issuer"]["ticker"],
+        "filing_date": interpretation["issuer"]["filing_date"],
+        "as_of": interpretation["issuer"]["as_of"],
+        "linked_evidence_sha256": interpretation["linked_evidence_sha256"],
+        "source_hashes": interpretation["source_hashes"],
+        "findings": interpretation["findings"],
+        "guard_policy_preview": "HOLD",
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "ai_agent_executed": False,
+        "investment_recommendation": False,
+        "trade_executed": False,
+    })
+    st.download_button(
+        "A/B/C 출처 연결 설명 JSON (로컬 전용 · 규칙 기반)",
+        data=safe_json,
+        file_name="kuodra-local-evidence-interpretation-UNVERIFIED.json",
+        mime="application/json",
+        key="kuodra_p158_explanation_json",
+    )
 
 
 def render_single_ticker_search(st) -> None:
@@ -1016,6 +1057,7 @@ def render_single_ticker_search(st) -> None:
                                     mime="application/json",
                                     key="kuodra_p143_linked_market_report",
                                 )
+                                _render_p158_source_linked_interpretation(st, linked)
                             else:
                                 # A failed derived export does NOT discard the
                                 # independently verified four-source report.
