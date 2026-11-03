@@ -90,6 +90,22 @@ class PairEngineContractTests(unittest.TestCase):
                 stock=a, index=b, ticker="NVDA", issuer_cik="0001045810",
                 filing_date="2026-07-01", as_of="2026-10-01")
 
+    def test_future_session_in_either_receipt_fails_before_ols(self):
+        # A single future-only row cannot be silently discarded by the
+        # calendar intersection; the date would be a look-ahead leak.
+        for role in ("stock", "index"):
+            a, b = sources()
+            receipt = a if role == "stock" else b
+            future = "2026-10-02"
+            self.assertLess(receipt["last_date"], future)
+            receipt["close_observations"].append(
+                {"date": future, "close": "1234"})
+            receipt["last_date"] = future
+            receipt["point_count"] += 1
+            with self.subTest(role=role), self.assertRaisesRegex(
+                    ValueError, "FUTURE_PRICE_OBSERVATION"):
+                self.make_payload(stock=a, index=b)
+
     def test_stale_as_of_must_refuse_ols(self):
         a, b = sources()
         a["as_of"] = b["as_of"] = "2026-11-03"
@@ -149,6 +165,11 @@ class PairEngineContractTests(unittest.TestCase):
         self.assertEqual(result["status"], "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED")
         self.assertEqual(result["market_analysis"]["beta"], "1.2000")
         self.assertEqual(result["matched_observation_count"], 65)
+        self.assertEqual(result["matched_period_start"],
+                         calls[0][0]["index"]["observations"][0]["date"])
+        self.assertEqual(result["matched_period_end"],
+                         calls[0][0]["index"]["observations"][-1]["date"])
+        self.assertLessEqual(result["matched_period_end"], "2026-10-01")
         self.assertEqual(len(calls), 1)
         self.assertIsNone(calls[0][1]["sec_review"])
         self.assertFalse(result["source_rights_verified"])
