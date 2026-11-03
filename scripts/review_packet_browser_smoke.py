@@ -443,6 +443,60 @@ def run(output: Path) -> dict:
                                 or csv_check["source_rights_verified"] is not False
                                 or b"close_observations" in lineage_bytes):
                             raise AssertionError("P169_ORIGINAL_CSV_LINEAGE_NOT_SAFE")
+                        # P170: download and actually render the human-readable
+                        # printable HTML from the same validated synthetic
+                        # CSV-backed report + source rights and lineage.
+                        with page.expect_download(timeout=20000) as csv_gap:
+                            page.get_by_role(
+                                "button",
+                                name="원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)",
+                                exact=True,
+                            ).click()
+                        csv_gap_bytes = Path(csv_gap.value.path()).read_bytes()
+                        with page.expect_download(timeout=20000) as html_d:
+                            page.get_by_role(
+                                "button",
+                                name="단일 종목 A/B/C HTML 보고서 다운로드 (오프라인·미인증)",
+                                exact=True,
+                            ).click()
+                        html_download = html_d.value
+                        if html_download.suggested_filename != (
+                                "kuodra-single-ticker-review-UNVERIFIED.html"):
+                            raise AssertionError("P170_HTML_FILENAME_INVALID")
+                        downloaded_html = Path(html_download.path()).read_bytes()
+                        from proofinvest.ticker_reviewer_html import render_reviewer_html
+                        expected_html = render_reviewer_html(
+                            review_packet=csv_review_bytes,
+                            rights_gap_report=csv_gap_bytes,
+                            csv_lineage=lineage_bytes,
+                        )
+                        if (downloaded_html != expected_html
+                                or b"Content-Security-Policy" not in downloaded_html
+                                or b"<script" in downloaded_html.lower()
+                                or b"close_observations" in downloaded_html):
+                            raise AssertionError("P170_HTML_SOURCE_LINK_OR_SAFETY_INVALID")
+                        report_tab = context.new_page()
+                        report_tab.set_content(
+                            downloaded_html.decode("utf-8"),
+                            wait_until="load", timeout=20000,
+                        )
+                        expect(report_tab.get_by_role(
+                            "heading", name="NVDA · 1종목 근거 검토",
+                        )).to_be_visible(timeout=15000)
+                        for engine in ("시장·가격 비교 / Engine A",
+                                       "회계·현금흐름 / Engine B",
+                                       "동종기업·산업 / Engine C"):
+                            expect(report_tab.get_by_role(
+                                "heading", name=engine, exact=True,
+                            )).to_be_visible(timeout=15000)
+                        expect(report_tab.get_by_text(
+                            "검토 상태: HOLD", exact=False,
+                        )).to_be_visible()
+                        report_tab.screenshot(
+                            path=str(output / "p170-printable-a-b-c-report-chromium.png"),
+                            full_page=True,
+                        )
+                        report_tab.close()
                         page.screenshot(
                             path=str(output / "p169-stock-ndx-csv-replay-browser.png"),
                             full_page=True,
@@ -505,6 +559,9 @@ def run(output: Path) -> dict:
         "local_csv_original_to_normalized_json_review_downloaded": True,
         "csv_lineage_packet_hash_verified": True,
         "qqq_csv_as_ndx_blocked": True,
+        "printable_report_html_downloaded_and_rendered_in_chromium": True,
+        "html_exact_review_rights_and_csv_lineage_bound": True,
+        "html_external_content_and_source_rows_absent": True,
         "rights_report_bound_to_exact_review_packet": True,
         "source_and_license_rights_remain_unverified": True,
         "trade_executed": False,
