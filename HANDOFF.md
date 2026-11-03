@@ -1,3 +1,16 @@
+## P151 As-of lookahead gate and aligned evidence window — 2026-11-04 KST
+
+1. **Goal:** KUODRA P151 fixes financial time-travel error in offline Engine A→B/C→Guard report; original single-ticker, seven-stage local workflow and Python 3.11 stay intact.
+2. **Options/decision:** A) only trust Alpha Vantage parsers to strip future observations (fast but unsafe for direct/in-memory receipts); B) repeat as-of cutoff at Engine A price join, preserve exact matched window through local report/export (chosen; no HTTP/storage cost, bounded rows).
+3. **Implemented:** `market_pair_engine_a._points` rejects any price date > as_of, even when that future row is not intersected; `analyze_price_index_pair` returns `matched_period_start/end`; `ticker_market_pair_evidence` independently rechecks `filing_date < first <= last <= as_of`, includes both in redacted JSON, rejects rehashed future-date exports. No trade, AI execution or source/rights assertion.
+4. **Tests:** `tests/test_market_pair_engine_a.py` future-only stock/index row must fail, plus assertions for matched period. `tests/test_ticker_market_pair_evidence.py` valid aligned interval, forged future adapter period, rehashed 2099 export refusal + independent replay FAIL. Tests written; execution **NOT VERIFIED**.
+5. **Verification:** GitHub commits read/written on branch; combined commit statuses [] and PR-filtered runs [] at test SHA `38b1bf2` are inconclusive. Previous P146 1,606 PASS historical only. CI Windows/Linux, browser and real vendor payloads NOT VERIFIED.
+6. **GitHub:** `hibi89/hibi89-kic-proofinvest`, `lead/kic`. Feature SHAs `6d4ffb175e9f75533e130f0cb281bcb4951aed2d`, `f382e47fa323eb58cd26b053f65fffb1d7908749`, `0bd8a95f98bd7ff1e10ca4bf70ba02e1bb15e842`; latest test SHA `7c87322e3c375f48ed76ff09ff55920adeafd004`.
+7. **Run/Production:** `python -m unittest tests.test_market_pair_engine_a tests.test_ticker_market_pair_evidence -v`; `python -m scripts.verify_local --full`; production not deployed and no deployment SHA or URL. RELEASE HOLD.
+8. **Original/rights:** V13 competition PDF, original user uploads, keys and source files untouched; SEC 403 no retry; premium index/third-party vendor rights and bills require separate owner approval; no requests made.
+9. **Next:** Read exact CI test logs if surfaced; resolve failures. Continue independently with actual ticker-to-canonical-report UI flow and issuer/peer provenance, no synthetic claims upgraded to real.
+10. **Updated:** 2026-11-04 KST. Product completion 75% → **tentative** 76% per owner goal, **not independently measured**; verification scope GitHub file/diff reads and content updates only, not Python execution. This handoff commit itself is not tested SHA.
+
 ## P150 Linked A/B/C evidence export safety — 2026-11-04 KST
 
 1. **Goal/stack:** Finish single-ticker KUODRA A/B/C/Guard evidence export, without introducing external data use or breaking 7-step local Python 3.11 workflow.
