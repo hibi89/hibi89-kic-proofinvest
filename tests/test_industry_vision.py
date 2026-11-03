@@ -130,6 +130,37 @@ class IndustryVisionTests(unittest.TestCase):
         self.assertIsNone(no_comparison["growth_gap_to_peer_median_pp"])
         self.assertFalse(no_comparison["source_authenticated"])
 
+    def test_three_peers_only_one_usable_does_not_claim_robust_sample(self):
+        case = fixture()
+        for i in (2, 3):
+            case["sources"].extend([
+                {
+                    "id": f"peer-{i}-old",
+                    "url": f"https://www.sec.gov/Archives/peer-{i}-old",
+                    "published_at": "2025-02-01", "sha256": str(i) * 64,
+                },
+                {
+                    "id": f"peer-{i}-new",
+                    "url": f"https://www.sec.gov/Archives/peer-{i}-new",
+                    "published_at": "2026-02-01", "sha256": str(i + 2) * 64,
+                },
+            ])
+            new_peer = dict(case["peers"][0])
+            new_peer.update(
+                name=f"SYNTHETIC_PEER_{i}", cik=f"{i:010d}",
+                prior_source_id=f"peer-{i}-old",
+                current_source_id=f"peer-{i}-new",
+                prior_revenue_usd="0",
+            )
+            case["peers"].append(new_peer)
+        report = analyze_industry_vision(case)
+        self.assertEqual(report["cohort_evidence"]["peer_count"], 3)
+        self.assertEqual(report["peer_growth_observation_count"], 1)
+        self.assertEqual(report["peer_growth_sample_scope"],
+                         "SPARSE_PEER_GROWTH_UNVERIFIED")
+        self.assertEqual(report["peer_median_growth_pct"], "30.00")
+        self.assertFalse(report["source_authenticated"])
+
     def test_zero_base_not_invent_growth(self):
         a = fixture()
         a["industry_series"]["prior_value"] = "0"
