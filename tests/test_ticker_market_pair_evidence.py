@@ -320,6 +320,144 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertNotIn(_KEY, repr(st.messages))
         self.assertNotIn("close_observations", repr(payload))
 
+    def test_session_rerun_keeps_safe_report_without_extra_paid_get(self):
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        _, raw, market, industry, stock, index = _prepared()
+        st = FakeSt(
+            clicked="로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads={
+                "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+                "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+                "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+                "kuodra_p116_original": Uploaded(raw["original_10k"]),
+                "kuodra_p104_market_json": Uploaded(market),
+                "kuodra_p104_industry_json": Uploaded(industry),
+            },
+        )
+        st.session_state = {}
+        def vendor(**kwargs):
+            kwargs["validated_pair_callback"](stock, index)
+            result = analyze_price_index_pair(
+                stock=stock, index=index, ticker=kwargs["ticker"],
+                issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"], as_of=kwargs["as_of"])
+            result["network_requests"] = 2
+            return result
+
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY}, clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("REAL_SEC_FORBIDDEN")) as net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=vendor) as paid_pair,
+        ):
+            ui.render_single_ticker_search(st)
+            exports = [item["data"] for kind, item in st.messages
+                       if kind == "download" and
+                       item["label"] == "통합 검산 근거 JSON (로컬 전용 · 미인증)"]
+            self.assertEqual(len(exports), 1, st.messages)
+            self.assertIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            self.assertEqual(set(st.session_state[ui._P153_LINKED_CACHE_KEY]),
+                             {"fingerprint", "data"})
+            self.assertEqual(st.session_state[ui._P153_LINKED_CACHE_KEY]["data"],
+                             exports[0])
+            self.assertNotIn(_KEY.encode(), repr(st.session_state).encode())
+            self.assertNotIn(raw["original_10k"], repr(st.session_state).encode())
+
+            # A Streamlit download rerun is not a new premium API approval.
+            st.clicked = None
+            st.messages.clear()
+            ui.render_single_ticker_search(st)
+            rerun = [item["data"] for kind, item in st.messages
+                     if kind == "download" and
+                     item["label"] == "통합 검산 근거 JSON (로컬 전용 · 미인증)"]
+            self.assertEqual(rerun, exports)
+            self.assertTrue(any(kind == "json" and type(item) is dict and
+                                item.get("provider_requests_on_rerun") == 0
+                                for kind, item in st.messages))
+            paid_pair.assert_called_once()
+            net.assert_not_called()
+
+            # Changed source bytes invalidate previously verified report.
+            st.uploads["kuodra_p116_original"] = Uploaded(b"DIFFERENT_ORIGINAL")
+            st.messages.clear()
+            ui.render_single_ticker_search(st)
+            self.assertNotIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            self.assertFalse(any(kind == "download" and
+                                 item["label"] ==
+                                 "통합 검산 근거 JSON (로컬 전용 · 미인증)"
+                                 for kind, item in st.messages))
+            paid_pair.assert_called_once()
+
+    def test_session_cache_revokes_on_rights_off_or_modified_bytes(self):
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        _, raw, market, industry, stock, index = _prepared()
+        uploads = {
+            "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+            "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+            "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+            "kuodra_p116_original": Uploaded(raw["original_10k"]),
+            "kuodra_p104_market_json": Uploaded(market),
+            "kuodra_p104_industry_json": Uploaded(industry),
+        }
+        st = FakeSt(
+            clicked="로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads=uploads,
+        )
+        st.session_state = {}
+        def vendor(**kwargs):
+            kwargs["validated_pair_callback"](stock, index)
+            return analyze_price_index_pair(
+                stock=stock, index=index, ticker=kwargs["ticker"],
+                issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"], as_of=kwargs["as_of"])
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY}, clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("REAL_SEC_FORBIDDEN")) as net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=vendor) as paid_pair,
+        ):
+            ui.render_single_ticker_search(st)
+            entry = st.session_state[ui._P153_LINKED_CACHE_KEY]
+            st.clicked = None
+            st.messages.clear()
+            entry["data"] += b"\nUNVERIFIED_PAYLOAD"
+            ui.render_single_ticker_search(st)
+            self.assertNotIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            paid_pair.assert_called_once()
+
+            # Reuse of a previously verified record is blocked when the
+            # provider rights gate is later disabled.
+            st.session_state[ui._P153_LINKED_CACHE_KEY] = {
+                "fingerprint": entry["fingerprint"],
+                "data": entry["data"].split(b"\nUNVERIFIED_PAYLOAD")[0],
+            }
+            with patch.dict(os.environ,
+                            {"KUODRA_ENABLE_LOCAL_SOURCE_UI": "1"},
+                            clear=True):
+                ui.render_single_ticker_search(st)
+            self.assertNotIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            net.assert_not_called()
+
     def test_invalid_linked_export_does_not_hide_safe_local_download(self):
         # Regression: a stricter derived JSON contract must not suppress the
         # independently replayed four-source report or trigger another GET.
