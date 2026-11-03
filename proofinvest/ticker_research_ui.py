@@ -391,6 +391,7 @@ def _render_p164_downloaded_packet_inspector(st) -> None:
         key="kuodra_p164_packet_inspect",
         disabled=selected is None,
     )
+    _render_p166_original_source_replay(st, selected)
     if not clicked:
         return
     try:
@@ -422,6 +423,111 @@ def _render_p164_downloaded_packet_inspector(st) -> None:
     st.warning("내부 무결성 통과는 공급자 원문 인증, 독립적인 원본 재검산, "
                "사용권리 또는 투자·제출 승인이 아닙니다.")
 
+
+
+
+def _render_p166_original_source_replay(st, packet_upload) -> None:
+    """Opt-in full offline SEC+market original replay, no provider requests.
+
+    All original bytes are read only when the human clicks verification;
+    nothing is written, cached, exported, or sent to a vendor. The mandatory
+    four SEC-shape files and two price-response bodies must be supplied again.
+    A/C inputs are optional only when absent from the downloaded packet.
+    """
+    if not st.checkbox(
+        "원본 SEC·주가·NDX 파일로 독립 산술 재검산 펼치기 (로컬 전용)",
+        value=False, key="kuodra_p166_replay_mode",
+    ):
+        return
+    st.caption("이 절차는 기존 검토 패키지와 원본 6종을 별도로 비교하고 "
+               "A/B/C·Guard HOLD의 로컬 계산을 다시 수행합니다. "
+               "파일을 외부 제공자에게 보내거나 이용권리를 확인하지 않습니다.")
+    role_inputs = (
+        ("ticker_map", "원본 SEC ticker_map JSON (재검산)", ["json"]),
+        ("submissions", "원본 SEC submissions JSON (재검산)", ["json"]),
+        ("companyfacts", "원본 SEC CompanyFacts JSON (재검산)", ["json"]),
+        ("original_10k", "원본 SEC 10-K HTML (재검산)",
+         ["html", "htm", "xhtml", "xml", "txt"]),
+    )
+    original_files = {}
+    for role, label, extension in role_inputs:
+        original_files[role] = st.file_uploader(
+            label, type=extension, key="kuodra_p166_" + role,
+        )
+    stock_file = st.file_uploader(
+        "종목 일별 응답 JSON 원본 (재검산)",
+        type=["json"], key="kuodra_p166_stock",
+    )
+    index_file = st.file_uploader(
+        "실제 Nasdaq-100 NDX 일별 응답 JSON 원본 (재검산)",
+        type=["json"], key="kuodra_p166_index",
+    )
+    market_file = st.file_uploader(
+        "기존 Engine A 로컬 입력 JSON (패키지에 포함된 경우 필수)",
+        type=["json"], key="kuodra_p166_market",
+    )
+    industry_file = st.file_uploader(
+        "기존 Engine C 로컬 입력 JSON (패키지에 포함된 경우 필수)",
+        type=["json"], key="kuodra_p166_industry",
+    )
+    ready = (packet_upload is not None
+             and all(x is not None for x in original_files.values())
+             and stock_file is not None and index_file is not None)
+    clicked = st.button(
+        "원본 SEC + 주가·NDX A/B/C 독립 재계산 (네트워크 없음)",
+        disabled=not ready, key="kuodra_p166_replay_click",
+    )
+    if not clicked:
+        return
+    try:
+        from .ticker_sec_financial_bridge import _LIMITS as sec_limits
+        from .ticker_review_source_replay import (
+            replay_review_packet_from_original_bytes,
+        )
+        raw = {
+            role: _read_uploaded(original_files[role], sec_limits[role])
+            for role in original_files
+        }
+        outcome = replay_review_packet_from_original_bytes(
+            _read_uploaded(packet_upload, 28672),
+            sources=raw,
+            stock_raw=_read_uploaded(stock_file, 262144),
+            index_raw=_read_uploaded(index_file, 8388608),
+            market_json=(_read_uploaded(market_file, 131072)
+                         if market_file is not None else None),
+            industry_json=(_read_uploaded(industry_file, 65536)
+                           if industry_file is not None else None),
+        )
+    except (ValueError, TypeError, KeyError, AttributeError, OSError,
+            OverflowError, RecursionError, UnicodeError):
+        st.warning("원본 파일의 크기·형식 또는 무결성 확인 실패. 분석을 승인하지 않습니다.")
+        st.code("ORIGINAL_BYTES_OR_FORMAT_INVALID", language="text")
+        return
+    if outcome.get("status") != "PASS_UNVERIFIED_ORIGIN":
+        st.warning("원본 바이트·출처 식별자·기간 또는 산술 재검산 불일치. "
+                   "패키지를 독립 검증 완료로 취급하지 않습니다.")
+        st.code(outcome.get("reason_code", "SOURCE_REPLAY_FAILED"),
+                language="text")
+        return
+    st.success("원본 6종 해시 + SEC/Engine A/B/C 산술 재계산 PASS (출처 미인증)")
+    st.json({
+        "ticker": outcome["ticker"],
+        "packet_sha256": outcome["packet_sha256"],
+        "status": outcome["status"],
+        "packet_internal_integrity_passed": True,
+        "original_byte_hashes_matched": True,
+        "local_source_replay_verified": True,
+        "market_math_recomputed": True,
+        "guard_policy_preview": "HOLD",
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "market_vintage_authenticated": False,
+        "external_sharing_allowed": False,
+        "trade_executed": False,
+        "network_requests": 0,
+    })
+    st.warning("원본 업로드와 재계산 결과는 공급자 진위·시점·법적 재사용권·"
+               "투자 권고·거래·대회 제출 승인을 증명하지 않습니다.")
 
 
 def render_single_ticker_search(st) -> None:
