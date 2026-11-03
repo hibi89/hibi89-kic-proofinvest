@@ -122,7 +122,8 @@ class OperatorZipBridgeTests(unittest.TestCase):
     def test_tampered_archive_rejected_by_existing_zip_reader(self):
         archive, *_ = fixture()
         bad = bytearray(archive)
-        bad[-50] ^= 1
+        marker = archive.index(b"kuodra.operator-three-sec-source-zip.v1")
+        bad[marker + 3] ^= 1
         with self.assertRaises(ValueError):
             restore_operator_zip_for_ticker(
                 bytes(bad), ticker="NVDA", as_of="2026-02-01")
@@ -132,7 +133,8 @@ class OperatorZipBridgeTests(unittest.TestCase):
         _, receipt = restore_operator_zip_for_ticker(
             archive, ticker="NVDA", as_of="2026-02-01")
         data = json.dumps(receipt)
-        self.assertNotIn("original_10k", data.replace("source_sha256", ""))
+        self.assertNotIn("<html", data.lower())
+        self.assertNotIn("SYNTHETIC ISSUER", data)
         self.assertNotIn("source_data", data)
         self.assertFalse(receipt["source_rights_verified"])
         self.assertFalse(receipt["independent_ticker_registry_verified"])
