@@ -972,6 +972,31 @@ def render_single_ticker_search(st) -> None:
         "Nasdaq-100 NDX 일별 지수 응답 JSON (로컬 분석 전용)",
         type=["json"], key="kuodra_p167_ndx",
     )
+    # P169: allow an independent vendor-neutral local CSV source; one
+    # stock + one NDX file. A mixed JSON/CSV pair must never silently pass.
+    st.caption("대체 로컬 CSV 형식: symbol,date,close (일자 오름차순, "
+               "평일 31~100개, 종목 표기·NDX 원문 헤더 필수). "
+               "CSV 업로드도 공급자·라이선스 인증이 아닙니다.")
+    offline_stock_csv = st.file_uploader(
+        "종목 일별 CSV (JSON 대신, 원본 미인증)",
+        type=["csv"], key="kuodra_p169_stock_csv",
+    )
+    offline_ndx_csv = st.file_uploader(
+        "Nasdaq-100 NDX 일별 CSV (JSON 대신, 원본 미인증)",
+        type=["csv"], key="kuodra_p169_ndx_csv",
+    )
+    csv_mode = (offline_stock_csv is not None
+                and offline_ndx_csv is not None
+                and offline_stock_upload is None
+                and offline_ndx_upload is None)
+    json_mode = (offline_stock_upload is not None
+                 and offline_ndx_upload is not None
+                 and offline_stock_csv is None
+                 and offline_ndx_csv is None)
+    if ((offline_stock_csv is not None or offline_ndx_csv is not None)
+            and not csv_mode):
+        st.warning("시장 원본은 JSON 2개 또는 CSV 2개 중 하나만 선택해야 합니다. "
+                   "혼합 입력과 불완전한 파일은 거부합니다.")
     offline_ack = st.checkbox(
         "로컬 계산만 수행하며 원본 진위·재사용권·투자 승인으로 취급하지 않습니다",
         value=False, key="kuodra_p167_ack",
@@ -1030,8 +1055,7 @@ def render_single_ticker_search(st) -> None:
         key="kuodra_p167_run",
         disabled=not (
             valid and offline_ack
-            and offline_stock_upload is not None
-            and offline_ndx_upload is not None
+            and (json_mode or csv_mode)
             and (operator_zip is not None or
                  all(x is not None for x in (
                      ticker_map, submissions, companyfacts_local, original_local)))
@@ -1152,12 +1176,45 @@ def render_single_ticker_search(st) -> None:
                 # Only safe redacted bytes may appear in a download.
                 from .ticker_offline_review_builder import build_offline_initial_review
                 try:
+                    csv_stock = None
+                    csv_index = None
+                    if csv_mode:
+                        from .local_market_csv_bridge import normalize_market_csv
+                        csv_stock = normalize_market_csv(
+                            _read_uploaded(offline_stock_csv, 32768),
+                            symbol=key, as_of=as_of, is_index=False,
+                        )
+                        csv_index = normalize_market_csv(
+                            _read_uploaded(offline_ndx_csv, 32768),
+                            symbol="NDX", as_of=as_of, is_index=True,
+                        )
+                        stock_input = csv_stock["normalized_json"]
+                        index_input = csv_index["normalized_json"]
+                    else:
+                        stock_input = _read_uploaded(offline_stock_upload, 262144)
+                        index_input = _read_uploaded(offline_ndx_upload, 8388608)
                     result = build_offline_initial_review(
                         ticker=key, as_of=as_of, sources=raw_local,
-                        stock_raw=_read_uploaded(offline_stock_upload, 262144),
-                        index_raw=_read_uploaded(offline_ndx_upload, 8388608),
+                        stock_raw=stock_input,
+                        index_raw=index_input,
                         market_json=market_data, industry_json=industry_data,
                     )
+                    if (csv_mode and result.get("status") ==
+                            "LOCAL_INITIAL_REVIEW_READY_UNVERIFIED"):
+                        from .local_market_csv_bridge import (
+                            build_csv_lineage_receipt,
+                            inspect_csv_lineage_receipt,
+                        )
+                        csv_lineage = build_csv_lineage_receipt(
+                            stock=csv_stock, index=csv_index,
+                            packet=result["review_packet"],
+                        )
+                        lineage_check = inspect_csv_lineage_receipt(
+                            csv_lineage, packet=result["review_packet"],
+                        )
+                        if lineage_check.get("status") != "CSV_LINEAGE_MATCHED_RIGHTS_PENDING":
+                            raise ValueError("CSV_LINEAGE_REVIEW_FAILED")
+                        result["csv_lineage_receipt"] = csv_lineage
                 except (TypeError, ValueError, KeyError, OSError,
                         UnicodeError, RecursionError, OverflowError):
                     result = {"status": "BLOCKED",
@@ -1196,6 +1253,17 @@ def render_single_ticker_search(st) -> None:
                         file_name="kuodra-source-rights-GAPS-UNVERIFIED.json",
                         mime="application/json", on_click="ignore", key="kuodra_p168_rights_gaps",
                     )
+                    if csv_mode:
+                        st.download_button(
+                            "로컬 CSV 원본·JSON 변환 이력 JSON 다운로드 (미인증)",
+                            data=result["csv_lineage_receipt"],
+                            file_name="kuodra-csv-lineage-UNVERIFIED.json",
+                            mime="application/json", on_click="ignore",
+                            key="kuodra_p169_csv_lineage_download",
+                        )
+                        st.warning("권리 검토표의 시장 응답 해시는 CSV로부터 변환한 JSON의 "
+                                   "해시입니다. CSV 원본 해시는 별도 변환 이력 파일에 "
+                                   "연결됩니다. 공급자 인증·유료 지수 이용권은 미확인입니다.")
                     st.info("원본 8종의 파일 해시와 시장 검토기간, "
                             "발행자 인증·구매 권한·공개/재배포 허가에 필요한 "
                             "미확인 항목을 분리 기록했습니다. 이 확인표도 "
