@@ -384,6 +384,13 @@ class LinkedEvidenceTests(unittest.TestCase):
                 and value.get("provider_requests_on_rerun") == 0
                 for kind, value in st.messages))
 
+            # P157 upgrade regression: simulate the pre-P155 app version
+            # leaving only the P141/P154 last-attempt marker for A.
+            # The next B click must migrate A before adding B, or returning
+            # to A can trigger a second paid supplier request.
+            from proofinvest.premium_paid_attempts import _HISTORY_KEY
+            st.session_state.pop(_HISTORY_KEY, None)
+            self.assertEqual(st.session_state["kuodra_p141_pair_attempt"], first)
             # A distinct, valid local A/C source set is a new analysis:
             # an independent explicit click is allowed, not silently billed.
             st.uploads.pop("kuodra_p104_industry_json")
