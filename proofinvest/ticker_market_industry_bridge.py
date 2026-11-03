@@ -132,11 +132,19 @@ def evaluate_ticker_a_c(
             )
             periods = industry["periods"]
             target = industry["target"]
+            cohort = industry.get("cohort_evidence")
             if (industry.get("status") not in
                     ("OBSERVED_COMPARISON_UNVERIFIED", "INSUFFICIENT_EVIDENCE")
                     or periods["prior_end"] != revenue["prior_end"]
                     or periods["current_end"] != revenue["current_end"]
                     or target["cik"] != cik
+                    or type(cohort) is not dict
+                    or cohort.get("status") !=
+                    "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED"
+                    or type(cohort.get("peer_count")) is not int
+                    or cohort["peer_count"] != len(industry["peers"])
+                    or cohort.get("source_authenticated") is not False
+                    or cohort.get("rights_verified") is not False
                     or Decimal(target["prior_revenue_usd"]) != Decimal(revenue["prior_usd"])
                     or Decimal(target["current_revenue_usd"]) != Decimal(revenue["current_usd"])
                     or Decimal(target["growth_pct_reported_input"]) !=
@@ -158,7 +166,8 @@ def evaluate_ticker_a_c(
                 "input_sha256": sha256(industry_json).hexdigest(),
                 "industry": industry["industry"],
                 "industry_measure": industry["industry_series"]["kind"],
-                "peer_count": len(industry["peers"]),
+                "peer_count": cohort["peer_count"],
+                "cohort_source_scope": cohort["status"],
                 "peer_median_growth_pct": industry["peer_median_growth_pct"],
                 "growth_gap_to_industry_pp":
                 industry["growth_gap_to_industry_pp"],
