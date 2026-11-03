@@ -146,6 +146,8 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
                  or not 0 <= c["peer_count"] <= 8
                  or c.get("cohort_source_scope") != "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED"):
         return _blocked("ENGINE_C_PEER_COHORT_CONTRACT_INVALID")
+    if c_ok and c["peer_count"] == 0 and c.get("peer_median_growth_pct") is not None:
+        return _blocked("ENGINE_C_EMPTY_PEER_SAMPLE_HAS_MEDIAN")
     if b.get("status") not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE"):
         return blocked
     result = {
