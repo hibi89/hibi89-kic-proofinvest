@@ -957,6 +957,25 @@ def render_single_ticker_search(st) -> None:
         type=["html", "htm", "xhtml", "xml", "txt"],
         key="kuodra_p116_original",
     )
+    # P167: initial A/B/C review-packet creation from caller-owned raw
+    # issuer, stock and NDX bytes. No provider entitlement or network gate
+    # because this path NEVER issues HTTP or persists the originals.
+    st.subheader("SEC 4원본 + 종목·NDX 로컬 입력으로 통합 보고서 최초 생성")
+    st.caption("종목·실제 NDX 제공자 형식 JSON이 이미 합법적으로 확보된 경우에만 "
+               "오프라인 산술 재검산합니다. ETF를 NDX로 대체하지 않습니다. "
+               "원본 출처·시점·재배포 권리는 여전히 미인증입니다.")
+    offline_stock_upload = st.file_uploader(
+        "종목 일별 종가 응답 JSON (로컬 분석 전용)",
+        type=["json"], key="kuodra_p167_stock",
+    )
+    offline_ndx_upload = st.file_uploader(
+        "Nasdaq-100 NDX 일별 지수 응답 JSON (로컬 분석 전용)",
+        type=["json"], key="kuodra_p167_ndx",
+    )
+    offline_ack = st.checkbox(
+        "로컬 계산만 수행하며 원본 진위·재사용권·투자 승인으로 취급하지 않습니다",
+        value=False, key="kuodra_p167_ack",
+    )
     # P123: separate explicit human act; each click rereads source uploads
     # and independently replays the report before producing any receipt.
     # Do not cache original bytes, account/identity claims or review receipts.
@@ -1006,7 +1025,19 @@ def render_single_ticker_search(st) -> None:
                        all(x is not None for x in (
                            ticker_map, submissions, companyfacts_local, original_local)))),
     )
-    if source_plan_clicked or human_review_clicked or pair_clicked:
+    offline_pair_clicked = st.button(
+        "로컬 SEC + 종목·실제 NDX A/B/C 통합 검토 파일 생성 (외부 요청 0회)",
+        key="kuodra_p167_run",
+        disabled=not (
+            valid and offline_ack
+            and offline_stock_upload is not None
+            and offline_ndx_upload is not None
+            and (operator_zip is not None or
+                 all(x is not None for x in (
+                     ticker_map, submissions, companyfacts_local, original_local)))
+        ),
+    )
+    if source_plan_clicked or human_review_clicked or pair_clicked or offline_pair_clicked:
         raw_local = None
         using_zip = operator_zip is not None
         if using_zip and any(x is not None for x in (
@@ -1115,6 +1146,52 @@ def render_single_ticker_search(st) -> None:
             # existing seven-stage independent local report replay passes.
             from .ticker_local_dashboard import render_local_ticker_dashboard
             render_local_ticker_dashboard(st, workflow)
+            if offline_pair_clicked:
+                # This is the FIRST packet generation path that needs no
+                # earlier approved Premium GET and no preexisting packet.
+                # Only safe redacted bytes may appear in a download.
+                from .ticker_offline_review_builder import build_offline_initial_review
+                try:
+                    result = build_offline_initial_review(
+                        ticker=key, as_of=as_of, sources=raw_local,
+                        stock_raw=_read_uploaded(offline_stock_upload, 262144),
+                        index_raw=_read_uploaded(offline_ndx_upload, 8388608),
+                        market_json=market_data, industry_json=industry_data,
+                    )
+                except (TypeError, ValueError, KeyError, OSError,
+                        UnicodeError, RecursionError, OverflowError):
+                    result = {"status": "BLOCKED",
+                              "reason_code": "LOCAL_SOURCE_FILE_READ_INVALID"}
+                if result.get("status") != "LOCAL_INITIAL_REVIEW_READY_UNVERIFIED":
+                    st.warning("로컬 최초 통합 패키지 생성 불가. 원본·기간·NDX "
+                               "지수 형식 또는 검산 근거를 확인하십시오.")
+                    st.code(result.get("reason_code", "LOCAL_REPLAY_BLOCKED"),
+                            language="text")
+                else:
+                    st.success("SEC 4원본 + 종목·실제 NDX 오프라인 재계산 PASS (출처 미인증)")
+                    st.json({
+                        "ticker": result["ticker"],
+                        "as_of": result["as_of"],
+                        "accession": result["accession"],
+                        "matched_sessions": result["matched_sessions"],
+                        "guard_policy_preview": "HOLD",
+                        "local_replay_verified": True,
+                        "market_math_recomputed": True,
+                        "source_authenticated": False,
+                        "source_rights_verified": False,
+                        "market_vintage_authenticated": False,
+                        "external_sharing_allowed": False,
+                        "network_requests": 0,
+                        "trade_executed": False,
+                    })
+                    st.download_button(
+                        "로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
+                        data=result["review_packet"],
+                        file_name="kuodra-offline-a-b-c-review-UNVERIFIED.json",
+                        mime="application/json", key="kuodra_p167_packet_download",
+                    )
+                    st.warning("완전한 공급자 인증·이용권한·대표표본 검증이나 "
+                               "투자·거래·대회 제출 승인이 아닙니다.")
             if pair_clicked:
                 # Never initiate a paid query until source identity, fiscal
                 # period and independent local report replay all succeeded.
