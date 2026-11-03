@@ -108,6 +108,28 @@ class IndustryVisionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "TARGET_ISSUER_MISMATCH"):
             analyze_industry_vision(a)
 
+    def test_peer_count_differs_from_calculable_growth_sample(self):
+        case = fixture()
+        report = analyze_industry_vision(case)
+        self.assertEqual(report["cohort_evidence"]["peer_count"], 1)
+        self.assertEqual(report["peer_growth_observation_count"], 1)
+        self.assertEqual(report["peer_growth_sample_scope"],
+                         "SPARSE_PEER_GROWTH_UNVERIFIED")
+        self.assertEqual(report["peer_median_growth_pct"], "30.00")
+
+        # Peer is listed, but its prior revenue is zero: median is unavailable
+        # even while the separate company-versus-industry comparison remains.
+        case["peers"][0]["prior_revenue_usd"] = "0"
+        no_comparison = analyze_industry_vision(case)
+        self.assertEqual(no_comparison["status"], "OBSERVED_COMPARISON_UNVERIFIED")
+        self.assertEqual(no_comparison["cohort_evidence"]["peer_count"], 1)
+        self.assertEqual(no_comparison["peer_growth_observation_count"], 0)
+        self.assertEqual(no_comparison["peer_growth_sample_scope"],
+                         "NO_COMPARABLE_PEER_GROWTH")
+        self.assertIsNone(no_comparison["peer_median_growth_pct"])
+        self.assertIsNone(no_comparison["growth_gap_to_peer_median_pp"])
+        self.assertFalse(no_comparison["source_authenticated"])
+
     def test_zero_base_not_invent_growth(self):
         a = fixture()
         a["industry_series"]["prior_value"] = "0"
