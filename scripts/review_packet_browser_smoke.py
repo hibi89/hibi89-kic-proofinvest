@@ -376,6 +376,95 @@ def run(output: Path) -> dict:
                             path=str(output / "p167-wrong-index-blocked-browser.png"),
                             full_page=True,
                         )
+                        # P169: switch the same real Chromium session
+                        # from the provider-shape JSON file pair to a strict
+                        # locally supplied CSV pair, with *no vendor GET*.
+                        page.get_by_role(
+                            "button", name="Remove p167-stock.json", exact=True,
+                        ).click()
+                        page.get_by_role(
+                            "button", name="Remove p167-wrong-index.json", exact=True,
+                        ).click()
+                        expect(initial_button).to_be_disabled(timeout=15000)
+
+                        from tests.test_local_market_csv_bridge import local_csv
+                        def upload_csv(label, name, contents):
+                            holder = page.get_by_test_id("stFileUploader").filter(
+                                has=page.get_by_text(label, exact=True),
+                            ).locator('input[type="file"]')
+                            expect(holder).to_have_count(1, timeout=15000)
+                            holder.set_input_files({
+                                "name": name,
+                                "mimeType": "text/csv",
+                                "buffer": contents,
+                            })
+                            expect(page.get_by_role(
+                                "button", name="Remove " + name, exact=True,
+                            )).to_be_visible(timeout=22000)
+
+                        upload_csv(
+                            "종목 일별 CSV (JSON 대신, 원본 미인증)",
+                            "p169-nvda-source.csv", local_csv("NVDA"),
+                        )
+                        upload_csv(
+                            "Nasdaq-100 NDX 일별 CSV (JSON 대신, 원본 미인증)",
+                            "p169-ndx-source.csv", local_csv("NDX", 10000),
+                        )
+                        expect(initial_button).to_be_enabled(timeout=22000)
+                        initial_button.click()
+                        expect(page.get_by_text(
+                            "SEC 4원본 + 종목·실제 NDX 오프라인 재계산 PASS (출처 미인증)",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=20000) as local_review:
+                            page.get_by_role(
+                                "button",
+                                name="로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
+                                exact=True,
+                            ).click()
+                        csv_review_bytes = Path(local_review.value.path()).read_bytes()
+                        if inspect_review_packet_bytes(csv_review_bytes)["status"] != (
+                                "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED"):
+                            raise AssertionError("P169_CSV_REVIEW_PACKET_INVALID")
+                        with page.expect_download(timeout=20000) as lineage:
+                            page.get_by_role(
+                                "button",
+                                name="로컬 CSV 원본·JSON 변환 이력 JSON 다운로드 (미인증)",
+                                exact=True,
+                            ).click()
+                        lineage_bytes = Path(lineage.value.path()).read_bytes()
+                        from proofinvest.local_market_csv_bridge import (
+                            inspect_csv_lineage_receipt,
+                        )
+                        csv_check = inspect_csv_lineage_receipt(
+                            lineage_bytes, packet=csv_review_bytes,
+                        )
+                        if (csv_check["status"] != "CSV_LINEAGE_MATCHED_RIGHTS_PENDING"
+                                or csv_check["source_rights_verified"] is not False
+                                or b"close_observations" in lineage_bytes):
+                            raise AssertionError("P169_ORIGINAL_CSV_LINEAGE_NOT_SAFE")
+                        page.screenshot(
+                            path=str(output / "p169-stock-ndx-csv-replay-browser.png"),
+                            full_page=True,
+                        )
+
+                        upload_csv(
+                            "Nasdaq-100 NDX 일별 CSV (JSON 대신, 원본 미인증)",
+                            "p169-wrong-qqq.csv", local_csv("QQQ", 10000),
+                        )
+                        expect(page.get_by_role(
+                            "button",
+                            name="로컬 CSV 원본·JSON 변환 이력 JSON 다운로드 (미인증)",
+                            exact=True,
+                        )).to_have_count(0, timeout=22000)
+                        initial_button.click()
+                        expect(page.get_by_text(
+                            "LOCAL_SOURCE_FILE_READ_INVALID", exact=True,
+                        )).to_be_visible(timeout=22000)
+                        page.screenshot(
+                            path=str(output / "p169-wrong-index-csv-blocked-browser.png"),
+                            full_page=True,
+                        )
                         if forbidden_requests:
                             raise AssertionError(
                                 "P165_EXTERNAL_BROWSER_REQUEST_BLOCKED: "
@@ -413,6 +502,9 @@ def run(output: Path) -> dict:
         "initial_offline_review_packet_generated_and_downloaded": True,
         "initial_review_wrong_index_rejected": True,
         "source_clearance_gap_json_real_browser_downloaded": True,
+        "local_csv_original_to_normalized_json_review_downloaded": True,
+        "csv_lineage_packet_hash_verified": True,
+        "qqq_csv_as_ndx_blocked": True,
         "rights_report_bound_to_exact_review_packet": True,
         "source_and_license_rights_remain_unverified": True,
         "trade_executed": False,
