@@ -68,12 +68,34 @@ class TickerMarketIndustryBridgeTests(unittest.TestCase):
         self.assertEqual(result["engine_c"]["status"], "OBSERVED_COMPARISON_UNVERIFIED", result)
         self.assertEqual(result["engine_a"]["observation_count"], 45)
         self.assertEqual(result["engine_c"]["peer_count"], 1)
+        self.assertEqual(result["engine_c"]["peer_growth_observation_count"], 1)
+        self.assertEqual(result["engine_c"]["peer_growth_sample_scope"],
+                         "SPARSE_PEER_GROWTH_UNVERIFIED")
         self.assertEqual(result["engine_c"]["growth_gap_to_industry_pp"], "80.00")
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["all_three_engines_ready"])
         self.assertFalse(result["guard_executed"])
         self.assertFalse(result["audit_written"])
         self.assertFalse(result["trade_executed"])
+
+    def test_engine_c_preserves_sector_when_peer_growth_undefined(self):
+        receipt, raw, market, industry = scenario()
+        # A peer can have current revenue but no measurable percentage
+        # growth when the prior-year denominator is zero.
+        industry["peers"][0]["prior_revenue_usd"] = "0"
+        result = evaluate_ticker_a_c(
+            receipt, raw, market_json=json.dumps(market).encode(),
+            industry_json=json.dumps(industry).encode())
+        c = result["engine_c"]
+        self.assertEqual(c["status"], "OBSERVED_COMPARISON_UNVERIFIED")
+        self.assertEqual(c["peer_count"], 1)
+        self.assertEqual(c["peer_growth_observation_count"], 0)
+        self.assertEqual(c["peer_growth_sample_scope"],
+                         "NO_COMPARABLE_PEER_GROWTH")
+        self.assertIsNone(c["peer_median_growth_pct"])
+        self.assertIsNone(c["growth_gap_to_peer_median_pp"])
+        self.assertEqual(result["engine_a"]["status"], "REPORTED_UNVERIFIED")
+        self.assertFalse(result["source_authenticated"])
 
     def test_market_other_ticker_or_issuer_denied(self):
         receipt, raw, m, _ = scenario()
