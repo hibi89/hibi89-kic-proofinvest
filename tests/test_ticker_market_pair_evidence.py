@@ -645,6 +645,62 @@ class LinkedEvidenceTests(unittest.TestCase):
             self.assertNotIn(HISTORY_KEY, st.session_state)
             net.assert_not_called()
 
+    def test_p159_packet_failure_keeps_both_original_downloads(self):
+        from proofinvest import ticker_research_ui as ui
+        from proofinvest import ticker_sec_transport as sec_transport
+        from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from tests.test_ticker_research_ui import FakeSt, Uploaded
+
+        _, raw, market, industry, stock, index = _prepared()
+        st = FakeSt(
+            clicked="로컬 공시 재검산 + 승인된 주가·실제 NDX 지수 조회 (최대 2회)",
+            values={"kuodra_p100_ticker": "NVDA",
+                    "kuodra_p100_as_of": "2026-02-01"},
+            checks={"kuodra_p141_pair_ack": True},
+            uploads={
+                "kuodra_p100_ticker_map": Uploaded(raw["ticker_map"]),
+                "kuodra_p100_submissions": Uploaded(raw["submissions"]),
+                "kuodra_p116_companyfacts": Uploaded(raw["companyfacts"]),
+                "kuodra_p116_original": Uploaded(raw["original_10k"]),
+                "kuodra_p104_market_json": Uploaded(market),
+                "kuodra_p104_industry_json": Uploaded(industry),
+            },
+        )
+        def fake_market_pair(**kwargs):
+            kwargs["validated_pair_callback"](stock, index)
+            result = analyze_price_index_pair(
+                stock=stock, index=index, ticker=kwargs["ticker"],
+                issuer_cik=kwargs["issuer_cik"],
+                filing_date=kwargs["filing_date"], as_of=kwargs["as_of"])
+            result["network_requests"] = 2
+            return result
+        with (
+            patch.dict(os.environ, {**_GATES,
+                                    "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
+                                    "KUODRA_ALPHA_VANTAGE_API_KEY": _KEY},
+                       clear=True),
+            patch.object(sec_transport, "_open_once",
+                         side_effect=AssertionError("NO_LIVE_SEC")) as sec_net,
+            patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
+                  side_effect=fake_market_pair) as provider,
+            patch("proofinvest.ticker_review_packet.review_packet_json_bytes",
+                  side_effect=ValueError("synthetic invalid packet")),
+        ):
+            ui.render_single_ticker_search(st)
+        provider.assert_called_once()
+        sec_net.assert_not_called()
+        download_labels = [item["label"] for kind, item in st.messages
+                           if kind == "download"]
+        self.assertIn("통합 검산 근거 JSON (로컬 전용 · 미인증)",
+                      download_labels)
+        self.assertIn("A/B/C 출처 연결 설명 JSON (로컬 전용 · 규칙 기반)",
+                      download_labels)
+        self.assertNotIn("A/B/C 근거+설명 통합 검토 JSON (로컬 전용 · 미인증)",
+                         download_labels)
+        self.assertTrue(any(kind == "warning" and "단일 검토 패키지" in message
+                            for kind, message in st.messages))
+        self.assertNotIn(_KEY, repr(st.messages))
+
     def test_invalid_linked_export_does_not_hide_safe_local_download(self):
         # Regression: a stricter derived JSON contract must not suppress the
         # independently replayed four-source report or trigger another GET.
