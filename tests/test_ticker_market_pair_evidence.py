@@ -343,6 +343,18 @@ class LinkedEvidenceTests(unittest.TestCase):
                          "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED")
         self.assertEqual(packet_check["linked_evidence_sha256"],
                          payload["evidence_sha256"])
+        # Initial packet also replays against the original SEC and paired
+        # price/index sources before being offered to the reviewer.
+        self.assertTrue(any(
+            kind == "json" and type(item) is dict
+            and item.get("packet_source_replay_status") ==
+            "PASS_UNVERIFIED_ORIGIN"
+            and item.get("local_source_replay_verified") is True
+            and item.get("market_math_recomputed") is True
+            and item.get("source_authenticated") is False
+            and item.get("network_requests") == 0
+            for kind, item in st.messages
+        ))
         self.assertNotIn(_KEY, repr(packet_exports))
 
     def test_p154_duplicate_paid_click_reuses_export_but_changed_source_can_run(self):
@@ -566,6 +578,17 @@ class LinkedEvidenceTests(unittest.TestCase):
                 inspect_review_packet_bytes(
                     packet_download[0]["data"])["linked_evidence_sha256"],
                 json.loads(exports[0])["evidence_sha256"])
+            # A no-network cached rerun CANNOT newly replay the old stock/NDX
+            # in-memory receipts; do not show that as fresh verification.
+            self.assertFalse(any(
+                kind == "json" and type(item) is dict
+                and "packet_source_replay_status" in item
+                for kind, item in st.messages
+            ))
+            self.assertTrue(any(
+                kind == "caption" and "원본 SEC·시장 입력 재검산" in text
+                for kind, text in st.messages
+            ))
             self.assertTrue(any(kind == "json" and type(item) is dict and
                                 item.get("provider_requests_on_rerun") == 0
                                 for kind, item in st.messages))
