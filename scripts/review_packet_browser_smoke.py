@@ -497,6 +497,44 @@ def run(output: Path) -> dict:
                             full_page=True,
                         )
                         report_tab.close()
+                        # P171: one-click reviewer bundle must contain the
+                        # same exact packet, gap receipt and rendered HTML.
+                        with page.expect_download(timeout=20000) as bundle_dl:
+                            page.get_by_role(
+                                "button",
+                                name="단일 종목 근거 묶음 ZIP 다운로드 (로컬·미인증)",
+                                exact=True,
+                            ).click()
+                        bundle = bundle_dl.value
+                        if bundle.suggested_filename != (
+                                "kuodra-review-evidence-UNVERIFIED.zip"):
+                            raise AssertionError("P171_REVIEW_BUNDLE_FILENAME_INVALID")
+                        from proofinvest.ticker_review_bundle import (
+                            inspect_review_bundle_bytes,
+                        )
+                        import zipfile
+                        from io import BytesIO
+                        bundle_bytes = Path(bundle.path()).read_bytes()
+                        bundle_receipt = inspect_review_bundle_bytes(bundle_bytes)
+                        if (bundle_receipt["status"] !=
+                                "INTERNAL_CONTENT_VERIFIED_ORIGIN_RIGHTS_PENDING"
+                                or bundle_receipt["files_verified"] != 4
+                                or bundle_receipt["source_rights_verified"] is not False
+                                or bundle_receipt["contest_submission_approved"] is not False):
+                            raise AssertionError("P171_BUNDLE_INSPECTOR_INVALID")
+                        with zipfile.ZipFile(BytesIO(bundle_bytes)) as saved:
+                            if (saved.read("review-packet.json") != csv_review_bytes
+                                    or saved.read("source-rights-GAPS.json") !=
+                                        csv_gap_bytes
+                                    or saved.read("market-csv-lineage.json") !=
+                                        lineage_bytes
+                                    or saved.read("single-ticker-review.html") !=
+                                        downloaded_html):
+                                raise AssertionError("P171_REVIEW_BUNDLE_CONTENT_MISMATCH")
+                        page.screenshot(
+                            path=str(output / "p171-evidence-bundle-browser.png"),
+                            full_page=True,
+                        )
                         page.screenshot(
                             path=str(output / "p169-stock-ndx-csv-replay-browser.png"),
                             full_page=True,
@@ -562,6 +600,9 @@ def run(output: Path) -> dict:
         "printable_report_html_downloaded_and_rendered_in_chromium": True,
         "html_exact_review_rights_and_csv_lineage_bound": True,
         "html_external_content_and_source_rows_absent": True,
+        "single_zip_downloaded_actual_chromium": True,
+        "bundle_contains_exact_review_rights_html_lineage": True,
+        "bundle_no_rights_or_trade_grants": True,
         "rights_report_bound_to_exact_review_packet": True,
         "source_and_license_rights_remain_unverified": True,
         "trade_executed": False,
