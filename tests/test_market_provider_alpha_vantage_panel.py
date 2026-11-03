@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from proofinvest import market_provider_alpha_vantage as av
-from test_market_provider_alpha_vantage import fixture, GATES, KEY
+from tests.test_market_provider_alpha_vantage import fixture, GATES, KEY
 
 
 class FakeUI:
