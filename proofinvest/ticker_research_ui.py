@@ -313,6 +313,40 @@ def _render_p158_source_linked_interpretation(st, linked: dict) -> None:
         mime="application/json",
         key="kuodra_p158_explanation_json",
     )
+    # P159: one offline review file for evidence + derived explanation.
+    # Both parts are internally checked. This is not provider authentication
+    # and does not change the original report or allow external sharing.
+    try:
+        from .ticker_review_packet import (
+            build_review_packet, review_packet_json_bytes,
+            inspect_review_packet_bytes,
+        )
+        packet = build_review_packet(linked)
+        packet_bytes = review_packet_json_bytes(packet)
+        internal_check = inspect_review_packet_bytes(packet_bytes)
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError,
+            RecursionError, UnicodeError):
+        st.warning("단일 검토 패키지 구성 실패: 기존 근거·설명 다운로드는 유지됩니다.")
+    else:
+        st.subheader("A/B/C + Guard · 단일 로컬 검토 패키지 (출처 미인증)")
+        st.json({
+            "status": internal_check["status"],
+            "packet_sha256": internal_check["packet_sha256"],
+            "linked_evidence_sha256": internal_check["linked_evidence_sha256"],
+            "ticker": internal_check["ticker"],
+            "guard_policy_preview": "HOLD",
+            "source_authenticated": False,
+            "source_rights_verified": False,
+            "external_sharing_allowed": False,
+            "trade_executed": False,
+        })
+        st.download_button(
+            "A/B/C 근거+설명 통합 검토 JSON (로컬 전용 · 미인증)",
+            data=packet_bytes,
+            file_name="kuodra-a-b-c-review-packet-UNVERIFIED.json",
+            mime="application/json",
+            key="kuodra_p159_review_packet",
+        )
 
 
 def render_single_ticker_search(st) -> None:
