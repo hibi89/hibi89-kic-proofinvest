@@ -161,6 +161,18 @@ class DashboardUnitTests(TestCase):
                 self.assertEqual(result["reason_code"],
                                  "ENGINE_C_PEER_COHORT_CONTRACT_INVALID")
 
+    def test_zero_peer_count_cannot_claim_nonempty_median(self):
+        w = reviewed_workflow()
+        w["supplementary"]["engine_c"]["peer_count"] = 0
+        result = summarize_local_ticker_dashboard(w)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["reason_code"],
+                         "ENGINE_C_EMPTY_PEER_SAMPLE_HAS_MEDIAN")
+        w["supplementary"]["engine_c"]["peer_median_growth_pct"] = None
+        result = summarize_local_ticker_dashboard(w)
+        self.assertEqual(result["status"], "LOCAL_SOURCE_REPLAYED_UNVERIFIED")
+        self.assertEqual(result["engine_c"]["peer_count"], 0)
+
     def test_bad_structures_fail_closed_not_crash(self):
         for value in (None, {}, "wrong", reviewed_workflow() | {"tool_trace": None},
                       reviewed_workflow() | {"receipt": {"source_sha256": "bad"}},
