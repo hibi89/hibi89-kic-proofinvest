@@ -168,3 +168,57 @@ def fetch_daily_close(*, ticker: str, as_of: str, api_key: str | None,
         result = _hold("PROVIDER_REQUEST_OR_DATA_UNAVAILABLE")
     result["requests_attempted"] = 1
     return result
+
+
+
+def render_daily_price_panel(st: Any, *, ticker: str, as_of: str,
+                             ticker_valid: bool) -> None:
+    """Dependency-free Streamlit-like UI; never queries without a real click.
+
+    API key is read only from an operator-supplied environment variable and
+    is never rendered, returned or persisted by this function.
+    """
+    st.subheader("일별 주가 자동 조회 · 공급자 권한 승인 후 사용")
+    st.caption("Alpha Vantage 일별 종가, 종목당 버튼 클릭 시 최대 1회 GET. "
+               "무료 한도·재사용/표시 권리는 별도 확인 대상입니다. "
+               "SEC 403 재시도·매매·백그라운드 자동 수집은 없습니다.")
+    active = (
+        os.environ.get("KUODRA_ENABLE_ALPHA_VANTAGE_DAILY") == "1"
+        and os.environ.get("KUODRA_ALPHA_VANTAGE_RIGHTS_APPROVED") == "1"
+        and bool(os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"))
+    )
+    if not active:
+        st.warning("주가 API 비활성: 공급자 계정·이용권한·비밀키 설정 승인 대기.")
+    acknowledged = st.checkbox(
+        "이번 종목에 한하여 허용된 Alpha Vantage 일별 조회 1회를 실행합니다",
+        value=False, key="kuodra_p140_av_ack",
+    )
+    if not st.button(
+        "승인된 일별 종가 1회 조회",
+        key="kuodra_p140_av_once",
+        disabled=not (active and acknowledged and ticker_valid),
+    ):
+        return
+    response = fetch_daily_close(
+        ticker=ticker, as_of=as_of,
+        api_key=os.environ.get("KUODRA_ALPHA_VANTAGE_API_KEY"),
+        explicit_click=True, rights_approved=True,
+    )
+    if response["status"] != "PRICE_ONLY_UNVERIFIED":
+        st.warning("주가 조회 불가 또는 제공자 응답 검증 실패; 재시도하지 않습니다.")
+        st.code(response["reason_code"], language="text")
+        return
+    st.metric("최근 일별 종가 · 제공자 응답, 미인증",
+              response["close_observations"][-1]["close"])
+    st.json({
+        "ticker": response["ticker"], "as_of": response["as_of"],
+        "first_date": response["first_date"], "last_date": response["last_date"],
+        "point_count": response["point_count"], "basis": response["basis"],
+        "provider": response["provider"], "source_sha256": response["source_sha256"],
+        "requests_attempted": response["requests_attempted"],
+        "issuer_authenticated": False,
+        "market_data_rights_verified": False,
+        "full_a_b_c_ready": False, "trade_executed": False,
+    })
+    st.warning("일별 종가만 수집했습니다. 실제 지수·기업공시와의 기간 결합, "
+               "공급자 이용권한 및 Engine A/B/C 전체 검증은 아직 완료되지 않았습니다.")
