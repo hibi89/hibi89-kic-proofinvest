@@ -1268,6 +1268,27 @@ def render_single_ticker_search(st) -> None:
                         st.warning("권리 검토표의 시장 응답 해시는 CSV로부터 변환한 JSON의 "
                                    "해시입니다. CSV 원본 해시는 별도 변환 이력 파일에 "
                                    "연결됩니다. 공급자 인증·유료 지수 이용권은 미확인입니다.")
+                    from .ticker_reviewer_html import render_reviewer_html
+                    try:
+                        reviewer_html = render_reviewer_html(
+                            review_packet=result["review_packet"],
+                            rights_gap_report=result["source_clearance_report"],
+                            csv_lineage=(result["csv_lineage_receipt"]
+                                         if csv_mode else None),
+                        )
+                    except (ValueError, TypeError, KeyError,
+                            UnicodeError, OverflowError, RecursionError):
+                        st.warning("읽기 쉬운 검토 보고서 생성 실패: 연결된 패킷·"
+                                   "권리 검토 파일의 무결성을 확인하십시오.")
+                        st.code("REVIEW_HTML_SOURCE_LINK_INVALID", language="text")
+                    else:
+                        st.download_button(
+                            "단일 종목 A/B/C HTML 보고서 다운로드 (오프라인·미인증)",
+                            data=reviewer_html,
+                            file_name="kuodra-single-ticker-review-UNVERIFIED.html",
+                            mime="text/html", on_click="ignore",
+                            key="kuodra_p170_reviewer_html_download",
+                        )
                     st.info("원본 8종의 파일 해시와 시장 검토기간, "
                             "발행자 인증·구매 권한·공개/재배포 허가에 필요한 "
                             "미확인 항목을 분리 기록했습니다. 이 확인표도 "
