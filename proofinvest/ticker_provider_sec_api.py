@@ -31,7 +31,7 @@ _MAX_QUERY = 400_000
 _MAX_XBRL = 8_000_000
 _MAX_ORIGINAL = 24_000_000
 _REVENUE = ("RevenueFromContractWithCustomerExcludingAssessedTax",
-            "Revenues", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax")
+            "Revenues", "SalesRevenueNet")
 _EXTRA = {
     "StatementsOfIncome": ("NetIncomeLoss", "OperatingIncomeLoss"),
     "StatementsOfCashFlows": ("NetCashProvidedByUsedInOperatingActivities",
@@ -67,12 +67,18 @@ def _vendor_http(method: str, url: str, payload: bytes | None,
             "api.sec-api.io", "edgar-mirror.sec-api.io")
             or parts.username or parts.password or parts.fragment):
         raise ValueError("INVALID_VENDOR_HOST")
-    request = Request(
-        url=url, data=payload, method=method,
-        headers={"Authorization": key, "Accept-Encoding": "identity",
-                 "Accept": "application/json" if parts.netloc == "api.sec-api.io"
-                 else "text/html,application/xhtml+xml"},
-    )
+    if method == "POST" and (parts.netloc != "api.sec-api.io" or
+                             type(payload) is not bytes or
+                             not 0 < len(payload) <= 20_000):
+        raise ValueError("VENDOR_JSON_POST_BODY_INVALID")
+    if method == "GET" and payload is not None:
+        raise ValueError("VENDOR_GET_BODY_NOT_ALLOWED")
+    headers = {"Authorization": key, "Accept-Encoding": "identity",
+               "Accept": "application/json" if parts.netloc == "api.sec-api.io"
+               else "text/html,application/xhtml+xml"}
+    if method == "POST":
+        headers["Content-Type"] = "application/json"
+    request = Request(url=url, data=payload, method=method, headers=headers)
     # This isolated opener refuses 301/302/307/308 incl. credential leakage.
     with build_opener(_NoRedirect).open(request, timeout=8) as response:
         if response.geturl() != url or response.status != 200:
@@ -278,7 +284,7 @@ def encode_vendor_evidence_json(result: dict[str, Any]) -> bytes:
             or result.get("status") != "SOURCE_REPLAYED_UNVERIFIED"
             or result.get("source_kind") !=
                     "THIRD_PARTY_XBRL_TO_SEC_SHAPED_UNAUTHENTICATED"
-            or result.get("provider_http_requests_attempted") != 4
+            or result.get("provider_http_requests_attempted") not in (4, 5, 6, 7)
             or any(result.get(flag) is not False for flag in (
                 "source_authenticated", "source_rights_verified",
                 "redistribution_allowed", "original_edgar_bytes_authenticated",
@@ -310,6 +316,15 @@ def encode_vendor_evidence_json(result: dict[str, Any]) -> bytes:
         "vendor_response_sha256": result["raw_vendor_response_sha256"],
         "local_report": report,
     }
+    if "peer_comparison" in result:
+        peer = result["peer_comparison"]
+        if (type(peer) is not dict or peer.get("status") not in
+                ("PEER_ONE_PERIOD_ALIGNED_UNVERIFIED", "UNAVAILABLE")
+                or any(peer.get(key) is not False for key in
+                       ("source_authenticated", "source_rights_verified",
+                        "full_engine_c_ready", "trade_executed"))):
+            raise ValueError("VENDOR_PEER_EXPORT_TRUST_INVALID")
+        package["one_peer_partial_comparison"] = peer
     raw = (json.dumps(package, sort_keys=True, ensure_ascii=False,
                       separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
     if len(raw) > 32768:
@@ -322,6 +337,7 @@ def run_sec_api_on_demand(
     explicit_click: bool = False, operator_retrieval_approved: bool = False,
     operator_rights_approved: bool = False,
     market_json: bytes | None = None, industry_json: bytes | None = None,
+    include_one_peer: bool = False, peer_approved: bool = False,
     transport: Callable[[str, str, bytes | None, str, int], bytes] | None = None,
 ) -> dict[str, Any]:
     """Bounded licensed alternative to *direct* SEC GET, NEVER 403 bypass.
@@ -336,6 +352,13 @@ def run_sec_api_on_demand(
             and os.environ.get("KUODRA_SEC_API_VENDOR_RETRIEVAL_APPROVED") == "1"
             and os.environ.get("KUODRA_SEC_API_VENDOR_RIGHTS_APPROVED") == "1"):
         return _blocked("VENDOR_OPERATOR_APPROVAL_REQUIRED")
+    if include_one_peer is not False and include_one_peer is not True:
+        return _blocked("VENDOR_PEER_FLAG_INVALID")
+    if include_one_peer and not (
+            peer_approved is True
+            and os.environ.get("KUODRA_ENABLE_SEC_API_PEER_EXTRA") == "1"
+            and os.environ.get("KUODRA_SEC_API_PEER_RIGHTS_APPROVED") == "1"):
+        return _blocked("VENDOR_PEER_EXTRA_PERMISSION_REQUIRED")
     if (type(api_key) is not str or not 16 <= len(api_key) <= 256
             or any(ch.isspace() or ord(ch) < 33 or ord(ch) > 126 for ch in api_key)):
         return _blocked("VENDOR_KEY_NOT_CONFIGURED")
@@ -354,7 +377,7 @@ def run_sec_api_on_demand(
             nonlocal request_count
             # Every invocation counts as a request attempt even if it throws.
             request_count += 1
-            if request_count > _GETS_MAX:
+            if request_count > (_GETS_MAX + (3 if include_one_peer else 0)):
                 raise ValueError("VENDOR_NETWORK_BUDGET_EXCEEDED")
             return reader(method, url, payload, api_key, limit)
         mapping_bytes = read("GET", _MAP_HOST + "/mapping/ticker/" + ticker,
@@ -400,7 +423,28 @@ def run_sec_api_on_demand(
         if (dashboard.get("status") != "LOCAL_SOURCE_REPLAYED_UNVERIFIED"
                 or dashboard.get("guard_policy") != "HOLD"):
             return _blocked("VENDOR_GUARD_OR_REPLAY_NOT_ELIGIBLE", request_count)
-        return {
+        peer_comparison = None
+        if include_one_peer:
+            from .ticker_vendor_peer import fetch_one_peer_using_vendor
+            try:
+                peer_comparison = fetch_one_peer_using_vendor(
+                    target_mapping_raw=mapping_bytes, target_cik=cik,
+                    target_ticker=ticker, target_revenue=workflow["revenue"],
+                    as_of=as_of, read=read, cutoff=cutoff,
+                )
+            except (ValueError, TypeError, KeyError, AttributeError,
+                    OverflowError, OSError, RecursionError):
+                peer_comparison = {
+                    "schema": "kuodra.vendor-exploratory-one-peer-revenue.v1",
+                    "status": "UNAVAILABLE",
+                    "reason_code": "PEER_SOURCE_OR_EXACT_FISCAL_PERIOD_UNAVAILABLE",
+                    "single_peer_not_industry_cohort": True,
+                    "industry_series_status": "UNAVAILABLE",
+                    "full_engine_c_ready": False,
+                    "source_authenticated": False, "source_rights_verified": False,
+                    "trade_executed": False,
+                }
+        result = {
             **_blocked("UNVERIFIED_THIRD_PARTY_TRANSFORMED_DATA", request_count),
             "status": "SOURCE_REPLAYED_UNVERIFIED",
             "ticker": ticker, "issuer_cik": cik, "as_of": as_of,
@@ -420,6 +464,9 @@ def run_sec_api_on_demand(
             "full_a_b_c_ready": False, "guard_policy_preview": "HOLD",
             "report": workflow["report"], "dashboard": dashboard,
         }
+        if peer_comparison is not None:
+            result["peer_comparison"] = peer_comparison
+        return result
     except (ValueError, KeyError, TypeError, OverflowError, UnicodeError,
             OSError, RecursionError, json.JSONDecodeError):
         return _blocked("VENDOR_RESPONSE_OR_REPLAY_INVALID", request_count)

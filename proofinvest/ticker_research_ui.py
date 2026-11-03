@@ -428,11 +428,25 @@ def render_single_ticker_search(st) -> None:
         "이 티커·날짜로 제3자 sec-api.io 최대 4회 유료 가능 요청에 동의 (원본 미인증·외부공유 불가)",
         value=False, key="kuodra_p145_vendor_ack",
     )
-    if st.button(
+    vendor_clicked = st.button(
         "승인된 공급자로 10-K 조회 → A/B/C·Guard·근거 보고서 (최대 4회)",
         key="kuodra_p145_vendor_run",
         disabled=not (vendor_gate and vendor_ack and valid),
-    ):
+    )
+    peer_gate = (os.environ.get("KUODRA_ENABLE_SEC_API_PEER_EXTRA") == "1"
+                 and os.environ.get("KUODRA_SEC_API_PEER_RIGHTS_APPROVED") == "1")
+    peer_ack = st.checkbox(
+        "동일 업종 단일 기업 추가 공시 최대 3회 요청 (총 최대 7회, "
+        "비대표본·산업 성장률 미산출)에 별도 동의합니다",
+        value=False, key="kuodra_p146_peer_ack",
+    )
+    peer_clicked = st.button(
+        "승인된 공급자 + 동종기업 1개 연간 매출 비교 (최대 7회)",
+        key="kuodra_p146_peer_run",
+        disabled=not (vendor_gate and vendor_ack and
+                      peer_gate and peer_ack and valid),
+    )
+    if vendor_clicked or peer_clicked:
         from .ticker_provider_sec_api import run_sec_api_on_demand
         try:
             market_bytes = (_read_uploaded(market_source, 131072)
@@ -445,6 +459,7 @@ def render_single_ticker_search(st) -> None:
                 explicit_click=True, operator_retrieval_approved=True,
                 operator_rights_approved=True,
                 market_json=market_bytes, industry_json=industry_bytes,
+                include_one_peer=peer_clicked, peer_approved=peer_clicked,
             )
         except (ValueError, TypeError, OSError, RecursionError):
             st.warning("공급자 자료 형식·입력 검증 실패. 원본·API 키는 기록하지 않습니다.")
@@ -455,6 +470,11 @@ def render_single_ticker_search(st) -> None:
                 report = vendor.get("report")
                 if type(report) is dict:
                     st.json(vendor["dashboard"])
+                    if type(vendor.get("peer_comparison")) is dict:
+                        st.subheader("Engine C 보조 · 동일 업종 1기업 매출 비교 (비대표본)")
+                        st.json(vendor["peer_comparison"])
+                        st.warning("기업 하나를 비교한 수치일 뿐 산업지표·대표 표본·"
+                                   "시장전망으로 일반화할 수 없습니다.")
                     from .ticker_provider_sec_api import encode_vendor_evidence_json
                     st.download_button(
                         "제3자 공시 출처·Guard 로컬 검토 JSON (미인증)",
