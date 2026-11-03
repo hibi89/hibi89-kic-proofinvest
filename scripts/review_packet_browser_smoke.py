@@ -251,6 +251,96 @@ def run(output: Path) -> dict:
                             path=str(output / "p166-rejected-source-browser.png"),
                             full_page=True,
                         )
+                        # P167: produce the FIRST A/B/C review packet
+                        # using caller-supplied SEC + true NDX provider-shape
+                        # bytes; NO paid API permission or prior packet.
+                        date_input = page.get_by_label(
+                            "조회 기준일 (YYYY-MM-DD)", exact=True,
+                        )
+                        date_input.fill("2026-02-01")
+                        date_input.press("Tab")
+                        expect(date_input).to_have_value("2026-02-01")
+                        initial_button = page.get_by_role(
+                            "button",
+                            name=("로컬 SEC + 종목·실제 NDX A/B/C 통합 "
+                                  "검토 파일 생성 (외부 요청 0회)"),
+                            exact=True,
+                        )
+                        expect(initial_button).to_be_disabled()
+                        for label, name, payload in (
+                            ("SEC ticker 목록 JSON (로컬 선택)", "p167-map.json",
+                             sec_sources["ticker_map"]),
+                            ("선택 기업 SEC submissions.json (선택)",
+                             "p167-submissions.json", sec_sources["submissions"]),
+                            ("CompanyFacts JSON (로컬 검산용 선택)",
+                             "p167-companyfacts.json", sec_sources["companyfacts"]),
+                            ("동일 10-K 원문 HTML/XHTML (로컬 문맥 검토용 선택)",
+                             "p167-original.xhtml", sec_sources["original_10k"]),
+                            ("주가·지수 시계열 JSON (개발·검증용 선택)",
+                             "p167-market.json", market),
+                            ("산업·경쟁사 비교 JSON (개발·검증용 선택)",
+                             "p167-industry.json", industry),
+                            ("종목 일별 종가 응답 JSON (로컬 분석 전용)",
+                             "p167-stock.json", _body("NVDA")),
+                            ("Nasdaq-100 NDX 일별 지수 응답 JSON (로컬 분석 전용)",
+                             "p167-ndx.json", _body("NDX", 10000)),
+                        ):
+                            upload_original(label, name, payload)
+                        page.get_by_text(
+                            "로컬 계산만 수행하며 원본 진위·재사용권·투자 승인으로 취급하지 않습니다",
+                            exact=True,
+                        ).click()
+                        expect(initial_button).to_be_enabled(timeout=22000)
+                        expect(page.get_by_role(
+                            "button",
+                            name="로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
+                            exact=True,
+                        )).to_have_count(0)
+                        initial_button.click()
+                        expect(page.get_by_text(
+                            "SEC 4원본 + 종목·실제 NDX 오프라인 재계산 PASS (출처 미인증)",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=20000) as download:
+                            page.get_by_role(
+                                "button",
+                                name="로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
+                                exact=True,
+                            ).click()
+                        packet_download = download.value
+                        if packet_download.suggested_filename != (
+                                "kuodra-offline-a-b-c-review-UNVERIFIED.json"):
+                            raise AssertionError("P167_PACKET_FILENAME_MISMATCH")
+                        from proofinvest.ticker_review_packet import inspect_review_packet_bytes
+                        downloaded_packet = Path(packet_download.path()).read_bytes()
+                        receipt = inspect_review_packet_bytes(downloaded_packet)
+                        if (receipt["status"] !=
+                                "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED"
+                                or receipt["ticker"] != "NVDA"):
+                            raise AssertionError("P167_PACKET_CONTRACT_INVALID")
+                        page.screenshot(
+                            path=str(output / "p167-first-offline-packet-browser.png"),
+                            full_page=True,
+                        )
+                        # Invalid benchmark metadata MUST NOT silently use an
+                        # S&P500 response as the actual Nasdaq-100.
+                        upload_original(
+                            "Nasdaq-100 NDX 일별 지수 응답 JSON (로컬 분석 전용)",
+                            "p167-wrong-index.json", _body("SPX", 10000),
+                        )
+                        expect(page.get_by_role(
+                            "button",
+                            name="로컬 A/B/C 검토 패키지 JSON 다운로드 (미인증)",
+                            exact=True,
+                        )).to_have_count(0, timeout=22000)
+                        initial_button.click()
+                        expect(page.get_by_text(
+                            "INVALID_SOURCE_OR_MARKET_RESPONSE", exact=True,
+                        )).to_be_visible(timeout=22000)
+                        page.screenshot(
+                            path=str(output / "p167-wrong-index-blocked-browser.png"),
+                            full_page=True,
+                        )
                         if forbidden_requests:
                             raise AssertionError(
                                 "P165_EXTERNAL_BROWSER_REQUEST_BLOCKED: "
@@ -285,6 +375,8 @@ def run(output: Path) -> dict:
         "vendor_rights_verified": False,
         "synthetic_original_sec_and_price_replayed_in_browser": True,
         "tampered_original_blocked_in_browser": True,
+        "initial_offline_review_packet_generated_and_downloaded": True,
+        "initial_review_wrong_index_rejected": True,
         "trade_executed": False,
         "test_packet_sha256": sha256(raw).hexdigest(),
     }
