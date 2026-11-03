@@ -217,6 +217,16 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
         for p in peers
     ]
     peer_growth = [g for g in peer_growth if g is not None]
+    # Cohort size and usable peer growth observations are distinct: peers
+    # with a zero prior-year denominator cannot contribute to the median.
+    usable_peer_count = len(peer_growth)
+    peer_sample_scope = (
+        "NO_COMPARABLE_PEER_GROWTH"
+        if usable_peer_count == 0 else
+        "SPARSE_PEER_GROWTH_UNVERIFIED"
+        if usable_peer_count < 3 else
+        "COMPARATIVE_PEER_GROWTH_UNVERIFIED"
+    )
     peer_mid = median(peer_growth) if peer_growth else None
     if market_growth is None or target_growth is None:
         status = "INSUFFICIENT_EVIDENCE"
@@ -252,6 +262,8 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
         "summary": comparison,
         "target": target, "peers": peers,
         "cohort_evidence": cohort,
+        "peer_growth_observation_count": usable_peer_count,
+        "peer_growth_sample_scope": peer_sample_scope,
         "peer_median_growth_pct": _fmt(peer_mid),
         "industry_series": {
             "name": _string(benchmark["name"], "INDUSTRY_SERIES_NAME", 100),
