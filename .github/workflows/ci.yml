@@ -196,6 +196,20 @@ jobs:
         run: |
           python -B -m scripts.local_workspace_browser_smoke /tmp/kic-local-upload-browser
           python -c 'import json; x=json.load(open("/tmp/kic-local-upload-browser/kuodra-local-upload-browser.json")); assert x["status"]=="PASS" and x["market_sec_context_bound"] is False and x["market_sec_future_filing_withheld"] is True and x["market_guard_policy_modified"] is False and x["market_in_guard_audit"] is False and x["market_csv_regression_visible"] is True and len(x["market_csv_original_sha256"])==64 and x["industry_sec_source_bound"] is True and x["all_three_engines_reported"] is True and x["combined_risk_score_available"] is False and x["industry_growth_gap_pp"]=="80.00" and x["network_sec_requests"]==0 and len(x["market_upload_sha256"])==64 and len(x["industry_upload_sha256"])==64 and x["p117_four_source_chromium_report_verified"] is True and x["p122_local_workflow_trace_visible"] is True and x["p123_human_acknowledgement_browser_verified"] is True and x["p124_local_engine_b_cash_replay_visible"] is True and x["p125_offline_vendor_licensing_review_visible"] is True and x["p126_historical_apple_ticker_real_chromium"] is True and len(x["p117_original_sha256"])==64'
+      - name: P165 real Chromium downloaded review-packet upload and rejection
+        run: |
+          python -B -m scripts.review_packet_browser_smoke /tmp/kic-p165-review-packet-browser
+          python -c 'import json; x=json.load(open("/tmp/kic-p165-review-packet-browser/p165-review-packet-browser.json")); assert x["status"]=="PASS" and x["synthetic_only"] is True and x["real_chromium"] is True and x["valid_reupload_internal_integrity_passed"] is True and x["passive_upload_no_approval"] is True and x["changed_bytes_rejected"] is True and x["oversized_bytes_rejected"] is True and x["live_sec_button_disabled"] is True and x["browser_external_requests"]==0 and x["sqlite_guard_audit_written"] is False and x["publisher_source_authenticated"] is False and x["vendor_rights_verified"] is False and x["original_sec_and_price_replayed_in_browser"] is False and x["trade_executed"] is False'
+      - name: Archive P165 real Chromium reviewer evidence (synthetic only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-p165-offline-packet-chromium
+          path: |
+            /tmp/kic-p165-review-packet-browser/p165-valid-packet-browser.png
+            /tmp/kic-p165-review-packet-browser/p165-rejected-packet-browser.png
+            /tmp/kic-p165-review-packet-browser/p165-review-packet-browser.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Archive local source upload browser evidence (synthetic only)
         uses: actions/upload-artifact@v4
         with:
@@ -239,5 +253,6 @@ jobs:
             /tmp/kic-guard-browser/mock-proposal-select-diagnostics.json
             /tmp/kic-guard-browser/mock-proposal-menu-after-open.png
             /tmp/kic-guard-browser/mock-proposal-select-trace.zip
+            /tmp/kic-p165-review-packet-browser/p165-streamlit-server.log
           if-no-files-found: ignore
           retention-days: 3
