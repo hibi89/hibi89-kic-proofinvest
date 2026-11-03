@@ -115,6 +115,27 @@ class TickerMarketIndustryBridgeTests(unittest.TestCase):
                                          industry_json=json.dumps(data).encode())
             self.assertEqual(result["engine_c"]["status"], "UNAVAILABLE", modify)
 
+    def test_engine_c_rejects_cross_company_source_reuse_without_blocking_a(self):
+        receipt, raw, m, c = scenario()
+        for attack in ("same_source_id", "same_source_sha"):
+            changed = deepcopy(c)
+            if attack == "same_source_id":
+                changed["peers"][0]["prior_source_id"] = "target-old"
+            else:
+                original = {x["id"]: x for x in changed["sources"]}
+                original["peer-old"]["sha256"] = original["target-old"]["sha256"]
+            result = evaluate_ticker_a_c(
+                receipt, raw, market_json=json.dumps(m).encode(),
+                industry_json=json.dumps(changed).encode())
+            with self.subTest(attack=attack):
+                self.assertEqual(result["engine_c"]["status"], "UNAVAILABLE")
+                self.assertEqual(result["engine_c"]["reason_code"],
+                                 "INDUSTRY_SOURCE_OR_FISCAL_COHORT_NOT_COMPATIBLE")
+                self.assertIsNone(result["engine_c"]["input_sha256"])
+                self.assertEqual(result["engine_a"]["status"],
+                                 "REPORTED_UNVERIFIED")
+                self.assertFalse(result["source_authenticated"])
+
     def test_untrusted_sec_or_conflicting_dei_blocks_both(self):
         receipt, raw, m, c = scenario()
         altered = deepcopy(receipt)
