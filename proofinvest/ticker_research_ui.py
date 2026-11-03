@@ -1190,6 +1190,16 @@ def render_single_ticker_search(st) -> None:
                         file_name="kuodra-offline-a-b-c-review-UNVERIFIED.json",
                         mime="application/json", key="kuodra_p167_packet_download",
                     )
+                    st.download_button(
+                        "원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)",
+                        data=result["source_clearance_report"],
+                        file_name="kuodra-source-rights-GAPS-UNVERIFIED.json",
+                        mime="application/json", key="kuodra_p168_rights_gaps",
+                    )
+                    st.info("원본 8종의 파일 해시와 시장 검토기간, "
+                            "발행자 인증·구매 권한·공개/재배포 허가에 필요한 "
+                            "미확인 항목을 분리 기록했습니다. 이 확인표도 "
+                            "어떠한 이용권리를 부여하지 않습니다.")
                     st.warning("완전한 공급자 인증·이용권한·대표표본 검증이나 "
                                "투자·거래·대회 제출 승인이 아닙니다.")
             if pair_clicked:
