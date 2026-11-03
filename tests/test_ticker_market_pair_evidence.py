@@ -319,6 +319,18 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertFalse(payload["external_sharing_allowed"])
         self.assertNotIn(_KEY, repr(st.messages))
         self.assertNotIn("close_observations", repr(payload))
+        explanations = [value for kind, value in st.messages
+                        if kind == "download" and value["label"] ==
+                        "A/B/C 출처 연결 설명 JSON (로컬 전용 · 규칙 기반)"]
+        self.assertEqual(len(explanations), 1, st.messages)
+        explanation = json.loads(explanations[0]["data"])
+        self.assertEqual(explanation["linked_evidence_sha256"],
+                         payload["evidence_sha256"])
+        self.assertEqual([f["engine"] for f in explanation["findings"]],
+                         ["A", "B", "C"])
+        self.assertEqual(explanation["guard_policy_preview"], "HOLD")
+        self.assertFalse(explanation["ai_agent_executed"])
+        self.assertNotIn(_KEY, repr(explanations))
 
     def test_p154_duplicate_paid_click_reuses_export_but_changed_source_can_run(self):
         from proofinvest import ticker_research_ui as ui
@@ -521,6 +533,15 @@ class LinkedEvidenceTests(unittest.TestCase):
                      if kind == "download" and
                      item["label"] == "통합 검산 근거 JSON (로컬 전용 · 미인증)"]
             self.assertEqual(rerun, exports)
+            # P158: deterministic source-linked explanation also appears on
+            # a no-network Streamlit download rerun.
+            explanation = [item for kind, item in st.messages
+                           if kind == "download" and item["label"] ==
+                           "A/B/C 출처 연결 설명 JSON (로컬 전용 · 규칙 기반)"]
+            self.assertEqual(len(explanation), 1)
+            self.assertEqual(
+                json.loads(explanation[0]["data"])["linked_evidence_sha256"],
+                json.loads(exports[0])["evidence_sha256"])
             self.assertTrue(any(kind == "json" and type(item) is dict and
                                 item.get("provider_requests_on_rerun") == 0
                                 for kind, item in st.messages))
