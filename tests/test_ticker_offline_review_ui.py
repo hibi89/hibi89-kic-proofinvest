@@ -8,6 +8,8 @@ from unittest.mock import patch
 from proofinvest import ticker_research_ui as ui
 from proofinvest.ticker_review_packet import inspect_review_packet_bytes
 from proofinvest.ticker_source_clearance_packet import inspect_source_clearance_packet
+from proofinvest.local_market_csv_bridge import inspect_csv_lineage_receipt
+from tests.test_local_market_csv_bridge import local_csv
 from tests.test_ticker_market_pair_evidence import _prepared, _body
 from tests.test_ticker_research_ui import FakeSt, Uploaded
 
@@ -116,6 +118,59 @@ class InitialOfflineReviewUiTests(unittest.TestCase):
         self.assertTrue(any(
             k == "code" and v == "INVALID_SOURCE_OR_MARKET_RESPONSE"
             for k, v in st.messages), st.messages)
+
+    def test_csv_pair_creates_three_sha_bound_downloads_without_provider(self):
+        uploads = ui_inputs()
+        del uploads["kuodra_p167_stock"]
+        del uploads["kuodra_p167_ndx"]
+        uploads["kuodra_p169_stock_csv"] = Uploaded(local_csv("NVDA"))
+        uploads["kuodra_p169_ndx_csv"] = Uploaded(local_csv("NDX", 10000))
+        st = render(uploads)
+        dl = {v["label"]: v for k, v in st.messages if k == "download"}
+        gap = "원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)"
+        lineage = "로컬 CSV 원본·JSON 변환 이력 JSON 다운로드 (미인증)"
+        self.assertEqual(set(dl), {_DOWNLOAD, gap, lineage}, st.messages)
+        self.assertEqual(
+            inspect_source_clearance_packet(
+                dl[gap]["data"], review_packet=dl[_DOWNLOAD]["data"])["status"],
+            "MATCHED_REPORT_EXTERNAL_CLEARANCES_STILL_PENDING",
+        )
+        verdict = inspect_csv_lineage_receipt(
+            dl[lineage]["data"], packet=dl[_DOWNLOAD]["data"])
+        self.assertEqual(verdict["status"], "CSV_LINEAGE_MATCHED_RIGHTS_PENDING")
+        self.assertIs(verdict["source_rights_verified"], False)
+        self.assertNotIn("symbol,date,close", repr(dl[lineage]))
+        self.assertNotIn("close_observations", repr(dl[lineage]))
+
+    def test_csv_index_symbol_wrong_disallows_initial_review_and_exports(self):
+        uploads = ui_inputs()
+        del uploads["kuodra_p167_stock"]
+        del uploads["kuodra_p167_ndx"]
+        uploads["kuodra_p169_stock_csv"] = Uploaded(local_csv("NVDA"))
+        uploads["kuodra_p169_ndx_csv"] = Uploaded(local_csv("QQQ", 10000))
+        st = render(uploads)
+        self.assertFalse(any(k == "download" and v["label"] == _DOWNLOAD
+                             for k, v in st.messages))
+        self.assertTrue(any(k == "code" and
+                            v == "LOCAL_SOURCE_FILE_READ_INVALID"
+                            for k, v in st.messages), st.messages)
+
+    def test_json_and_csv_mixed_or_missing_pair_never_click_through(self):
+        for variation in ("mixed", "missing"):
+            inputs = ui_inputs()
+            inputs["kuodra_p169_stock_csv"] = Uploaded(local_csv("NVDA"))
+            if variation == "missing":
+                del inputs["kuodra_p167_stock"]
+                del inputs["kuodra_p167_ndx"]
+            with self.subTest(variation=variation), patch(
+                "proofinvest.ticker_offline_review_builder.build_offline_initial_review",
+                side_effect=AssertionError("MIXED_MARKET_INPUT_REPLAY_FORBIDDEN"),
+            ) as build:
+                st = render(inputs)
+                build.assert_not_called()
+                self.assertIn((_BUTTON, True), st.buttons)
+                self.assertFalse(any(k == "download" and v["label"] == _DOWNLOAD
+                                     for k, v in st.messages))
 
     def test_no_click_or_no_consent_blocks_analysis(self):
         for kwargs in ({"clicked": None}, {"ack": False}):
