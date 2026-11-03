@@ -365,6 +365,9 @@ class LinkedEvidenceTests(unittest.TestCase):
             first = st.session_state["kuodra_p141_pair_attempt"]
             self.assertEqual(len(first), 64)
             self.assertIn(ui._P153_LINKED_CACHE_KEY, st.session_state)
+            from proofinvest.linked_report_session_cache import HISTORY_KEY as linked_history
+            first_export = st.session_state[ui._P153_LINKED_CACHE_KEY]["data"]
+            self.assertEqual(len(st.session_state[linked_history]), 1)
             paid_pair.assert_called_once()
             st.messages.clear()
             # The user may click the same enabled paid button again.
@@ -401,6 +404,13 @@ class LinkedEvidenceTests(unittest.TestCase):
             self.assertEqual(paid_pair.call_count, 2)
             self.assertEqual(len(st.session_state[_HISTORY_KEY]), 2)
             self.assertIn(first, st.session_state[_HISTORY_KEY])
+            self.assertEqual(len(st.session_state[linked_history]), 2)
+            restored_exports = [
+                item["data"] for kind, item in st.messages
+                if kind == "download" and item["label"] ==
+                "통합 검산 근거 JSON (로컬 전용 · 미인증)"
+            ]
+            self.assertEqual(restored_exports, [first_export])
             self.assertTrue(any(
                 kind == "warning" and "동일 자료로 이미 유료 조회" in msg
                 for kind, msg in st.messages))
