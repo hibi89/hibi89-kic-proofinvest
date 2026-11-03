@@ -413,6 +413,63 @@ def render_single_ticker_search(st) -> None:
                         "SEC 인증·원본 서명·데이터 이용권·최신 공시·투자 승인은 미검증입니다."
                     )
 
+    # P145: third-party licensed SEC-derived source adapter.
+    # Unlike SEC P105, this targets only the independent paid provider's
+    # own API hosts. No request on reruns, no paid call without new approval.
+    st.subheader("티커 한 개 → 별도 허가된 공시 공급자 → 7단계 검증")
+    st.caption("sec-api.io 공급자의 Mapping/Query/XBRL/원문 미러 4회 경로. "
+               "공식 SEC 서버 재시도가 아니며 제3자 제공·과금·이용권한 승인이 필요합니다.")
+    vendor_gate = all(os.environ.get(name) == "1" for name in (
+        "KUODRA_ENABLE_SEC_API_VENDOR",
+        "KUODRA_SEC_API_VENDOR_RETRIEVAL_APPROVED",
+        "KUODRA_SEC_API_VENDOR_RIGHTS_APPROVED",
+    )) and bool(os.environ.get("KUODRA_SEC_API_VENDOR_KEY"))
+    vendor_ack = st.checkbox(
+        "이 티커·날짜로 제3자 sec-api.io 최대 4회 유료 가능 요청에 동의 (원본 미인증·외부공유 불가)",
+        value=False, key="kuodra_p145_vendor_ack",
+    )
+    if st.button(
+        "승인된 공급자로 10-K 조회 → A/B/C·Guard·근거 보고서 (최대 4회)",
+        key="kuodra_p145_vendor_run",
+        disabled=not (vendor_gate and vendor_ack and valid),
+    ):
+        from .ticker_provider_sec_api import run_sec_api_on_demand
+        try:
+            market_bytes = (_read_uploaded(market_source, 131072)
+                            if market_source is not None else None)
+            industry_bytes = (_read_uploaded(industry_source, 65536)
+                              if industry_source is not None else None)
+            vendor = run_sec_api_on_demand(
+                ticker=key, as_of=as_of,
+                api_key=os.environ.get("KUODRA_SEC_API_VENDOR_KEY"),
+                explicit_click=True, operator_retrieval_approved=True,
+                operator_rights_approved=True,
+                market_json=market_bytes, industry_json=industry_bytes,
+            )
+        except (ValueError, TypeError, OSError, RecursionError):
+            st.warning("공급자 자료 형식·입력 검증 실패. 원본·API 키는 기록하지 않습니다.")
+        else:
+            st.json({k: v for k, v in vendor.items()
+                     if k not in ("report", "dashboard")})
+            if vendor.get("status") == "SOURCE_REPLAYED_UNVERIFIED":
+                report = vendor.get("report")
+                if type(report) is dict:
+                    st.json(vendor["dashboard"])
+                    from .ticker_local_report import verify_local_report
+                    st.download_button(
+                        "제3자 공시 출처·Guard 로컬 검토 JSON (미인증)",
+                        data=(__import__("json").dumps(
+                            report, sort_keys=True, ensure_ascii=False,
+                            separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8"),
+                        file_name="kuodra-vendor-local-review-UNVERIFIED.json",
+                        mime="application/json", key="kuodra_p145_vendor_report",
+                    )
+                st.warning("7단계 산술 검산은 제3자 자료에서 재구성한 입력 기준입니다. "
+                           "SEC 발행자 인증·서비스 내 재배포 권한·지수/산업 실데이터 "
+                           "보장은 아니며 Guard는 HOLD/REJECT입니다.")
+            else:
+                st.warning("검증되지 않은 데이터/계약/공시 상태이므로 분석을 차단했습니다.")
+
     st.subheader("로컬 공시 목록으로 출처 계획 확인 (개발·검증용)")
     st.caption("이 부분은 자동 수집의 대체 사용 경로가 아닌 오프라인 검증용입니다. "
                "사용자가 전체 시장 자료를 준비할 필요는 없습니다.")
