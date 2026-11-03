@@ -428,7 +428,6 @@ def render_single_ticker_search(st) -> None:
         return
 
     st.title("KUODRA · 종목 하나 검색")
-    _render_p164_downloaded_packet_inspector(st)
     st.caption("티커 1개 → SEC 기업 CIK 확인 → 공시 목록 → CompanyFacts → "
                "10-K 원문. 대규모 종목 추천·전체 시장 크롤링은 제공하지 않습니다.")
     ticker = st.text_input(
@@ -485,8 +484,12 @@ def render_single_ticker_search(st) -> None:
         "산업·경쟁사 비교 JSON (개발·검증용 선택)",
         type=["json"], key="kuodra_p104_industry_json",
     )
-    if st.button("SEC 원문 4종 자동 수집 실행", key="kuodra_p100_live",
-                 disabled=not can_fetch):
+    run_sec_clicked = st.button(
+        "SEC 원문 4종 자동 수집 실행", key="kuodra_p100_live",
+        disabled=not can_fetch,
+    )
+    _render_p164_downloaded_packet_inspector(st)
+    if run_sec_clicked:
         if not can_fetch:
             st.error("SEC 수집 차단: 승인·연락처·티커·기준일 확인 필요")
             return
