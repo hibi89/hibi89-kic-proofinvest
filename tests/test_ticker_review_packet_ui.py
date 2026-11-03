@@ -47,6 +47,8 @@ class DownloadedReviewPacketInspectorTests(unittest.TestCase):
                    if kind == "json" and type(value) is dict
                    and value.get("packet_internal_integrity_passed") is True]
         self.assertEqual(len(outputs), 1, st.messages)
+        self.assertIn(("success", "검토 패키지 내부 무결성 PASS (원본·공급자 인증 아님)"), st.messages)
+        self.assertIn(("metric", ("검사 대상 종목 (미인증)", "NVDA")), st.messages)
         result = outputs[0]
         self.assertEqual(result["status"],
                          "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED")
@@ -71,6 +73,7 @@ class DownloadedReviewPacketInspectorTests(unittest.TestCase):
                     kind == "json" and type(value) is dict
                     and value.get("packet_internal_integrity_passed") is True
                     for kind, value in st.messages))
+                self.assertFalse(any(kind == "success" for kind, _ in st.messages))
                 self.assertNotIn(repr(raw[:60]), repr(st.messages))
 
     def test_passive_upload_and_no_upload_never_trigger_validation(self):
