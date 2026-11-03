@@ -1,3 +1,16 @@
+## P149 Vendor POST query string gate — 2026-11-04 KST
+
+1. Goal: restrict outbound vendor POST requests to exact approved query endpoint.
+2. Decision: reject query strings before opening connection, preserve existing GET and POST query-body contract.
+3. Code: `proofinvest/ticker_provider_sec_api.py` added POST query guard.
+4. Test: `tests/test_ticker_provider_sec_api.py` checks URL with `?unexpected=1` fails before opener.
+5. Verification: GitHub commits confirmed; new test execution and CI not verified.
+6. Repo `hibi89/hibi89-kic-proofinvest`, branch `lead/kic`; source `a6f24d6892b702edfc338d3790bf6eb0bd6691f6`, test `70f258bbdc80c913ee2d01ca9b32e48c4edbc1e2`.
+7. No production deployment; RELEASE HOLD.
+8. V13 PDF and operator originals untouched, no API credentials or external requests.
+9. Next: validate exact branch CI and advance independent core A/B/C evidence workflow while waiting; external vendor rights require separate approval.
+10. Updated 2026-11-04 KST, source inspection and GitHub write only.
+
 ## P148 Vendor POST endpoint gate — 2026-11-04 KST
 
 1. Goal: harden KUODRA one-ticker vendor API request scope while preserving approved workflow.
