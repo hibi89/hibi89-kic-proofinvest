@@ -184,9 +184,91 @@ def verify_linked_market_evidence(
 
 
 def linked_evidence_json_bytes(report: dict) -> bytes:
-    """Redacted, locally downloadable derived metrics; no raw close series."""
-    if type(report) is not dict or report.get("status") != _STATUS:
-        raise ValueError("LINKED_EVIDENCE_UNAVAILABLE")
+    """Export only the exact redacted A/B/C receipt, never caller-added bytes.
+
+    The digest detects inadvertent/tampered output. It is NOT a vendor
+    signature or a substitute for verify_linked_market_evidence with inputs.
+    """
+    import re
+
+    fields = {
+        "schema", "status", "reason_code", "issuer", "local_report_sha256",
+        "four_source_sha256", "local_engine_a", "engine_b", "engine_c",
+        "premium_engine_a", "guard_policy_preview",
+        "local_seven_step_replay_passed", "local_market_pair_math_recomputed",
+        "provider_response_origin_authenticated", "market_vintage_authenticated",
+        "source_authenticated", "source_rights_verified", "guard_executed",
+        "audit_written", "ai_agent_executed", "trade_executed",
+        "external_sharing_allowed", "full_a_b_c_ready", "evidence_sha256",
+    }
+    nested = {
+        "issuer": {"ticker", "cik", "accession", "as_of", "filing_date"},
+        "four_source_sha256": {
+            "ticker_map", "submissions", "companyfacts", "original_10k",
+        },
+        "local_engine_a": {"status", "input_sha256"},
+        "engine_b": {"status", "companyfacts_sha256"},
+        "engine_c": {"status", "input_sha256"},
+        "premium_engine_a": {
+            "status", "benchmark", "basis", "stock_response_sha256",
+            "index_response_sha256", "analysis_payload_sha256",
+            "matched_observation_count", "security_return_pct",
+            "benchmark_return_pct", "beta",
+            "regression_intercept_daily_pct", "r_squared",
+        },
+    }
+    if (type(report) is not dict or set(report) != fields
+            or report.get("schema") != _SCHEMA
+            or report.get("status") != _STATUS
+            or report.get("reason_code") != "REPLAY_IS_NOT_PUBLISHER_AUTHENTICATION"
+            or report.get("guard_policy_preview") != "HOLD"
+            or any(type(report.get(k)) is not dict or set(report[k]) != keys
+                   for k, keys in nested.items())
+            or any(report.get(k) is not False for k in (
+                "provider_response_origin_authenticated",
+                "market_vintage_authenticated", "source_authenticated",
+                "source_rights_verified", "guard_executed", "audit_written",
+                "ai_agent_executed", "trade_executed",
+                "external_sharing_allowed", "full_a_b_c_ready"))
+            or report.get("local_seven_step_replay_passed") is not True
+            or report.get("local_market_pair_math_recomputed") is not True
+            or report["premium_engine_a"].get("benchmark") != "NASDAQ_100"
+            or report["premium_engine_a"].get("basis") != "PRICE_ONLY_CLOSE"):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_CONTRACT_INVALID")
+
+    def digest(value: Any) -> bool:
+        return (type(value) is str
+                and re.fullmatch(r"[0-9a-f]{64}", value) is not None)
+
+    hashed = [report["local_report_sha256"]]
+    hashed.extend(report["four_source_sha256"].values())
+    hashed.extend((report["local_engine_a"]["input_sha256"],
+                   report["engine_b"]["companyfacts_sha256"],
+                   report["engine_c"]["input_sha256"]))
+    hashed.extend(report["premium_engine_a"][k] for k in (
+        "stock_response_sha256", "index_response_sha256",
+        "analysis_payload_sha256"))
+    if not all(digest(value) for value in hashed):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_DIGEST_INVALID")
+    p = report["premium_engine_a"]
+    if (p.get("status") not in (
+            "REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE")
+            or type(p.get("matched_observation_count")) is not int
+            or not 31 <= p["matched_observation_count"] <= 100):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_MARKET_INVALID")
+    metric = re.compile(r"-?(?:0|[1-9][0-9]{0,23})(?:\.[0-9]{1,24})?\Z")
+    if any(value is not None and (
+            type(value) is not str or metric.fullmatch(value) is None)
+           for value in (p[k] for k in (
+               "security_return_pct", "benchmark_return_pct", "beta",
+               "regression_intercept_daily_pct", "r_squared"))):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_METRIC_INVALID")
+    if (not digest(report.get("evidence_sha256"))
+            or not compare_digest(
+                report["evidence_sha256"],
+                sha256(_canonical({k: v for k, v in report.items()
+                                   if k != "evidence_sha256"})).hexdigest())):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_HASH_MISMATCH")
     raw = _canonical(report)
     if len(raw) > 16384:
         raise ValueError("LINKED_EVIDENCE_TOO_LARGE")
