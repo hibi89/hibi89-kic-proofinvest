@@ -242,14 +242,38 @@ def linked_evidence_json_bytes(report: dict) -> bytes:
 
     hashed = [report["local_report_sha256"]]
     hashed.extend(report["four_source_sha256"].values())
-    hashed.extend((report["local_engine_a"]["input_sha256"],
-                   report["engine_b"]["companyfacts_sha256"],
-                   report["engine_c"]["input_sha256"]))
+    hashed.append(report["engine_b"]["companyfacts_sha256"])
     hashed.extend(report["premium_engine_a"][k] for k in (
         "stock_response_sha256", "index_response_sha256",
         "analysis_payload_sha256"))
     if not all(digest(value) for value in hashed):
         raise ValueError("LINKED_EVIDENCE_EXPORT_DIGEST_INVALID")
+    for name, allowed in (
+        ("local_engine_a", ("REPORTED_UNVERIFIED",
+                            "INSUFFICIENT_MARKET_VARIANCE", "UNAVAILABLE")),
+        ("engine_c", ("OBSERVED_COMPARISON_UNVERIFIED",
+                       "INSUFFICIENT_EVIDENCE", "UNAVAILABLE")),
+    ):
+        item = report[name]
+        if item.get("status") not in allowed:
+            raise ValueError("LINKED_EVIDENCE_EXPORT_ENGINE_STATUS_INVALID")
+        if ((item["input_sha256"] is not None)
+                if item["status"] == "UNAVAILABLE"
+                else (not digest(item["input_sha256"]))):
+            raise ValueError("LINKED_EVIDENCE_EXPORT_ENGINE_DIGEST_INVALID")
+    if report["engine_b"].get("status") not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE"):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_ENGINE_B_INVALID")
+    issuer = report["issuer"]
+    if (type(issuer["ticker"]) is not str
+            or re.fullmatch(r"[A-Z0-9.^_-]{1,20}", issuer["ticker"]) is None
+            or type(issuer["cik"]) is not str
+            or re.fullmatch(r"[0-9]{10}", issuer["cik"]) is None
+            or type(issuer["accession"]) is not str
+            or re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", issuer["accession"]) is None
+            or any(type(issuer[k]) is not str
+                   or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", issuer[k]) is None
+                   for k in ("as_of", "filing_date"))):
+        raise ValueError("LINKED_EVIDENCE_EXPORT_ISSUER_INVALID")
     p = report["premium_engine_a"]
     if (p.get("status") not in (
             "REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE")
