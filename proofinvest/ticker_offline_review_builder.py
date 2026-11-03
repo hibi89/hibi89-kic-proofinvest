@@ -122,6 +122,22 @@ def build_offline_initial_review(
                 or replay.get("source_rights_verified") is not False):
             return _blocked("INDEPENDENT_PACKET_REPLAY_FAILED")
 
+        from .ticker_source_clearance_packet import (
+            build_source_clearance_packet, inspect_source_clearance_packet,
+        )
+        clearance_bytes = build_source_clearance_packet(
+            packet=packet_bytes, sources=sources, stock_raw=stock_raw,
+            index_raw=index_raw, market_json=market_json,
+            industry_json=industry_json,
+        )
+        clearance_check = inspect_source_clearance_packet(
+            clearance_bytes, review_packet=packet_bytes,
+        )
+        if (clearance_check.get("status") !=
+                "MATCHED_REPORT_EXTERNAL_CLEARANCES_STILL_PENDING"
+                or clearance_check.get("source_rights_verified") is not False):
+            return _blocked("SOURCE_CLEARANCE_REPORT_NOT_LINKED")
+
         return {
             **_blocked(""),
             "status": "LOCAL_INITIAL_REVIEW_READY_UNVERIFIED",
@@ -134,6 +150,8 @@ def build_offline_initial_review(
             "local_replay_verified": True,
             "market_math_recomputed": True,
             "review_packet": packet_bytes,
+            "source_clearance_report": clearance_bytes,
+            "source_clearance_status": clearance_check["status"],
         }
     except (ValueError, TypeError, KeyError, AttributeError, UnicodeError,
             RecursionError, OverflowError):
