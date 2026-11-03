@@ -1,0 +1,193 @@
+"""P143: exact local seven-stage replay plus in-memory stock/real-index Engine A.
+
+This is a redacted *local* evidence wrapper, not a publisher signature,
+licensed display grant, authenticated market timestamp or trading authorization.
+The unchanged P117 report remains independently replayable as before.
+No HTTP, storage, account change or SEC requests are performed here.
+"""
+from __future__ import annotations
+
+from hashlib import sha256
+from hmac import compare_digest
+import json
+from typing import Any
+
+
+_SCHEMA = "kuodra.local-seven-step-market-pair-evidence.v1"
+_STATUS = "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED"
+
+
+def _hold(reason: str) -> dict[str, Any]:
+    return {
+        "schema": _SCHEMA, "status": "BLOCKED", "reason_code": reason,
+        "source_authenticated": False, "source_rights_verified": False,
+        "guard_executed": False, "audit_written": False,
+        "ai_agent_executed": False, "trade_executed": False,
+        "external_sharing_allowed": False, "full_a_b_c_ready": False,
+    }
+
+
+def _canonical(payload: dict) -> bytes:
+    return (json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                       separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+
+
+def build_linked_market_evidence(
+    *, workflow: Any, sources: Any, stock: Any, index: Any,
+    market_json: bytes | None = None, industry_json: bytes | None = None,
+) -> dict[str, Any]:
+    """Compute a new derived receipt from the same original in-memory inputs.
+
+    Local financials and optional A/C are independently replayed with their
+    exact bytes; the P141 stock/NDX observations are re-fed to Decimal OLS.
+    Their claimed vendor hashes are carried as identifiers only: callers
+    cannot prove publisher origin or market rights from these receipts alone.
+    """
+    if (type(workflow) is not dict or type(sources) is not dict
+            or type(stock) is not dict or type(index) is not dict):
+        return _hold("EVIDENCE_INPUTS_REQUIRED")
+    try:
+        from .ticker_local_dashboard import summarize_local_ticker_dashboard
+        from .ticker_local_report import verify_local_report
+        from .market_pair_engine_a import analyze_price_index_pair
+
+        panel = summarize_local_ticker_dashboard(workflow)
+        if (panel.get("status") != "LOCAL_SOURCE_REPLAYED_UNVERIFIED"
+                or panel.get("guard_policy") != "HOLD"
+                or workflow.get("network_requests") != 0
+                or workflow.get("tool_calls_executed") != 7
+                or workflow.get("guard_executed") is not False):
+            return _hold("LOCAL_WORKFLOW_OR_GUARD_NOT_ELIGIBLE")
+        check = verify_local_report(
+            workflow["report"], sources=sources,
+            market_json=market_json, industry_json=industry_json,
+        )
+        if check.get("status") != "PASS":
+            return _hold("INDEPENDENT_LOCAL_REPLAY_FAILED")
+        issuer = workflow["report"]["issuer"]
+        revenue = workflow["revenue"]
+        if (issuer.get("ticker") != panel["ticker"]
+                or issuer.get("cik") != panel["cik"]
+                or issuer.get("as_of") != panel["as_of"]
+                or issuer.get("filing_date") != revenue.get("filing_date")
+                or workflow["report"].get("guard_policy_preview") != "HOLD"):
+            return _hold("ISSUER_FILING_OR_GUARD_MISMATCH")
+        market = analyze_price_index_pair(
+            stock=stock, index=index,
+            ticker=issuer["ticker"], issuer_cik=issuer["cik"],
+            filing_date=issuer["filing_date"], as_of=issuer["as_of"],
+            benchmark="NASDAQ_100",
+        )
+        if (market.get("status") != "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED"
+                or market.get("source_authenticated") is not False
+                or market.get("source_rights_verified") is not False
+                or market.get("guard_executed") is not False
+                or market.get("full_a_b_c_ready") is not False
+                or market.get("trade_executed") is not False
+                or type(market.get("market_analysis")) is not dict):
+            return _hold("PRICE_INDEX_REPLAY_OR_TRUST_INVALID")
+        facts = market["market_analysis"]
+        if facts.get("status") not in ("REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE"):
+            return _hold("ENGINE_A_MATH_NOT_ELIGIBLE")
+        result = {
+            "schema": _SCHEMA,
+            "status": _STATUS,
+            "reason_code": "REPLAY_IS_NOT_PUBLISHER_AUTHENTICATION",
+            "issuer": {
+                "ticker": issuer["ticker"], "cik": issuer["cik"],
+                "accession": issuer["accession"],
+                "as_of": issuer["as_of"],
+                "filing_date": issuer["filing_date"],
+            },
+            "local_report_sha256": workflow["report"]["report_sha256"],
+            "four_source_sha256": dict(workflow["report"]["source_sha256"]),
+            "local_engine_a": {
+                "status": panel["engine_a"]["status"],
+                "input_sha256": workflow["report"]["engine_a_input_sha256"],
+            },
+            "engine_b": {
+                "status": panel["engine_b"]["status"],
+                "companyfacts_sha256": workflow["engine_b"]["companyfacts_sha256"],
+            },
+            "engine_c": {
+                "status": panel["engine_c"]["status"],
+                "input_sha256": workflow["report"]["engine_c_input_sha256"],
+            },
+            "premium_engine_a": {
+                "status": facts["status"], "benchmark": "NASDAQ_100",
+                "basis": "PRICE_ONLY_CLOSE",
+                "stock_response_sha256": market["stock_response_sha256"],
+                "index_response_sha256": market["index_response_sha256"],
+                "analysis_payload_sha256": market["source_payload_sha256"],
+                "matched_observation_count": market["matched_observation_count"],
+                "security_return_pct": facts["security_return_pct"],
+                "benchmark_return_pct": facts["benchmark_return_pct"],
+                "beta": facts["beta"],
+                "regression_intercept_daily_pct": facts["regression_intercept_daily_pct"],
+                "r_squared": facts["r_squared"],
+            },
+            "guard_policy_preview": "HOLD",
+            "local_seven_step_replay_passed": True,
+            "local_market_pair_math_recomputed": True,
+            "provider_response_origin_authenticated": False,
+            "market_vintage_authenticated": False,
+            "source_authenticated": False,
+            "source_rights_verified": False,
+            "guard_executed": False, "audit_written": False,
+            "ai_agent_executed": False, "trade_executed": False,
+            "external_sharing_allowed": False,
+            "full_a_b_c_ready": False,
+        }
+        result["evidence_sha256"] = sha256(_canonical(result)).hexdigest()
+        if len(_canonical(result)) > 16384:
+            return _hold("EVIDENCE_OUTPUT_TOO_LARGE")
+        return result
+    except (ValueError, TypeError, KeyError, AttributeError,
+            OverflowError, RecursionError, UnicodeError):
+        return _hold("EVIDENCE_REPLAY_INPUT_INVALID")
+
+
+def verify_linked_market_evidence(
+    report: Any, *, workflow: Any, sources: Any, stock: Any, index: Any,
+    market_json: bytes | None = None, industry_json: bytes | None = None,
+) -> dict[str, Any]:
+    """Independently recompute both the original report and market pair.
+
+    Requires the original local bytes and in-memory price receipts. It never
+    certifies a vendor-provided hash, contract rights or paid entitlement.
+    """
+    result = {"schema": "kuodra.local-market-evidence-verification.v1",
+              "status": "FAIL", "reason_code": "EVIDENCE_OR_SOURCES_INVALID",
+              "local_replay_verified": False, "market_math_recomputed": False,
+              "source_authenticated": False, "source_rights_verified": False,
+              "network_requests": 0, "trade_executed": False}
+    if type(report) is not dict or report.get("schema") != _SCHEMA:
+        return result
+    try:
+        digest = report.get("evidence_sha256")
+        if type(digest) is not str or len(digest) != 64:
+            return result
+        claimed = {k: v for k, v in report.items() if k != "evidence_sha256"}
+        if not compare_digest(digest, sha256(_canonical(claimed)).hexdigest()):
+            return result
+        rebuilt = build_linked_market_evidence(
+            workflow=workflow, sources=sources, stock=stock, index=index,
+            market_json=market_json, industry_json=industry_json,
+        )
+        if rebuilt.get("status") != _STATUS or rebuilt != report:
+            return result
+        result.update(status="PASS", reason_code="EXACT_LOCAL_AND_MARKET_MATH_REPLAY",
+                      local_replay_verified=True, market_math_recomputed=True)
+    except (ValueError, TypeError, KeyError, RecursionError, OverflowError, UnicodeError):
+        pass
+    return result
+
+
+def linked_evidence_json_bytes(report: dict) -> bytes:
+    """Redacted, locally downloadable derived metrics; no raw close series."""
+    if type(report) is not dict or report.get("status") != _STATUS:
+        raise ValueError("LINKED_EVIDENCE_UNAVAILABLE")
+    raw = _canonical(report)
+    if len(raw) > 16384:
+        raise ValueError("LINKED_EVIDENCE_TOO_LARGE")
+    return raw

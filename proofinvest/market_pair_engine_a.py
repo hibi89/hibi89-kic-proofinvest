@@ -192,7 +192,8 @@ def fetch_and_analyze_market_pair(*, ticker: str, issuer_cik: str,
                                   explicit_click: bool = False,
                                   provider_rights_approved: bool = False,
                                   premium_entitlement_approved: bool = False,
-                                  stock_transport=None, index_transport=None) -> dict:
+                                  stock_transport=None, index_transport=None,
+                                  validated_pair_callback=None) -> dict:
     """Fail-closed single-click plan: at most one stock and one index GET.
 
     The issuer CIK/date must come from a *separately source-bound* filing review.
@@ -242,4 +243,13 @@ def fetch_and_analyze_market_pair(*, ticker: str, issuer_cik: str,
         filing_date=filing_date, as_of=as_of, benchmark=benchmark)
     report["network_requests"] = (
         stock.get("requests_attempted", 0) + index.get("requests_attempted", 0))
+    # Only the already validated in-memory receipts reach an optional local
+    # evidence builder. Do not persist raw responses, credentials or rows.
+    if (report.get("status") == "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED"
+            and callable(validated_pair_callback)):
+        try:
+            validated_pair_callback(stock, index)
+        except (ValueError, TypeError, KeyError, AttributeError,
+                OverflowError, RecursionError):
+            pass  # The market result never becomes a verified local report.
     return report

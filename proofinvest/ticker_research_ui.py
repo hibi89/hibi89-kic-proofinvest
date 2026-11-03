@@ -592,6 +592,31 @@ def render_single_ticker_search(st) -> None:
                     else:
                         if state is not None:
                             state["kuodra_p141_pair_attempt"] = fingerprint
+                        # Build a separate redacted report while the
+                        # receipt pair is still in memory. Both the original
+                        # seven-step report and Engine A math are replayed.
+                        linked_holder = {}
+                        def _capture_linked_pair(stock, index):
+                            from .ticker_market_pair_evidence import (
+                                build_linked_market_evidence,
+                                verify_linked_market_evidence,
+                            )
+                            linked = build_linked_market_evidence(
+                                workflow=workflow, sources=raw_local,
+                                stock=stock, index=index,
+                                market_json=market_data,
+                                industry_json=industry_data,
+                            )
+                            check = verify_linked_market_evidence(
+                                linked, workflow=workflow, sources=raw_local,
+                                stock=stock, index=index,
+                                market_json=market_data,
+                                industry_json=industry_data,
+                            )
+                            if (linked.get("status") ==
+                                    "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED"
+                                    and check.get("status") == "PASS"):
+                                linked_holder["report"] = linked
                         market_result = fetch_and_analyze_market_pair(
                             ticker=key, issuer_cik=local_receipt["cik"],
                             filing_date=revenue["filing_date"], as_of=as_of,
@@ -599,6 +624,7 @@ def render_single_ticker_search(st) -> None:
                             benchmark="NASDAQ_100", explicit_click=True,
                             provider_rights_approved=True,
                             premium_entitlement_approved=True,
+                            validated_pair_callback=_capture_linked_pair,
                         )
                         st.subheader("실제 종목·NASDAQ-100 자료 기반 Engine A (미인증)")
                         if market_result["status"] == "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED":
@@ -619,8 +645,31 @@ def render_single_ticker_search(st) -> None:
                                 "guard_executed": False,
                                 "ai_agent_executed": False, "trade_executed": False,
                             })
-                            st.warning("Premium 이용권한과 실제 응답 출처·시점은 별도 검증 필요. "
-                                       "Engine B/C와의 결합 결과가 아니며 외부 공유·매매를 허용하지 않습니다.")
+                            if "report" in linked_holder:
+                                from .ticker_market_pair_evidence import linked_evidence_json_bytes
+                                linked = linked_holder["report"]
+                                st.subheader("7단계 SEC·B/C + 실제 지수 Engine A 통합 증거")
+                                st.json({
+                                    "status": linked["status"],
+                                    "local_report_sha256": linked["local_report_sha256"],
+                                    "evidence_sha256": linked["evidence_sha256"],
+                                    "engine_b": linked["engine_b"]["status"],
+                                    "engine_c": linked["engine_c"]["status"],
+                                    "market_math_recomputed": True,
+                                    "source_authenticated": False,
+                                    "source_rights_verified": False,
+                                    "full_a_b_c_ready": False,
+                                })
+                                st.download_button(
+                                    "통합 검산 근거 JSON (로컬 전용 · 미인증)",
+                                    data=linked_evidence_json_bytes(linked),
+                                    file_name="kuodra-local-market-linked-UNVERIFIED.json",
+                                    mime="application/json",
+                                    key="kuodra_p143_linked_market_report",
+                                )
+                            st.warning("실제 응답 출처·시점·재배포 권리는 별도 검증 필요. "
+                                       "통합 보고서는 로컬 수치 재검산만 증명하며 "
+                                       "외부 공유·매매·Guard 승인을 허용하지 않습니다.")
                         else:
                             st.warning("적법한 지수·종목 증거 확보 또는 기간 정합성 부족으로 분석 보류.")
                             st.code(market_result["reason_code"], language="text")
