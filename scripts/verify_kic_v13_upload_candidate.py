@@ -51,12 +51,14 @@ def verify(path: Path) -> dict[str, object]:
     if not raw.startswith(b"%PDF-") or b"%%EOF" not in raw[-256:]:
         raise Blocked("PDF_SIGNATURE_INVALID")
     return {
-        "status": "EXACT_APPROVED_V13_BYTES_PASS_NOT_SUBMITTED",
+        "status": "EXACT_FROZEN_V13_BYTES_PASS_OWNER_APPROVAL_PENDING",
         "filename": EXPECTED_NAME,
         "bytes": EXPECTED_SIZE,
         "sha256": EXPECTED_SHA256,
         "daker_submitted": False,
-        "owner_document_approval_recorded": True,
+        "owner_document_approval_recorded": False,
+        "approval_status": "OWNER_EXPLICIT_APPROVAL_REQUIRED",
+        "official_final_submission_confirmed": False,
         "pdf_layout_tested_here": False,
         "file_changed": False,
         "network_requests": 0,
