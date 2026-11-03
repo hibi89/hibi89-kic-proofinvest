@@ -1,4 +1,4 @@
-"""P133: synthetic-only offline tests; no private V13 PDF distributed."""
+"""P133: stdlib-only synthetic tests; never package the private V13 or fitz."""
 from __future__ import annotations
 
 from contextlib import redirect_stdout
@@ -7,12 +7,51 @@ from io import StringIO
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+import sys
 import unittest
 from unittest.mock import patch
 
-import fitz
-
 from scripts import verify_kic_v13_submission as preflight
+
+
+class _FakePage:
+    def __init__(self, number: int, urls: list[str]):
+        self.number = number
+        self.rect = SimpleNamespace(width=960, height=540)
+        self.urls = urls
+        self.outside = False
+
+    def get_text(self, mode=None):
+        if mode == "words":
+            return [(10, 10, 962 if self.outside else 40, 40, "synthetic")]
+        return f"PAGE{self.number} SECTION{self.number}"
+
+    def get_links(self):
+        return [{"kind": 2, "uri": url} for url in self.urls]
+
+
+class _FakePDF:
+    is_encrypted = False
+
+    def __init__(self):
+        self.pages = [_FakePage(i, [f"https://example.org/{i}"] if i <= 5 else [])
+                      for i in range(1, 11)]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def __len__(self):
+        return len(self.pages)
+
+    def __getitem__(self, key):
+        return self.pages[key]
+
+    def __iter__(self):
+        return iter(self.pages)
 
 
 class V13PreflightTests(unittest.TestCase):
@@ -20,27 +59,21 @@ class V13PreflightTests(unittest.TestCase):
         self.tmp = TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.path = Path(self.tmp.name) / preflight.EXPECTED_NAME
-        self.urls = {f"https://example.org/evidence/{i}" for i in range(5)}
-        document = fitz.open()
-        for index in range(10):
-            page = document.new_page(width=960, height=540)
-            page.insert_text((50, 60), f"page{index+1} SECTION{index+1}")
-            if index < 5:
-                page.insert_link({"kind": fitz.LINK_URI,
-                                  "from": fitz.Rect(50, 80, 200, 100),
-                                  "uri": f"https://example.org/evidence/{index}"})
-        self.original = document.tobytes()
-        document.close()
+        self.original = b"%PDF-1.7\nP133_SYNTHETIC_ONLY\n%%EOF"
         self.path.write_bytes(self.original)
+        self.pdf = _FakePDF()
+        self.fitz = SimpleNamespace(LINK_URI=2, open=lambda **kwargs: self.pdf)
         self.patches = [
             patch.object(preflight, "EXPECTED_BYTES", len(self.original)),
             patch.object(preflight, "EXPECTED_SHA256", sha256(self.original).hexdigest()),
             patch.object(preflight, "REQUIRED", {i: (f"SECTION{i}",) for i in (2, 3, 4, 5, 7, 8, 9)}),
-            patch.object(preflight, "EXPECTED_LINKS", frozenset(self.urls)),
+            patch.object(preflight, "EXPECTED_LINKS",
+                         frozenset(f"https://example.org/{i}" for i in range(1, 6))),
+            patch.dict(sys.modules, {"fitz": self.fitz}),
         ]
-        for p in self.patches:
-            p.start()
-            self.addCleanup(p.stop)
+        for item in self.patches:
+            item.start()
+            self.addCleanup(item.stop)
 
     def run_cli(self, path=None):
         out = StringIO()
@@ -104,10 +137,25 @@ class V13PreflightTests(unittest.TestCase):
         self.assertEqual((code, result["reason_code"]), (2, "PDF_LINK_SET_CHANGED"))
 
     def test_pdf_parser_error_sanitized(self):
-        with patch("fitz.open", side_effect=RuntimeError("PRIVATE_PATH_SECRET")):
+        with patch.object(self.fitz, "open", side_effect=RuntimeError("PRIVATE_PATH_SECRET")):
             code, result = self.run_cli()
         self.assertEqual((code, result["reason_code"]), (2, "PDF_OPEN_OR_PARSER_FAILED"))
         self.assertNotIn("PRIVATE_PATH_SECRET", json.dumps(result))
+
+    def test_encrypted_pdf_blocks(self):
+        self.pdf.is_encrypted = True
+        code, result = self.run_cli()
+        self.assertEqual((code, result["reason_code"]), (2, "PDF_ENCRYPTED_OR_NOT_TEN_PAGES"))
+
+    def test_page_outside_bounds_blocks(self):
+        self.pdf.pages[4].outside = True
+        code, result = self.run_cli()
+        self.assertEqual((code, result["reason_code"]), (2, "PDF_TEXT_OUTSIDE_PAGE"))
+
+    def test_missing_page_blocks(self):
+        self.pdf.pages.pop()
+        code, result = self.run_cli()
+        self.assertEqual((code, result["reason_code"]), (2, "PDF_ENCRYPTED_OR_NOT_TEN_PAGES"))
 
 
 if __name__ == "__main__":
