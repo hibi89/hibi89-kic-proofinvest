@@ -103,9 +103,15 @@ def inspect_review_bundle_bytes(raw: bytes) -> dict[str, Any]:
             names = [x.filename for x in infos]
             allowed = (set(_BASE) | {_MANIFEST}, set(_WITH_CSV) | {_MANIFEST})
             if (len(names) not in (4, 5)
+                    or len(names) != len(set(names))
                     or set(names) not in allowed
                     or names != sorted(names)
+                    or archive.comment
+                    or sum(x.file_size for x in infos) > _MAX_BYTES
                     or any(
+                        x.comment
+                        or (x.external_attr >> 16) & 0o170000 == 0o120000
+                        or x.is_dir()
                         x.compress_type != zipfile.ZIP_STORED
                         or x.flag_bits & 0x1
                         or x.file_size <= 0
