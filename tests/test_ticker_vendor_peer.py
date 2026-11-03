@@ -188,19 +188,19 @@ class P146PeerContractTests(unittest.TestCase):
                 return "https://api.sec-api.io"
             def read(self, limit):
                 return b'{"filings":[]}'
+        checks = []
         class Opener:
             def open(self, request, timeout):
-                self_req = request
-                self.assertEqual(request.get_method(), "POST")
-                self.assertEqual(request.get_header("Content-type"), "application/json")
-                self.assertEqual(request.get_header("Authorization"), _KEY)
-                self.assertEqual(timeout, 8)
+                checks.append((request.get_method(),
+                               request.get_header("Content-type"),
+                               request.get_header("Authorization"), timeout))
                 return Response()
         with patch("proofinvest.ticker_provider_sec_api.build_opener",
                    return_value=Opener()) as stub:
             out = _vendor_http("POST", "https://api.sec-api.io",
                                b'{"query":"cik:320193"}', _KEY, 400000)
         stub.assert_called_once()
+        self.assertEqual(checks, [("POST", "application/json", _KEY, 8)])
         self.assertEqual(out, b'{"filings":[]}')
         with self.assertRaises(ValueError):
             _vendor_http("GET", "https://api.sec-api.io/path",
