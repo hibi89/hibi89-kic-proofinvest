@@ -17,7 +17,7 @@ import time
 import urllib.request
 
 from proofinvest.ticker_review_packet import build_review_packet, review_packet_json_bytes
-from tests.test_ticker_market_pair_evidence import _build, _prepared
+from tests.test_ticker_market_pair_evidence import _build, _prepared, _body
 
 APP = Path(__file__).resolve().parents[1] / "streamlit_app.py"
 URL = "http://127.0.0.1:8572"
@@ -170,6 +170,87 @@ def run(output: Path) -> dict:
                             timeout=22000,
                         )
                         expect(page.get_by_text(_OK, exact=True)).to_have_count(0)
+                        # P166: actual Chromium full original-byte replay,
+                        # not merely the cached packet's internal checksum.
+                        upload("p166-complete-review.json", raw)
+                        mode = page.get_by_text(
+                            "원본 SEC·주가·NDX 파일로 독립 산술 재검산 펼치기 (로컬 전용)",
+                            exact=True,
+                        )
+                        mode.click()
+                        verifier = page.get_by_role(
+                            "button",
+                            name="원본 SEC + 주가·NDX A/B/C 독립 재계산 (네트워크 없음)",
+                            exact=True,
+                        )
+                        expect(verifier).to_be_disabled(timeout=12000)
+
+                        _, sec_sources, market, industry, _, _ = _prepared()
+                        def upload_original(label, name, payload):
+                            widget = page.get_by_test_id("stFileUploader").filter(
+                                has=page.get_by_text(label, exact=True),
+                            ).locator('input[type="file"]')
+                            expect(widget).to_have_count(1, timeout=12000)
+                            widget.set_input_files({
+                                "name": name,
+                                "mimeType": "application/json",
+                                "buffer": payload,
+                            })
+                            expect(page.get_by_role(
+                                "button", name="Remove " + name, exact=True,
+                            )).to_be_visible(timeout=22000)
+
+                        originals = (
+                            ("원본 SEC ticker_map JSON (재검산)", "p166-map.json",
+                             sec_sources["ticker_map"]),
+                            ("원본 SEC submissions JSON (재검산)", "p166-submissions.json",
+                             sec_sources["submissions"]),
+                            ("원본 SEC CompanyFacts JSON (재검산)", "p166-facts.json",
+                             sec_sources["companyfacts"]),
+                            ("원본 SEC 10-K HTML (재검산)", "p166-original.xhtml",
+                             sec_sources["original_10k"]),
+                            ("종목 일별 응답 JSON 원본 (재검산)", "p166-stock.json",
+                             _body("NVDA")),
+                            ("실제 Nasdaq-100 NDX 일별 응답 JSON 원본 (재검산)",
+                             "p166-ndx.json", _body("NDX", 10000)),
+                            ("기존 Engine A 로컬 입력 JSON (패키지에 포함된 경우 필수)",
+                             "p166-market.json", market),
+                            ("기존 Engine C 로컬 입력 JSON (패키지에 포함된 경우 필수)",
+                             "p166-industry.json", industry),
+                        )
+                        for label, name, payload in originals:
+                            upload_original(label, name, payload)
+                        expect(verifier).to_be_enabled(timeout=22000)
+                        verifier.click()
+                        expect(page.get_by_text(
+                            "원본 6종 해시 + SEC/Engine A/B/C 산술 재계산 PASS (출처 미인증)",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_text(
+                            "EXACT_ORIGINAL_BYTES_HASH_MISMATCH", exact=True,
+                        )).to_have_count(0)
+                        page.screenshot(
+                            path=str(output / "p166-valid-source-browser.png"),
+                            full_page=True,
+                        )
+                        # Even a whitespace-only changed market source is a
+                        # different exact byte input, so replay must fail.
+                        upload_original(
+                            "종목 일별 응답 JSON 원본 (재검산)",
+                            "p166-tampered-stock.json", _body("NVDA") + b" ",
+                        )
+                        expect(page.get_by_text(
+                            "원본 6종 해시 + SEC/Engine A/B/C 산술 재계산 PASS (출처 미인증)",
+                            exact=True,
+                        )).to_have_count(0, timeout=22000)
+                        verifier.click()
+                        expect(page.get_by_text(
+                            "EXACT_ORIGINAL_BYTES_HASH_MISMATCH", exact=True,
+                        )).to_be_visible(timeout=22000)
+                        page.screenshot(
+                            path=str(output / "p166-rejected-source-browser.png"),
+                            full_page=True,
+                        )
                         if forbidden_requests:
                             raise AssertionError(
                                 "P165_EXTERNAL_BROWSER_REQUEST_BLOCKED: "
@@ -202,7 +283,8 @@ def run(output: Path) -> dict:
         "sqlite_guard_audit_written": False,
         "publisher_source_authenticated": False,
         "vendor_rights_verified": False,
-        "original_sec_and_price_replayed_in_browser": False,
+        "synthetic_original_sec_and_price_replayed_in_browser": True,
+        "tampered_original_blocked_in_browser": True,
         "trade_executed": False,
         "test_packet_sha256": sha256(raw).hexdigest(),
     }
