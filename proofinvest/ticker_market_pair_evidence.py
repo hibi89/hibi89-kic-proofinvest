@@ -7,6 +7,7 @@ No HTTP, storage, account change or SEC requests are performed here.
 """
 from __future__ import annotations
 
+from datetime import date
 from hashlib import sha256
 from hmac import compare_digest
 import json
@@ -89,6 +90,16 @@ def build_linked_market_evidence(
         facts = market["market_analysis"]
         if facts.get("status") not in ("REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE"):
             return _hold("ENGINE_A_MATH_NOT_ELIGIBLE")
+        # Recheck the linked 7-stage filing + daily-market receipt boundary.
+        # The market adapter's result is untrusted until this local gate passes.
+        first = date.fromisoformat(market["matched_period_start"])
+        last = date.fromisoformat(market["matched_period_end"])
+        filing = date.fromisoformat(issuer["filing_date"])
+        cutoff = date.fromisoformat(issuer["as_of"])
+        if (market["matched_period_start"] != first.isoformat()
+                or market["matched_period_end"] != last.isoformat()
+                or not filing < first <= last <= cutoff):
+            return _hold("MARKET_FILING_CUTOFF_MISMATCH")
         result = {
             "schema": _SCHEMA,
             "status": _STATUS,
