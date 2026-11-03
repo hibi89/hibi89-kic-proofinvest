@@ -39,9 +39,22 @@ class UploadGateTests(unittest.TestCase):
         code, result = self.check()
         self.assertEqual(code, 0)
         self.assertFalse(result["daker_submitted"])
+        self.assertFalse(result["official_final_submission_confirmed"])
+        self.assertFalse(result["owner_document_approval_recorded"])
+        self.assertEqual(result["approval_status"], "OWNER_EXPLICIT_APPROVAL_REQUIRED")
+        self.assertEqual(result["status"], "EXACT_FROZEN_V13_BYTES_PASS_OWNER_APPROVAL_PENDING")
         self.assertFalse(result["file_changed"])
         self.assertEqual(result["network_requests"], 0)
         self.assertEqual(self.file.read_bytes(), before)
+
+    def test_byte_identity_is_not_owner_approval_and_not_a_portal_receipt(self):
+        code, result = self.check()
+        self.assertEqual(code, 0)
+        self.assertIn("OWNER_APPROVAL_PENDING", result["status"])
+        self.assertNotIn("EXACT_APPROVED_V13_BYTES", result["status"])
+        self.assertIs(result["owner_document_approval_recorded"], False)
+        self.assertIs(result["official_final_submission_confirmed"], False)
+        self.assertIs(result["daker_submitted"], False)
 
     def test_wrong_filename(self):
         code, result = self.check(self.file.with_name("different.pdf"))
