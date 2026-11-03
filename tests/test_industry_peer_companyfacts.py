@@ -78,13 +78,23 @@ class PeerCompanyFactsTests(unittest.TestCase):
             data, raw = peer_input()
             src = next(s for s in data["sources"] if s["id"] == "peer-now")
             src[field] = {
-                "sha256": "a" * 64,
+                "sha256": "9" * 64,
                 "url": "https://www.sec.gov/Archives/wrong-source",
                 "published_at": "2026-02-02",
             }[field]
             with self.subTest(field=field), self.assertRaisesRegex(
                     ValueError, "PEER_FACTS_SOURCE_HASH_OR_DATE_MISMATCH"):
                 check(data, raw)
+
+    def test_peer_digest_colliding_with_target_is_rejected_before_byte_binding(self):
+        # A forged peer digest that reuses a different issuer's source is
+        # a cross-issuer collision, not merely a local peer-byte mismatch.
+        data, raw = peer_input()
+        src = next(s for s in data["sources"] if s["id"] == "peer-now")
+        src["sha256"] = "a" * 64  # target-old from synthetic fixture
+        with self.assertRaisesRegex(
+                ValueError, "COHORT_CROSS_ISSUER_SOURCE_COLLISION"):
+            check(data, raw)
 
     def test_no_forged_peer_cik_or_accession(self):
         data, raw = peer_input()

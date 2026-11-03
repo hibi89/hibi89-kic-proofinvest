@@ -976,7 +976,7 @@ def render_single_ticker_search(st) -> None:
                         st.warning("유료 조회 이력 검증 실패: 추가 API 요청을 차단합니다. "
                                    "새 세션에서만 별도 승인 후 다시 시작할 수 있습니다.")
                     elif attempt == "DUPLICATE":
-                        st.warning("이 세션에서 동일 자료로 이미 유료 조회를 시도했습니다. "
+                        st.warning("중복 조회 차단: 이 세션에서 동일 자료로 이미 유료 조회를 시도했습니다. "
                                    "추가 API 호출 없이 기존 보고서만 확인합니다.")
                         _p153_render_cached_linked_report(
                             st, ticker=key, as_of=as_of,

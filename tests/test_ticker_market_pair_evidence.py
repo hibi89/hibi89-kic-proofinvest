@@ -672,6 +672,7 @@ class LinkedEvidenceTests(unittest.TestCase):
         from proofinvest import ticker_research_ui as ui
         from proofinvest import ticker_sec_transport as sec_transport
         from proofinvest.market_pair_engine_a import analyze_price_index_pair
+        from proofinvest.ticker_review_packet import build_review_packet as real_build_packet
         from tests.test_ticker_research_ui import FakeSt, Uploaded
 
         _, raw, market, industry, stock, index = _prepared()
@@ -697,6 +698,15 @@ class LinkedEvidenceTests(unittest.TestCase):
                 filing_date=kwargs["filing_date"], as_of=kwargs["as_of"])
             result["network_requests"] = 2
             return result
+        # P160 first builds and independently replays a valid packet.
+        # Force only the subsequent P159 UI export to fail, so this
+        # regression actually exercises the independent-download fallback.
+        packet_build_count = [0]
+        def fail_second_packet_build(linked):
+            packet_build_count[0] += 1
+            if packet_build_count[0] == 2:
+                raise ValueError("synthetic invalid packet")
+            return real_build_packet(linked)
         with (
             patch.dict(os.environ, {**_GATES,
                                     "KUODRA_ENABLE_LOCAL_SOURCE_UI": "1",
@@ -706,11 +716,12 @@ class LinkedEvidenceTests(unittest.TestCase):
                          side_effect=AssertionError("NO_LIVE_SEC")) as sec_net,
             patch("proofinvest.market_pair_engine_a.fetch_and_analyze_market_pair",
                   side_effect=fake_market_pair) as provider,
-            patch("proofinvest.ticker_review_packet.review_packet_json_bytes",
-                  side_effect=ValueError("synthetic invalid packet")),
+            patch("proofinvest.ticker_review_packet.build_review_packet",
+                  side_effect=fail_second_packet_build),
         ):
             ui.render_single_ticker_search(st)
         provider.assert_called_once()
+        self.assertEqual(packet_build_count[0], 2)
         sec_net.assert_not_called()
         download_labels = [item["label"] for kind, item in st.messages
                            if kind == "download"]
