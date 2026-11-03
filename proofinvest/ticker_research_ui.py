@@ -1180,13 +1180,15 @@ def render_single_ticker_search(st) -> None:
                     csv_index = None
                     if csv_mode:
                         from .local_market_csv_bridge import normalize_market_csv
+                        stock_csv_raw = _read_uploaded(offline_stock_csv, 32768)
+                        index_csv_raw = _read_uploaded(offline_ndx_csv, 32768)
                         csv_stock = normalize_market_csv(
-                            _read_uploaded(offline_stock_csv, 32768),
-                            symbol=key, as_of=as_of, is_index=False,
+                            stock_csv_raw, symbol=key, as_of=as_of,
+                            is_index=False,
                         )
                         csv_index = normalize_market_csv(
-                            _read_uploaded(offline_ndx_csv, 32768),
-                            symbol="NDX", as_of=as_of, is_index=True,
+                            index_csv_raw, symbol="NDX", as_of=as_of,
+                            is_index=True,
                         )
                         stock_input = csv_stock["normalized_json"]
                         index_input = csv_index["normalized_json"]
@@ -1207,6 +1209,8 @@ def render_single_ticker_search(st) -> None:
                         )
                         csv_lineage = build_csv_lineage_receipt(
                             stock=csv_stock, index=csv_index,
+                            stock_csv_raw=stock_csv_raw,
+                            index_csv_raw=index_csv_raw,
                             packet=result["review_packet"],
                         )
                         lineage_check = inspect_csv_lineage_receipt(
