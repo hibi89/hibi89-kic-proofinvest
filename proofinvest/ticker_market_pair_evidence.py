@@ -120,6 +120,8 @@ def build_linked_market_evidence(
                 "index_response_sha256": market["index_response_sha256"],
                 "analysis_payload_sha256": market["source_payload_sha256"],
                 "matched_observation_count": market["matched_observation_count"],
+                "matched_period_start": market["matched_period_start"],
+                "matched_period_end": market["matched_period_end"],
                 "security_return_pct": facts["security_return_pct"],
                 "benchmark_return_pct": facts["benchmark_return_pct"],
                 "beta": facts["beta"],
@@ -212,7 +214,8 @@ def linked_evidence_json_bytes(report: dict) -> bytes:
         "premium_engine_a": {
             "status", "benchmark", "basis", "stock_response_sha256",
             "index_response_sha256", "analysis_payload_sha256",
-            "matched_observation_count", "security_return_pct",
+            "matched_observation_count", "matched_period_start",
+            "matched_period_end", "security_return_pct",
             "benchmark_return_pct", "beta",
             "regression_intercept_daily_pct", "r_squared",
         },
@@ -274,7 +277,24 @@ def linked_evidence_json_bytes(report: dict) -> bytes:
                    or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", issuer[k]) is None
                    for k in ("as_of", "filing_date"))):
         raise ValueError("LINKED_EVIDENCE_EXPORT_ISSUER_INVALID")
+    # The exported paired period must be wholly after the filing and no
+    # later than the requested as-of date; these are local claims, not
+    # authenticated exchange or provider publication timestamps.
+    from datetime import date
     p = report["premium_engine_a"]
+    try:
+        period_start = date.fromisoformat(p["matched_period_start"])
+        period_end = date.fromisoformat(p["matched_period_end"])
+        filing_date = date.fromisoformat(issuer["filing_date"])
+        cutoff = date.fromisoformat(issuer["as_of"])
+        if (p["matched_period_start"] != period_start.isoformat()
+                or p["matched_period_end"] != period_end.isoformat()
+                or issuer["filing_date"] != filing_date.isoformat()
+                or issuer["as_of"] != cutoff.isoformat()
+                or not filing_date < period_start <= period_end <= cutoff):
+            raise ValueError("LINKED_EVIDENCE_EXPORT_PERIOD_INVALID")
+    except (ValueError, TypeError, KeyError) as exc:
+        raise ValueError("LINKED_EVIDENCE_EXPORT_PERIOD_INVALID") from exc
     if (p.get("status") not in (
             "REPORTED_UNVERIFIED", "INSUFFICIENT_MARKET_VARIANCE")
             or type(p.get("matched_observation_count")) is not int
