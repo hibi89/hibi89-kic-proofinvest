@@ -42,6 +42,8 @@ def reviewed_workflow():
                          "beta": "1.10", "r_squared": "0.25"},
             "engine_c": {"status": "OBSERVED_COMPARISON_UNVERIFIED",
                          "peer_count": 1,
+                         "peer_growth_observation_count": 1,
+                         "peer_growth_sample_scope": "SPARSE_PEER_GROWTH_UNVERIFIED",
                          "cohort_source_scope": "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED",
                          "input_sha256": "e" * 64, "source_authenticated": False,
                          "provider_rights_verified": False,
@@ -86,13 +88,15 @@ class DashboardUnitTests(TestCase):
         self.assertEqual(result["engine_b"]["cash_to_net_income_pct"], "95.00")
         self.assertEqual(result["engine_c"]["growth_gap_to_industry_pp"], "80.00")
         self.assertEqual(result["engine_c"]["peer_count"], 1)
+        self.assertEqual(result["engine_c"]["peer_growth_observation_count"], 1)
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["investment_recommendation"])
         st = FakeStreamlit()
         render_local_ticker_dashboard(st, workflow)
         self.assertIn(("metric", ("OLS 베타 (인과관계 아님)", "1.10")), st.events)
         self.assertIn(("metric", ("입력 동종기업 표본 수", "1")), st.events)
-        self.assertTrue(any(k == "warning" and "표본이 1개뿐" in v for k, v in st.events))
+        self.assertIn(("metric", ("성장률 계산 가능한 동종기업 수", "1")), st.events)
+        self.assertTrue(any(k == "warning" and "표본이 1개" in v for k, v in st.events))
         self.assertFalse(any(k == "code" for k, _ in st.events))
 
     def test_missing_market_industry_are_unavailable_not_zero(self):
@@ -164,6 +168,9 @@ class DashboardUnitTests(TestCase):
     def test_zero_peer_count_cannot_claim_nonempty_median(self):
         w = reviewed_workflow()
         w["supplementary"]["engine_c"]["peer_count"] = 0
+        w["supplementary"]["engine_c"]["peer_growth_observation_count"] = 0
+        w["supplementary"]["engine_c"]["peer_growth_sample_scope"] = (
+            "NO_COMPARABLE_PEER_GROWTH")
         result = summarize_local_ticker_dashboard(w)
         self.assertEqual(result["status"], "BLOCKED")
         self.assertEqual(result["reason_code"],
@@ -172,6 +179,42 @@ class DashboardUnitTests(TestCase):
         result = summarize_local_ticker_dashboard(w)
         self.assertEqual(result["status"], "LOCAL_SOURCE_REPLAYED_UNVERIFIED")
         self.assertEqual(result["engine_c"]["peer_count"], 0)
+        self.assertEqual(result["engine_c"]["peer_growth_observation_count"], 0)
+
+    def test_zero_base_peer_growth_is_explicitly_unavailable_on_dashboard(self):
+        w = reviewed_workflow()
+        c = w["supplementary"]["engine_c"]
+        c["peer_growth_observation_count"] = 0
+        c["peer_growth_sample_scope"] = "NO_COMPARABLE_PEER_GROWTH"
+        c["peer_median_growth_pct"] = None
+        result = summarize_local_ticker_dashboard(w)
+        self.assertEqual(result["status"], "LOCAL_SOURCE_REPLAYED_UNVERIFIED")
+        self.assertEqual(result["engine_c"]["peer_count"], 1)
+        self.assertEqual(result["engine_c"]["peer_growth_observation_count"], 0)
+        self.assertIsNone(result["engine_c"]["peer_median_growth_pct"])
+        st = FakeStreamlit()
+        render_local_ticker_dashboard(st, w)
+        self.assertIn(("metric", ("성장률 계산 가능한 동종기업 수", "0")),
+                      st.events)
+        self.assertTrue(any(
+            kind == "warning" and "업종 대표값" in value
+            for kind, value in st.events))
+        self.assertIn(("metric", ("동종기업 성장률 중앙값", "자료 없음")),
+                      st.events)
+
+    def test_peer_growth_count_greater_than_submitted_count_blocks(self):
+        for key, invalid in (
+            ("peer_growth_observation_count", 2),
+            ("peer_growth_observation_count", True),
+            ("peer_growth_sample_scope", "COMPARATIVE_PEER_GROWTH_UNVERIFIED"),
+        ):
+            w = reviewed_workflow()
+            w["supplementary"]["engine_c"][key] = invalid
+            with self.subTest(key=key):
+                result = summarize_local_ticker_dashboard(w)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertEqual(result["reason_code"],
+                                 "ENGINE_C_USABLE_PEER_SAMPLE_INVALID")
 
     def test_bad_structures_fail_closed_not_crash(self):
         for value in (None, {}, "wrong", reviewed_workflow() | {"tool_trace": None},
