@@ -318,6 +318,41 @@ def run(output: Path) -> dict:
                                 "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED"
                                 or receipt["ticker"] != "NVDA"):
                             raise AssertionError("P167_PACKET_CONTRACT_INVALID")
+                        # P168 real Chromium: a *separate*, redacted
+                        # original-input hash and legal-rights gap sheet.
+                        with page.expect_download(timeout=20000) as gaps:
+                            page.get_by_role(
+                                "button",
+                                name="원본·이용권한 미확인 항목 JSON 다운로드 (승인 아님)",
+                                exact=True,
+                            ).click()
+                        gap_download = gaps.value
+                        if gap_download.suggested_filename != (
+                                "kuodra-source-rights-GAPS-UNVERIFIED.json"):
+                            raise AssertionError("P168_CLEARANCE_FILENAME_INVALID")
+                        from proofinvest.ticker_source_clearance_packet import (
+                            inspect_source_clearance_packet,
+                        )
+                        rights_bytes = Path(gap_download.path()).read_bytes()
+                        match = inspect_source_clearance_packet(
+                            rights_bytes, review_packet=downloaded_packet,
+                        )
+                        rights = json.loads(rights_bytes)
+                        if (
+                            match["status"] !=
+                                "MATCHED_REPORT_EXTERNAL_CLEARANCES_STILL_PENDING"
+                            or match["source_rights_verified"] is not False
+                            or len(rights["files"]) != 8
+                            or rights["guard_policy_preview"] != "HOLD"
+                            or rights["external_sharing_allowed"] is not False
+                            or rights["contest_submission_approved"] is not False
+                            or b"close_observations" in rights_bytes
+                        ):
+                            raise AssertionError("P168_RIGHTS_GAP_REPORT_INVALID")
+                        page.screenshot(
+                            path=str(output / "p168-rights-gaps-browser.png"),
+                            full_page=True,
+                        )
                         page.screenshot(
                             path=str(output / "p167-first-offline-packet-browser.png"),
                             full_page=True,
@@ -377,6 +412,9 @@ def run(output: Path) -> dict:
         "tampered_original_blocked_in_browser": True,
         "initial_offline_review_packet_generated_and_downloaded": True,
         "initial_review_wrong_index_rejected": True,
+        "source_clearance_gap_json_real_browser_downloaded": True,
+        "rights_report_bound_to_exact_review_packet": True,
+        "source_and_license_rights_remain_unverified": True,
         "trade_executed": False,
         "test_packet_sha256": sha256(raw).hexdigest(),
     }
