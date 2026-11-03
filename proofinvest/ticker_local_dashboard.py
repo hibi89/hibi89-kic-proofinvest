@@ -191,6 +191,10 @@ def render_local_ticker_dashboard(st: Any, workflow: Any) -> None:
     st.subheader("Engine B · 이익/영업현금 흐름")
     st.metric("영업현금/순이익 (미인증)", b["cash_to_net_income_pct"] + "%" if b["cash_to_net_income_pct"] is not None else "자료 없음")
     st.subheader("Engine C · 동종기업·산업 성장 비교")
+    peers = c["peer_count"]
+    st.metric("입력 동종기업 표본 수", str(peers) if peers is not None else "자료 없음")
+    if peers is not None and peers < 3:
+        st.warning("동종기업 표본이 " + str(peers) + "개뿐이어서 업종 전체의 대표 수치가 아닙니다.")
     st.metric("동종기업 성장률 중앙값", c["peer_median_growth_pct"] + "%" if c["peer_median_growth_pct"] is not None else "자료 없음")
     st.metric("산업 대비 성장률 격차", c["growth_gap_to_industry_pp"] + "pp" if c["growth_gap_to_industry_pp"] is not None else "자료 없음")
     st.json({"engine_a": a["status"], "engine_b": b["status"],
