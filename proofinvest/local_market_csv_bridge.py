@@ -45,6 +45,7 @@ def normalize_market_csv(
             or type(symbol) is not str or _SYMBOL.fullmatch(symbol) is None
             or type(is_index) is not bool
             or (is_index and symbol != "NDX")
+            or (not is_index and symbol == "NDX")
             or type(as_of) is not str):
         raise ValueError("CSV_SOURCE_METADATA_OR_SIZE_INVALID")
     try:
