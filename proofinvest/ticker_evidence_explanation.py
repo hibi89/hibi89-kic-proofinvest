@@ -122,8 +122,61 @@ def explanation_json_bytes(result: Any) -> bytes:
     """Serialize only the exact deterministic explanation contract."""
     if type(result) is not dict or result.get("schema") != _SCHEMA:
         raise ValueError("EXPLANATION_EXPORT_INVALID")
+    # No unrecognized field can be smuggled into a locally downloaded file,
+    # even if the caller recalculates the (non-authenticating) SHA256.
+    expected = {
+        "schema", "status", "issuer", "linked_evidence_sha256",
+        "source_hashes", "findings", "guard_policy_preview", "guard_executed",
+        "source_authenticated", "source_rights_verified",
+        "ai_agent_executed", "investment_recommendation", "trade_executed",
+        "external_sharing_allowed", "notice", "explanation_sha256",
+    }
+    if (set(result) != expected
+            or result.get("status") != "DETERMINISTIC_LOCAL_INTERPRETATION_UNVERIFIED"
+            or result.get("guard_policy_preview") != "HOLD"
+            or any(result.get(k) is not False for k in (
+                "guard_executed", "source_authenticated",
+                "source_rights_verified", "ai_agent_executed",
+                "investment_recommendation", "trade_executed",
+                "external_sharing_allowed"))
+            or type(result.get("issuer")) is not dict
+            or set(result["issuer"]) != {
+                "ticker", "cik", "accession", "as_of", "filing_date"
+            }
+            or type(result.get("source_hashes")) is not dict
+            or set(result["source_hashes"]) != {
+                "local_report_sha256", "companyfacts_sha256",
+                "stock_response_sha256", "index_response_sha256",
+                "industry_input_sha256"
+            }
+            or type(result.get("findings")) is not list
+            or len(result["findings"]) != 3
+            or [f.get("engine") for f in result["findings"]
+                if type(f) is dict] != ["A", "B", "C"]):
+        raise ValueError("EXPLANATION_EXPORT_CONTRACT_INVALID")
+    import re
+    hex64 = re.compile(r"[0-9a-f]{64}\\Z", re.ASCII)
+    hashes = [result.get("linked_evidence_sha256")] + [
+        value for value in result["source_hashes"].values()
+        if value is not None
+    ]
+    if (any(type(v) is not str or hex64.fullmatch(v) is None
+            for v in hashes)
+            or any(type(f) is not dict for f in result["findings"])
+            or set(result["findings"][0]) != {
+                "engine", "status", "basis", "period_start", "period_end",
+                "matched_sessions", "security_return_pct",
+                "benchmark_return_pct", "simple_return_gap_pp",
+                "interpretation"
+            }
+            or any(set(result["findings"][i]) != {
+                "engine", "status", "interpretation"} for i in (1, 2))
+            or any(type(f["interpretation"]) is not str
+                   or len(f["interpretation"]) > 240
+                   for f in result["findings"])):
+        raise ValueError("EXPLANATION_EXPORT_CONTRACT_INVALID")
     digest = result.get("explanation_sha256")
-    if type(digest) is not str or len(digest) != 64:
+    if type(digest) is not str or hex64.fullmatch(digest) is None:
         raise ValueError("EXPLANATION_EXPORT_INVALID")
     unsigned = {k: v for k, v in result.items() if k != "explanation_sha256"}
     # Strictly reconstruct from provided evidence is the caller's job; this
