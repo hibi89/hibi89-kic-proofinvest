@@ -363,6 +363,52 @@ def render_single_ticker_search(st) -> None:
                     "FCF 대리치는 비GAAP이며 Guard는 HOLD 미리보기만 수행합니다."
                 )
 
+        # P128: reuse P127's one-shot public-byte observation without any GET.
+        # The upload is optional and evaluated only on a local explicit click.
+        from .apple_p127_local_evidence import (
+            MAX_UPLOAD_SIZE, SUCCESS, prior_public_observation,
+            review_local_apple_p127_original,
+        )
+        st.subheader("Apple FY2025 · P127 원본 바이트 관측값 대조")
+        st.caption(
+            "GitHub Actions가 과거 1회 관측한 Apple 호스팅 HTML의 SHA-256/크기입니다. "
+            "같은 바이트라도 발행자 전자서명·SEC 원본/재배포 권리 인증은 아닙니다. "
+            "새 HTTP 요청 없이 로컬 선택 파일만 검사합니다."
+        )
+        st.json(prior_public_observation())
+        local_apple_original = st.file_uploader(
+            "Apple FY2025 10-K HTML (선택 · 로컬 메모리에서만 검증)",
+            type=["html", "htm"], key="kuodra_p128_apple_original",
+        )
+        if st.button(
+            "Apple P127 관측 SHA·재무 24칸 로컬 검증 (네트워크 없음)",
+            key="kuodra_p128_review",
+            disabled=not history_eligible or local_apple_original is None,
+        ):
+            size = getattr(local_apple_original, "size", None)
+            if type(size) is not int or not 0 < size <= MAX_UPLOAD_SIZE:
+                st.error("선택 HTML 크기/형식이 허용 범위가 아닙니다.")
+            else:
+                try:
+                    local_review = review_local_apple_p127_original(
+                        local_apple_original.getvalue(), ticker=ticker, as_of=as_of,
+                    )
+                except (OSError, TypeError, ValueError, AttributeError):
+                    st.error("로컬 HTML을 읽지 못했습니다. 원본은 보관하지 않습니다.")
+                else:
+                    if (local_review.get("status") == SUCCESS
+                            and local_review.get("source_rights_verified") is False
+                            and local_review.get("sec_original_authenticated") is False
+                            and local_review.get("network_requests") == 0):
+                        st.success("과거 P127 관측 바이트와 동일 · 재무 수치 24/24 일치")
+                    else:
+                        st.warning("P127 바이트 일치·재무 검산 조건을 충족하지 못했습니다.")
+                    st.json(local_review)
+                    st.warning(
+                        "일치 결과는 로컬 파일과 과거 CI 관측의 동일성만 의미합니다. "
+                        "SEC 인증·원본 서명·데이터 이용권·최신 공시·투자 승인은 미검증입니다."
+                    )
+
     st.subheader("로컬 공시 목록으로 출처 계획 확인 (개발·검증용)")
     st.caption("이 부분은 자동 수집의 대체 사용 경로가 아닌 오프라인 검증용입니다. "
                "사용자가 전체 시장 자료를 준비할 필요는 없습니다.")
