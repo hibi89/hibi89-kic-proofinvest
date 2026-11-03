@@ -142,6 +142,10 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
         return blocked
     if c.get("status") != "UNAVAILABLE" and not c_ok:
         return blocked
+    if c_ok and (type(c.get("peer_count")) is not int
+                 or not 0 <= c["peer_count"] <= 8
+                 or c.get("cohort_source_scope") != "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED"):
+        return _blocked("ENGINE_C_PEER_COHORT_CONTRACT_INVALID")
     if b.get("status") not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE"):
         return blocked
     result = {
