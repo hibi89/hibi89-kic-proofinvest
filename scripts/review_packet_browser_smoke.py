@@ -74,7 +74,7 @@ def run(output: Path) -> dict:
                     try:
                         context = browser.new_context(
                             viewport={"width": 1440, "height": 1100},
-                            accept_downloads=False,
+                            accept_downloads=True,
                         )
                         # Fail closed to external HTTP even when a future UI
                         # accidentally adds a background fetch.
