@@ -278,7 +278,9 @@ class TickerUiTests(unittest.TestCase):
         self.assertTrue(any(kind == "json" and isinstance(v, dict)
                             and v.get("selected_10k") == "0001045810-25-000020"
                             for kind, v in st.messages))
-        self.assertFalse(st.buttons[-1][1])
+        offline_buttons = [disabled for label, disabled in st.buttons
+                           if label == "로컬 원본으로 출처 계획 확인"]
+        self.assertEqual(offline_buttons, [False])
 
     def test_tampered_source_or_wrong_size_fails_closed(self):
         st = FakeSt(clicked="로컬 원본으로 출처 계획 확인",
