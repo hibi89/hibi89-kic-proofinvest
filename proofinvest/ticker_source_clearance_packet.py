@@ -195,9 +195,21 @@ def inspect_source_clearance_packet(raw: Any, *, review_packet: Any) -> dict[str
             "matched_sessions": p["matched_observation_count"],
             "origin_or_market_vintage_proven": False,
         }
-        if (obj.get("schema") != _SCHEMA or obj.get("status") != _STATUS
+        if (set(obj) != {
+                    "schema", "status", "packet_sha256",
+                    "linked_evidence_sha256", "issuer", "market_window",
+                    "files", "unresolved_clearances", "guard_policy_preview",
+                    "replay_scope", "network_requests", "paid_requests",
+                    "source_authenticated", "source_rights_verified",
+                    "external_sharing_allowed", "commercial_reuse_allowed",
+                    "contest_submission_approved", "trade_executed",
+                    "notice", "receipt_sha256",
+                }
+                or obj.get("schema") != _SCHEMA or obj.get("status") != _STATUS
                 or obj.get("packet_sha256") != sha256(review_packet).hexdigest()
                 or obj.get("linked_evidence_sha256") != checked["linked_evidence_sha256"]
+                or obj.get("replay_scope") !=
+                    "EXACT_LOCAL_SOURCE_BYTES_NOT_PUBLISHER_ATTESTATION"
                 or obj.get("issuer") != expected_issuer
                 or obj.get("market_window") != expected_window
                 or obj.get("guard_policy_preview") != "HOLD"
