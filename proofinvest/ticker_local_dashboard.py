@@ -146,8 +146,24 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
                  or not 0 <= c["peer_count"] <= 8
                  or c.get("cohort_source_scope") != "DISJOINT_SOURCE_CLAIMS_ONLY_UNVERIFIED"):
         return _blocked("ENGINE_C_PEER_COHORT_CONTRACT_INVALID")
-    if c_ok and c["peer_count"] == 0 and c.get("peer_median_growth_pct") is not None:
+    if c_ok and (
+            type(c.get("peer_growth_observation_count")) is not int
+            or not 0 <= c["peer_growth_observation_count"] <= c["peer_count"]
+            or c.get("peer_growth_sample_scope") != (
+                "NO_COMPARABLE_PEER_GROWTH"
+                if c["peer_growth_observation_count"] == 0 else
+                "SPARSE_PEER_GROWTH_UNVERIFIED"
+                if c["peer_growth_observation_count"] < 3 else
+                "COMPARATIVE_PEER_GROWTH_UNVERIFIED"
+            )):
+        return _blocked("ENGINE_C_USABLE_PEER_SAMPLE_INVALID")
+    if c_ok and c["peer_growth_observation_count"] == 0 and (
+            c.get("peer_median_growth_pct") is not None
+            or c.get("growth_gap_to_peer_median_pp") is not None):
         return _blocked("ENGINE_C_EMPTY_PEER_SAMPLE_HAS_MEDIAN")
+    if c_ok and c["peer_growth_observation_count"] > 0 and (
+            _number(c.get("peer_median_growth_pct")) is None):
+        return _blocked("ENGINE_C_PEER_MEDIAN_MISSING")
     if b.get("status") not in ("REVIEWED_UNVERIFIED", "UNAVAILABLE"):
         return blocked
     result = {
@@ -170,7 +186,9 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
         },
         "engine_c": {
             "status": c["status"],
-            "peer_count": c.get("peer_count") if c_ok and type(c.get("peer_count")) is int and 0 <= c["peer_count"] <= 8 else None,
+            "peer_count": c["peer_count"] if c_ok else None,
+            "peer_growth_observation_count": c["peer_growth_observation_count"] if c_ok else None,
+            "peer_growth_sample_scope": c["peer_growth_sample_scope"] if c_ok else None,
             "peer_median_growth_pct": _number(c.get("peer_median_growth_pct")) if c_ok else None,
             "growth_gap_to_industry_pp": _number(c.get("growth_gap_to_industry_pp")) if c_ok else None,
         },
@@ -198,9 +216,12 @@ def render_local_ticker_dashboard(st: Any, workflow: Any) -> None:
     st.metric("영업현금/순이익 (미인증)", b["cash_to_net_income_pct"] + "%" if b["cash_to_net_income_pct"] is not None else "자료 없음")
     st.subheader("Engine C · 동종기업·산업 성장 비교")
     peers = c["peer_count"]
+    usable = c["peer_growth_observation_count"]
     st.metric("입력 동종기업 표본 수", str(peers) if peers is not None else "자료 없음")
-    if peers is not None and peers < 3:
-        st.warning("동종기업 표본이 " + str(peers) + "개뿐이어서 업종 전체의 대표 수치가 아닙니다.")
+    st.metric("성장률 계산 가능한 동종기업 수", str(usable) if usable is not None else "자료 없음")
+    if usable is not None and usable < 3:
+        st.warning("동종기업 " + str(peers) + "개 중 성장률 계산 가능한 표본이 "
+                   + str(usable) + "개입니다. 업종 대표값·투자 판단으로 사용할 수 없습니다.")
     st.metric("동종기업 성장률 중앙값", c["peer_median_growth_pct"] + "%" if c["peer_median_growth_pct"] is not None else "자료 없음")
     st.metric("산업 대비 성장률 격차", c["growth_gap_to_industry_pp"] + "pp" if c["growth_gap_to_industry_pp"] is not None else "자료 없음")
     st.json({"engine_a": a["status"], "engine_b": b["status"],
