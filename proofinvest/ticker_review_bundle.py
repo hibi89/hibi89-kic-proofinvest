@@ -112,7 +112,7 @@ def inspect_review_bundle_bytes(raw: bytes) -> dict[str, Any]:
                         x.comment
                         or (x.external_attr >> 16) & 0o170000 == 0o120000
                         or x.is_dir()
-                        x.compress_type != zipfile.ZIP_STORED
+                        or x.compress_type != zipfile.ZIP_STORED
                         or x.flag_bits & 0x1
                         or x.file_size <= 0
                         or x.file_size > _MAX_BYTES
