@@ -192,6 +192,13 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
     refs = (benchmark["prior_source_id"], benchmark["current_source_id"])
     if any(type(ref) is not str or ref not in sources for ref in refs):
         _fail("UNKNOWN_INDUSTRY_SOURCE")
+    # Claims of two separate companies or an industry aggregate must never
+    # silently point to the same source ID/hash. This is a structural source
+    # separation check, NOT publisher authentication or legal-rights proof.
+    from .industry_cohort_provenance import require_disjoint_cohort_evidence
+    cohort = require_disjoint_cohort_evidence(
+        source_rows, target=target, peers=peers, industry_source_ids=refs,
+    )
     # Cross-series release chronology: a reported fact cannot originate
     # before its own period end, even if it is <= research as_of.
     # Does NOT certify source rights, measurement vintage, or true publication.
@@ -244,6 +251,7 @@ def analyze_industry_vision(payload: Any, *, expected_issuer_cik: str | None = N
         "headline": "산업 성장·기업 경쟁력·시장 전망 근거 비교 (입력 자료 기준)",
         "summary": comparison,
         "target": target, "peers": peers,
+        "cohort_evidence": cohort,
         "peer_median_growth_pct": _fmt(peer_mid),
         "industry_series": {
             "name": _string(benchmark["name"], "INDUSTRY_SERIES_NAME", 100),
