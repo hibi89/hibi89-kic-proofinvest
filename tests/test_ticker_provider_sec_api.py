@@ -119,7 +119,8 @@ class SecApiOneTickerTests(unittest.TestCase):
             calls = []
             out, seen = self.invoke(transport=fake_call(raws, calls))
             self.assertEqual(out["status"], "BLOCKED", out)
-            self.assertEqual(out["provider_http_requests_attempted"], 1)
+            self.assertEqual(out["provider_http_requests_attempted"],
+                             1 if key == "ticker" else 2)
 
     def test_filing_future_or_unsafe_original_path_never_fetches_xbrl(self):
         for changed in ("future", "evil", "wrong_cik"):
