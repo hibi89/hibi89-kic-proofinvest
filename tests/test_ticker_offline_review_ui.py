@@ -9,6 +9,7 @@ from proofinvest import ticker_research_ui as ui
 from proofinvest.ticker_review_packet import inspect_review_packet_bytes
 from proofinvest.ticker_source_clearance_packet import inspect_source_clearance_packet
 from proofinvest.local_market_csv_bridge import inspect_csv_lineage_receipt
+from proofinvest.ticker_review_bundle import inspect_review_bundle_bytes
 from tests.test_local_market_csv_bridge import local_csv
 from tests.test_ticker_market_pair_evidence import _prepared, _body
 from tests.test_ticker_research_ui import FakeSt, Uploaded
@@ -202,6 +203,34 @@ class InitialOfflineReviewUiTests(unittest.TestCase):
         self.assertIn(b"HOLD", html)
         self.assertNotIn(b"symbol,date,close", html)
         self.assertNotIn(b"<script", html.lower())
+
+    def test_json_and_csv_modes_export_single_verified_evidence_zip(self):
+        for mode in ("json", "csv"):
+            uploads = ui_inputs()
+            if mode == "csv":
+                del uploads["kuodra_p167_stock"]
+                del uploads["kuodra_p167_ndx"]
+                uploads["kuodra_p169_stock_csv"] = Uploaded(local_csv("NVDA"))
+                uploads["kuodra_p169_ndx_csv"] = Uploaded(local_csv("NDX", 10000))
+            with self.subTest(mode=mode):
+                st = render(uploads)
+                labels = {v["label"]: v for k, v in st.messages if k == "download"}
+                title = "단일 종목 근거 묶음 ZIP 다운로드 (로컬·미인증)"
+                self.assertIn(title, labels)
+                item = labels[title]
+                self.assertEqual(item["mime"], "application/zip")
+                self.assertEqual(item["file_name"],
+                                 "kuodra-review-evidence-UNVERIFIED.zip")
+                result = inspect_review_bundle_bytes(item["data"])
+                self.assertEqual(
+                    result["status"], "INTERNAL_CONTENT_VERIFIED_ORIGIN_RIGHTS_PENDING",
+                )
+                self.assertEqual(result["files_verified"],
+                                 4 if mode == "csv" else 3)
+                self.assertFalse(result["source_rights_verified"])
+                self.assertFalse(result["contest_submission_approved"])
+                self.assertNotIn(b"close_observations", item["data"])
+                self.assertNotIn(b"Time Series (Daily)", item["data"])
 
     def test_no_click_or_no_consent_blocks_analysis(self):
         for kwargs in ({"clicked": None}, {"ack": False}):
