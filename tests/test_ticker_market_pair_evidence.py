@@ -392,6 +392,27 @@ class LinkedEvidenceTests(unittest.TestCase):
                 kind == "download" and value["label"] ==
                 "통합 검산 근거 JSON (로컬 전용 · 미인증)"
                 for kind, value in st.messages))
+            # P155: after A -> B, the user explicitly requests A again.
+            # A must stay protected even though the P141 legacy marker is B.
+            from proofinvest.premium_paid_attempts import _HISTORY_KEY
+            st.uploads["kuodra_p104_industry_json"] = Uploaded(industry)
+            st.messages.clear()
+            ui.render_single_ticker_search(st)
+            self.assertEqual(paid_pair.call_count, 2)
+            self.assertEqual(len(st.session_state[_HISTORY_KEY]), 2)
+            self.assertIn(first, st.session_state[_HISTORY_KEY])
+            self.assertTrue(any(
+                kind == "warning" and "동일 자료로 이미 유료 조회" in msg
+                for kind, msg in st.messages))
+            # A corrupted session ledger cannot authorize another paid GET.
+            st.session_state[_HISTORY_KEY] = ["MALFORMED_HISTORY"]
+            st.uploads.pop("kuodra_p104_industry_json")
+            st.messages.clear()
+            ui.render_single_ticker_search(st)
+            self.assertEqual(paid_pair.call_count, 2)
+            self.assertTrue(any(
+                kind == "warning" and "유료 조회 이력 검증 실패" in msg
+                for kind, msg in st.messages))
             net.assert_not_called()
         self.assertNotIn(_KEY, repr(st.session_state))
 
