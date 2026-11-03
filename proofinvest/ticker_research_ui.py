@@ -275,7 +275,8 @@ def _p153_render_cached_linked_report(st, *, ticker, as_of, approved,
     _render_p158_source_linked_interpretation(st, report)
 
 
-def _render_p158_source_linked_interpretation(st, linked: dict) -> None:
+def _render_p158_source_linked_interpretation(
+        st, linked: dict, *, source_replay: dict | None = None) -> None:
     """Display deterministic review notes only for strict validated evidence.
 
     The caller must have independently replayed the original source inputs.
@@ -313,6 +314,27 @@ def _render_p158_source_linked_interpretation(st, linked: dict) -> None:
         mime="application/json",
         key="kuodra_p158_explanation_json",
     )
+    # P160: an initial approved analysis may independently replay the
+    # complete packet against the original four SEC and paired price inputs.
+    # Cached reruns have no original market receipts and MUST NOT pretend
+    # a new independent source replay occurred.
+    if source_replay is not None:
+        st.json({
+            "packet_source_replay_status": source_replay["status"],
+            "packet_source_replay_reason": source_replay["reason_code"],
+            "local_source_replay_verified": source_replay["local_source_replay_verified"],
+            "market_math_recomputed": source_replay["market_math_recomputed"],
+            "source_authenticated": False,
+            "source_rights_verified": False,
+            "network_requests": 0,
+        })
+        if source_replay["status"] != "PASS_UNVERIFIED_ORIGIN":
+            st.warning("패키지 원본 교차검증 실패: 단일 패키지 다운로드 차단. "
+                       "기존 개별 검산 자료는 유지됩니다.")
+            return
+    else:
+        st.caption("캐시 재열람: 패키지 내부 무결성만 검사합니다. "
+                   "원본 SEC·시장 입력 재검산은 이 실행에서 수행하지 않습니다.")
     # P159: one offline review file for evidence + derived explanation.
     # Both parts are internally checked. This is not provider authentication
     # and does not change the original report or allow external sharing.
@@ -1007,6 +1029,33 @@ def render_single_ticker_search(st) -> None:
                                 else:
                                     linked_holder["report"] = linked
                                     linked_holder["safe_bytes"] = safe_bytes
+                                    from .ticker_review_packet import (
+                                        build_review_packet,
+                                        review_packet_json_bytes,
+                                        verify_review_packet_against_sources,
+                                    )
+                                    try:
+                                        check_bytes = review_packet_json_bytes(
+                                            build_review_packet(linked))
+                                        linked_holder["packet_source_replay"] = (
+                                            verify_review_packet_against_sources(
+                                                check_bytes,
+                                                workflow=workflow,
+                                                sources=raw_local,
+                                                stock=stock, index=index,
+                                                market_json=market_data,
+                                                industry_json=industry_data,
+                                            )
+                                        )
+                                    except (ValueError, TypeError, KeyError,
+                                            OverflowError, UnicodeError,
+                                            RecursionError):
+                                        linked_holder["packet_source_replay"] = {
+                                            "status": "FAIL",
+                                            "reason_code": "PACKET_REPLAY_INPUT_INVALID",
+                                            "local_source_replay_verified": False,
+                                            "market_math_recomputed": False,
+                                        }
                             else:
                                 linked_holder["reason"] = "LINKED_INDEPENDENT_REPLAY_FAILED"
                         market_result = fetch_and_analyze_market_pair(
@@ -1091,7 +1140,10 @@ def render_single_ticker_search(st) -> None:
                                     mime="application/json",
                                     key="kuodra_p143_linked_market_report",
                                 )
-                                _render_p158_source_linked_interpretation(st, linked)
+                                _render_p158_source_linked_interpretation(
+                                    st, linked,
+                                    source_replay=linked_holder.get("packet_source_replay"),
+                                )
                             else:
                                 # A failed derived export does NOT discard the
                                 # independently verified four-source report.
