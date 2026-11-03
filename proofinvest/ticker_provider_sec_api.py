@@ -75,6 +75,8 @@ def _vendor_http(method: str, url: str, payload: bytes | None,
         raise ValueError("VENDOR_JSON_POST_BODY_INVALID")
     if method == "GET" and payload is not None:
         raise ValueError("VENDOR_GET_BODY_NOT_ALLOWED")
+    if method == "POST" and parts.path not in ("", "/"):
+        raise ValueError("VENDOR_POST_ENDPOINT_NOT_ALLOWED")
     headers = {"Authorization": key, "Accept-Encoding": "identity",
                "Accept": "application/json" if parts.netloc == "api.sec-api.io"
                else "text/html,application/xhtml+xml"}
