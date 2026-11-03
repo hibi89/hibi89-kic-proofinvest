@@ -87,6 +87,47 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertFalse(out["full_a_b_c_ready"])
         self.assertFalse(out["trade_executed"])
 
+    def test_export_refuses_status_only_and_reshashed_extra_source_bytes(self):
+        self.assertRaises(ValueError, linked_evidence_json_bytes, {
+            "status": "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED",
+            "api_key": "SHOULD_NOT_EXPORT",
+        })
+        from hashlib import sha256
+        forged = deepcopy(_build(_prepared()))
+        forged["raw_vendor_response"] = "SENSITIVE_ORIGINAL_BYTES"
+        payload = {k: v for k, v in forged.items() if k != "evidence_sha256"}
+        forged["evidence_sha256"] = sha256(
+            (json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"), allow_nan=False) + "\n").encode()
+        ).hexdigest()
+        with self.assertRaisesRegex(ValueError, "EXPORT_CONTRACT"):
+            linked_evidence_json_bytes(forged)
+
+    def test_export_refuses_modified_math_and_fake_rights(self):
+        valid = _build(_prepared())
+        modified = deepcopy(valid)
+        modified["premium_engine_a"]["beta"] = "999"
+        with self.assertRaisesRegex(ValueError, "HASH_MISMATCH"):
+            linked_evidence_json_bytes(modified)
+        modified = deepcopy(valid)
+        modified["source_rights_verified"] = True
+        with self.assertRaisesRegex(ValueError, "EXPORT_CONTRACT"):
+            linked_evidence_json_bytes(modified)
+
+    def test_export_keeps_real_market_evidence_with_missing_local_a_c(self):
+        workflow, raw, _market, _industry, stock, index = _prepared()
+        minimal = run_local_ticker_workflow(
+            ticker="NVDA", as_of="2026-02-01", sources=raw)
+        result = build_linked_market_evidence(
+            workflow=minimal, sources=raw, stock=stock, index=index)
+        self.assertEqual(result["status"],
+                         "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED", result)
+        self.assertEqual(result["local_engine_a"]["status"], "UNAVAILABLE")
+        self.assertEqual(result["engine_c"]["status"], "UNAVAILABLE")
+        exported = json.loads(linked_evidence_json_bytes(result))
+        self.assertEqual(exported["engine_c"]["status"], "UNAVAILABLE")
+        self.assertFalse(exported["full_a_b_c_ready"])
+
     def test_report_is_sanitized_without_source_rows_or_keys(self):
         prepared = _prepared()
         raw = linked_evidence_json_bytes(_build(prepared))
