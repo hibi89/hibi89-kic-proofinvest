@@ -87,6 +87,37 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertFalse(out["full_a_b_c_ready"])
         self.assertFalse(out["trade_executed"])
 
+    def test_evidence_exports_exact_aligned_post_filing_pre_cutoff_period(self):
+        report = _build(_prepared())
+        self.assertEqual(report["status"],
+                         "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED")
+        window = report["premium_engine_a"]
+        self.assertLess(report["issuer"]["filing_date"],
+                        window["matched_period_start"])
+        self.assertLessEqual(window["matched_period_end"],
+                             report["issuer"]["as_of"])
+        self.assertLessEqual(window["matched_period_start"],
+                             window["matched_period_end"])
+        self.assertEqual(
+            json.loads(linked_evidence_json_bytes(report))
+            ["premium_engine_a"]["matched_period_end"],
+            window["matched_period_end"])
+        self.assertEqual(_verify(report, _prepared())["status"], "PASS")
+
+    def test_rehashed_future_period_still_fails_safe_export(self):
+        from hashlib import sha256
+        report = deepcopy(_build(_prepared()))
+        report["premium_engine_a"]["matched_period_end"] = "2099-01-01"
+        unsigned = {k: v for k, v in report.items()
+                    if k != "evidence_sha256"}
+        report["evidence_sha256"] = sha256(
+            (json.dumps(unsigned, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"), allow_nan=False) + "\n").encode()
+        ).hexdigest()
+        with self.assertRaisesRegex(ValueError, "EXPORT_PERIOD_INVALID"):
+            linked_evidence_json_bytes(report)
+        self.assertEqual(_verify(report, _prepared())["status"], "FAIL")
+
     def test_export_refuses_status_only_and_reshashed_extra_source_bytes(self):
         self.assertRaises(ValueError, linked_evidence_json_bytes, {
             "status": "LOCAL_AND_MARKET_MATH_REPLAYED_UNVERIFIED",
