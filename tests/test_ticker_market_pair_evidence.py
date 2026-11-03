@@ -331,6 +331,19 @@ class LinkedEvidenceTests(unittest.TestCase):
         self.assertEqual(explanation["guard_policy_preview"], "HOLD")
         self.assertFalse(explanation["ai_agent_executed"])
         self.assertNotIn(_KEY, repr(explanations))
+        packet_exports = [
+            item for kind, item in st.messages
+            if kind == "download" and item["label"] ==
+            "A/B/C 근거+설명 통합 검토 JSON (로컬 전용 · 미인증)"
+        ]
+        self.assertEqual(len(packet_exports), 1, st.messages)
+        from proofinvest.ticker_review_packet import inspect_review_packet_bytes
+        packet_check = inspect_review_packet_bytes(packet_exports[0]["data"])
+        self.assertEqual(packet_check["status"],
+                         "LOCAL_PACKET_INTERNAL_INTEGRITY_PASS_UNVERIFIED")
+        self.assertEqual(packet_check["linked_evidence_sha256"],
+                         payload["evidence_sha256"])
+        self.assertNotIn(_KEY, repr(packet_exports))
 
     def test_p154_duplicate_paid_click_reuses_export_but_changed_source_can_run(self):
         from proofinvest import ticker_research_ui as ui
@@ -541,6 +554,17 @@ class LinkedEvidenceTests(unittest.TestCase):
             self.assertEqual(len(explanation), 1)
             self.assertEqual(
                 json.loads(explanation[0]["data"])["linked_evidence_sha256"],
+                json.loads(exports[0])["evidence_sha256"])
+            packet_download = [
+                item for kind, item in st.messages
+                if kind == "download" and item["label"] ==
+                "A/B/C 근거+설명 통합 검토 JSON (로컬 전용 · 미인증)"
+            ]
+            self.assertEqual(len(packet_download), 1)
+            from proofinvest.ticker_review_packet import inspect_review_packet_bytes
+            self.assertEqual(
+                inspect_review_packet_bytes(
+                    packet_download[0]["data"])["linked_evidence_sha256"],
                 json.loads(exports[0])["evidence_sha256"])
             self.assertTrue(any(kind == "json" and type(item) is dict and
                                 item.get("provider_requests_on_rerun") == 0
