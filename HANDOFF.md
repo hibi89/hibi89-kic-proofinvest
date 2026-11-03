@@ -1,3 +1,16 @@
+## P150 Linked A/B/C evidence export safety — 2026-11-04 KST
+
+1. **Goal/stack:** Finish single-ticker KUODRA A/B/C/Guard evidence export, without introducing external data use or breaking 7-step local Python 3.11 workflow.
+2. **Design and decision:** A) force independent source-byte replay in every export call (changes UI signature and data flow); B) keep existing export API but enforce strict redacted schema, no inserted fields, false-rights policy, and self-consistent SHA256 (chosen as minimal backward-compatible guard). This hash is NOT authentication; independent source replay still requires `verify_linked_market_evidence`.
+3. **Changes:** `proofinvest/ticker_market_pair_evidence.py` validates exact top-level and nested A/B/C/premium market fields, issuer identifiers, market number shape, metadata digests, explicit Guard HOLD, unavailable statuses and canonical SHA before output. Protects raw-source/credential leakage through arbitrary user-added fields.
+4. **Tests:** `tests/test_ticker_market_pair_evidence.py` added 3 offline tests for (a) forged status-only and rehashed injected raw response, (b) changed beta and rights claim, (c) local A/C UNAVAILABLE + separately available NDX market pair export.
+5. **Verification:** GitHub source and test writes confirmed, but exact new unit-test execution, GitHub Actions 3 jobs, browser export and regression outcome UNVERIFIED. P146 1606/1606 PASS is historical only.
+6. **Repo/branch/SHAs:** `hibi89/hibi89-kic-proofinvest`, `lead/kic`; source `bb3b72842b84caa3131ab0c7ef6e026ccc6e7bef`; test `b2cc1514b58cde0e3974595684896190b16bfb13`. Previous P149 documented HEAD `123d4f7bcdba70093345eff4f35f172f8b1039c3`.
+7. **Production/commands:** No deployment; local targeted test command `python -m unittest tests.test_ticker_market_pair_evidence -v`, then `python -m scripts.verify_local --full` and production browser checks before release. RELEASE HOLD.
+8. **Originals/security:** Approved V13 PDF, local user source ZIP and credentials untouched; no provider/SEC GET, paid premium index calls, private upload or official DAKER submission. SEC 403 no-retry preserved.
+9. **Next:** Check CI without waiting idly; fix observed regressions first, validate full browser local export and real source/NDX/peer license + time alignment under separate approvals. No fabricated sector cohort and no trading.
+10. **Updated/evidence boundary:** 2026-11-04 KST; estimated whole-product progress 74% -> tentative 75% per owner work-cycle goal, not independently quantified or test-validated. Commit messages and written tests are not execution proof.
+
 ## P149 Vendor POST query string gate — 2026-11-04 KST
 
 1. Goal: restrict outbound vendor POST requests to exact approved query endpoint.
