@@ -75,7 +75,7 @@ def run() -> dict[str, object]:
             or review.get("reason_code") != "DERIVED_STATUS_TRIAGE_ONLY"
             or review.get("model_inference_authenticated") is not False
             or review.get("human_review_priority_policy_verified") is not True
-            or review.get("focus_engine") != "B")::
+            or review.get("focus_engine") != "B"):
         raise ValueError("P182_ACCEPTED_REAL_MODEL_OUTPUT_INVALID")
 
     # Never publish the direct model response or the private/synthetic inputs.

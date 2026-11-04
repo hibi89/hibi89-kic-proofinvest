@@ -3,6 +3,8 @@
 # No secrets or owner originals. Downloaded model stays on disposable tmpfs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Fail before pulling a public model when Python source cannot even parse.
+python3 -B -c 'import ast, pathlib; [ast.parse(pathlib.Path(p).read_text(encoding="utf-8"), filename=p) for p in ("scripts/real_local_model_inference_smoke.py", "proofinvest/ticker_local_model_triage.py")]'
 container="kuodra-p181-smollm2-real-$$"
 cleanup() {
   docker rm -f "$container" >/dev/null 2>&1 || true
