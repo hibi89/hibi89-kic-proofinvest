@@ -103,7 +103,9 @@ def run() -> dict[str, object]:
             or issuer.get("full_market_ndx_peer_rights_verified") is not False
             or issuer.get("guard_policy_preview") != "HOLD"
             or issuer.get("trade_executed") is not False):
-        raise ValueError("P191_REAL_PUBLIC_ISSUER_MODEL_INDEPENDENT_REPLAY_FAILED")
+        # Record ONLY a stable reason code, never raw model text or owner data.
+        raise ValueError("P191_REAL_PUBLIC_ISSUER_MODEL_INDEPENDENT_REPLAY_FAILED:"
+                         + str(issuer.get("reason_code", "UNAVAILABLE"))[:90])
 
     # No model free text or original data published; explicit fallback
     # false claims are prohibited. This does NOT prove grounded AI reasoning.
