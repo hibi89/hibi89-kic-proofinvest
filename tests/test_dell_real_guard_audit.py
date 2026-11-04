@@ -131,6 +131,7 @@ class P208ActualGuardAuditTests(unittest.TestCase):
             at.selectbox[0].set_value(_MODE).run(timeout=25)
             consent=next(x for x in at.checkbox if x.key=="p208_local_audit_ack")
             consent.set_value(True).run(timeout=25)
+            self.assertTrue(next(x for x in at.button if x.key=="p208_run_once").disabled)
             next(x for x in at.button if x.key=="p208_run_once").click().run(timeout=25)
         self.assertFalse(at.exception)
         self.assertFalse(any("실자료 감사 체인 검증 완료" in x.value for x in at.success))

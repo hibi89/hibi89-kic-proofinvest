@@ -93,6 +93,7 @@ def render_dell_real_source_evidence(st) -> None:
     working = review_real_working_capital(
         reviewed_as_of="2026-11-05", receipt=actual_working_capital_receipt()
     )
+    working_verified = False
     if (working.get("status") == "P207_ACTUAL_ISSUER_WORKING_CAPITAL_REVIEW_LIMITED"
             and working.get("real_issuer_working_capital_source_seen") is True
             and working.get("sec_original_identical") is False
@@ -102,6 +103,7 @@ def render_dell_real_source_evidence(st) -> None:
             and working.get("guard_policy_preview") == "HOLD"
             and working.get("trade_executed") is False
             and type(working.get("evidence")) is dict):
+        working_verified = True
         w=working["evidence"]
         st.subheader("실제 매출채권·재고 증가율 vs 매출 — Engine B 제한 검증")
         st.caption(
@@ -134,7 +136,7 @@ def render_dell_real_source_evidence(st) -> None:
         )
         if st.button(
             "명시적 1회 Guard 감사 실행", key="p208_run_once",
-            disabled=not acknowledged,
+            disabled=(not acknowledged or not working_verified),
         ):
             from tempfile import TemporaryDirectory
             from pathlib import Path
