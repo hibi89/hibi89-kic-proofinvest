@@ -86,9 +86,11 @@ def inspect_microsoft_actual_fy2026_issuer_release(raw: bytes) -> dict[str, Any]
                 and "july 29, 2026" in opening.lower()
                 and "fiscal year ended june 30, 2026" in scope.lower()):
             raise ValueError("ISSUER_OR_FISCAL_CONTEXT_INVALID")
+    # Don't accept generic "non-GAAP" prose as proof a GAAP column exists.
+    # The table must explicitly distinguish both statement bases.
     if ("twelve months ended june 30" not in scope.lower()
-            or "gaap" not in scope.lower()
-            or "non-gaap" not in scope.lower()
+            or "as reported (gaap)" not in scope.lower()
+            or "as adjusted (non-gaap)" not in scope.lower()
             or "net income" not in scope.lower()):
         raise ValueError("GAAP_VS_ADJUSTED_STATEMENT_HEADERS_MISSING")
     for field, amount in _REQUIRED.items():

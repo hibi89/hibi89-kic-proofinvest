@@ -1,6 +1,6 @@
-# P202 genuine firstparty second-issuer annual GAAP financial source one-shot.
+# P202 fix exact GAAP vs non-GAAP header gate; first CI stopped offline before any GET.
 # No SEC.gov retry, no index rights assumptions, no owner data, no paid API.
-name: KIC P202 Microsoft FY2026 primary issuer earnings one-shot
+name: KIC P202 Microsoft FY2026 primary issuer earnings (focused header fix)
 on:
   push:
     branches: [lead/kic]
