@@ -32,6 +32,33 @@ def render_dell_real_source_evidence(st) -> None:
     b.metric("영업현금흐름/순이익 (실자료)",
              r["cash_flow_to_net_income_ratio"])
     c.metric("Guard 정책", "HOLD")
+    # P199: independent real XBRL context/unit fact extracted by the
+    # publisher-only one-shot job. Never assert EDGAR identical bytes or rights.
+    from .dell_2026_ixbrl_review import observed_ixbrl_receipt, review_observed_real_dell_ixbrl
+    actual = review_observed_real_dell_ixbrl(
+        as_of="2026-11-05", receipt=observed_ixbrl_receipt())
+    if (actual.get("status") != "PUBLISHER_IXBRL_REAL_ANNUAL_REVENUE_CONFIRMED_LIMITED"
+            or actual.get("publisher_xbrl_fact_correctly_replayed") is not True
+            or actual.get("sec_edgar_original_authenticated") is not False
+            or actual.get("source_commercial_rights_verified") is not False
+            or actual.get("guard_policy_preview") != "HOLD"
+            or actual.get("trade_executed") is not False):
+        st.error("발행사 실제 XBRL 회계기간·매출 원본 검증을 확인할 수 없습니다.")
+        return
+    proof = actual["evidence"]
+    st.subheader("실제 Inline XBRL 원문 컨텍스트 검증")
+    st.caption(f'[{proof["xbrl_concept"]}] 실제 2026/2025 원문 태그 · '
+               f'[실증 CI 원본 대조]({proof["ci_run"]})')
+    st.dataframe([{
+        "회계연도": period,
+        "연결 매출 (USD 백만)": row["amount_usd_millions"],
+        "XBRL 컨텍스트": row["context"],
+        "시작": row["period_start"],
+        "종료": row["period_end"],
+    } for period, row in proof["xbrl_facts"].items()],
+        use_container_width=True, hide_index=True)
+    st.caption("원본 XBRL에서 직접 확인한 매출 증가율: "
+               + proof["annual_revenue_growth_pct"] + "%")
     st.warning(
         "이 검증은 발행사 공식 HTTPS 원본과 원문 내 실제 수치 확인입니다. "
         "SEC EDGAR 원본과의 동일 바이트 인증, 데이터 이용권, NDX 및 "
