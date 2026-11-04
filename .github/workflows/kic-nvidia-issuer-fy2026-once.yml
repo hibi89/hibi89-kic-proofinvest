@@ -1,0 +1,27 @@
+# P209: NVIDIA distinct issuer one-GET official IR FY26/25 GAAP source.
+# Runs only on initial addition/edit of this workflow, not every code push.
+name: KIC P209 NVIDIA 2026 genuine issuer financial source once
+on:
+  push:
+    branches: [lead/kic]
+    paths: ['.github/workflows/kic-nvidia-issuer-fy2026-once.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kic-p209-nvidia-official-source-once
+  cancel-in-progress: false
+jobs:
+  nvidia-official-original:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: P209 strict mock negative and annual/quarter source checks
+        run: python -B -m unittest tests.test_nvidia_issuer_fy2026_once -v
+      - name: Single genuine NVIDIA official investor relations issuer HTTPS GET
+        run: python -B -m proofinvest.nvidia_issuer_fy2026_once
