@@ -265,3 +265,14 @@ jobs:
             /tmp/kic-p165-review-packet-browser/p165-streamlit-server.log
           if-no-files-found: ignore
           retention-days: 3
+
+  container-offline:
+    name: Isolated nonroot read-only Streamlit container (no network)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and exercise local-only isolated runtime
+        run: bash scripts/docker_offline_smoke.sh

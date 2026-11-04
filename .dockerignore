@@ -1,0 +1,24 @@
+# Reject all unrelated material before sending build context to the Docker daemon.
+**
+!Dockerfile
+!requirements-ui.txt
+!streamlit_app.py
+!proofinvest/
+!proofinvest/*.py
+!disclosure_lightning/
+!disclosure_lightning/*.py
+!fixtures/
+!fixtures/*.json
+!docs/
+!docs/evidence/
+!docs/evidence/*.json
+
+# Never include personal uploads or untracked binary artifacts.
+**/.env
+**/.env.*
+**/*.pdf
+**/*.pptx
+**/*.zip
+**/*.sqlite
+**/*.sqlite3
+**/*.db
