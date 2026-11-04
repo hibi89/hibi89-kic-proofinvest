@@ -1,3 +1,15 @@
+## P206 independently first-party second issuer source pivot — 2026-11-05 KST
+1. Product objective: gain an actual second primary Dell issuer source with FY2026/FY2025 operating cash and net income values, distinct from P195 issuer original 10-K, without confusing quarter vs year or audited vs unaudited.
+2. Design: one bounded official Dell public investor-release GET with no redirects/retries and HTML table/cell parsing, prior P195 authenticated original-SHA receipt crosscheck, and explicit HOLD. Chosen after two P200 iXBRL failures; no repeat of same failed P200 provider/parse method.
+3. Tests: local prototype 4/4 unittest PASS on isolated fixtures; final exact-SHA real issuer GET through dedicated one-shot workflow and general GitHub CI are PENDING. Do not mark live true before action is terminal success.
+4. Outcome: P205 e1ec89940791b3d0aa6c482bd4b03575bf51d407 [Actions #41894098319](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41894098319) terminal SUCCESS full offline CI including Python/Windows HTTP/SQLite, Chromium, no-network Docker; optional model one SKIP. P206 live original request and source exact hash not yet verified.
+5. Previous defects: P205 first browser failed obsolete Engine A heading assertion (one focused correction succeeded). P200 raw CFO/NI original iXBRL two live conflicts STOP, P201 DEI twice STOP, P202 MSFT release twice STOP. P206 intentionally a different publisher release source; if one-shot fails and one focused improvement cannot prove actual progress, pivot/hold.
+6. Repo/branch: hibi89/hibi89-kic-proofinvest lead/kic; new proofinvest/dell_earnings_release_2026_once.py, tests/test_dell_earnings_release_2026_once.py, dedicated .github/workflows/kic-dell-earnings-release-2026-once.yml; prior P205 final verified e1ec89940791b3d0aa6c482bd4b03575bf51d407. New SHA determined by commit and branch read.
+7. Deployment: local/CI only, no Production or Vercel URL. No provider entitlement or real market/NDX/peer/API approval.
+8. Backups/security: parent Git SHA rollback; originals, PDFs, credentials, paid-provider rights and owner files not changed. No raw HTML saved/uploaded and no SEC.gov API retry or auto trades.
+9. Next: check P206 dedicated workflow real source and general exact-SHA CI; award final weighted SEC primary-issuer corroboration +1pp only if a genuinely separate verified source AND acceptance ledger supports it, otherwise final 54/100.
+10. Timestamp 2026-11-05 KST; currently 54/100, P206 pending, 46 blocked; RELEASE HOLD.
+
 ## P205 one focused Chromium assertion repair — 2026-11-05 KST
 1. Goal: complete exact-SHA CI on atomic three-gate Dell evidence UI without obscuring a separate unrelated browser regression.
 2. Decision: correct ONE obsolete local-workspace Playwright heading assertion to the actually rendered stable "KUODRA · Engine A — Market Reality"; do not weaken Guard/HOLD, reports, source authenticity or other browser conditions.

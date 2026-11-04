@@ -1,0 +1,29 @@
+# P206 separate source: official issuer earnings announcement, not SEC EDGAR.
+# One issuer HTTPS GET; no retry/redirect, paid data, raw storage, secret or trades.
+# Path-triggered exactly once on adding this dedicated workflow.
+name: KIC P206 Dell second original FY2026 release once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-earnings-release-2026-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p206-dell-earnings-second-source-one-shot
+  cancel-in-progress: false
+jobs:
+  second-publisher-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline separate-source numeric and safety regressions
+        run: python -B -m unittest tests.test_dell_earnings_release_2026_once -v
+      - name: One official Dell FY2026 unaudited issuer release GET and P195 10-K comparison
+        run: python -B -m proofinvest.dell_earnings_release_2026_once
