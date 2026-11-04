@@ -1,0 +1,28 @@
+# P202 genuine firstparty second-issuer annual GAAP financial source one-shot.
+# No SEC.gov retry, no index rights assumptions, no owner data, no paid API.
+name: KIC P202 Microsoft FY2026 primary issuer earnings one-shot
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-microsoft-fy2026-issuer-firstparty-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p202-msft-issuer-financials-one-shot
+  cancel-in-progress: false
+jobs:
+  msft-public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Ensure GAAP vs non-GAAP and fiscal years are not confused
+        run: python -B -m unittest tests.test_microsoft_2026_public_firstparty_once -v
+      - name: Actual Microsoft publisher FY2026 report one GET
+        run: python -B -m proofinvest.microsoft_2026_public_firstparty_once
