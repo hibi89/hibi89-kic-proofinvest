@@ -1,4 +1,4 @@
-# P210 focused improvement: enforce exact combined issuer fiscal dates before one live GET.
+# P210 final corrected date-anchor regex source, single bounded issuer GET if focused tests pass.
 # Runs only when workflow itself is added/modified, not on app code pushes.
 name: KIC P210 AMD 2025 real firstparty peer original once
 on:
