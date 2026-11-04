@@ -1,0 +1,27 @@
+# KUODRA — final product acceptance score (conservative baseline, 2026-11-04 KST)
+
+**Never copy previous P174 provisional 99% into the FINAL completion rate.** It counted iterative local feature coverage but excluded real legal source, agent, Production and official submission blockers. For future development work, use this **explicit 100-point, all-or-nothing internal acceptance rubric**, not test count or number of source commits. The weights reflect a project-management judgment, **not** an empirically measured percent of engineering effort or organizer grading. No release claim until all blockers clear.
+
+| Final-product acceptance gate | Weight | Earned | Evidence / remaining condition |
+| --- | ---: | ---: | --- |
+| Bounded local A/B/C+Guard calculation, withheld unknowns, exact source replay | 20 | 20 | P171/P175 full Python+Chromium CI, offline/synthetic only |
+| Usable local Streamlit review, canonical redacted JSON/HTML/ZIP export | 15 | 15 | P171 headless Chromium first/download/replay, internal evidence only |
+| General automated security/Windows/Linux/Chromium regression | 5 | 5 | Exact P175 CI 4/4 SUCCESS, 1,723 Python PASS |
+| Nonroot, read-only, **network-disconnected** runnable local container + HTTP/synthetic acceptance | 5 | 5 | First verified P175 at functional SHA ff5d03d3, separate CI container job PASS |
+| Real legitimately accessed, publisher-authenticated single-ticker SEC original→evidence | 15 | 0 | Direct SEC P105 403; third-party/mock not publisher authentication, approval pending |
+| Correct legally licensed real issuer stock + true Nasdaq-100 NDX and time/vintage E2E | 10 | 0 | Genuine entitlement, actual provider response, usage rights absent |
+| Independently licensed representative same-sector peer evidence with valid comparable periods | 10 | 0 | Single illustrative peer/local fixtures not representative |
+| Working source-grounded, externally approved actual LLM/agent explanation | 10 | 0 | Deterministic interpretation implemented; genuine LLM execution not proven |
+| Reachable authorized Production deployment, security and live browser/API end-to-end | 5 | 0 | Offline Docker/localhost is not Production; deploy approval absent |
+| Final official organizer preliminary submission and verified final receipt | 5 | 0 | Frozen private V13 exact source reviewed; team-leader final DAKER receipt not received |
+
+**Initial acceptance score using the actual requirements: 45 / 100 (conservative internal estimate).** On the same rubric, P174 would score 40/100; **P175 adds a verified 5-point local-isolated-runtime criterion**. This is not proof that the entire product is 45% complete in time, market utility, or code volume. The score is deliberately lower than the obsolete 99% local-feature planning estimate, and never approaches 100 without legal originals/rights, genuine AI workflow, Production and official receipt.
+
+## Evidence and hold rules
+
+- Functional SHA: `ff5d03d3f660d9f6b622fd232e158489dbdb6eb0`, GitHub Actions [#41839035373](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41839035373) terminal **SUCCESS 4/4**. Exact Python 3.11 full 1,723 PASS / 0 FAIL / 0 SKIP, SHA PASS; Windows SQLite SUCCESS; real Chromium localhost synthetic E2E SUCCESS; actual Docker no-network/nonroot/read-only `KUODRA_P175_ISOLATED_CONTAINER_HTTP_SYNTHETIC_PASS`.
+- Docker image built for CI **without image publication**: `Dockerfile` copies only explicit source Python and public fixture JSON; `.dockerignore` rejects unintended context. `scripts/docker_offline_smoke.sh` applies `--network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges`, bounded CPU/memory, and probes container loopback HTTP + synthetic calculation. No host port exposed. It is a CI-isolated local demonstration, **not** a proof of secured public Production or source/data licensing.
+- This report itself is not a new software capability. Updates to the matrix alone **earn zero points**; only a fully green new acceptance gate or documented, rigorously tested fraction under a separately agreed rubric may raise the 45/100 score.
+- Protected unchanged: SEC originals, P105 direct SEC 403 no-repeat, real paid provider rights/keys, private V13 PDF (562,176 bytes SHA256 `64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece`), Owner DAKER account, Guard HOLD, real trades, Vercel settings/Production and domain. No uploads, releases, vendor payment, confidential source transfer, formal submission or permission changes.
+- Next tasks: authorized final preliminary V13 owner approval and distinct official team-leader submission/receipt by **2026-11-12 10:00 KST**; and genuinely lawfully obtained real single-issuer/NDX/representative peers with provenance and entitled display/AI-use, followed by actual agent and Production end-to-end. Neither task can be called complete by CI passing on synthetic sources. **RELEASE HOLD.**
+
