@@ -132,6 +132,15 @@ def parse_amd_issuer_2025(raw: bytes) -> dict[str, Any]:
         raise ValueError("AMD_ISSUER_PUBLICATION_OR_FISCAL_ANCHOR_MISMATCH")
     parser = _Tables()
     parser.feed(html)
+    table_text = " ".join(
+        " ".join(" ".join(row) for row in table)
+        for table in parser.tables
+    ).casefold()
+    # Require both complete fiscal dates *within table content*, not two
+    # unrelated year numbers in an article introduction or stale press note.
+    if (re.search(r"december\\s+27,?\\s+2025", table_text) is None
+            or re.search(r"december\\s+28,?\\s+2024", table_text) is None):
+        raise ValueError("AMD_GAAP_TABLE_FISCAL_YEAR_IDENTITY_CHANGED")
     gaap = _unique(parser.tables, {
         "revenue ($m)": _EXPECTED_GAAP["revenue"] * 2,
         "net income ($m)": (4335, 1641, 6831, 5420),

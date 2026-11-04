@@ -1,4 +1,4 @@
-# P210: actual AMD FY2025 financial original, one authorized no-retry public GET.
+# P210 focused improvement: enforce exact combined issuer fiscal dates before one live GET.
 # Runs only when workflow itself is added/modified, not on app code pushes.
 name: KIC P210 AMD 2025 real firstparty peer original once
 on:
