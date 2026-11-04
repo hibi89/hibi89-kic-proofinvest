@@ -19,6 +19,30 @@ def render_dell_real_source_evidence(st) -> None:
             or result.get("trade_executed") is not False):
         st.error("실제 발행사 원본의 증거 연결을 검증할 수 없습니다.")
         return
+    from .dell_2026_ixbrl_review import observed_ixbrl_receipt, review_observed_real_dell_ixbrl
+    actual = review_observed_real_dell_ixbrl(
+        as_of="2026-11-05", receipt=observed_ixbrl_receipt())
+    if (actual.get("status") != "PUBLISHER_IXBRL_REAL_ANNUAL_REVENUE_CONFIRMED_LIMITED"
+            or actual.get("publisher_xbrl_fact_correctly_replayed") is not True
+            or actual.get("sec_edgar_original_authenticated") is not False
+            or actual.get("source_commercial_rights_verified") is not False
+            or actual.get("guard_policy_preview") != "HOLD"
+            or actual.get("trade_executed") is not False):
+        st.error("발행사 실제 XBRL 회계기간·매출 원본 검증을 확인할 수 없습니다.")
+        return
+    from .dell_regulator_index_match import reviewed_real_dell_regulator_issuer_evidence
+    regulator = reviewed_real_dell_regulator_issuer_evidence()
+    if (regulator.get("status") !=
+            "INDEPENDENT_SEC_FILING_INDEX_MATCHED_WITH_LIVE_ISSUER_XBRL"
+            or regulator.get("independent_regulator_index_metadata_reconciled") is not True
+            or regulator.get("issuer_xbrl_fiscal_context_matched") is not True
+            or regulator.get("sec_original_bytes_obtained") is not False
+            or regulator.get("raw_sec_edgar_original_authenticated") is not False
+            or regulator.get("commercial_and_model_processing_rights_proven") is not False
+            or regulator.get("guard_policy_preview") != "HOLD"
+            or regulator.get("trade_executed") is not False):
+        st.error("SEC 색인과 발행사 실제 원본의 종목·기간 대응을 확인하지 못했습니다.")
+        return
     r=result["evidence"]
     st.success("공식 Dell 투자자관계 10-K 원본 바이트·재무수치 CI 검증 완료")
     st.markdown(f'[Dell 공식 원문]({r["source_url"]}) / '
@@ -34,17 +58,6 @@ def render_dell_real_source_evidence(st) -> None:
     c.metric("Guard 정책", "HOLD")
     # P199: independent real XBRL context/unit fact extracted by the
     # publisher-only one-shot job. Never assert EDGAR identical bytes or rights.
-    from .dell_2026_ixbrl_review import observed_ixbrl_receipt, review_observed_real_dell_ixbrl
-    actual = review_observed_real_dell_ixbrl(
-        as_of="2026-11-05", receipt=observed_ixbrl_receipt())
-    if (actual.get("status") != "PUBLISHER_IXBRL_REAL_ANNUAL_REVENUE_CONFIRMED_LIMITED"
-            or actual.get("publisher_xbrl_fact_correctly_replayed") is not True
-            or actual.get("sec_edgar_original_authenticated") is not False
-            or actual.get("source_commercial_rights_verified") is not False
-            or actual.get("guard_policy_preview") != "HOLD"
-            or actual.get("trade_executed") is not False):
-        st.error("발행사 실제 XBRL 회계기간·매출 원본 검증을 확인할 수 없습니다.")
-        return
     proof = actual["evidence"]
     st.subheader("실제 Inline XBRL 원문 컨텍스트 검증")
     st.caption(f'[{proof["xbrl_concept"]}] 실제 2026/2025 원문 태그 · '
@@ -61,19 +74,6 @@ def render_dell_real_source_evidence(st) -> None:
                + proof["annual_revenue_growth_pct"] + "%")
     # P204 SEC public filing INDEX and actual issuer raw/XBRL independent
     # source reconciled; NEVER claim exact SEC raw bytes or provider rights.
-    from .dell_regulator_index_match import reviewed_real_dell_regulator_issuer_evidence
-    regulator = reviewed_real_dell_regulator_issuer_evidence()
-    if (regulator.get("status") !=
-            "INDEPENDENT_SEC_FILING_INDEX_MATCHED_WITH_LIVE_ISSUER_XBRL"
-            or regulator.get("independent_regulator_index_metadata_reconciled") is not True
-            or regulator.get("issuer_xbrl_fiscal_context_matched") is not True
-            or regulator.get("sec_original_bytes_obtained") is not False
-            or regulator.get("raw_sec_edgar_original_authenticated") is not False
-            or regulator.get("commercial_and_model_processing_rights_proven") is not False
-            or regulator.get("guard_policy_preview") != "HOLD"
-            or regulator.get("trade_executed") is not False):
-        st.error("SEC 색인과 발행사 실제 원본의 종목·기간 대응을 확인하지 못했습니다.")
-        return
     sec = regulator["evidence"]
     st.subheader("SEC 제출 색인 × 발행사 실제 원문 교차 검증")
     st.markdown(f'[SEC 공식 제출 색인]({sec["regulator_index_url"]})')

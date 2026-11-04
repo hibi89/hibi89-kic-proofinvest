@@ -28,6 +28,20 @@ class SecIndexIssuerNativeUITests(unittest.TestCase):
             at.selectbox[0].set_value(_MODE).run(timeout=25)
         self.assertTrue(any("종목·기간 대응" in x.value for x in at.error))
         self.assertFalse(any("SEC 제출 색인" in x.value for x in at.subheader))
+        self.assertFalse(at.success, "A rejected SEC match must not show prior source success")
+        self.assertFalse(any("Inline XBRL" in x.value for x in at.subheader))
+
+
+    def test_rejected_ixbrl_cannot_emit_premature_publisher_success(self):
+        from streamlit.testing.v1 import AppTest
+        from proofinvest import dell_2026_ixbrl_review as p
+        at = AppTest.from_file(str(_APP)).run(timeout=25)
+        with patch.object(p, "review_observed_real_dell_ixbrl",
+                          return_value={"status": "BLOCKED"}):
+            at.selectbox[0].set_value(_MODE).run(timeout=25)
+        self.assertTrue(any("XBRL 회계기간" in x.value for x in at.error))
+        self.assertFalse(at.success, "Rejected XBRL cannot show original-source success")
+        self.assertFalse(any("SEC 제출 색인" in x.value for x in at.subheader))
 
 
 if __name__ == "__main__":
