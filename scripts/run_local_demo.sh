@@ -6,6 +6,10 @@ if [[ ! "$port" =~ ^[0-9]{4,5}$ ]] || (( 10#$port < 1024 || 10#$port > 65535 ));
   echo "KUODRA_INVALID_LOCAL_PORT (1024..65535)" >&2
   exit 2
 fi
+if ! command -v python3 >/dev/null; then
+  echo "KUODRA_HOST_PYTHON3_REQUIRED" >&2
+  exit 2
+fi
 if ! command -v docker >/dev/null; then
   echo "KUODRA_DOCKER_NOT_FOUND" >&2
   exit 2
@@ -24,13 +28,15 @@ trap cleanup EXIT INT TERM
 # published; the container has no host file mounts.
 docker build --pull=false -t "$image" .
 docker network create --internal "$network" >/dev/null
-echo "KUODRA_LOCAL_ONLY http://127.0.0.1:$port"
-docker run --rm --name "$container" \
-  --network "$network" --publish "127.0.0.1:$port:8501" \
+echo "KUODRA_RELAY_STARTING 127.0.0.1:$port"
+docker run -d --name "$container" \
+  --network "$network" \
   --read-only --tmpfs /tmp:rw,nosuid,noexec,size=64m \
   --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 96 --memory 768m --cpus 1 --user 10001:10001 \
   "$image" python -B -m streamlit run streamlit_app.py \
   --server.address=0.0.0.0 --server.port=8501 --server.headless=true \
   --server.enableCORS=true --server.enableXsrfProtection=true \
-  --browser.gatherUsageStats=false
+  --browser.gatherUsageStats=false >/dev/null
+ip="$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container")"
+python3 -B -m scripts.local_loopback_relay --container-ip "$ip" --listen-port "$port"

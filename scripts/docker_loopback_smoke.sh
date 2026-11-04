@@ -11,14 +11,16 @@ image="kuodra-loopback-smoke:${GITHUB_SHA:-p176}"
 network="kuodra-loopback-$$"
 name="kuodra-loopback-test-$$"
 cleanup() {
+  if [ -n "${relay_pid:-}" ]; then kill "$relay_pid" >/dev/null 2>&1 || true; fi
   docker rm -f "$name" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
+  rm -f "/tmp/kuodra-p176-relay-$.log"
 }
 trap cleanup EXIT
 docker build --pull=false -t "$image" .
 docker network create --internal "$network" >/dev/null
 docker run -d --name "$name" \
-  --network "$network" --publish "127.0.0.1:$port:8501" \
+  --network "$network" \
   --read-only --tmpfs /tmp:rw,nosuid,noexec,size=64m \
   --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 96 --memory 768m --cpus 1 --user 10001:10001 \
@@ -30,8 +32,11 @@ test "$(docker network inspect --format '{{.Internal}}' "$network")" = "true"
 test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$name")" = "true"
 test "$(docker inspect --format '{{.Config.User}}' "$name")" = "10001:10001"
 test "$(docker inspect --format '{{.HostConfig.Privileged}}' "$name")" = "false"
-test "$(docker port "$name" 8501/tcp)" = "127.0.0.1:$port"
+test "$(docker inspect --format '{{json .NetworkSettings.Ports}}' "$name")" = '{"8501/tcp":null}'
 test "$(docker inspect --format '{{.HostConfig.CapDrop}}' "$name")" = "[ALL]"
+ip="$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")"
+python3 -B -m scripts.local_loopback_relay --container-ip "$ip" --listen-port "$port" >/tmp/kuodra-p176-relay-$.log 2>&1 &
+relay_pid=$!
 for attempt in $(seq 1 45); do
   if KUODRA_PORT="$port" python -B -c '
 import os, urllib.request
