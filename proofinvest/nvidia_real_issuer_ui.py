@@ -60,6 +60,69 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
         "trade_executed": False,
         "external_network_requests_on_view": 0,
     })
+    # P210: same-industry PUBLIC GAAP annual reference. This is a newly
+    # disclosed first-party web-text transcription for AMD, NOT another
+    # verified original-byte file or a licensed/true period-matched peer.
+    from .amd_nvidia_public_reference import (
+        actual_amd_public_newsroom_receipt,
+        compare_nvda_amd_public_annual_reference,
+    )
+    reference = compare_nvda_amd_public_annual_reference(
+        reviewed_as_of="2026-11-05",
+        amd_receipt=actual_amd_public_newsroom_receipt(),
+        nvidia_receipt=actual_nvidia_issuer_receipt(),
+    )
+    if (reference.get("status") ==
+            "HUMAN_REFERENCE_NVDA_AMD_GAAP_GROWTH_DIFFERENT_PERIODS"
+            and reference.get("actual_nvda_issuer_raw_verified") is True
+            and reference.get("amd_web_text_reference_validated") is True
+            and reference.get("amd_original_raw_bytes_verified") is False
+            and reference.get("licensed_representative_same_sector_peer") is False
+            and reference.get("source_commercial_ai_rights_verified") is False
+            and reference.get("fiscal_windows_identical") is False
+            and reference.get("engine_c_completed") is False
+            and reference.get("guard_policy_preview") == "HOLD"
+            and reference.get("trade_executed") is False
+            and type(reference.get("evidence")) is dict):
+        p = reference["evidence"]
+        st.subheader("AMD·NVIDIA 공식 공개 GAAP 매출 참고 비교 — 동일 기간 아님")
+        st.markdown(
+            f'[AMD 공식 FY2025 뉴스룸 발표]({p["issuer_rows"][1]["first_party_report"]}) · '
+            f'[NVIDIA 공식 FY2026 발표]({p["issuer_rows"][0]["first_party_report"]})'
+        )
+        st.dataframe([
+            {"기업": item["ticker"],
+             "최신 회계연도 종료일": item["fiscal_latest_end"],
+             "최신 연간 매출 (USD 백만)": item["annual_gaap_revenue_latest_usdm"],
+             "직전 연간 매출 (USD 백만)": item["annual_gaap_revenue_prior_usdm"],
+             "매출 증가율 (%)": item["annual_gaap_revenue_growth_pct"],
+             "원문 검증 수준": item["provenance"]}
+            for item in p["issuer_rows"]
+        ], hide_index=True, use_container_width=True)
+        st.warning(
+            f'비교 제한: 회계연도 종료일 {p["current_fiscal_end_gap_days"]}일 차이, '
+            "기업별 제품 및 데이터센터 부문 구성 차이. AMD는 공식 홈페이지 공개 "
+            "GAAP 수치 수동 대조만 완료했고 원문 HTML 바이트 해시·이용권 미확인입니다. "
+            "NVIDIA 원문 바이트는 별도 CI에서 검증했습니다. "
+            "시장점유율·경쟁 순위·투자 판단을 추정하지 않습니다. Guard HOLD."
+        )
+        st.json({
+            "public_issuer_reference_status": reference["status"],
+            "nvidia_actual_issuer_raw_verified": True,
+            "amd_issuer_public_web_gaap_only": True,
+            "amd_raw_html_authenticated": False,
+            "same_fiscal_period": False,
+            "licensed_peer_data": False,
+            "sector_rank": "UNAVAILABLE",
+            "cross_issuer_accounting_policy_comparable": False,
+            "commercial_ai_rights_verified": False,
+            "industry_engine_c_complete": False,
+            "guard_decision": "HOLD",
+            "trade_executed": False,
+            "network_calls_on_view": 0,
+        })
+    else:
+        st.warning("AMD 동종업계 공식 웹텍스트 참조 검증 실패: 비교 수치를 표시하지 않습니다.")
     st.warning(
         "발행사 미감사 실적발표와 실제 원문 수치 검증입니다. SEC 10-K와 "
         "원문 바이트 동일성·상업/AI 이용권·주가/Nasdaq-100 및 동종기업 "
