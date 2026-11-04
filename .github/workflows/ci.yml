@@ -313,3 +313,19 @@ jobs:
         run: python -B -m scripts.local_originals_review_smoke
       - name: Confirm native Windows localhost HTTP and shutdown
         run: python -B -m scripts.local_ui_launcher --smoke --port 18682
+
+  genuine-local-model:
+    name: P181 actual 135M Ollama CPU inference (public synthetic only)
+    # Large downloads are NOT repeated for ordinary commits.
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[model-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Real 135M model generation and safe KUODRA triage (no user input)
+        run: bash scripts/real_local_model_inference_ci.sh
