@@ -80,7 +80,9 @@ def render_local_model_triage_ui(st) -> None:
         return
     # Fail closed even when a mocked/malformed UI incorrectly reports a
     # click for an inaccessible control. Never call a model without both.
-    if not ready or type(port_text) is not str or not _VALID_PORT.fullmatch(port_text):
+    if (not ready or type(port_text) is not str
+            or not _VALID_PORT.fullmatch(port_text)
+            or not 1024 <= int(port_text) <= 65535):
         st.warning("로컬 AI 명시적 동의 또는 포트 입력이 올바르지 않습니다.")
         st.code("LOCAL_MODEL_CONSENT_OR_PORT_INVALID", language="text")
         return

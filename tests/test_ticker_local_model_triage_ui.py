@@ -171,7 +171,7 @@ class TickerLocalModelTriageUiTests(unittest.TestCase):
                 self.assertEqual(ui.codes, ["LOCAL_MODEL_TRIAGE_BLOCKED"])
 
     def test_invalid_port_and_unverified_packet_fail_before_http(self):
-        for port in ("", "0", "80", "65536", "host:11434", "abc"):
+        for port in ("", "0", "80", "1000", "65536", "host:11434", "abc"):
             with self.subTest(port=port), patch(
                 "proofinvest.ticker_local_model_triage.triage_review",
                 side_effect=AssertionError("NO_INVALID_PORT_HTTP"),
