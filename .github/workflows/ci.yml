@@ -236,6 +236,17 @@ jobs:
             /tmp/kic-local-upload-browser/kuodra-local-upload-browser.json
           if-no-files-found: error
           retention-days: 14
+      - name: P180 real Chromium Streamlit local-model UI with explicit consent (emulator only)
+        run: python -B -m scripts.local_model_triage_browser_smoke /tmp/kic-p180-model-ui
+      - name: Archive P180 browser evidence (synthetic only, no original/secret)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-p180-local-model-triage-chromium
+          path: |
+            /tmp/kic-p180-model-ui/p180-consented-local-protocol.png
+            /tmp/kic-p180-model-ui/p180-local-model-browser.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Archive actual browser screenshot and machine-readable receipt
         uses: actions/upload-artifact@v4
         with:
