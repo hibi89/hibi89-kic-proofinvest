@@ -54,6 +54,22 @@ class RealIxbrlTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     p.extract_dell_ixbrl_2026(altered)
 
+    def test_actual_nested_xbrl_keeps_inner_fact_provenance(self):
+        # Reproduces Dell HTML's nested iXBRL nonfraction shapes. Parent's
+        # amounts must never be merged into the real annual revenue fact.
+        raw = sample()
+        raw = raw.replace(
+            b'<ix:nonFraction name=',
+            b'<ix:nonFraction name="us-gaap:Assets" contextRef="c26" '
+            b'unitRef="usd" scale="6">100<ix:nonFraction name=', 1
+        ).replace(
+            b'</ix:nonFraction>',
+            b'</ix:nonFraction>200</ix:nonFraction>', 1
+        )
+        result = p.extract_dell_ixbrl_2026(raw)
+        self.assertEqual(result["FY2026"]["revenue_usd_millions"], "113538")
+        self.assertEqual(result["FY2025"]["revenue_usd_millions"], "95567")
+
     def test_one_public_https_get_and_keep_raw_ephemeral(self):
         got = []
         with patch.object(p, "_open", side_effect=AssertionError("NO_NETWORK")):

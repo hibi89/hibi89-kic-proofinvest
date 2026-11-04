@@ -1,7 +1,7 @@
-# P198 genuine publisher 2026 iXBRL context+currency fact extraction, once.
+# P198 one targeted correction: real Dell HTML nests iXBRL facts; stack parser.
 # New independent financial-source task, not SEC P105/Apple P193 reattempt.
 # Source bytes discarded in memory. No paid API/owner credentials.
-name: KIC P198 Dell real FY2026 issuer Inline XBRL once
+name: KIC P198 Dell real FY2026 issuer Inline XBRL (one targeted fix)
 on:
   push:
     branches: [lead/kic]

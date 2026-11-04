@@ -39,7 +39,7 @@ class _Ix(HTMLParser):
         self.context: str | None = None
         self.unit: str | None = None
         self.field: str | None = None
-        self.fact: dict | None = None
+        self.fact_stack: list[dict] = []
 
     def handle_starttag(self, tag, attrs):
         d = dict(attrs)
@@ -62,17 +62,23 @@ class _Ix(HTMLParser):
                      "startdate", "enddate", "measure"):
             self.field = tag.split(":")[-1]
         elif tag == "ix:nonfraction":
-            if self.fact is not None or len(self.facts) >= 100000:
-                raise ValueError("UNSAFE_NESTED_OR_TOO_MANY_XBRL_FACTS")
-            self.fact = dict(name=d.get("name", "").lower(),
-                             ctx=d.get("contextref"), unit=d.get("unitref"),
-                             scale=d.get("scale", "0"), sign=d.get("sign"), text="")
+            # Actual Dell inline HTML nests iXBRL nonfractions in some blocks.
+            # Keep the innermost fact isolated, rather than reject the whole
+            # filing or concatenate unrelated child/parent financial values.
+            if len(self.fact_stack) >= 16 or len(self.facts) >= 100000:
+                raise ValueError("XBRL_NEST_DEPTH_OR_FACT_COUNT_EXCEEDED")
+            self.fact_stack.append(dict(
+                name=d.get("name", "").lower(), ctx=d.get("contextref"),
+                unit=d.get("unitref"), scale=d.get("scale", "0"),
+                sign=d.get("sign"), text=""
+            ))
 
     def handle_data(self, data):
-        if self.fact is not None:
-            if len(self.fact["text"]) + len(data) > 512:
+        if self.fact_stack:
+            top = self.fact_stack[-1]
+            if len(top["text"]) + len(data) > 512:
                 raise ValueError("XBRL_FACT_OVERLONG")
-            self.fact["text"] += data
+            top["text"] += data
         if self.context is not None and self.field in ("startdate", "enddate"):
             self.contexts[self.context][
                 "start" if self.field == "startdate" else "end"
@@ -81,9 +87,8 @@ class _Ix(HTMLParser):
             self.units[self.unit].append(data.strip().lower())
 
     def handle_endtag(self, tag):
-        if tag == "ix:nonfraction" and self.fact is not None:
-            self.facts.append(self.fact)
-            self.fact = None
+        if tag == "ix:nonfraction" and self.fact_stack:
+            self.facts.append(self.fact_stack.pop())
         elif tag in ("xbrli:context", "context"):
             self.context = None
         elif tag in ("xbrli:unit", "unit"):
