@@ -100,5 +100,23 @@ class Dell2026OfficialOriginalTests(unittest.TestCase):
         self.assertNotIn("DO_NOT_LOG_PRIVATE_INFO", str(r))
 
 
+    def test_cli_main_calls_probe_once_and_returns_correct_exit(self):
+        import contextlib
+        import json
+        for status, expected_exit in (
+            ("ISSUER_HTTPS_REAL_DELL_2026_10K_BYTES_CROSSCHECKED", 0),
+            ("UNAVAILABLE", 2),
+        ):
+            with self.subTest(status=status):
+                log = io.StringIO()
+                with patch.object(p, "probe_dell_official_2026_10k_once",
+                                  return_value={"status":status}) as run:
+                    with contextlib.redirect_stdout(log):
+                        result=p.main()
+                self.assertEqual(result, expected_exit)
+                self.assertEqual(json.loads(log.getvalue())["status"], status)
+                run.assert_called_once()
+
+
 if __name__=="__main__":
     unittest.main()

@@ -181,16 +181,12 @@ def probe_dell_official_2026_10k_once(
 
 
 def main() -> int:
-    print(json.dumps(probe_dell_official_2026_10k_once(),
-                     ensure_ascii=False, sort_keys=True, allow_nan=False))
-    return 0 if probe_dell_official_2026_10k_once.__name__ == "never" else 2
+    # One and ONLY one request; single result and accurate CLI exit code.
+    result = probe_dell_official_2026_10k_once()
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True, allow_nan=False))
+    return (0 if result["status"] ==
+            "ISSUER_HTTPS_REAL_DELL_2026_10K_BYTES_CROSSCHECKED" else 2)
 
 
 if __name__ == "__main__":
-    # One and ONLY one actual request, preserve the computed result.
-    result = probe_dell_official_2026_10k_once()
-    print(json.dumps(result, ensure_ascii=False, sort_keys=True, allow_nan=False))
-    raise SystemExit(
-        0 if result["status"] == "ISSUER_HTTPS_REAL_DELL_2026_10K_BYTES_CROSSCHECKED"
-        else 2
-    )
+    raise SystemExit(main())
