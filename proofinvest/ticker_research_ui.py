@@ -599,6 +599,8 @@ def render_single_ticker_search(st) -> None:
     _render_p164_downloaded_packet_inspector(st)
     from .ticker_local_model_triage_ui import render_local_model_triage_ui
     render_local_model_triage_ui(st)
+    from .ticker_local_numeric_claim_ui import render_local_numeric_claim_ui
+    render_local_numeric_claim_ui(st)
     if run_sec_clicked:
         if not can_fetch:
             st.error("SEC 수집 차단: 승인·연락처·티커·기준일 확인 필요")
