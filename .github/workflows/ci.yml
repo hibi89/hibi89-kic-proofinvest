@@ -275,4 +275,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and exercise local-only isolated runtime
-        run: bash scripts/docker_offline_smoke.sh
+        run: |
+          bash scripts/docker_offline_smoke.sh
+          bash scripts/docker_loopback_smoke.sh
