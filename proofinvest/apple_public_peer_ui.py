@@ -45,6 +45,9 @@ def render_public_fy2026_reference_peers(st) -> None:
         st.markdown(
             f'[{row["ticker"]} 공식 공시·연차보고서 원문]({row["primary_public_report"]})'
         )
+    from .dell_real_source_ui import render_dell_real_source_evidence
+    render_dell_real_source_evidence(st)
+
     st.json({
         "state": result["status"],
         "genuine_public_revenue_rows": 3,
