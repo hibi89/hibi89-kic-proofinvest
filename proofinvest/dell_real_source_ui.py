@@ -125,6 +125,38 @@ def render_dell_real_source_evidence(st) -> None:
         )
     else:
         st.warning("매출채권·재고 실원문 비교 검증 불가: 신규 Engine B 지표를 표시하지 않습니다.")
+    # P208 explicitly opted-in ephemeral Guard+SQLite audit, no automatic
+    # collection or persistent source-file writes on page view.
+    with st.expander("실자료 Engine B → Guard HOLD → SQLite 감사 (로컬)", expanded=False):
+        acknowledged = st.checkbox(
+            "실제 발행사 수치의 검증용 파생 요약을 임시 로컬 SQLite에 기록한 뒤 삭제하는 데 동의",
+            value=False, key="p208_local_audit_ack",
+        )
+        if st.button(
+            "명시적 1회 Guard 감사 실행", key="p208_run_once",
+            disabled=not acknowledged,
+        ):
+            from tempfile import TemporaryDirectory
+            from pathlib import Path
+            from .dell_real_guard_audit import run_real_issuer_guard_audit
+            # This is a disposable locally verified audit. A caller needing
+            # persistence uses the explicit offline CLI with its own db path.
+            with TemporaryDirectory(prefix="kuodra-p208-") as temp:
+                result_audit = run_real_issuer_guard_audit(
+                    run_id="P208-local-review", audit_db_path=Path(temp)/"audit.sqlite",
+                    acknowledge_local_persistence=True,
+                    source_receipt=actual_working_capital_receipt(),
+                )
+            if (result_audit.get("status") ==
+                    "REAL_SOURCE_ENGINE_B_GUARD_HOLD_AUDIT_RECORDED"
+                    and result_audit.get("audit_chain_valid") is True
+                    and result_audit.get("trade_executed") is False
+                    and result_audit.get("network_requests") == 0):
+                st.success("실자료 감사 체인 검증 완료 · Guard HOLD · 임시 SQLite 삭제")
+                st.json(result_audit["report"])
+            else:
+                st.error("실자료 Guard 감사 증거 검증 실패: 보고서와 승인 판정을 표시하지 않습니다.")
+
     st.warning(
         "이 검증은 발행사 공식 HTTPS 원본과 원문 내 실제 수치 확인입니다. "
         "SEC EDGAR 원본과의 동일 바이트 인증, 데이터 이용권, NDX 및 "
