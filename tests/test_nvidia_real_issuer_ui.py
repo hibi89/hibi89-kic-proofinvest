@@ -62,7 +62,7 @@ class P209ActualNvidiaUiTests(unittest.TestCase):
         self.assertFalse(at.exception)
         self.assertFalse(at.success)
         self.assertFalse(at.metric)
-        self.assertTrue(any("원문 검증 증거" in x.message for x in at.error))
+        self.assertTrue(any("원문 검증 증거" in x.value for x in at.error))
 
 
 if __name__=="__main__":
