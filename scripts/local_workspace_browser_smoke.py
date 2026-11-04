@@ -638,7 +638,7 @@ def run(output: Path) -> dict:
                         )).to_be_visible(timeout=30000)
                         expect(page.get_by_text("HOLD", exact=True).first).to_be_visible()
                         expect(page.get_by_text(
-                            "Engine A · 시장 회귀 + SEC 실적 맥락", exact=True,
+                            "KUODRA · Engine A — Market Reality", exact=True,
                         )).to_be_visible(timeout=20000)
                         with page.expect_download(timeout=15000) as market_json_download:
                             page.get_by_role(

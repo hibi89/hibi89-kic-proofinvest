@@ -1,3 +1,15 @@
+## P205 one focused Chromium assertion repair — 2026-11-05 KST
+1. Goal: complete exact-SHA CI on atomic three-gate Dell evidence UI without obscuring a separate unrelated browser regression.
+2. Decision: correct ONE obsolete local-workspace Playwright heading assertion to the actually rendered stable "KUODRA · Engine A — Market Reality"; do not weaken Guard/HOLD, reports, source authenticity or other browser conditions.
+3. Evidence: initial P205 source 6f7a236e726d403038977170801ebf480b75399e Actions #41893319640: Python, Windows HTTP, SQLite and isolated Docker SUCCESS, one 135M job SKIPPED; Chromium FAIL "Locator expected to be visible" for obsolete heading. Actual accessibility snapshot confirms the intended header visible and Guard HOLD.
+4. Verification: new exact-SHA CI PENDING; the old result is a real FAIL, not a successful completion. No real SEC/issuer network/AI inference/Production claim.
+5. Error/recovery: this is first focused Playwright-only repair after CI failure. If it fails without distinct objectively verified cause, stop and pivot. Parent source SHA 6f7a236e726d403038977170801ebf480b75399e preserved in Git history; no force push.
+6. Repo/branch: hibi89/hibi89-kic-proofinvest lead/kic, scripts/local_workspace_browser_smoke.py, proofinvest/dell_real_source_ui.py, tests/test_dell_regulator_index_match_ui.py. Confirm next SHA from branch ref.
+7. Deployment: no Production/Vercel; local browser tests only.
+8. Privacy: no private originals, secrets, provider calls, paid API, submitting/uploading raw files or rights changes.
+9. Next: check terminal browser gate on exact SHA, then prioritize licensed/legitimate real independent full data; avoid past P200-P202 repeated failed live attempts.
+10. Status: Strict whole-product final 54/100, +0pp confirmed this round, 46 blocked, RELEASE HOLD, 2026-11-05 KST.
+
 ## P205 fail-closed display gating — 2026-11-05 KST (10-field handoff)
 1. Goal and requirement: Avoid showing Dell publisher source verification SUCCESS and real-finance metrics before P199 XBRL plus P203 SEC official-index integrity checks complete. No release/rights upgrade.
 2. Decision: Preflight all three existing independent evidence reviewers before rendering the first positive status or numeric metric. Chosen over late error banners that leave contradictory success visible; preserves original source, calculations, links, and Guard HOLD.
