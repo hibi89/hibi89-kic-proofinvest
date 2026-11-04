@@ -7,7 +7,8 @@ def render_apple_fy2026_public_review(st) -> None:
     st.warning(
         "PUBLIC TEXT TRANSCRIPTION · SEC 공개 10-K를 2026-11-05 수동 대조한 "
         "실제 과거 수치. 원본 HTML 바이트·발행 원본/이용권 인증, "
-        "NDX/시장/동종업계 자료, 투자 권고 및 실제 LLM 분석이 아닙니다."
+        "NDX/시장/동종업계 자료와 투자 권고는 미지원. "
+        "로컬 모델은 기본 미실행이며 별도 2단계 동의 후에만 활성화됩니다."
     )
     from .apple_fy2026_public_filing_review import (
         review_apple_2026_public_financials, public_2026_values,
@@ -53,5 +54,10 @@ def render_apple_fy2026_public_review(st) -> None:
     })
     st.caption(
         "별도 유료 데이터 사용이나 SEC API 직접 재시도 없음. "
-        "데이터 사용권·공시 원본 독립 인증까지 확인되기 전 대외 자동 재배포/AI 입력 금지."
+        "원본 대외 재배포/외부 AI 전송 금지; 아래 공개 숫자 2개만 동의 후 로컬에서 처리."
     )
+
+    # P192: only appears on explicitly enabled loopback local workspace.
+    # No remote model, no user originals; two opt-ins and a single real click.
+    from .apple_public_model_ui import render_apple_public_model_check
+    render_apple_public_model_check(st)
