@@ -62,7 +62,7 @@ class LocalModelTriageTests(unittest.TestCase):
         ModelHandler.response_body = {
             "done": True, "model": "test-local-model",
             "response": json.dumps({
-                "focus_engine": "A",
+                "focus_engine": "B",
                 "decision": "HUMAN_REVIEW_ONLY",
             }),
         }
@@ -88,8 +88,11 @@ class LocalModelTriageTests(unittest.TestCase):
         out = self.call()
         self.assertEqual(out["status"],
                          "LOCAL_MODEL_TRIAGE_PROTOCOL_UNVERIFIED_MODEL_ORIGIN")
-        self.assertEqual(out["focus_engine"], "A")
-        self.assertEqual(out["focus_status"], "REPORTED_UNVERIFIED")
+        self.assertEqual(out["focus_engine"], "B")
+        self.assertEqual(
+            out["focus_status"],
+            json.loads(self.packet)["explanation"]["findings"][1]["status"],
+        )
         self.assertTrue(out["model_protocol_http_verified"])
         self.assertTrue(out["human_review_priority_policy_verified"])
         self.assertFalse(out["model_inference_authenticated"])
@@ -156,7 +159,7 @@ class LocalModelTriageTests(unittest.TestCase):
         ModelHandler.response_body = {
             "done": True, "model": "test-local-model",
             "response": json.dumps({
-                "focus_engine": "B", "decision": "HUMAN_REVIEW_ONLY",
+                "focus_engine": "A", "decision": "HUMAN_REVIEW_ONLY",
             }),
         }
         out = self.call()

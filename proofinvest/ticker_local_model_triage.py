@@ -172,7 +172,8 @@ def triage_review(
             "This is missing-evidence review order, NEVER investment risk. "
             "These are only UNVERIFIED local status codes, not a certified "
             "SEC/market feed. Return ONLY JSON with exactly "
-            '{"focus_engine":"A","decision":"HUMAN_REVIEW_ONLY"}. '
+            '{"focus_engine":"' + _expected_missing_evidence_focus(context)
+            + '","decision":"HUMAN_REVIEW_ONLY"}. '
             "Do not make recommendations, infer missing data or cite originals. "
             "Status codes: " + json.dumps(context, sort_keys=True) + "."
         )
