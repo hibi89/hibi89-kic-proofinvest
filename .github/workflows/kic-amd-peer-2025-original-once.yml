@@ -1,0 +1,28 @@
+# P210: actual AMD FY2025 financial original, one authorized no-retry public GET.
+# Runs only when workflow itself is added/modified, not on app code pushes.
+name: KIC P210 AMD 2025 real firstparty peer original once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-amd-peer-2025-original-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p210-amd-official-source-once
+  cancel-in-progress: false
+jobs:
+  amd-firstparty-peer-original:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check GAAP vs nonGAAP and full-year vs Q4 negative tests
+        run: python -B -m unittest tests.test_amd_fy2025_issuer_once -v
+      - name: One direct AMD issuer original GET without storage or redirects
+        run: python -B -m proofinvest.amd_fy2025_issuer_once
