@@ -177,5 +177,34 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
                 "commercial_ai_rights_verified": False,
                 "trade_executed": False, "external_network_requests": 0,
             })
+            # P212: only this verified, explicitly consented local audit can
+            # produce a portable, self-checking, owner-only report ZIP.
+            from .nvidia_audit_bundle import (
+                build_nvidia_audit_bundle, verify_nvidia_audit_bundle,
+            )
+            try:
+                archive, digest = build_nvidia_audit_bundle(audit)
+                replay = verify_nvidia_audit_bundle(
+                    archive, expected_sha256=digest)
+                if (replay["status"] != "LOCAL_NVDA_BUNDLE_DIGEST_AND_REPLAY_PASS"
+                        or replay["guard_decision"] != "HOLD"
+                        or replay["sec_original_authenticated"] is not False
+                        or replay["source_rights_verified"] is not False
+                        or replay["trade_executed"] is not False):
+                    raise ValueError("NVDA_LOCAL_EXPORT_REPLAY_NOT_VERIFIED")
+            except (ValueError, TypeError, OSError, RuntimeError):
+                st.error("NVIDIA 실자료 보고서 무결성 검증 실패: ZIP 생성을 중단합니다.")
+            else:
+                st.download_button(
+                    "NVIDIA 로컬 검토 보고서 ZIP 내려받기",
+                    data=archive,
+                    file_name="KUODRA_NVDA_P212_local_review_only.zip",
+                    mime="application/zip",
+                    key="p212_nvda_export_zip",
+                )
+                st.caption(
+                    f"ZIP SHA-256 {digest} · 다운로드 후 별도 보관해야 검증 가능. "
+                    "상업·AI 재사용권 및 SEC 원본 동등성 미확인. 로컬 개인 검토 전용."
+                )
         else:
             st.error("NVIDIA 실자료 감사 거부: 원본·동의·Guard·감사 무결성을 재확인하십시오.")
