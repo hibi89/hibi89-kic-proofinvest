@@ -59,6 +59,31 @@ def render_dell_real_source_evidence(st) -> None:
         use_container_width=True, hide_index=True)
     st.caption("원본 XBRL에서 직접 확인한 매출 증가율: "
                + proof["annual_revenue_growth_pct"] + "%")
+    # P204 SEC public filing INDEX and actual issuer raw/XBRL independent
+    # source reconciled; NEVER claim exact SEC raw bytes or provider rights.
+    from .dell_regulator_index_match import reviewed_real_dell_regulator_issuer_evidence
+    regulator = reviewed_real_dell_regulator_issuer_evidence()
+    if (regulator.get("status") !=
+            "INDEPENDENT_SEC_FILING_INDEX_MATCHED_WITH_LIVE_ISSUER_XBRL"
+            or regulator.get("independent_regulator_index_metadata_reconciled") is not True
+            or regulator.get("issuer_xbrl_fiscal_context_matched") is not True
+            or regulator.get("sec_original_bytes_obtained") is not False
+            or regulator.get("raw_sec_edgar_original_authenticated") is not False
+            or regulator.get("commercial_and_model_processing_rights_proven") is not False
+            or regulator.get("guard_policy_preview") != "HOLD"
+            or regulator.get("trade_executed") is not False):
+        st.error("SEC 색인과 발행사 실제 원본의 종목·기간 대응을 확인하지 못했습니다.")
+        return
+    sec = regulator["evidence"]
+    st.subheader("SEC 제출 색인 × 발행사 실제 원문 교차 검증")
+    st.markdown(f'[SEC 공식 제출 색인]({sec["regulator_index_url"]})')
+    st.caption(f'CIK {sec["cik"]} · 접수번호 {sec["accession"]} · '
+               f'문서 {sec["form"]} · 회계종료 {sec["report_end"]}')
+    st.warning(
+        "SEC 공식 색인 메타데이터와 발행사 공시의 CIK·접수번호·기간은 일치합니다. "
+        "하지만 원문 바이트 크기가 달라 SEC 원본 동일성은 인증되지 않았으며, "
+        "재배포·AI 처리 이용권도 확보되지 않았습니다."
+    )
     st.warning(
         "이 검증은 발행사 공식 HTTPS 원본과 원문 내 실제 수치 확인입니다. "
         "SEC EDGAR 원본과의 동일 바이트 인증, 데이터 이용권, NDX 및 "
