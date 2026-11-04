@@ -110,7 +110,10 @@ def parse_amd_newsroom_2025(raw: bytes) -> dict[str, Any]:
         "operating income (loss)")
     if not (re.search(r"december\s+27,\s*2025", segment)
             and re.search(r"december\s+28,\s*2024", segment)
-            and "net revenue:" in segment):
+            and re.search(
+                r"(?<!quarterly )net\s+revenue:\s+data\s+center\s+segment",
+                segment,
+            )):
         raise ValueError("AMD_NEWSROOM_SEGMENT_FISCAL_ENDS_MISMATCH")
     dc = _values(segment, "data center segment", "client and gaming segment", 5)
     total = _values(segment, "total net revenue", "operating income (loss)", 5) if (
