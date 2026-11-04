@@ -1,3 +1,5 @@
+**LATEST P211 2026-11-05 KST:** Current source-of-truth 10-field handoff is at [root HANDOFF.md](../../../HANDOFF.md) P211, with tested feature SHA fe06001b0af617106ab9b6fa9bfa86b01b4f8c2f and exact terminal [CI #41910900797](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41910900797) SUCCESS. Final internal acceptance 59/100, 41 unearned, RELEASE HOLD. The historical records below retain their original dates; do not treat them as current. No Production URL, SEC legal rights, true NDX+peer data, factual agent or DAKER receipt verified.
+
 ## 2026-10-27 KST — SEC HTTP protocol interrupted-response repair (10-field handoff)
 1. **Goal:** An explicit opted-in SEC CompanyConcept fetch must fail closed, not propagate uncaught protocol exceptions into Streamlit/CLI.
 2. **Implementation / design choice:** `proofinvest/sec_api_client.py` catches `http.client.HTTPException` alongside prior urllib/OSError failures; `IncompleteRead` and `BadStatusLine` are not OSError and previously escaped the error gate. Minimal handler extension chosen over global exception-catching or automatic retries.
