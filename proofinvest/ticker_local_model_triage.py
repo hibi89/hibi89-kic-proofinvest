@@ -197,10 +197,18 @@ def triage_review(
         if (type(proposal) is not dict
                 or set(proposal) != {"focus_engine", "decision"}
                 or proposal.get("focus_engine") not in ("A", "B", "C")
-                or proposal.get("decision") != "HUMAN_REVIEW_ONLY"
-                or proposal.get("focus_engine")
-                != _expected_missing_evidence_focus(context)):
+                or proposal.get("decision") != "HUMAN_REVIEW_ONLY"):
             raise ValueError("MODEL_FREE_TEXT_OR_ADVICE_REJECTED")
+        # A schema-correct small model may still choose an unsupported
+        # human-first work order. No model choice or free text may escape.
+        # Preserve evidence that syntax-only focus was validated, but do NOT
+        # promote it to a reviewed/accepted or human-approved focus.
+        if proposal["focus_engine"] != _expected_missing_evidence_focus(context):
+            return {
+                **_blocked("MODEL_FOCUS_DISAGREES_WITH_LOCAL_POLICY", calls=1),
+                "model_structured_focus_verified": True,
+                "human_review_priority_policy_verified": False,
+            }
         chosen = next(f for f in findings
                       if f["engine"] == proposal["focus_engine"])
         # Only trusted deterministic authored text, never model free-text.
@@ -213,6 +221,7 @@ def triage_review(
             "safe_existing_interpretation": chosen["interpretation"],
             "model_protocol_http_verified": True,
             "human_review_priority_policy_verified": True,
+            "model_structured_focus_verified": True,
             "model_inference_authenticated": False,
         }
     except (ValueError, UnicodeError, TypeError, KeyError, StopIteration,

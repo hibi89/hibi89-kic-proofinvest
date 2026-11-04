@@ -95,6 +95,7 @@ class LocalModelTriageTests(unittest.TestCase):
         )
         self.assertTrue(out["model_protocol_http_verified"])
         self.assertTrue(out["human_review_priority_policy_verified"])
+        self.assertTrue(out["model_structured_focus_verified"])
         self.assertFalse(out["model_inference_authenticated"])
         self.assertFalse(out["ai_agent_executed"])
         self.assertFalse(out["source_rights_verified"])
@@ -168,7 +169,12 @@ class LocalModelTriageTests(unittest.TestCase):
         self.assertFalse(out["ai_agent_executed"])
         self.assertFalse(out["trade_executed"])
         self.assertEqual(out["guard_policy_preview"], "HOLD")
-        self.assertNotIn("human_review_priority_policy_verified", out)
+        self.assertEqual(
+            out["reason_code"], "MODEL_FOCUS_DISAGREES_WITH_LOCAL_POLICY",
+        )
+        self.assertIs(out["model_structured_focus_verified"], True)
+        self.assertIs(out["human_review_priority_policy_verified"], False)
+        self.assertNotIn("focus_engine", out)
         self.assertEqual(len(ModelHandler.observations), 1)
 
     def test_adversarial_model_output_is_rejected_no_model_text_export(self):
