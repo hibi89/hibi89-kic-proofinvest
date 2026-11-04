@@ -40,6 +40,17 @@ _FOCUS_SCHEMA = {
 }
 
 
+def _expected_missing_evidence_focus(statuses: dict[str, str]) -> str:
+    """A/B/C human missing-evidence priority; never an investment ranking."""
+    for engine in ("A", "B", "C"):
+        if statuses[engine] in (
+            "UNAVAILABLE", "INSUFFICIENT_EVIDENCE",
+            "INSUFFICIENT_MARKET_VARIANCE",
+        ):
+            return engine
+    return "A"
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -156,6 +167,9 @@ def triage_review(
         }
         instruction = (
             "Choose which of A, B or C a human should inspect first. "
+            "First choose the earliest A, B, C whose status equals UNAVAILABLE "
+            "or starts INSUFFICIENT; if none exists choose A. "
+            "This is missing-evidence review order, NEVER investment risk. "
             "These are only UNVERIFIED local status codes, not a certified "
             "SEC/market feed. Return ONLY JSON with exactly "
             '{"focus_engine":"A","decision":"HUMAN_REVIEW_ONLY"}. '
@@ -182,7 +196,9 @@ def triage_review(
         if (type(proposal) is not dict
                 or set(proposal) != {"focus_engine", "decision"}
                 or proposal.get("focus_engine") not in ("A", "B", "C")
-                or proposal.get("decision") != "HUMAN_REVIEW_ONLY"):
+                or proposal.get("decision") != "HUMAN_REVIEW_ONLY"
+                or proposal.get("focus_engine")
+                != _expected_missing_evidence_focus(context)):
             raise ValueError("MODEL_FREE_TEXT_OR_ADVICE_REJECTED")
         chosen = next(f for f in findings
                       if f["engine"] == proposal["focus_engine"])
@@ -195,6 +211,7 @@ def triage_review(
             "focus_status": chosen["status"],
             "safe_existing_interpretation": chosen["interpretation"],
             "model_protocol_http_verified": True,
+            "human_review_priority_policy_verified": True,
             "model_inference_authenticated": False,
         }
     except (ValueError, UnicodeError, TypeError, KeyError, StopIteration,

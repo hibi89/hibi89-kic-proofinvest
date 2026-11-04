@@ -36,7 +36,7 @@ class _FakeModel(BaseHTTPRequestHandler):
         answer = json.dumps({
             "model": "kuodra-ui-test-model", "done": True,
             "response": json.dumps({
-                "focus_engine": "B", "decision": "HUMAN_REVIEW_ONLY",
+                "focus_engine": "A", "decision": "HUMAN_REVIEW_ONLY",
             }),
         }).encode()
         self.send_response(200)

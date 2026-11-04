@@ -73,7 +73,9 @@ def run() -> dict[str, object]:
     if (review.get("model_protocol_http_verified") is not True
             or review.get("focus_engine") not in ("A", "B", "C")
             or review.get("reason_code") != "DERIVED_STATUS_TRIAGE_ONLY"
-            or review.get("model_inference_authenticated") is not False):
+            or review.get("model_inference_authenticated") is not False
+            or review.get("human_review_priority_policy_verified") is not True
+            or review.get("focus_engine") != "A"):
         raise ValueError("P182_ACCEPTED_REAL_MODEL_OUTPUT_INVALID")
 
     # Never publish the direct model response or the private/synthetic inputs.
@@ -86,6 +88,7 @@ def run() -> dict[str, object]:
         "safe_human_only_triage_accepted": accepted,
         "safe_fallback_blocked": False,
         "real_model_structured_focus_accepted": True,
+        "real_model_missing_evidence_priority_accepted": True,
         "local_ollama_http_requests": 2,
         "source_authenticated": False,
         "source_rights_verified": False,

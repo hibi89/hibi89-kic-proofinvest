@@ -9,7 +9,9 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from proofinvest.ticker_local_model_triage import triage_review, _blocked
+from proofinvest.ticker_local_model_triage import (
+    triage_review, _blocked, _expected_missing_evidence_focus,
+)
 from tests.test_ticker_offline_review_builder import payload
 from proofinvest.ticker_offline_review_builder import build_offline_initial_review
 
@@ -89,6 +91,7 @@ class LocalModelTriageTests(unittest.TestCase):
         self.assertEqual(out["focus_engine"], "A")
         self.assertEqual(out["focus_status"], "REPORTED_UNVERIFIED")
         self.assertTrue(out["model_protocol_http_verified"])
+        self.assertTrue(out["human_review_priority_policy_verified"])
         self.assertFalse(out["model_inference_authenticated"])
         self.assertFalse(out["ai_agent_executed"])
         self.assertFalse(out["source_rights_verified"])
@@ -133,6 +136,37 @@ class LocalModelTriageTests(unittest.TestCase):
             with self.subTest(port=value):
                 self.assertEqual(self.call(port=value)["status"], "BLOCKED")
         self.assertFalse(ModelHandler.observations)
+
+    def test_missing_evidence_review_priority_policy(self):
+        statuses = {
+            "A": "REPORTED_UNVERIFIED",
+            "B": "REVIEWED_UNVERIFIED",
+            "C": "OBSERVED_COMPARISON_UNVERIFIED",
+        }
+        self.assertEqual(_expected_missing_evidence_focus(statuses), "A")
+        self.assertEqual(_expected_missing_evidence_focus(
+            {**statuses, "B": "UNAVAILABLE"}), "B")
+        self.assertEqual(_expected_missing_evidence_focus(
+            {**statuses, "C": "INSUFFICIENT_EVIDENCE"}), "C")
+        self.assertEqual(_expected_missing_evidence_focus(
+            {**statuses, "A": "INSUFFICIENT_MARKET_VARIANCE",
+             "B": "UNAVAILABLE"}), "A")
+
+    def test_schema_valid_but_wrong_focus_is_blocked(self):
+        ModelHandler.response_body = {
+            "done": True, "model": "test-local-model",
+            "response": json.dumps({
+                "focus_engine": "B", "decision": "HUMAN_REVIEW_ONLY",
+            }),
+        }
+        out = self.call()
+        self.assertEqual(out["status"], "BLOCKED")
+        self.assertEqual(out["loopback_http_attempts"], 1)
+        self.assertFalse(out["ai_agent_executed"])
+        self.assertFalse(out["trade_executed"])
+        self.assertEqual(out["guard_policy_preview"], "HOLD")
+        self.assertNotIn("human_review_priority_policy_verified", out)
+        self.assertEqual(len(ModelHandler.observations), 1)
 
     def test_adversarial_model_output_is_rejected_no_model_text_export(self):
         for text in (
