@@ -1,0 +1,28 @@
+# P200 distinct real source financial B cash/NI fact proof, bounded one-shot.
+# Initial trigger is this workflow file only. No SEC.gov/paid API/submission.
+name: KIC P200 real Dell FY2026 cash flow earnings iXBRL
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-cashflow-income-ixbrl-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p200-dell-real-cfo-ni-source-once
+  cancel-in-progress: false
+jobs:
+  publisher-cfo-ni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reject false GAAP source and financial periods offline
+        run: python -B -m unittest tests.test_dell_financial_quality_ixbrl_once -v
+      - name: Actual Dell issuer original cash flows and net income tags (one GET)
+        run: python -B -m proofinvest.dell_financial_quality_ixbrl_once
