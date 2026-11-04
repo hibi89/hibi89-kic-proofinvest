@@ -59,5 +59,8 @@ def render_apple_fy2026_public_review(st) -> None:
 
     # P192: only appears on explicitly enabled loopback local workspace.
     # No remote model, no user originals; two opt-ins and a single real click.
+    from .apple_public_peer_ui import render_public_fy2026_reference_peers
+    render_public_fy2026_reference_peers(st)
+
     from .apple_public_model_ui import render_apple_public_model_check
     render_apple_public_model_check(st)
