@@ -128,3 +128,54 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
         "원문 바이트 동일성·상업/AI 이용권·주가/Nasdaq-100 및 동종기업 "
         "벤치마크는 미검증입니다. 투자 승인이나 회계 부정 판정이 아닙니다. Guard HOLD."
     )
+
+    st.subheader("NVIDIA · 실제 발행사 데이터 → Guard HOLD 감사 (로컬)")
+    st.caption(
+        "P209 원문 해시로 추적 가능한 계산값만 로컬 임시 SQLite에 감사 기록합니다. "
+        "SEC 원본·상업 이용권·지수·동종업체 데이터·AI 판단은 미인증이며 "
+        "거래/외부 전송은 실행하지 않습니다. 동의하지 않으면 파일을 만들지 않습니다."
+    )
+    consent = st.checkbox(
+        "NVIDIA 제한적 실자료 계산값을 임시 로컬 감사 DB에 기록하는 데 동의",
+        value=False, key="p211_nvda_local_audit_ack",
+    )
+    if st.button(
+        "NVIDIA Guard HOLD 감사 1회 실행",
+        key="p211_nvda_run_once", disabled=not consent,
+    ):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from .nvidia_real_guard_audit import run_nvidia_guard_audit
+        with TemporaryDirectory(prefix="kuodra-nvda-audit-") as tmp:
+            audit = run_nvidia_guard_audit(
+                run_id="p211-nvda-human-review",
+                audit_db_path=Path(tmp) / "guard.sqlite",
+                acknowledge_local_persistence=True,
+                source_receipt=actual_nvidia_issuer_receipt(),
+            )
+        report = audit.get("report")
+        if (audit.get("status") == "REAL_NVDA_ENGINE_B_GUARD_HOLD_AUDIT_RECORDED"
+                and audit.get("audit_written") is True
+                and audit.get("audit_chain_valid") is True
+                and audit.get("issuer_publisher_original_seen") is True
+                and audit.get("sec_original_authenticated") is False
+                and audit.get("source_commercial_ai_rights_verified") is False
+                and audit.get("guard_policy_preview") == "HOLD"
+                and audit.get("trade_executed") is False
+                and type(report) is dict
+                and report.get("source_sha256") == e["issuer_source_sha256"]
+                and report.get("source_rights_verified") is False
+                and report.get("guard", {}).get("decision") == "HOLD"
+                and report.get("trade_executed") is False):
+            st.success("NVIDIA 실자료 Guard HOLD 감사 체인 검증 완료 (임시 DB 자동 삭제)")
+            st.json({
+                "issuer": "NVDA", "source_sha256": report["source_sha256"],
+                "financial_evidence_sha256": report["financial_evidence_sha256"],
+                "audit_event_hash": report["audit"]["event_hash"],
+                "decision": "HOLD", "audit_chain_verified": True,
+                "sec_original_authenticated": False,
+                "commercial_ai_rights_verified": False,
+                "trade_executed": False, "external_network_requests": 0,
+            })
+        else:
+            st.error("NVIDIA 실자료 감사 거부: 원본·동의·Guard·감사 무결성을 재확인하십시오.")
