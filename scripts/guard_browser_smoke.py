@@ -303,10 +303,15 @@ def run(output: Path) -> dict:
                             "option", name="SEC→Guard 감사 연결 — 합성 오프라인",
                             exact=True
                         )).to_have_count(1, timeout=10000)
-                        picker.press("Enter")
-                        expect(picker).to_have_value(
-                            "SEC→Guard 감사 연결 — 합성 오프라인", timeout=15000
-                        )
+                        # The role option was present but Enter left only
+                        # the FILTER TEXT in the React-Aria input on P189 CI.
+                        # Click the actual fully named option and assert the
+                        # destination UI, rather than treating search text as
+                        # proof of a committed selection.
+                        page.get_by_role(
+                            "option", name="SEC→Guard 감사 연결 — 합성 오프라인",
+                            exact=True
+                        ).click(timeout=10000)
                         expect(page.get_by_text(
                             "KUODRA — SEC 근거부터 Guard 감사까지"
                         )).to_be_visible(timeout=15000)

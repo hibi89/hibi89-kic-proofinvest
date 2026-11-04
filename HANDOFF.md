@@ -1,3 +1,7 @@
+## P189 browser regression correction — 2026-11-05 KST
+- Initial functional SHA `e9723daeed654b34cf003ea22be1aba6ad84266b` Actions #41870987087: 4 jobs PASS (python, Windows SQLite, native Windows HTTP, isolated Docker); Chromium FAIL on legacy `scripts/guard_browser_smoke.py` picker selection, P181 model SKIP by design. Log proves `get_by_role("combobox", name="자료 유형")` input retained the typed filter `SEC→Guard 감사 연결`, not the full selected label; prior option-count assertion passed. This does not prove KUODRA page content was switched.
+- One focused correction changes only the Playwright interaction to click the present exact option and validates the destination Guard heading; no production UI code/security/Guard relaxations. Await exact corrected SHA CI. Do not repeat blind CI if this also fails: inspect artifact and pivot. Final score remains 51/100, RELEASE HOLD.
+
 ## P189 partial — explicit Apple FY2026 vintage-gated offline workflow (2026-11-05 KST)
 
 1. **Goal/tech:** Prior latest P188 51/100 final gate; no fabricated completion. P189 adds exact P187 issuer 10-K vintage check before existing seven-tool local workflow, Python 3.11, no SEC HTTP, no vendor auth, Guard HOLD/REJECT only.
