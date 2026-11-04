@@ -36,7 +36,7 @@ _REQUIRED_DEI = {
 class _DeiParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.stack: list[dict[str, str]] = []
+        self.stack: list[dict[str, str] | None] = []
         self.facts: dict[str, list[str]] = {}
 
     def handle_starttag(self, tag, attrs):
@@ -46,10 +46,14 @@ class _DeiParser(HTMLParser):
         if len(self.stack) >= 12:
             raise ValueError("DOCUMENT_IDENTITY_DEI_DEPTH_BLOCKED")
         name = d.get("name", "").lower()
-        self.stack.append({"name": name, "text": ""})
+        # Real Dell 10-K has very long non-DEI narrative ix:nonnumeric facts.
+        # Ignore them entirely; a 400-char cap applies ONLY to six identity
+        # tags. Keep a sentinel to preserve proper nested element balancing.
+        self.stack.append({"name": name, "text": ""} if name in _REQUIRED_DEI
+                          else None)
 
     def handle_data(self, data):
-        if self.stack:
+        if self.stack and self.stack[-1] is not None:
             fact = self.stack[-1]
             if len(fact["text"]) + len(data) > 400:
                 raise ValueError("DOCUMENT_IDENTITY_DEI_TEXT_TOO_LONG")
@@ -61,7 +65,7 @@ class _DeiParser(HTMLParser):
         if not self.stack:
             raise ValueError("DEI_TAG_UNEXPECTED_CLOSE")
         fact = self.stack.pop()
-        if fact["name"] in _REQUIRED_DEI:
+        if fact is not None:
             if len(self.facts.get(fact["name"], [])) >= 20:
                 raise ValueError("DEI_DUPLICATE_LIMIT")
             self.facts.setdefault(fact["name"], []).append(fact["text"].strip())

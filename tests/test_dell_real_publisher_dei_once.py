@@ -57,6 +57,22 @@ class DellRealIssuerIdentityTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     p.extract_dell_real_sec_document_identity(changed)
 
+    def test_long_unrelated_ixbrl_notes_ignored_but_dei_cap_remains(self):
+        public=sample().replace(
+            b"</body>",
+            b'<ix:nonNumeric name="dell:UnrelatedTextNarrative">'
+            + b"x" * 10000 + b"</ix:nonNumeric></body>"
+        )
+        proof=p.extract_dell_real_sec_document_identity(public)
+        self.assertEqual(proof["verified_dei_tag_types"],6)
+        invalid=sample().replace(
+            b'<ix:nonNumeric name="dei:EntityRegistrantName">',
+            b'<ix:nonNumeric name="dei:EntityRegistrantName">'
+            + b"A"*401
+        )
+        with self.assertRaises(ValueError):
+            p.extract_dell_real_sec_document_identity(invalid)
+
     def test_real_data_source_version_required_and_one_get(self):
         called=[]
         with patch.object(p,"_open",side_effect=AssertionError("NO_EXTERNAL")):
