@@ -84,6 +84,47 @@ def render_dell_real_source_evidence(st) -> None:
         "하지만 원문 바이트 크기가 달라 SEC 원본 동일성은 인증되지 않았으며, "
         "재배포·AI 처리 이용권도 확보되지 않았습니다."
     )
+    # P207: optional genuine issuer-source working capital screening.
+    # Preserve earlier valid P195/P199/P203 display even if this panel
+    # is unavailable or a future independent receipt is rejected.
+    from .dell_working_capital_review import (
+        actual_working_capital_receipt, review_real_working_capital,
+    )
+    working = review_real_working_capital(
+        reviewed_as_of="2026-11-05", receipt=actual_working_capital_receipt()
+    )
+    if (working.get("status") == "P207_ACTUAL_ISSUER_WORKING_CAPITAL_REVIEW_LIMITED"
+            and working.get("real_issuer_working_capital_source_seen") is True
+            and working.get("sec_original_identical") is False
+            and working.get("rights_verified") is False
+            and working.get("full_engine_b_complete") is False
+            and working.get("full_abc_ready") is False
+            and working.get("guard_policy_preview") == "HOLD"
+            and working.get("trade_executed") is False
+            and type(working.get("evidence")) is dict):
+        w=working["evidence"]
+        st.subheader("실제 매출채권·재고 증가율 vs 매출 — Engine B 제한 검증")
+        st.caption(
+            f'[Dell 공식 실적발표 원문]({w["source_url"]}) · '
+            f'[실제 HTML 단일 GET 검증 기록]({w["actual_one_shot_ci"]})'
+        )
+        st.dataframe([{
+            "FY 원본 항목": name,
+            "FY2025 (USD 백만)": row["fy2025_usd_millions"],
+            "FY2026 (USD 백만)": row["fy2026_usd_millions"],
+            "증가율 (%)": row["growth_pct"],
+            "매출 성장 대비 (pp)": row["growth_minus_revenue_pp"],
+        } for name,row in w["asset_rows"].items()],
+            use_container_width=True,hide_index=True)
+        st.caption(f'매출 증가율 원문 비교 기준: {w["revenue_growth_pct"]}%')
+        st.warning(
+            "이 표는 Dell 발행사 미감사 실적발표 원문의 시점별 자산 수치를 "
+            "10-K 매출 증가율과 비교한 검토 신호입니다. 차이만으로 "
+            "회계 부정이나 투자 판단을 확정하지 않으며, SEC 원본 바이트 동일성·"
+            "상업/AI 이용권·NDX 및 동종기업 자료는 미검증입니다. Guard HOLD."
+        )
+    else:
+        st.warning("매출채권·재고 실원문 비교 검증 불가: 신규 Engine B 지표를 표시하지 않습니다.")
     st.warning(
         "이 검증은 발행사 공식 HTTPS 원본과 원문 내 실제 수치 확인입니다. "
         "SEC EDGAR 원본과의 동일 바이트 인증, 데이터 이용권, NDX 및 "
