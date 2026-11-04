@@ -1,0 +1,30 @@
+# P195 public Dell issuer IR real 2026 10-K: ONE source GET max.
+# No SEC.gov P105 retry or Apple P193 rerun, no secrets, paid APIs or artifacts.
+# Executes solely when this one-shot workflow file is newly committed/modified.
+name: KIC P195 Dell FY2026 official issuer 10-K once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-issuer-2026-10k-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-dell-2026-issuer-one-shot-p195
+  cancel-in-progress: false
+jobs:
+  dell-2026-first-party:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout without persistent token
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exact offline source transport tests
+        run: python -B -m unittest tests.test_dell_issuer_2026_10k_once -v
+      - name: One Dell issuer-hosted public 2026 10-K GET, no retries
+        run: python -B -m proofinvest.dell_issuer_2026_10k_once
