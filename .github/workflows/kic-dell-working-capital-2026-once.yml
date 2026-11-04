@@ -1,0 +1,28 @@
+# P207 genuine first-party working-capital earnings-release raw HTML one-shot.
+# Only push of THIS path triggers. No SEC/P200 retries, paid data, storage or uploads.
+name: KIC P207 Dell issuer balance-sheet working capital one-shot
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-working-capital-2026-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p207-dell-working-capital-source-one-shot
+  cancel-in-progress: false
+jobs:
+  first-party-balance-sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: P207 no-network working-capital source and safety tests
+        run: python -B -m unittest tests.test_dell_working_capital_2026_once -v
+      - name: One actual Dell official issuer FY2026/2025 assets read-only GET
+        run: python -B -m proofinvest.dell_working_capital_2026_once

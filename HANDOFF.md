@@ -1,3 +1,15 @@
+## P207 working-capital live primary source candidate — 2026-11-05 KST (10-field handoff)
+1. Goal: genuine Dell FY2026/FY2025 trade receivables and inventory growth vs revenue on previously verified first-party fiscal cohorts, not another synthetic Engine B card.
+2. Chosen solution vs operator-only local CSV: strict actual Dell official *unaudited* release raw HTML (P206 previously independently verified SHA) → unique two-year balance-sheet HTML table and issuer P195 pinned 10-K revenue → independent Decimal growth screening → Guard HOLD; zero added commercial API charges. Operator fixtures cannot earn actual-source acceptance.
+3. Tests: offline focused four adversarial tests added, exact-SHA independent public publisher one-GET GitHub Actions and full Windows/Linux/Chromium pending. Previous P206 exact functional SHA 9efd59512cde6191e751423264ef80568006e3da one-shot and 5/5 full CI terminal SUCCESS.
+4. Verified now: source article public published 2026-02-26 year-end numbers January 30 2026 / January 31 2025 are A/R 17,585/10,298 and inventory 10,437/6,716 USDm; actual new direct publisher HTML parser CI NOT YET VERIFIED. Prior issuer revenue 113,538/95,567. Do not claim a new score from implementation alone.
+5. Recovery: P200/P201/P202 two failed live methods remain STOP; no repeat or third attempt. If new parser failure occurs, one focused improvement only with evidence; otherwise stop/pivot. Original Git parent SHA preserves rollback.
+6. Repo: hibi89/hibi89-kic-proofinvest lead/kic parent 36707687df1915a8585582765ad742548f50e6b3; code proofinvest/dell_working_capital_2026_once.py, tests/test_dell_working_capital_2026_once.py, dedicated one-shot .github/workflows/kic-dell-working-capital-2026-once.yml.
+7. Runtime: Python 3.11 GitHub Actions + existing Streamlit local; public Production/Vercel not deployed.
+8. Security: public release only, read-only one no-redirect GET, hash pinned from P206; no raw storage, owner originals, SEC direct 403 retry, private user data, paid API, source rights assumption or trades.
+9. Next: verify focused live and full exact SHA. If successful and acceptance rubric confirms a genuinely new real asset-level Engine B primary-source gate, award at most 1point under remaining source-integrity pool with total weights fixed; otherwise 55/100. Do not count UI docs or test count.
+10. As of 2026-11-05 KST, 55/100, 45 blocked, RELEASE HOLD; dedicated one-shot and full CI pending.
+
 ## P206 VERIFIED independent second issuer financial original — 2026-11-05 KST
 1. Objective/tech: KUODRA genuine independent Dell FY2026/2025 CFO and GAAP NI annual evidence, comparing a distinct firstparty FY2026 earnings announcement with prior independently fetched Dell FY2026 10-K P195 (NOT third-party index license or SEC raw equivalence).
 2. Decision: STOP P200's twice-failed 10-K iXBRL CFO/NI context path. Pivot to a DIFFERENT official Dell investor-published unaudited earnings release, one bounded no-redirect GET, HTML cashflow table/quarter vs FY structural and Decimal checks, P195 exact original SHA and numeric review consistency. No misleading "audited" label.
