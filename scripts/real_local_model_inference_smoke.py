@@ -91,6 +91,20 @@ def run() -> dict[str, object]:
         raise ValueError("P188_MODEL_GUARD_OUTCOME_NOT_SAFE")
     syntax_accepted = review.get("model_structured_focus_verified") is True
 
+    # P191: one genuine CPU model prediction on two real PUBLIC Apple SEC
+    # numeric figures. Independent Decimal source agreement is mandatory.
+    from proofinvest.apple_public_model_claim import run_public_issuer_model
+    issuer = run_public_issuer_model(consent=True)
+    if (issuer.get("status") != "REAL_MODEL_PUBLIC_ISSUER_FACT_INDEPENDENTLY_MATCHED"
+            or issuer.get("actual_model_factual_claim_verified") is not True
+            or issuer.get("actual_model_token_count_verified") is not True
+            or issuer.get("cash_minus_net_income_usd_millions") != "12922"
+            or issuer.get("publisher_original_bytes_authenticated") is not False
+            or issuer.get("full_market_ndx_peer_rights_verified") is not False
+            or issuer.get("guard_policy_preview") != "HOLD"
+            or issuer.get("trade_executed") is not False):
+        raise ValueError("P191_REAL_PUBLIC_ISSUER_MODEL_INDEPENDENT_REPLAY_FAILED")
+
     # No model free text or original data published; explicit fallback
     # false claims are prohibited. This does NOT prove grounded AI reasoning.
     return {
@@ -106,7 +120,12 @@ def run() -> dict[str, object]:
         "real_model_policy_disagreement_observed": (
             review.get("reason_code") == "MODEL_FOCUS_DISAGREES_WITH_LOCAL_POLICY"
         ),
-        "local_ollama_http_requests": 2,
+        "local_ollama_http_requests": 3,
+        "real_public_sec_issuer_fact_model_verified": True,
+        "real_public_sec_issuer_fact_independent_decimal_verified": True,
+        "real_public_sec_issuer_evidence_id": issuer["evidence_id"],
+        "real_public_sec_issuer_cash_minus_net_income_usdm": issuer["cash_minus_net_income_usd_millions"],
+        "real_public_sec_original_bytes_authenticated": False,
         "source_authenticated": False,
         "source_rights_verified": False,
         "data_rights_verified": False,
