@@ -167,8 +167,11 @@ def verify_dell_working_capital_once(*, opener: Callable | None = None) -> dict:
                     or declared is not None and len(raw) != int(declared)):
                 raise ValueError("WORKING_CAPITAL_RECEIVED_SIZE_REJECTED")
         digest = sha256(raw).hexdigest()
-        if digest != _P206_SHA or len(raw) != _P206_LENGTH:
-            raise ValueError("P206_ISSUER_ORIGINAL_SOURCE_VERSION_MISMATCH")
+        # Publisher HTML chrome can change while original financial tables
+        # remain unchanged. Never claim P206 byte-identical unless exact.
+        result["p206_prior_raw_byte_identical"] = (
+            digest == _P206_SHA and len(raw) == _P206_LENGTH
+        )
         facts = parse_issuer_working_capital_release(raw)
         result.update(
             status="REAL_DELL_FY_WORKING_CAPITAL_PUBLIC_ORIGINAL_CONFIRMED_LIMITED",

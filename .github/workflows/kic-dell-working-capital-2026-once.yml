@@ -1,4 +1,4 @@
-# P207 genuine first-party working-capital earnings-release raw HTML one-shot.
+# P207 focused second/final attempt: publisher HTML wrapper version changes; all period/facts must match.
 # Only push of THIS path triggers. No SEC/P200 retries, paid data, storage or uploads.
 name: KIC P207 Dell issuer balance-sheet working capital one-shot
 on:

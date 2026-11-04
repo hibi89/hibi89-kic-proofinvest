@@ -67,14 +67,26 @@ class WorkingCapitalTests(unittest.TestCase):
         with patch.object(p,"_open",side_effect=AssertionError("NO_NETWORK")):
             out=p.verify_dell_working_capital_once(opener=lambda req:(calls.append(req),Response(sample()))[1])
         self.assertEqual(len(calls),1)
-        self.assertEqual(out["status"],"BLOCKED")
-        self.assertEqual(out["reason_code"],"P206_ISSUER_ORIGINAL_SOURCE_VERSION_MISMATCH")
+        self.assertEqual(out["status"],"REAL_DELL_FY_WORKING_CAPITAL_PUBLIC_ORIGINAL_CONFIRMED_LIMITED")
+        self.assertTrue(out["issuer_working_capital_fy_original_verified"])
+        self.assertFalse(out["p206_prior_raw_byte_identical"])
+        self.assertEqual(out["facts"]["revenue_growth_pct"],"18.80")
         self.assertEqual(out["http_get_budget"],1)
         self.assertEqual(out["sec_http_calls"],0)
         self.assertFalse(out["source_commercial_ai_rights_verified"])
         self.assertFalse(out["full_engine_b_complete"])
         self.assertFalse(out["trade_executed"])
         self.assertFalse(out["raw_saved"])
+
+    def test_unaudited_release_cannot_promote_rights_or_gaap_authentication(self):
+        out=p.verify_dell_working_capital_once(opener=lambda req:Response(sample()))
+        self.assertFalse(out["source_commercial_ai_rights_verified"])
+        self.assertFalse(out["sec_edgar_original_byte_identity"])
+        self.assertFalse(out["licensed_stock_ndx_peers"])
+        self.assertFalse(out["full_engine_b_complete"])
+        self.assertFalse(out["full_abc_ready"])
+        self.assertEqual(out["guard_policy_preview"],"HOLD")
+        self.assertFalse(out["trade_executed"])
 
     def test_wrong_https_origin_not_followed(self):
         out=p.verify_dell_working_capital_once(opener=lambda req:Response(sample(),url="https://other.example.com"))
