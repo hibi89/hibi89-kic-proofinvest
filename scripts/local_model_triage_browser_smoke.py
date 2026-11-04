@@ -193,6 +193,62 @@ def run(output: Path) -> dict:
                                 exact=True,
                             )).to_be_visible(timeout=22000)
                             assert len(_FakeModel.posts) == 1
+
+                            # P186: true click-through of the separate
+                            # offline numeric draft verifier (NO second POST).
+                            page.get_by_text(
+                                "오프라인 AI 수치 대조 열기 (기본 비활성)",
+                                exact=True,
+                            ).click()
+                            numeric_submit = page.get_by_role(
+                                "button",
+                                name="오프라인 수치 일치 검증 (외부 API 없음)",
+                                exact=True,
+                            )
+                            expect(numeric_submit).to_be_disabled(timeout=12000)
+                            review_label2 = "수치 대조 A/B/C 검토 패킷 JSON (미인증)"
+                            rights_label2 = "수치 대조 권리 미확인표 JSON (미인증)"
+                            draft_label = "수치 대조 AI 초안 JSON (모델 원문 아님)"
+                            upload(review_label2, "p186-review.json",
+                                   fixture["review_packet"])
+                            upload(rights_label2, "p186-rights.json",
+                                   fixture["source_clearance_report"])
+                            expect(numeric_submit).to_be_disabled(timeout=12000)
+                            review_obj = json.loads(fixture["review_packet"])
+                            correct_gap = review_obj["explanation"]["findings"][0][
+                                "simple_return_gap_pp"]
+                            numeric_draft = {
+                                "schema": "kuodra.local-model-numeric-claim.v1",
+                                "engine": "A",
+                                "claim_kind": "OBSERVED_PRICE_RETURN_GAP_PP",
+                                "gap_pp": correct_gap,
+                                "decision": "HUMAN_REVIEW_ONLY",
+                            }
+                            upload(draft_label, "p186-valid-draft.json",
+                                   json.dumps(numeric_draft).encode())
+                            expect(numeric_submit).to_be_enabled(timeout=15000)
+                            assert len(_FakeModel.posts) == 1
+                            numeric_submit.click()
+                            expect(page.get_by_text(
+                                "로컬 수익률 차이 Decimal 재검산 PASS (발행기관·이용권한 미인증)",
+                                exact=True,
+                            )).to_be_visible(timeout=22000)
+                            page.screenshot(
+                                path=str(output / "p186-numeric-review-verified.png"),
+                                full_page=True)
+                            assert len(_FakeModel.posts) == 1
+                            numeric_draft["gap_pp"] = "999.9999"
+                            upload(draft_label, "p186-invalid-draft.json",
+                                   json.dumps(numeric_draft).encode())
+                            expect(page.get_by_text(
+                                "로컬 수익률 차이 Decimal 재검산 PASS (발행기관·이용권한 미인증)",
+                                exact=True,
+                            )).to_have_count(0, timeout=22000)
+                            numeric_submit.click()
+                            expect(page.get_by_text(
+                                "MODEL_NUMERIC_CLAIM_NOT_SUPPORTED", exact=True,
+                            )).to_be_visible(timeout=22000)
+                            assert len(_FakeModel.posts) == 1
                             assert not forbidden
                         finally:
                             browser.close()
