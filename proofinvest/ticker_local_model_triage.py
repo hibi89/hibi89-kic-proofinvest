@@ -26,6 +26,19 @@ _TIMEOUT = 8
 _MAX_REQUEST = 2048
 _MAX_RESPONSE = 8192
 
+# Ollama native constrained generation. This is only a generation HINT:
+# the locally verified JSON parser/allowlist below stays the security boundary.
+# No financial statement or user identifier is part of the schema.
+_FOCUS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "focus_engine": {"type": "string", "enum": ["A", "B", "C"]},
+        "decision": {"type": "string", "enum": ["HUMAN_REVIEW_ONLY"]},
+    },
+    "required": ["focus_engine", "decision"],
+    "additionalProperties": False,
+}
+
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -145,13 +158,13 @@ def triage_review(
             "Choose which of A, B or C a human should inspect first. "
             "These are only UNVERIFIED local status codes, not a certified "
             "SEC/market feed. Return ONLY JSON with exactly "
-            '{"focus_engine":"A|B|C","decision":"HUMAN_REVIEW_ONLY"}. '
+            '{"focus_engine":"A","decision":"HUMAN_REVIEW_ONLY"}. '
             "Do not make recommendations, infer missing data or cite originals. "
             "Status codes: " + json.dumps(context, sort_keys=True) + "."
         )
         request = json.dumps({
             "model": model, "prompt": instruction, "stream": False,
-            "format": "json", "options": {"temperature": 0, "num_predict": 80},
+            "format": _FOCUS_SCHEMA, "options": {"temperature": 0, "num_predict": 128},
         }, sort_keys=True, separators=(",", ":")).encode()
         if len(request) > _MAX_REQUEST:
             return _blocked("MODEL_REQUEST_TOO_LARGE")

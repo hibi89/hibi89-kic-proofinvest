@@ -101,7 +101,18 @@ class LocalModelTriageTests(unittest.TestCase):
         body = json.loads(request["body"])
         self.assertEqual(body["model"], "test-local-model")
         self.assertIs(body["stream"], False)
-        self.assertEqual(body["format"], "json")
+        self.assertEqual(body["format"], {
+            "type": "object",
+            "properties": {
+                "focus_engine": {"type": "string", "enum": ["A", "B", "C"]},
+                "decision": {"type": "string", "enum": ["HUMAN_REVIEW_ONLY"]},
+            },
+            "required": ["focus_engine", "decision"],
+            "additionalProperties": False,
+        })
+        self.assertLessEqual(len(request["body"]), 2048)
+        self.assertEqual(body["options"]["temperature"], 0)
+        self.assertEqual(body["options"]["num_predict"], 128)
         self.assertNotIn("NVDA", body["prompt"])
         self.assertNotIn("1045810", body["prompt"])
         self.assertNotIn("http", body["prompt"])

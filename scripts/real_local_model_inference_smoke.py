@@ -65,22 +65,27 @@ def run() -> dict[str, object]:
     accepted = review["status"] == (
         "LOCAL_MODEL_TRIAGE_PROTOCOL_UNVERIFIED_MODEL_ORIGIN"
     )
-    if accepted:
-        if (review.get("model_protocol_http_verified") is not True
-                or review.get("focus_engine") not in ("A", "B", "C")):
-            raise ValueError("P181_ACCEPTED_MODEL_OUTPUT_INVALID")
-    elif review["status"] != "BLOCKED":
-        raise ValueError("P181_UNKNOWN_MODEL_RESPONSE_STATUS")
+    # P182 acceptance is stronger than P181: the ACTUAL 135M model must
+    # produce an independently schema-validated A/B/C focus, never just tokens.
+    # No retries, alternate model, loosened guard or invented financial advice.
+    if not accepted:
+        raise ValueError("P182_REAL_MODEL_STRUCTURED_SAFE_FOCUS_NOT_ACCEPTED")
+    if (review.get("model_protocol_http_verified") is not True
+            or review.get("focus_engine") not in ("A", "B", "C")
+            or review.get("reason_code") != "DERIVED_STATUS_TRIAGE_ONLY"
+            or review.get("model_inference_authenticated") is not False):
+        raise ValueError("P182_ACCEPTED_REAL_MODEL_OUTPUT_INVALID")
 
     # Never publish the direct model response or the private/synthetic inputs.
     return {
-        "status": "REAL_OLLAMA_MODEL_INFERENCE_EXECUTED_GUARD_HOLD",
+        "status": "REAL_OLLAMA_MODEL_SCHEMA_ACCEPTED_WITH_GUARD_HOLD",
         "model_tag": _MODEL,
         "provider": "ollama-local-in-disposable-ci",
         "actual_generated_tokens_positive": True,
         "real_model_inference_executed": True,
         "safe_human_only_triage_accepted": accepted,
-        "safe_fallback_blocked": not accepted,
+        "safe_fallback_blocked": False,
+        "real_model_structured_focus_accepted": True,
         "local_ollama_http_requests": 2,
         "source_authenticated": False,
         "source_rights_verified": False,
