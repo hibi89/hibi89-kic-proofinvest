@@ -8,8 +8,8 @@ from proofinvest.provider_rights_preflight import evaluate_provider, main
 
 
 class ProviderRightsPreflightTests(unittest.TestCase):
-    def test_all_four_candidates_and_four_real_use_cases_fail_closed(self):
-        for vendor in ("massive", "twelve_data", "fred", "nasdaq_gids"):
+    def test_all_five_candidates_and_four_real_use_cases_fail_closed(self):
+        for vendor in ("massive", "twelve_data", "fred", "nasdaq_gids", "nasdaq_data_link"):
             for use in ("internal_research", "contest_judge_demo", "public_dashboard", "commercial_product"):
                 with self.subTest(vendor=vendor, use=use):
                     r = evaluate_provider(provider=vendor, intended_use=use)
@@ -63,6 +63,35 @@ class ProviderRightsPreflightTests(unittest.TestCase):
                             "owner_network_approval_received"):
                     self.assertIs(r[key], False, (provider, key))
                 self.assertEqual(r["network_requests_executed"], 0)
+
+    def test_nasdaq_data_link_2026_terms_stay_blocked_without_order_form(self):
+        for use in ("internal_research", "contest_judge_demo",
+                    "public_dashboard", "commercial_product"):
+            with self.subTest(use=use):
+                r = evaluate_provider(provider="nasdaq_data_link",
+                                      intended_use=use)
+                self.assertEqual(r["public_terms_reviewed_kst"], "2026-11-05")
+                self.assertEqual(r["published_ndx_coverage"],
+                                 "EXACT_NDX_DATASET_COVERAGE_UNCONFIRMED")
+                self.assertIn(
+                    "2026_11_01_NASDAQ_DATA_LINK_TERMS_IN_EFFECT",
+                    r["license_blocker_codes"],
+                )
+                self.assertIn(
+                    "LICENSE_ORDER_FORM_AND_ACCOUNT_ENTITLEMENT_REQUIRED",
+                    r["license_blocker_codes"],
+                )
+                self.assertIn(
+                    "EXTERNAL_DERIVED_ANALYTICS_AND_SAAS_RIGHTS_NOT_GRANTED_BY_DEFAULT",
+                    r["license_blocker_codes"],
+                )
+                self.assertEqual(r["official_terms_url"],
+                                 "https://data.nasdaq.com/about/terms")
+                self.assertFalse(r["request_execution_authorized"])
+                self.assertFalse(r["ai_system_use_rights_verified"])
+                self.assertFalse(r["redistribution_permission_verified"])
+                self.assertEqual(r["network_requests_executed"], 0)
+                self.assertEqual(r["guard_decision"], "HOLD")
 
     def test_invalid_provider_or_usage_cannot_fallback_to_cheaper_plan(self):
         for provider, use in (("qqq", "internal_research"), ("massive", "offline_fixture"),

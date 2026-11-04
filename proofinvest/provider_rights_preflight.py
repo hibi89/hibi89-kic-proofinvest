@@ -16,6 +16,7 @@ _CANDIDATES = {
     "twelve_data": ("INDEX_API_OFFERED_NDX_BASIC_UNCONFIRMED", "https://twelvedata.com/indices"),
     "fred": ("NASDAQ100_SERIES_NASDAQ_COPYRIGHT", "https://fred.stlouisfed.org/series/NASDAQ100"),
     "nasdaq_gids": ("NASDAQ_SOURCE_LICENSE_SALES_REQUIRED", "https://www.nasdaq.com/products/global-indexes/data/gids"),
+    "nasdaq_data_link": ("EXACT_NDX_DATASET_COVERAGE_UNCONFIRMED", "https://data.nasdaq.com/"),
 }
 _USES = frozenset({"internal_research", "contest_judge_demo", "public_dashboard", "commercial_product"})
 
@@ -54,6 +55,19 @@ _LEGAL_GAPS = {
         ],
         "next_evidence": "WRITTEN_RIGHTS_FOR_AI_USE_AND_NASDAQ100_SERIES",
     },
+    "nasdaq_data_link": {
+        "terms_url": "https://data.nasdaq.com/about/terms",
+        "other_official_url": "https://www.nasdaqtrader.com/TraderNews.aspx?id=DN2026-5",
+        "review_date": "2026-11-05",
+        "codes": [
+            "2026_11_01_NASDAQ_DATA_LINK_TERMS_IN_EFFECT",
+            "EXACT_NDX_INSTRUMENT_COVERAGE_NOT_PROVEN",
+            "LICENSE_ORDER_FORM_AND_ACCOUNT_ENTITLEMENT_REQUIRED",
+            "EXTERNAL_DERIVED_ANALYTICS_AND_SAAS_RIGHTS_NOT_GRANTED_BY_DEFAULT",
+            "INDEX_OWNER_POLICY_MAY_REQUIRE_SEPARATE_PERMISSION",
+        ],
+        "next_evidence": "EXACT_NDX_SERIES_ORDER_FORM_LICENSE_AI_ANALYTICS_DISPLAY_SCOPE",
+    },
     "nasdaq_gids": {
         "terms_url": "https://www.nasdaq.com/products/global-indexes/data/gids",
         "other_official_url": "https://www.nasdaqtrader.com/TraderNews.aspx?id=DN2026-5",
@@ -87,7 +101,7 @@ def evaluate_provider(*, provider: str, intended_use: str) -> dict[str, Any]:
         "intended_use": intended_use,
         "published_ndx_coverage": coverage,
         "published_information_url": url,
-        "public_terms_reviewed_kst": "2026-11-03",
+        "public_terms_reviewed_kst": legal.get("review_date", "2026-11-03"),
         "official_terms_url": legal["terms_url"],
         "official_secondary_url": legal["other_official_url"],
         "license_blocker_codes": list(legal["codes"]),
