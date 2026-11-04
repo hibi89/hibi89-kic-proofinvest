@@ -1,3 +1,16 @@
+## P189 partial — explicit Apple FY2026 vintage-gated offline workflow (2026-11-05 KST)
+
+1. **Goal/tech:** Prior latest P188 51/100 final gate; no fabricated completion. P189 adds exact P187 issuer 10-K vintage check before existing seven-tool local workflow, Python 3.11, no SEC HTTP, no vendor auth, Guard HOLD/REJECT only.
+2. **New/decisions:** `proofinvest/apple_public_vintage_local_review.py` and `tests/test_apple_public_vintage_local_review.py`; explicit operator CLI ensures legacy offline flows are preserved. Compared default-on legacy changes (rejected regression risk) vs opt-in CLI (selected).
+3. **Tests:** New focused unittest and existing full CI must run on exact functional SHA; no PASS asserted before evidence. Mocked safe positive is only an interface contract; fake original real-pipeline negative blocks, not authentic source confirmation.
+4. **Status:** PARTIAL. Final acceptance 51/100, +0 verified external points, RELEASE HOLD. No real legally authenticated SEC original, licensed true NDX/stock/peers or factual LLM.
+5. **Risk/stop:** SEC P105 403 not retried; P176 bridge not retried; no actual credential/vendor/owner data used. CI failures require diagnose then one focused retry, not blind repeat.
+6. **Repo/branch:** `hibi89/hibi89-kic-proofinvest` `lead/kic`, parent `a4aadacdc88ddd3d2736d0977d47df289ba89dc1`. Functional SHA is the newly created commit; re-read branch head and CI.
+7. **Runtime:** `python -m proofinvest.apple_public_vintage_local_review --as-of 2026-11-05 --ticker-map <file> --submissions <file> --companyfacts <file> --original-10k <file>`; local four files operator-supplied, no network. No Production deployment or Vercel URL.
+8. **Source/backup:** Existing P188 source & docs preserved by additive files and prepend-only docs; Git parent is rollback reference. No secrets or private PDF uploaded; frozen V13 untouched.
+9. **Next/acceptance:** First verify exact-SHA Python/Linux/Windows/Chromium CI, then obtain legitimate original+data rights and independently verify full real-data E2E. DAKER final owner approval and receipt by 2026-11-12 10:00 KST require separate authorization.
+10. **Updated:** 2026-11-05 KST; document-commit and test-SHA reconciliation pending remote CI.
+
 ## P188 VERIFIED safe real-model fallback and P187 public filing vintage — 2026-11-05 KST
 
 1. **Goal, scope, tech:** KUODRA whole-product SEC/true Nasdaq-100/stock/peer provenance, Engines A/B/C + Guard HOLD, accountable AI explanations and authorized Production + DAKER final receipt. Python3.11, Streamlit, pinned local Ollama in disposable Ubuntu CI.
