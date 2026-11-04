@@ -1,0 +1,29 @@
+# P198 genuine publisher 2026 iXBRL context+currency fact extraction, once.
+# New independent financial-source task, not SEC P105/Apple P193 reattempt.
+# Source bytes discarded in memory. No paid API/owner credentials.
+name: KIC P198 Dell real FY2026 issuer Inline XBRL once
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-real-ixbrl-2026-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p198-dell-public-ixbrl-first-context-verification
+  cancel-in-progress: false
+jobs:
+  publisher-ixbrl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Strict offline context and currency regression
+        run: python -B -m unittest tests.test_dell_real_ixbrl_2026_once -v
+      - name: Exactly one public issuer report HTTPS GET and structured facts
+        run: python -B -m proofinvest.dell_real_ixbrl_2026_once
