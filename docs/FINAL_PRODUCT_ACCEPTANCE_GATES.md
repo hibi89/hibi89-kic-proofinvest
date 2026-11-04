@@ -11,7 +11,8 @@
 | Safe file-path SEC originals + stock + NDX → independent local A/B/C+Guard replay and redacted reports on Windows and Linux | 1 | 1 | P178 actual disposable raw-file CLI subprocess and independent source recheck PASS on both systems; sources still unauthenticated |
 | Actual issuer-controlled HTTPS **raw 2026 Form 10-K bytes fetched once** with source digest + six source financial/date text cells checked | 1 | **1** | P195 Dell official first-party IR original 3,610,307 bytes, SHA256 `c4852401...`, [one-shot #41881814888](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41881814888) **SUCCESS**, 0 SEC calls/redirect/retry; distinct from P178 local operator upload |
 | Actual genuine first-party SEC-10-K Inline XBRL US-GAAP annual revenue tags, unsegmented USD units and exact FY2025/FY2026 period contexts verified from raw issuer file | 1 | **1** | Live Dell real 10-K source, run #41886620639 SUCCESS; us-gaap:revenues FY2026 c-1 113538 USDm/FY2025 c-14 95567 USDm, issuer SHA256 c4852401..., not SEC byte identity |
-| **SEC EDGAR identical and legally entitled authentic 10-K original** → complete same-ticker PIT evidence and independent full A/B/C+Guard replay | 12 | **0** | Real first-party XBRL proof does NOT establish exact EDGAR identity, original redistribution/AI rights, entitled NDX+stock/sector peers, full ABC replay; SEC P105 403 no-repeat |
+| Independent **official SEC EDGAR filing-index CIK/accession/form/fiscal date** reconciled with actual publisher raw original digest and real iXBRL source fiscal period | 1 | **1** | P203 public SEC index manually checked as of 2026-11-05 against genuine Dell P195+P198 receipts, [exact CI #41891285499](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41891285499) terminal SUCCESS; no SEC 403 API retry or original EDGAR bytes |
+| **SEC EDGAR raw byte-identical and legally entitled authentic 10-K original** → complete ticker PIT + independent full A/B/C+Guard | 11 | **0** | Matched SEC index metadata cannot prove SEC EDGAR raw-byte identity, commercial/LLM use rights, licensed genuine NDX+stock/peers or full E2E; publisher HTML 3610307 bytes vs SEC index display 3552634; P105 SEC 403 non-repeat |
 | Correct legally licensed real issuer stock + true Nasdaq-100 NDX and time/vintage E2E | 10 | 0 | Genuine entitlement, actual provider response, usage rights absent |
 | Independently licensed representative same-sector peer evidence with valid comparable periods | 10 | 0 | Single illustrative peer/local fixtures not representative |
 | Privacy-safe explicit-consent local LLM-compatible HTTP protocol with bounded status-only input and output rejection | 1 | 1 | P179 Windows and Linux actual local HTTP emulator protocol PASS; this is NOT real model inference |
@@ -23,7 +24,7 @@
 | Reachable **authorized public Production** deployment, security and live browser/API end-to-end | 4 | 0 | No public URL, source rights, auth or deployment approval; localhost is NOT Production |
 | Final official organizer preliminary submission and verified final receipt | 5 | 0 | Frozen private V13 exact source reviewed; team-leader final DAKER receipt not received |
 
-**Current final-product acceptance score under the documented 100-point gate: 53 / 100 (conservative internal checklist).** On the same rubric, P174 would score 40/100; **P175 added verified 5-point local-isolated-runtime criterion, and P177 earns one separately tested native Windows user-entry point from a 1+4 subdivision of the previous 5-point Production-readiness category**. This does not measure time, market utility, real-data rights or code volume. P178 adds 1 earned point for an independently Windows/Linux-tested file-path original processing precondition within the previously wholly blocked 15-point SEC original acquisition gate; the other 14 points were unearned at P178; P195 earned 1 issuer-HTTPS raw file precondition and P198 earned 1 separately tested real source XBRL fact/context point; 12 remain unearned. Total weight remains 100. The 51% is NOT a proportion of verified external product success. P179 earned 1/10 AI *protocol* point, P180 1/10 native Streamlit **user-facing model triage UI**, P181 1/10 **genuine local open-weight model token-generation** point, and P182 1/10 for a **genuine model producing a schema-accepted human-review focus**, leaving **6/10 unearned for factual, source-grounded and licensed real financial explanations**. P181 proposal was blocked by strict output gate; P182 passed without weakening independent validation. NEVER claim this synthetic status focus proves real financial explanation accuracy. Neither emulator nor local-only networking proves true LLM correctness, legal rights, or public production. It is deliberately lower than the obsolete 99% local-feature planning estimate, and never approaches 100 without legal originals/rights, genuine AI workflow, Production and official receipt.
+**Current final-product acceptance score under the documented 100-point gate: 54 / 100 (conservative internal checklist).** On the same rubric, P174 would score 40/100; **P175 added verified 5-point local-isolated-runtime criterion, and P177 earns one separately tested native Windows user-entry point from a 1+4 subdivision of the previous 5-point Production-readiness category**. This does not measure time, market utility, real-data rights or code volume. P178 adds 1 earned point for an independently Windows/Linux-tested file-path original processing precondition within the previously wholly blocked 15-point SEC original acquisition gate; the other 14 points were unearned at P178; P195 earned 1 issuer-HTTPS raw file precondition and P198 earned 1 separately tested real source XBRL fact/context point; 12 remain unearned. Total weight remains 100. The 51% is NOT a proportion of verified external product success. P179 earned 1/10 AI *protocol* point, P180 1/10 native Streamlit **user-facing model triage UI**, P181 1/10 **genuine local open-weight model token-generation** point, and P182 1/10 for a **genuine model producing a schema-accepted human-review focus**, leaving **6/10 unearned for factual, source-grounded and licensed real financial explanations**. P181 proposal was blocked by strict output gate; P182 passed without weakening independent validation. NEVER claim this synthetic status focus proves real financial explanation accuracy. Neither emulator nor local-only networking proves true LLM correctness, legal rights, or public production. It is deliberately lower than the obsolete 99% local-feature planning estimate, and never approaches 100 without legal originals/rights, genuine AI workflow, Production and official receipt.
 
 ### P177 independently completed 1-point native Windows/local host criterion
 
@@ -111,5 +112,53 @@ and syntax 402 PASS; this is integrated display, NOT an extra score point.
 Exact P199 UI CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41886948513
 Producer publisher TLS does not attest identical bytes on SEC EDGAR or
 authorize NDX/stock/peers, commercial use, LLM processing or trading.
+
+
+
+### P203 independently corroborated public SEC index ↔ real issuer 10-K (new source-integrity 1pt)
+
+Official SEC EDGAR published Dell submission index:
+https://www.sec.gov/Archives/edgar/data/1571996/000157199626000008/0001571996-26-000008-index.htm
+shows company Dell Technologies Inc., CIK 0001571996, accession
+0001571996-26-000008, 10-K, FY ended 2026-01-30, filed 2026-03-16.
+The SEC listing's document-size field 3,552,634 differs from issuer
+firstparty raw body size 3,610,307 seen in two prior real GitHub CI GETs.
+Size difference is a caveat, not a fetched SEC original hash or a source
+rights/license proof. SEC data were manually verified from official public
+page; P203 did NOT fetch SEC endpoints or bypass earlier 403.
+
+P203 code proofinvest/dell_regulator_index_match.py strictly matches
+immutable regulator index identity with previously independently executed
+P195 genuine publisher 10-K bytes SHA256
+c48524018e82710057f6ef7cb27b665c4c7f4a39b65b02973417de0d68a5a4ac
+and P198 real source XBRL FY2026 revenue/c-1 and FY2025/c-14 context.
+Tampered issuer, accession, FY date, form, misleading claims of same raw
+SEC byte identity and stale as-of are rejected. The real source references
+were obtained at CI #41881814888 / #41886620639. The new source matching
+code executed Python/Windows/Chromium/isolated Docker CI exact
+SHA 410ef3bae56c75318d4fc96661a48214241efe2b:
+https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41891285499
+terminal SUCCESS 5/5 jobs, 1 model SKIP; Python 1833/1833 PASS,
+syntax 410/410 PASS. P204 provides separate guarded real Streamlit view;
+feature SHA bb681662a3ede6516cc20790c6e82d21b8e31080,
+CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41891470826
+status at this checkpoint: RUNNING_OR_UNVERIFIED, Python 1835/1835 PASS and syntax
+411/411 PASS, Windows HTTP/SQLite/Docker PASS; Chromium pending if not terminal.
+One formerly unearned source-PIT ID/anti-ticker-substitution subgate now
+genuinely satisfied via separate SEC INDEX vs issuer source evidence,
+old 12-point category split into 1 earned + 11 still blocked;
+total 100, 54 earned/46 blocked. NO new score from P204 UI alone.
+
+Stop & pivot evidence: P200 true 2026/2025 CFO+NI XBRL parser live initial
+#41888906040 and source-context correction #41889323483 both FAILED
+FY2025_NET_INCOME_USD_AMOUNT_CONFLICT, source guard did not accept.
+P201 real DEI source identity initial #41889736279 failed
+DOCUMENT_IDENTITY_DEI_TEXT_TOO_LONG, targeted parser improvement #41889963615
+still failed DEI_DOCUMENTPERIODENDDATE_MISMATCH_WITH_PUBLIC_SEC_FILING_METADATA.
+P202 Microsoft firstparty public FY2026 source initial #41890476727
+failed exact GAAP-header regression before GET and corrected #41890670220
+failed PUBLIC_FY2026_REPORT_FACT_MISSING_FY2026_REVENUE_USD_MILLIONS.
+Stop all these same-route blind retries; no claims of genuine P200/P201/P202
+success/points. No PDF, DAKER submission or paid user data changes.
 
 
