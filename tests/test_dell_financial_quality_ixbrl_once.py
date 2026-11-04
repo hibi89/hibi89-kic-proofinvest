@@ -14,8 +14,8 @@ def sample() -> bytes:
              '<div>January 30, 2026 January 31, 2025 113,538 95,567 5,936 11,185</div>',
              '<xbrli:unit id="u1"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>']
     for fy, start, end, income, cash in (
-        ("c26", "2025-02-01", "2026-01-30", "5,936", "11,185"),
-        ("c25", "2024-02-03", "2025-01-31", "4,576", "4,521"),
+        ("c-1", "2025-02-01", "2026-01-30", "5,936", "11,185"),
+        ("c-14", "2024-02-03", "2025-01-31", "4,576", "4,521"),
     ):
         parts.append(
             f'<xbrli:context id="{fy}"><xbrli:period><xbrli:startDate>{start}</xbrli:startDate>'
@@ -61,12 +61,31 @@ class RealEngineBFinancialQuality(unittest.TestCase):
             d.replace(b'iso4217:USD', b'iso4217:EUR'),
             d.replace(b'2025-02-01', b'2025-02-02'),
             d.replace(b'us-gaap:NetIncomeLoss', b'fake:NetIncomeLoss'),
-            d.replace(b'contextRef="c26"', b'contextRef="missing"'),
+            d.replace(b'contextRef="c-1"', b'contextRef="missing"'),
             d.replace(b'<ix:nonFraction', b'<div').replace(b'</ix:nonFraction>', b'</div>'),
         ):
             with self.subTest(digest=sha256(variant).hexdigest()[:10]):
                 with self.assertRaises(ValueError):
                     p.extract_dell_real_cashflow_income_xbrl(variant)
+
+    def test_same_date_noncanonical_context_cannot_invalidate_issuer_totals(self):
+        # Dell real filing can repeat the same US GAAP concept under several
+        # contexts. Only c-1 and c-14 are genuine P198 issuer revenue-period
+        # anchors for this exact pinned original SHA; do not mix contexts.
+        raw = sample()
+        raw = raw.replace(b'</body></html>', (
+            b'<xbrli:context id="c-other"><xbrli:period>'
+            b'<xbrli:startDate>2024-02-03</xbrli:startDate>'
+            b'<xbrli:endDate>2025-01-31</xbrli:endDate>'
+            b'</xbrli:period></xbrli:context>'
+            b'<ix:nonFraction name="us-gaap:NetIncomeLoss" '
+            b'contextRef="c-other" unitRef="u1" scale="6">'
+            b'999</ix:nonFraction></body></html>'
+        ))
+        facts = p.extract_dell_real_cashflow_income_xbrl(raw)
+        self.assertEqual(facts["FY2025"]["net_income"]["context"], "c-14")
+        self.assertEqual(facts["FY2025"]["net_income"]["amount_usd_millions"], "4576")
+        self.assertEqual(facts["FY2026"]["operating_cash_flow"]["context"], "c-1")
 
     def test_one_get_origin_hash_must_match_no_network(self):
         calls = []

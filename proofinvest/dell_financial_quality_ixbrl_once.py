@@ -28,6 +28,10 @@ _EXPECTED = {
     "FY2026": {"net_income": Decimal("5936"), "operating_cash_flow": Decimal("11185")},
     "FY2025": {"net_income": Decimal("4576"), "operating_cash_flow": Decimal("4521")},
 }
+# P198 independently verified exact undimensioned FY revenue contexts from
+# THIS VERY SAME publisher HTML SHA. Ignore unrelated restatement/notes
+# durations even when their dates match; NEVER accept values from other IDs.
+_CANONICAL_FY_CONTEXT = {"FY2026": "c-1", "FY2025": "c-14"}
 
 
 def _amount(fact: dict, units: dict[str, list[str]]) -> Decimal | None:
@@ -60,7 +64,8 @@ def extract_dell_real_cashflow_income_xbrl(raw: bytes) -> dict[str, Any]:
                 if fact["name"] not in names:
                     continue
                 ctx = p.contexts.get(fact["ctx"])
-                if (ctx is None or ctx["segmented"] is not False
+                if (ctx is None or fact["ctx"] != _CANONICAL_FY_CONTEXT[fy]
+                        or ctx["segmented"] is not False
                         or ctx["start"] != start or ctx["end"] != end):
                     continue
                 value = _amount(fact, p.units)

@@ -1,6 +1,6 @@
-# P200 distinct real source financial B cash/NI fact proof, bounded one-shot.
+# P200 one source-context correction: pin real FY XBRL c-1 / c-14 for cash/NI.
 # Initial trigger is this workflow file only. No SEC.gov/paid API/submission.
-name: KIC P200 real Dell FY2026 cash flow earnings iXBRL
+name: KIC P200 real Dell FY2026 cash flow earnings iXBRL (source context fix)
 on:
   push:
     branches: [lead/kic]
