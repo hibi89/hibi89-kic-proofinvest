@@ -1,0 +1,28 @@
+# P201 independent real official firstparty filing DEI vs public SEC index meta.
+# One issuer-hosted GET; no SEC.gov HTTP, secrets, raw upload or paid services.
+name: KIC P201 real publisher Form 10-K issuer identity DEI
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-dell-publisher-dei-identity-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-p201-dell-issuer-dei-identity-once
+  cancel-in-progress: false
+jobs:
+  publisher-dei:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Ensure CIK form fiscal period and duplicate tags cannot spoof
+        run: python -B -m unittest tests.test_dell_real_publisher_dei_once -v
+      - name: Actual firstparty Dell source CIK/Form DEI check (one GET)
+        run: python -B -m proofinvest.dell_real_publisher_dei_once
