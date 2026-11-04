@@ -1,4 +1,4 @@
-"""P134: offline, read-only verifier for the exact P133 KUODRA V13 transfer ZIP.
+"""Offline, read-only verifier for pinned P133 and P172 KUODRA V13 transfer ZIPs.
 
 This checks ZIP transport and inner PDF byte identity, NOT PDF page/layout,
 external provenance, user approval, DAKER account state, or official submission.
@@ -19,6 +19,11 @@ from zipfile import BadZipFile, LargeZipFile, ZipFile, ZIP_STORED
 ARCHIVE_NAME = "KIC_P133_VERIFIED_V13_EXACT_ORIGINAL.zip"
 ARCHIVE_BYTES = 562604
 ARCHIVE_SHA256 = "743d22f28a77343f83d2d3a56f7882318b277d86cc8bf47a35858e4b3bea596d"
+# P172 is a distinct, subsequently verified transfer, NOT interchangeable
+# with P133 even though both hold the identical frozen owner-private PDF.
+LATEST_ARCHIVE_NAME = "KIC_P172_VERIFIED_V13_ORIGINAL_SAFE.zip"
+LATEST_ARCHIVE_BYTES = 562604
+LATEST_ARCHIVE_SHA256 = "21e84443b0c47faeb48f38a07df22c50d0b84590d0ed27dbabaeb44a360103b3"
 PDF_NAME = "KIC_KUODRA_V13_PRIVATE_GUARD_CONSISTENCY_20261101.pdf"
 PDF_BYTES = 562176
 PDF_SHA256 = "64810314b4fc8699f0c56087b8ad39c4da5658d243585e0500900f1b4b3f7ece"
@@ -31,17 +36,24 @@ class TransferBlocked(ValueError):
 
 def verify(archive_path: Path) -> dict[str, object]:
     """Fail closed on exact outer ZIP and embedded PDF, without extraction."""
-    if (not isinstance(archive_path, Path) or archive_path.name != ARCHIVE_NAME
-            or archive_path.is_symlink()):
+    if not isinstance(archive_path, Path) or archive_path.is_symlink():
+        raise TransferBlocked("WRONG_ZIP_NAME_OR_SYMLINK")
+    if archive_path.name == ARCHIVE_NAME:
+        version, expected_bytes, expected_sha256 = "P133", ARCHIVE_BYTES, ARCHIVE_SHA256
+    elif archive_path.name == LATEST_ARCHIVE_NAME:
+        version, expected_bytes, expected_sha256 = (
+            "P172", LATEST_ARCHIVE_BYTES, LATEST_ARCHIVE_SHA256
+        )
+    else:
         raise TransferBlocked("WRONG_ZIP_NAME_OR_SYMLINK")
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     with os.fdopen(os.open(archive_path, flags), "rb") as fh:
         stat_info = os.fstat(fh.fileno())
         if (not stat.S_ISREG(stat_info.st_mode)
-                or stat_info.st_size != ARCHIVE_BYTES):
+                or stat_info.st_size != expected_bytes):
             raise TransferBlocked("ZIP_SIZE_OR_TYPE_CHANGED")
-        archive = fh.read(ARCHIVE_BYTES + 1)
-    if len(archive) != ARCHIVE_BYTES or sha256(archive).hexdigest() != ARCHIVE_SHA256:
+        archive = fh.read(expected_bytes + 1)
+    if len(archive) != expected_bytes or sha256(archive).hexdigest() != expected_sha256:
         raise TransferBlocked("ZIP_SHA256_MISMATCH")
     try:
         with ZipFile(BytesIO(archive), mode="r") as zip_file:
@@ -69,9 +81,14 @@ def verify(archive_path: Path) -> dict[str, object]:
     if not original.startswith(b"%PDF-") or b"%%EOF" not in original[-256:]:
         raise TransferBlocked("ZIP_INNER_PDF_SIGNATURE_INVALID")
     return {
-        "status": "EXACT_P133_V13_ZIP_AND_PDF_BYTES_PASS_NOT_SUBMITTED",
-        "archive_sha256": ARCHIVE_SHA256,
-        "archive_bytes": ARCHIVE_BYTES,
+        "status": (
+            "EXACT_P172_V13_ZIP_AND_PDF_BYTES_PASS_OWNER_APPROVAL_PENDING"
+            if version == "P172"
+            else "EXACT_P133_V13_ZIP_AND_PDF_BYTES_PASS_NOT_SUBMITTED"
+        ),
+        "transfer_version": version,
+        "archive_sha256": expected_sha256,
+        "archive_bytes": expected_bytes,
         "pdf_sha256": PDF_SHA256,
         "pdf_bytes": PDF_BYTES,
         "zip_members_verified": 2,

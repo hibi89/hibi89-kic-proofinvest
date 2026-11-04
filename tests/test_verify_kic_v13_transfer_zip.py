@@ -63,6 +63,44 @@ class P134TransferTests(unittest.TestCase):
         self.assertEqual(r["network_requests"], 0)
         self.assertEqual(r["disk_writes"], 0)
 
+    def test_p172_exact_transfer_is_accepted_without_owner_approval(self):
+        # Simulate a previously privately frozen archive using synthetic
+        # bytes. The public real P172 SHA remains pinned in the source.
+        latest = self.path.with_name(gate.LATEST_ARCHIVE_NAME)
+        latest.write_bytes(self.data)
+        before = latest.read_bytes()
+        with (patch.object(gate, "LATEST_ARCHIVE_BYTES", len(self.data)),
+              patch.object(gate, "LATEST_ARCHIVE_SHA256",
+                           sha256(self.data).hexdigest())):
+            code, result = self.cli(latest, pin_current=False)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["transfer_version"], "P172")
+        self.assertEqual(
+            result["status"],
+            "EXACT_P172_V13_ZIP_AND_PDF_BYTES_PASS_OWNER_APPROVAL_PENDING",
+        )
+        self.assertEqual(result["archive_sha256"], sha256(before).hexdigest())
+        self.assertFalse(result["owner_approved"])
+        self.assertFalse(result["daker_submission_confirmed"])
+        self.assertEqual(result["network_requests"], 0)
+        self.assertEqual(result["disk_writes"], 0)
+        self.assertEqual(latest.read_bytes(), before)
+
+    def test_p172_name_does_not_accept_old_p133_bytes(self):
+        latest = self.path.with_name(gate.LATEST_ARCHIVE_NAME)
+        latest.write_bytes(self.data)
+        with patch.object(gate, "LATEST_ARCHIVE_BYTES", len(self.data)):
+            code, result = self.cli(latest, pin_current=False)
+        self.assertEqual((code, result["reason_code"]),
+                         (2, "ZIP_SHA256_MISMATCH"))
+
+    def test_p133_legacy_transfer_still_accepted(self):
+        code, result = self.cli()
+        self.assertEqual(code, 0)
+        self.assertEqual(result["transfer_version"], "P133")
+        self.assertEqual(result["archive_sha256"],
+                         sha256(self.data).hexdigest())
+
     def test_filename_mismatch(self):
         code, r = self.cli(self.path.with_name("wrong.zip"))
         self.assertEqual((code, r["reason_code"]), (2, "WRONG_ZIP_NAME_OR_SYMLINK"))
