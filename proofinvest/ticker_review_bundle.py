@@ -11,6 +11,7 @@ from hashlib import sha256
 from hmac import compare_digest
 from io import BytesIO
 import json
+import struct
 import zipfile
 from typing import Any
 
@@ -90,6 +91,42 @@ def build_review_bundle_bytes(
     return raw
 
 
+def _check_zip_envelope(raw: bytes, infos: list[zipfile.ZipInfo]) -> None:
+    """Reject ZIP polyglots: hidden prefix, suffix, gaps and local-header aliases.
+
+    This bundle's writer emits one contiguous, unspanned, uncompressed ZIP.
+    Python's generic ZipFile reader tolerates extra bytes which are not listed
+    as members; those bytes must not pass a no-private-originals receipt.
+    """
+    if len(raw) < 22 or raw[-22:-18] != b"PK\x05\x06":
+        raise ValueError("REVIEW_BUNDLE_ZIP_ENVELOPE_INVALID")
+    (signature, disk, cd_disk, disk_entries, entries, cd_size,
+     cd_offset, comment_size) = struct.unpack_from("<4s4H2IH", raw, len(raw) - 22)
+    if (signature != b"PK\x05\x06" or disk or cd_disk or comment_size
+            or disk_entries != len(infos) or entries != len(infos)
+            or cd_offset + cd_size != len(raw) - 22):
+        raise ValueError("REVIEW_BUNDLE_ZIP_DIRECTORY_INVALID")
+    cursor = 0
+    for info in infos:
+        if info.header_offset != cursor or cursor + 30 > cd_offset:
+            raise ValueError("REVIEW_BUNDLE_ZIP_OFFSET_INVALID")
+        (magic, _, flags, method, _, _, crc, comp_size, file_size,
+         name_len, extra_len) = struct.unpack_from("<4s5H3I2H", raw, cursor)
+        name = info.filename.encode("ascii")
+        if (magic != b"PK\x03\x04" or flags != 0
+                or method != zipfile.ZIP_STORED or crc != info.CRC
+                or comp_size != info.compress_size
+                or file_size != info.file_size or name_len != len(name)
+                or extra_len != 0
+                or raw[cursor + 30:cursor + 30 + name_len] != name):
+            raise ValueError("REVIEW_BUNDLE_ZIP_LOCAL_HEADER_INVALID")
+        cursor += 30 + name_len + comp_size
+        if cursor > cd_offset:
+            raise ValueError("REVIEW_BUNDLE_ZIP_MEMBER_OVERLAP")
+    if cursor != cd_offset:
+        raise ValueError("REVIEW_BUNDLE_ZIP_UNLISTED_BYTES")
+
+
 def inspect_review_bundle_bytes(raw: bytes) -> dict[str, Any]:
     """Validate strict file roster, hashes, content and regenerated HTML.
 
@@ -124,6 +161,7 @@ def inspect_review_bundle_bytes(raw: bytes) -> dict[str, Any]:
                         for x in infos
                     )):
                 raise ValueError("REVIEW_BUNDLE_MEMBER_CONTRACT_INVALID")
+            _check_zip_envelope(raw, infos)
             docs = {x.filename: archive.read(x) for x in infos}
         manifest_raw = docs.pop(_MANIFEST)
         if not 0 < len(manifest_raw) <= 4096:

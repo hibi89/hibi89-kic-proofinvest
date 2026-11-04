@@ -5,6 +5,7 @@ from copy import deepcopy
 from hashlib import sha256
 from io import BytesIO
 import json
+import struct
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -159,6 +160,34 @@ class OfflineEvidenceBundleTests(unittest.TestCase):
                 review_packet=review["review_packet"] + b" ",
                 rights_gap_report=review["source_clearance_report"],
             )
+
+    def test_rejects_unlisted_zip_prefix_suffix_or_internal_padding(self):
+        review, _ = originals()
+        raw = build_review_bundle_bytes(
+            review_packet=review["review_packet"],
+            rights_gap_report=review["source_clearance_report"],
+        )
+        hidden = b"UNLISTED_PRIVATE_BYTES"
+        cd_offset = struct.unpack_from("<I", raw, len(raw) - 6)[0]
+        padded = bytearray(raw[:cd_offset] + hidden + raw[cd_offset:])
+        struct.pack_into(
+            "<I", padded, len(padded) - 22 + 16,
+            cd_offset + len(hidden),
+        )
+        for label, candidate in (
+            ("prefix", hidden + raw),
+            ("suffix", raw + hidden),
+            ("inside", bytes(padded)),
+        ):
+            with self.subTest(label=label):
+                # The standard ZIP reader accepts these invisible bytes.
+                with zipfile.ZipFile(BytesIO(candidate)) as archive:
+                    self.assertIn("manifest.json", archive.namelist())
+                    self.assertTrue(archive.read("manifest.json"))
+                # The KUODRA receipt must not bless the extra bytes.
+                with self.assertRaises(ValueError):
+                    inspect_review_bundle_bytes(candidate)
+
 
     def test_zip_no_user_side_effect_or_network_before_explicit_click(self):
         review, lineage = originals(True)
