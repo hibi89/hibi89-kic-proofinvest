@@ -90,11 +90,18 @@ def run(output: Path) -> dict:
                             exact=True)
                         expect(download_button).to_have_count(0)
                         expect(guard_button).to_be_disabled()
-                        page.get_by_role(
+                        # Streamlit 1.66 renders a covering <label>; keyboard
+                        # consent is a genuine accessible user interaction,
+                        # avoiding Playwright's intercepted-pointer timeout.
+                        consent_box = page.get_by_role(
                             "checkbox",
                             name="NVIDIA 제한적 실자료 계산값을 임시 로컬 감사 DB에 기록하는 데 동의",
                             exact=True,
-                        ).check()
+                        )
+                        expect(consent_box).not_to_be_checked()
+                        consent_box.focus()
+                        consent_box.press("Space")
+                        expect(consent_box).to_be_checked(timeout=20000)
                         expect(guard_button).to_be_enabled(timeout=20000)
                         expect(download_button).to_have_count(0)
                         guard_button.click()
