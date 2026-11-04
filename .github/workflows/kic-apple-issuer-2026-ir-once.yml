@@ -1,0 +1,29 @@
+# P193: ONE approved free source lookup + at most ONE Apple-official-referenced file GET.
+# No official SEC P105 retry, no credentials, fees or raw file uploads.
+# The workflow ONLY runs when its own file is first committed/changed.
+name: KIC P193 Apple FY2026 Official IR one-shot
+on:
+  push:
+    branches: [lead/kic]
+    paths:
+      - '.github/workflows/kic-apple-issuer-2026-ir-once.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kic-apple-fy2026-one-shot-p193
+  cancel-in-progress: false
+jobs:
+  issuer-2026-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run focused offline tests first
+        run: python -B -m unittest tests.test_apple_issuer_2026_ir_probe -v
+      - name: Two first-party-public bounded requests MAX; no retries
+        run: python -B -m proofinvest.apple_issuer_2026_ir_probe
