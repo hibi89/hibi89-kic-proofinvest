@@ -223,20 +223,27 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
         "INDEX_DATA NDX 형식인지 검사하지만 제공자 진위/지수 이용권은 "
         "검증하지 않습니다. 외부 API 호출·주가 저장·자동 투자 권고 없음."
     )
-    stock = st.file_uploader(
-        ticker + " 주가 DAILY 응답 JSON", type=["json"],
-        key="p219_stock_close_json")
-    index = st.file_uploader(
-        "Nasdaq-100 (NDX) INDEX_DATA DAILY 응답 JSON (QQQ 대체 불가)",
-        type=["json"], key="p219_ndx_close_json")
-    ack = st.checkbox(
-        "내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
-        value=False, key="p219_market_local_ack")
-    if not st.button(
-        "실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
-        key="p219_market_local_review",
-        disabled=not (ack and stock is not None and index is not None),
-    ):
+    # Atomic Streamlit form: both files and explicit approval arrive in one
+    # backend event, not a chain of 3 independent reruns that can invalidate
+    # earlier file-widget state. No bytes persist after this button handler.
+    with st.form("p226_market_pair_atomic", clear_on_submit=False):
+        stock = st.file_uploader(
+            ticker + " 주가 DAILY 응답 JSON", type=["json"],
+            key="p219_stock_close_json")
+        index = st.file_uploader(
+            "Nasdaq-100 (NDX) INDEX_DATA DAILY 응답 JSON (QQQ 대체 불가)",
+            type=["json"], key="p219_ndx_close_json")
+        ack = st.checkbox(
+            "내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
+            value=False, key="p219_market_local_ack")
+        submitted = st.form_submit_button(
+            "실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
+            key="p219_market_local_review",
+        )
+    if not submitted:
+        return
+    if not ack or stock is None or index is None:
+        st.warning("두 시장 파일과 로컬 산술검산 동의가 모두 필요합니다.")
         return
     try:
         if (type(getattr(stock, "size", None)) is not int

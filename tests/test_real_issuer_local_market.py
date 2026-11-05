@@ -146,6 +146,10 @@ class RealIssuerOperatorMarketTests(unittest.TestCase):
                 self.events.append(("upload", kw["key"]))
                 return None
             def checkbox(self,*a,**kw): return False
+            def form(self,*a,**kw): return self
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def form_submit_button(self,*a,**kw): return False
             def button(self,*a,**kw): return False
         st=St()
         with patch(
@@ -178,8 +182,10 @@ class RealIssuerOperatorMarketTests(unittest.TestCase):
             self.assertFalse(at.exception,[str(x.message) for x in at.exception])
             self.assertTrue(any(x.key=="p219_market_local_ack" for x in at.checkbox))
             self.assertTrue(any(x.key=="p219_market_local_review" for x in at.button))
-            self.assertTrue(next(x for x in at.button
-                                 if x.key=="p219_market_local_review").disabled)
+            # A form submit remains clickable, while data validation is
+            # enforced on the atomic backend event even if fields are empty.
+            self.assertFalse(next(x for x in at.button
+                                  if x.key=="p219_market_local_review").disabled)
 
 
 if __name__=="__main__":

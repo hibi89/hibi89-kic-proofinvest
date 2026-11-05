@@ -182,10 +182,9 @@ def run(output: Path) -> dict:
                                 or cohort_report["engine_c_complete"] is not False
                                 or cohort_report["guard_policy_preview"] != "HOLD"):
                             raise AssertionError("P223_TWO_PEER_AUDITED_FINANCIAL_REPLAY_FAILED")
-                        # Commit the checkbox's Streamlit rerun *before*
-                        # uploading either file. Late checkbox reruns can
-                        # supersede an in-flight file upload, leaving the
-                        # upload-dependent review button disabled.
+                        # Form-based atomic submit: checkbox and both local
+                        # file widgets are buffered in the client until one
+                        # deliberate click, preventing premature reruns.
                         ack = page.get_by_role(
                             "checkbox",
                             name="내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
@@ -202,25 +201,19 @@ def run(output: Path) -> dict:
                             "mimeType": "application/json",
                             "buffer": stock,
                         })
-                        # Each upload triggers a Streamlit backend rerun. Do
-                        # not upload the second file against a stale uploader
-                        # widget until the first file has a rendered receipt.
-                        expect(page.get_by_text(
-                            "synthetic-nvda.json", exact=True,
-                        )).to_be_visible(timeout=25000)
-                        uploader = page.locator('input[type="file"]')
-                        expect(uploader).to_have_count(2, timeout=25000)
+                        # Form upload does not trigger backend reruns.
+                        # Prove the file is attached to the active DOM input.
+                        if uploader.nth(0).evaluate(
+                                "(el) => el.files?.[0]?.name") != "synthetic-nvda.json":
+                            raise AssertionError("ATOMIC_STOCK_UPLOAD_NOT_ATTACHED")
                         uploader.nth(1).set_input_files({
                             "name": "synthetic-ndx.json",
                             "mimeType": "application/json",
                             "buffer": index,
                         })
-                        expect(page.get_by_text(
-                            "synthetic-ndx.json", exact=True,
-                        )).to_be_visible(timeout=25000)
-                        expect(page.get_by_text(
-                            "synthetic-nvda.json", exact=True,
-                        )).to_be_visible(timeout=25000)
+                        if uploader.nth(1).evaluate(
+                                "(el) => el.files?.[0]?.name") != "synthetic-ndx.json":
+                            raise AssertionError("ATOMIC_NDX_UPLOAD_NOT_ATTACHED")
                         review_button = page.get_by_role(
                             "button",
                             name="실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
