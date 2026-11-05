@@ -459,8 +459,14 @@ def run(output: Path) -> dict:
                             exact=True,
                         )
                         expect(audit_consent).not_to_be_checked()
-                        audit_consent.check()
-                        expect(audit_consent).to_be_checked()
+                        # Use keyboard activation: Streamlit's React-Aria
+                        # checkbox input is visually overlapped by its label,
+                        # so Playwright .check() can time out on pointer
+                        # interception even when the checkbox is enabled.
+                        # The earlier atomic consent uses this proven route.
+                        audit_consent.focus()
+                        audit_consent.press("Space")
+                        expect(audit_consent).to_be_checked(timeout=20000)
                         page.get_by_role("button",
                             name="A/B/C 출처결합 Guard HOLD 로컬 감사기록 (원본 저장 안 함)",
                             exact=True).click()
