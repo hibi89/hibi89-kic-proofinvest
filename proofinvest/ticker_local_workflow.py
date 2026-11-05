@@ -158,7 +158,24 @@ def run_local_ticker_workflow(
 
         report = make_local_report(
             receipt, revenue, original, supplementary, engine_b=engine_b)
-        step("make_local_report", report["status"], accepted=True)
+        # A malformed or unexpectedly authorized report must never reach
+        # the independent replay stage or be returned as review-ready.
+        report_ok = (
+            type(report) is dict
+            and report.get("source_authenticated") is False
+            and report.get("source_rights_verified") is False
+            and report.get("trade_executed") is False
+            and report.get("guard_policy_preview") in ("HOLD", "REJECT")
+            and type(report.get("source_rights_ledger")) is dict
+            and report["source_rights_ledger"].get("external_sharing_allowed") is False
+        )
+        step("make_local_report",
+             report.get("status", "INVALID") if type(report) is dict else "INVALID",
+             accepted=report_ok)
+        if not report_ok:
+            out.update(reason_code="REPORT_TRUST_CONTRACT_INVALID",
+                       next_action="REVIEW_REPORT_AND_SOURCE_RIGHTS")
+            return out
 
         verification = verify_local_report(
             report, sources=sources, market_json=market_json,
