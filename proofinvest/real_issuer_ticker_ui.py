@@ -11,6 +11,10 @@ from .real_issuer_ticker_review import review_supported_real_ticker
 
 
 def render_real_issuer_ticker_lookup(st) -> None:
+    from .kuodra_local_workspace_ui import local_workspace_enabled
+    if not local_workspace_enabled(st):
+        st.warning("이 발행사 원문 검산 경로는 명시적 로컬 실행에서만 사용할 수 있습니다.")
+        return
     st.title("KUODRA · 종목 입력 → 실제 발행사 제한 재무검토")
     st.warning(
         "현재 원문 검증 기록이 있는 종목은 NVDA와 DELL 두 개뿐입니다. "

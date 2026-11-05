@@ -67,28 +67,34 @@ class RealIssuerTickerQueryTests(unittest.TestCase):
 
     def test_actual_streamlit_input_switches_issuers_without_network(self):
         from streamlit.testing.v1 import AppTest
-        at = AppTest.from_file(str(_APP)).run(timeout=30)
-        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-        at.selectbox[0].set_value(_MODE).run(timeout=30)
-        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-        box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
-        box.set_value("NVDA").run(timeout=30)
-        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-        self.assertTrue(any("NVDA" in x.value for x in at.success))
-        self.assertTrue(any(x.label == "연매출 성장률 (발행사 근거)" and
-                            x.value == "65.47%" for x in at.metric))
-        box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
-        box.set_value("DELL").run(timeout=30)
-        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-        self.assertTrue(any("DELL" in x.value for x in at.success))
-        self.assertTrue(any(x.label == "연매출 성장률 (발행사 근거)" and
-                            x.value == "18.80%" for x in at.metric))
-        box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
-        box.set_value("AAPL").run(timeout=30)
-        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-        self.assertFalse(at.success)
-        self.assertFalse(at.metric)
-        self.assertTrue(any("검증 기록이 없거나" in x.value for x in at.warning))
+        # AppTest cannot bind a real loopback server; retain the existing
+        # separately tested local_workspace_enabled predicate as the sole gate.
+        with patch(
+            "proofinvest.kuodra_local_workspace_ui.local_workspace_enabled",
+            return_value=True,
+        ):
+            at = AppTest.from_file(str(_APP)).run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            at.selectbox[0].set_value(_MODE).run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
+            box.set_value("NVDA").run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            self.assertTrue(any("NVDA" in x.value for x in at.success))
+            self.assertTrue(any(x.label == "연매출 성장률 (발행사 근거)" and
+                                x.value == "65.47%" for x in at.metric))
+            box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
+            box.set_value("DELL").run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            self.assertTrue(any("DELL" in x.value for x in at.success))
+            self.assertTrue(any(x.label == "연매출 성장률 (발행사 근거)" and
+                                x.value == "18.80%" for x in at.metric))
+            box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
+            box.set_value("AAPL").run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            self.assertFalse(at.success)
+            self.assertFalse(at.metric)
+            self.assertTrue(any("검증 기록이 없거나" in x.value for x in at.warning))
 
 
 if __name__ == "__main__":

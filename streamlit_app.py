@@ -579,7 +579,9 @@ def render_app(st) -> None:
         available_sources.append(_SOURCE_APPLE_2026_PUBLIC)
     real_ticker_ui = Path(__file__).resolve().parent / "proofinvest/real_issuer_ticker_ui.py"
     if real_ticker_ui.is_file():
-        available_sources.append(_SOURCE_REAL_ISSUER_TICKER)
+        from proofinvest.kuodra_local_workspace_ui import local_workspace_enabled
+        if local_workspace_enabled(st):
+            available_sources.append(_SOURCE_REAL_ISSUER_TICKER)
     nvidia_real_ui = Path(__file__).resolve().parent / "proofinvest/nvidia_real_issuer_ui.py"
     if nvidia_real_ui.is_file():
         available_sources.append(_SOURCE_NVDA_FY2026_REAL)
