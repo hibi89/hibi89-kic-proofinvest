@@ -25,6 +25,11 @@ class RealIssuerTickerQueryTests(unittest.TestCase):
                 net.assert_not_called()
                 self.assertEqual(r["status"], "REAL_ISSUER_HUMAN_REVIEW_ONLY", r)
                 self.assertEqual(r["ticker"], ticker)
+                if ticker == "DELL":
+                    self.assertEqual(r["cik"], "0001571996")
+                    self.assertEqual(r["filing_accession"], "0001571996-26-000008")
+                    self.assertTrue(r["sec_index_metadata_reconciled"])
+                    self.assertFalse(r["source_authenticated_by_sec"])
                 self.assertEqual(tuple(r[k] for k in (
                     "issuer_revenue_growth_pct",
                     "cashflow_to_net_income_ratio",
@@ -64,6 +69,13 @@ class RealIssuerTickerQueryTests(unittest.TestCase):
                    return_value={"status": "BLOCKED"}):
             self.assertEqual(
                 review_supported_real_ticker("DELL")["status"], "BLOCKED")
+
+    def test_dell_fake_regulator_index_cannot_create_real_data_panel(self):
+        with patch(
+            "proofinvest.dell_regulator_index_match.reviewed_real_dell_regulator_issuer_evidence",
+            return_value={"status": "BLOCKED"},
+        ):
+            self.assertEqual(review_supported_real_ticker("DELL")["status"], "BLOCKED")
 
     def test_actual_streamlit_input_switches_issuers_without_network(self):
         from streamlit.testing.v1 import AppTest

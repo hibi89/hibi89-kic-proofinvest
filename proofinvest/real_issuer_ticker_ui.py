@@ -41,6 +41,11 @@ def render_real_issuer_ticker_lookup(st) -> None:
         f'[공식 발행사 자료]({result["source_url"]}) · '
         f'[원문 수집·검증 CI]({result["source_ci_run"]})'
     )
+    if result.get("sec_index_metadata_reconciled") is True:
+        st.markdown(
+            f'[SEC 제출 색인 (원문 바이트 인증 아님)]({result["sec_index_url"]}) '
+            f'· CIK {result["cik"]} · 접수 {result["filing_accession"]}'
+        )
     if result.get("supplementary_source_url"):
         st.markdown(
             f'[추가 실적발표 원문]({result["supplementary_source_url"]}) · '
