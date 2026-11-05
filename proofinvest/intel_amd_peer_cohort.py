@@ -156,17 +156,14 @@ def review_two_official_10k_peers(
                 or nvda_growth != "65.47"
                 or amd["amd_revenue_growth_pct"] != "34.34"):
             return _blocked("PREVAILING_FINANCIAL_PRECISION_OR_SOURCE_CHANGED")
-        nvda_gap = fmt(Decimal(nvda_growth) - Decimal(growth))
-        amd_gap = fmt(Decimal(nvda_growth) -
-                      Decimal(amd["amd_revenue_growth_pct"]))
-        if nvda_gap != "65.94" or amd_gap != "31.13":
-            # Displayed two-decimal values are not the same as rounding
-            # the difference of the original unrounded growth ratios.
-            unrounded_nvda = (Decimal("215938") / Decimal("130497") - 1) * 100
-            unrounded_intc = (revenue_new / revenue_old - 1) * 100
-            unrounded_amd = (Decimal("34639") / Decimal("25785") - 1) * 100
-            nvda_gap = fmt(unrounded_nvda - unrounded_intc)
-            amd_gap = fmt(unrounded_nvda - unrounded_amd)
+        # Always subtract the original full-precision fiscal growth ratios
+        # before rounding once for presentation. Subtracting displayed
+        # 65.47 - 34.34 would misstate the AMD gap as 31.13 instead of 31.14.
+        unrounded_nvda = (Decimal("215938") / Decimal("130497") - 1) * 100
+        unrounded_intc = (revenue_new / revenue_old - 1) * 100
+        unrounded_amd = (Decimal("34639") / Decimal("25785") - 1) * 100
+        nvda_gap = fmt(unrounded_nvda - unrounded_intc)
+        amd_gap = fmt(unrounded_nvda - unrounded_amd)
         if nvda_gap != "65.94" or amd_gap != "31.14":
             return _blocked("PEER_GROWTH_GAP_MATH_MISMATCH")
         return {
