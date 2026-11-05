@@ -133,6 +133,24 @@ class LocalTickerWorkflowTests(unittest.TestCase):
             self.assertEqual(out["tool_calls_executed"], 6)
             self.assertFalse(out["tool_trace"][-1]["accepted"])
 
+    def test_forged_pass_without_recomputed_semantics_is_blocked(self):
+        _, raws = report_case()
+        from proofinvest import ticker_local_report
+        with patch.object(ticker_local_report, "verify_local_report",
+                          return_value={"status": "PASS",
+                                        "reason_code": "FAKE",
+                                        "report_semantics_recomputed": False,
+                                        "network_requests": 0,
+                                        "source_authenticated": False,
+                                        "source_rights_verified": False,
+                                        "trade_executed": False}):
+            result = run_local_ticker_workflow(
+                ticker="NVDA", as_of="2025-10-16", sources=raws)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["reason_code"], "INDEPENDENT_REPLAY_FAILED")
+        self.assertIsNone(result["report"])
+        self.assertEqual(result["tool_calls_executed"], 7)
+
     def test_report_replay_disagreement_does_not_emit_successful_report(self):
         _, raw = report_case()
         from proofinvest import ticker_local_report
