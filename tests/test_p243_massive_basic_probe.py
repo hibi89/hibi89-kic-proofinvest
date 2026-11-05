@@ -137,7 +137,7 @@ class MassiveProbeCliTests(TestCase):
     def test_default_probe_date_never_asks_for_current_utc_session(self):
         with patch.object(cli, "free_basic_safe_as_of",
                           return_value="2026-11-04"), (
-            patch.object(cli, "_https_get", side_effect=AssertionError("HTTP")):
+            patch.object(cli, "_https_get", side_effect=AssertionError("HTTP"))):
             code,receipt=self.capture(["--ticker", "AAPL"])
         self.assertEqual(code,0)
         self.assertEqual(receipt["as_of"],"2026-11-04")
