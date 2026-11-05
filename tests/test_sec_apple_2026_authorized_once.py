@@ -37,8 +37,8 @@ class P238OneOfficialGetTests(unittest.TestCase):
             requested.append(1)
             raise AssertionError("NO HTTP")
         for approved,ua in (
-            (False,"KUODRA Owner-Limited Apple Original Research test@example.org"),
-            (None,"KUODRA Owner-Limited Apple Original Research test@example.org"),
+            (False,"KUODRA Owner-Limited Apple Original Research p238@mock-research-lab.org"),
+            (None,"KUODRA Owner-Limited Apple Original Research p238@mock-research-lab.org"),
             (True,None),(True,True),(True,""),(True,"bad"),
         ):
             r=p.read_apple_2026_sec_original_once(
@@ -57,7 +57,7 @@ class P238OneOfficialGetTests(unittest.TestCase):
             self.assertEqual(req.get_method(),"GET")
             calls.append(1)
             return response
-        ua=p.validate_owner_contact("test@example.org")
+        ua=p.validate_owner_contact("p238@mock-research-lab.org")
         self.assertIsNotNone(ua)
         out=p.read_apple_2026_sec_original_once(
             authorized=True,user_agent=ua,opener=fake)
@@ -74,11 +74,11 @@ class P238OneOfficialGetTests(unittest.TestCase):
         self.assertFalse(out["original_html_saved"])
         self.assertEqual(out["guard_policy_preview"],"HOLD")
         self.assertEqual(out["trades_executed"],0)
-        self.assertNotIn("test@example.org",str(out))
+        self.assertNotIn("p238@mock-research-lab.org",str(out))
         self.assertNotIn("<html",str(out).lower())
 
     def test_redirect_403_429_mime_size_and_bad_values_stop_once(self):
-        ua=p.validate_owner_contact("test@example.org")
+        ua=p.validate_owner_contact("p238@mock-research-lab.org")
         raw=synthetic()
         corrupt=raw.replace(b"478834",b"478835",1)
         for resp in (
@@ -118,6 +118,6 @@ class P238OneOfficialGetTests(unittest.TestCase):
 
     def test_contact_rejects_whitespace_invalid_or_control_chars(self):
         for s in (None,True,"", "bad","x@localhost",
-                  "test@example.org\nOther: header", "x@example.com"*12):
+                  "p238@mock-research-lab.org\nOther: header", "x@example.com"*12):
             self.assertIsNone(p.validate_owner_contact(s))
-        self.assertIsNotNone(p.validate_owner_contact("test@example.org"))
+        self.assertIsNotNone(p.validate_owner_contact("p238@mock-research-lab.org"))
