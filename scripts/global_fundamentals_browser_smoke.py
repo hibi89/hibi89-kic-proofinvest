@@ -100,6 +100,33 @@ def run(output: Path) -> dict:
                             "button", name="개인 검토용 근거 JSON",
                             exact=True)).to_have_count(0)
 
+                        # P264: real human-input question route; verifies that
+                        # the default never uses local/remote model or trades.
+                        expect(page.get_by_role(
+                            "button",name="질문 근거 검증 → Guard 답변",
+                            exact=True)).to_be_visible(timeout=25000)
+                        qfield=page.get_by_role("textbox",name="투자 검증 질문")
+                        qfield.fill("NVDA 재고가 매출보다 빠르게 증가했나요?")
+                        page.get_by_role(
+                            "button",name="질문 근거 검증 → Guard 답변",
+                            exact=True).click()
+                        expect(page.get_by_text(
+                            "질문 근거 분석 완료 · Guard HOLD · 투자 승인 아님",
+                            exact=True)).to_be_visible(timeout=25000)
+                        expect(page.get_by_text(
+                            "NVDA 과거 발행사 수치상", exact=False,
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_text(
+                            "46.86pp",exact=False)).to_be_visible(timeout=25000)
+                        # Wrong issuer / missing year => fail-closed, not
+                        # an automatic fallback to another company's figures.
+                        qfield.fill("AAPL 재고 증가율")
+                        page.get_by_role(
+                            "button",name="질문 근거 검증 → Guard 답변",
+                            exact=True).click()
+                        expect(page.get_by_text(
+                            "요청한 기업·기간·의도 또는 로컬 모델 검증 실패.",
+                            exact=False)).to_be_visible(timeout=25000)
                         evidence = []
                         for ticker in ("NVDA", "DELL"):
                             if ticker != "NVDA":
@@ -196,6 +223,9 @@ def run(output: Path) -> dict:
                             "chromium_user_flow_exercised": True,
                             "independent_export_replay": True,
                             "default_synthetic_preserved": True,
+                            "natural_language_question_flow_verified": True,
+                            "unsupported_issuer_fail_closed": True,
+                            "natural_question_local_model_calls": 0,
                             "scenarios": evidence,
                             "blocked_external_hosts_count": len(blocked_external),
                             "external_network_allowed": False,

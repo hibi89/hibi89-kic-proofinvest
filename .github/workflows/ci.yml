@@ -183,7 +183,7 @@ jobs:
       - name: P263 Chromium global issuer B/C -> Guard -> JSON/HTML (no market API)
         run: |
           python -B -m scripts.global_fundamentals_browser_smoke /tmp/kic-p263-global-browser
-          python -c 'import json; r=json.load(open("/tmp/kic-p263-global-browser/p263-browser-receipt.json")); assert r["status"]=="PASS" and r["chromium_user_flow_exercised"] and r["independent_export_replay"] and [x["ticker"] for x in r["scenarios"]]==["NVDA","DELL"] and all(x["guard"]=="HOLD" and x["market_api_requests"]==0 and x["verified_json_and_html"] for x in r["scenarios"]) and r["external_network_allowed"] is False and r["publisher_rights_verified"] is False and r["real_public_production"] is False and r["trade_executed"] is False'
+          python -c 'import json; r=json.load(open("/tmp/kic-p263-global-browser/p263-browser-receipt.json")); assert r["status"]=="PASS" and r["chromium_user_flow_exercised"] and r["independent_export_replay"] and r["natural_language_question_flow_verified"] and r["unsupported_issuer_fail_closed"] and r["natural_question_local_model_calls"]==0 and [x["ticker"] for x in r["scenarios"]]==["NVDA","DELL"] and all(x["guard"]=="HOLD" and x["market_api_requests"]==0 and x["verified_json_and_html"] for x in r["scenarios"]) and r["external_network_allowed"] is False and r["publisher_rights_verified"] is False and r["real_public_production"] is False and r["trade_executed"] is False'
       - name: Archive P263 redacted browser receipt only (no source screenshots)
         uses: actions/upload-artifact@v4
         with:
@@ -191,6 +191,8 @@ jobs:
           path: /tmp/kic-p263-global-browser/p263-browser-receipt.json
           if-no-files-found: error
           retention-days: 14
+      - name: P264 real global question router and mocked local Qwen policy checks
+        run: python -B -m unittest tests.test_global_question_agent -v
       - name: P221 actual Chromium issuer Engine B + local NDX Engine A download
         run: |
           python -B -m scripts.real_issuer_ab_browser_smoke /tmp/kic-p221-issuer-ab-browser

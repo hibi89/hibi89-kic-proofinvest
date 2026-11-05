@@ -17,6 +17,49 @@ def render_global_fundamentals(st) -> None:
     st.warning("시장지수 Engine A는 자료 미확보로 UNAVAILABLE. "
                "발행사 SEC 원본 동일성·동종기업 원문 바이트·대회 공개 시연 이용권은 "
                "미확인입니다. 개별 권한 확인 전 외부 공유 불가.")
+    st.subheader("질문 → 근거 분석 → Guard 답변 (로컬)")
+    st.caption("예: NVDA 재고가 매출보다 빨리 증가했나요? / DELL 영업현금흐름은? "
+               "기본 모드는 규칙 기반입니다. 실제 자율 AI Agent로 표기하지 않습니다.")
+    with st.form("kuodra_global_question"):
+        question=st.text_input(
+            "투자 검증 질문", value="NVDA 재고가 매출보다 빠르게 증가했나요?",
+            max_chars=180, key="kic_global_question")
+        with_model=st.checkbox(
+            "선택: 본인 로컬 Qwen2.5 1.5B 의도 검증 (기본 비활성)",
+            value=False,key="kic_global_model_toggle")
+        c1=st.checkbox(
+            "127.0.0.1:11435 서버가 본인 관리 로컬 모델이고 외부 중계가 아님을 확인",
+            value=False,disabled=not with_model,key="kic_global_model_owner")
+        c2=st.checkbox(
+            "입력한 질문 문구만 로컬 모델에 전달하는 데 별도 동의 (공시·숫자 전송 없음)",
+            value=False,disabled=not with_model,key="kic_global_question_consent")
+        asked=st.form_submit_button("질문 근거 검증 → Guard 답변")
+    if asked:
+        from .global_question_agent import (
+            answer_global_question, verify_global_question_answer)
+        answer=answer_global_question(
+            question, use_local_model=with_model,
+            consent_local_model=c1,consent_question_text=c2)
+        if (answer.get("status") != "QUESTION_SOURCE_BOUND_LOCAL_REVIEW_HOLD"
+                or not verify_global_question_answer(answer,question)):
+            st.warning("요청한 기업·기간·의도 또는 로컬 모델 검증 실패. "
+                       "NVDA/DELL의 단일 분석 질문만 허용합니다.")
+            st.code(answer.get("reason_code","UNVERIFIED"))
+        else:
+            st.success("질문 근거 분석 완료 · Guard HOLD · 투자 승인 아님")
+            st.info(answer["answer"])
+            st.caption("실행 도구: " + answer["intent"] +
+                       " · 실제 AI Agent 완료 아님 · 데이터 이용권 미인증")
+            st.json({
+                "source_refs":answer["source_links"],
+                "question_sha256":answer["question_sha256"],
+                "tool_trace":answer["tool_trace"],
+                "local_model_calls":answer["local_model_calls"],
+                "local_model_protocol_verified":
+                    answer["local_model_protocol_verified"],
+                "source_replay_verified":True,
+                "trade_executed":False, "guard":"HOLD",
+            })
     with st.form("kuodra_global_marketless_review"):
         ticker = st.selectbox("미국 발행사", ["NVDA", "DELL"])
         confirmed = st.form_submit_button("발행사·경쟁사 검산 및 Guard")
