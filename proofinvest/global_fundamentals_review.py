@@ -124,7 +124,7 @@ def build_marketless_global_review(*, ticker: str,
         engine_b = {
             "status": "FIRST_PARTY_FINANCIAL_ARITHMETIC_REPLAY_LIMITED",
             "revenue_growth_pct": issuer["issuer_revenue_growth_pct"],
-            "cfo_to_net_income_ratio": issuer["cashflow_to_net_income_ratio"],
+            "cashflow_to_net_income_ratio": issuer["cashflow_to_net_income_ratio"],
             "receivables_minus_revenue_growth_pp":
                 issuer["receivables_minus_revenue_growth_pp"],
             "inventory_minus_revenue_growth_pp":
@@ -278,7 +278,7 @@ def marketless_global_review_html(report: Any) -> bytes:
     rows = [
         ("A 시장 대비", "UNAVAILABLE — 승인된 주가·지수 없음"),
         ("B 매출 성장률 (%)", b["revenue_growth_pct"]),
-        ("B 영업현금흐름/순이익", b["cfo_to_net_income_ratio"]),
+        ("B 영업현금흐름/순이익", b["cashflow_to_net_income_ratio"]),
         ("B 매출채권 성장률 차이 (pp)",
          b["receivables_minus_revenue_growth_pp"]),
         ("B 재고 성장률 차이 (pp)",

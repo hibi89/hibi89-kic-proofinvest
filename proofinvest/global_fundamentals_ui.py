@@ -32,7 +32,7 @@ def render_global_fundamentals(st) -> None:
         {"항목": "매출 증가율 (%) (B)",
          "결과": report["engine_b"]["revenue_growth_pct"]},
         {"항목": "영업현금흐름 / 순이익 (B)",
-         "결과": report["engine_b"]["cfo_to_net_income_ratio"]},
+         "결과": report["engine_b"]["cashflow_to_net_income_ratio"]},
         {"항목": "매출채권 증가율 격차 (pp)",
          "결과": report["engine_b"]["receivables_minus_revenue_growth_pp"]},
         {"항목": "재고 증가율 격차 (pp)",
