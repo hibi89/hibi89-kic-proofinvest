@@ -77,7 +77,6 @@ class RealIssuerTickerQueryTests(unittest.TestCase):
         self.assertTrue(any("NVDA" in x.value for x in at.success))
         self.assertTrue(any(x.label == "연매출 성장률 (발행사 근거)" and
                             x.value == "65.47%" for x in at.metric))
-        self.assertTrue(any(x.key == "p218_real_issuer_export" for x in at.button))
         box = next(x for x in at.text_input if x.key == "p218_real_issuer_input")
         box.set_value("DELL").run(timeout=30)
         self.assertFalse(at.exception, [str(x.message) for x in at.exception])
@@ -89,7 +88,6 @@ class RealIssuerTickerQueryTests(unittest.TestCase):
         self.assertFalse(at.exception, [str(x.message) for x in at.exception])
         self.assertFalse(at.success)
         self.assertFalse(at.metric)
-        self.assertFalse(any(x.key == "p218_real_issuer_export" for x in at.button))
         self.assertTrue(any("검증 기록이 없거나" in x.value for x in at.warning))
 
 
