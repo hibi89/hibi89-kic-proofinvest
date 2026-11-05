@@ -34,3 +34,7 @@ docker exec "$container" ollama list | grep -E "qwen2.5:1.5b-instruct[[:space:]]
 # real request. Avoid confusing cold-start latency with evidence failure.
 docker exec "$container" ollama run qwen2.5:1.5b-instruct "Return READY only." >/dev/null
 python3 -B -m scripts.real_qwen_public_brief_ci_smoke
+# P265: reuse the same pinned, already warmed real Qwen model/container.
+# The new question is static/public, no customer originals or secret prompts.
+python3 -B -m unittest tests.test_global_question_agent -v
+python3 -B -m scripts.real_qwen_global_agent_ci_smoke

@@ -22,7 +22,9 @@ def render_global_fundamentals(st) -> None:
         confirmed = st.form_submit_button("발행사·경쟁사 검산 및 Guard")
     st.subheader("질문 → 근거 분석 → Guard 답변 (로컬)")
     st.caption("예: NVDA 재고가 매출보다 빨리 증가했나요? / DELL 영업현금흐름은? "
-               "기본 모드는 규칙 기반입니다. 실제 자율 AI Agent로 표기하지 않습니다.")
+               "기본 모드는 규칙 기반입니다. 선택 로컬 Qwen은 사전 허용한 "
+               "분석 도구 중 하나를 실제 선택하고, 실행·판정은 코드가 검증합니다. "
+               "완전한 자율 AI Agent나 데이터 이용권 인증은 아닙니다.")
     with st.form("kuodra_global_question"):
         question=st.text_input(
             "투자 검증 질문", value="NVDA 재고가 매출보다 빠르게 증가했나요?",
@@ -51,12 +53,15 @@ def render_global_fundamentals(st) -> None:
         else:
             st.success("질문 근거 분석 완료 · Guard HOLD · 투자 승인 아님")
             st.info(answer["answer"])
-            st.caption("실행 도구: " + answer["intent"] +
-                       " · 실제 AI Agent 완료 아님 · 데이터 이용권 미인증")
+            st.caption("AI가 선택한 허용 도구: " + answer["intent"]
+                       if answer["local_model_calls"] else
+                       "규칙으로 선택한 도구: " + answer["intent"])
+            st.caption("자율 AI Agent 전체 완료 아님 · 데이터 이용권 미인증")
             st.json({
                 "source_refs":answer["source_links"],
                 "question_sha256":answer["question_sha256"],
                 "tool_trace":answer["tool_trace"],
+                "permitted_tool_intents":answer["permitted_tool_intents"],
                 "local_model_calls":answer["local_model_calls"],
                 "local_model_protocol_verified":
                     answer["local_model_protocol_verified"],

@@ -141,6 +141,64 @@ class GlobalQuestionTests(unittest.TestCase):
                         self.assertEqual(r["reason_code"],"LOCAL_MODEL_PLAN_REJECTED")
                         engine.assert_not_called()
 
+
+    def test_model_makes_actual_allowed_multi_intent_choice_not_rule_echo(self):
+        q="For NVIDIA check inventory and cash flow, but answer the cash flow first."
+        route=preflight_global_question(q)
+        self.assertEqual(route["status"],"READY")
+        self.assertEqual(route["intent"],"WORKING_CAPITAL")
+        self.assertEqual(route["candidate_intents"],
+                         ["WORKING_CAPITAL","CASHFLOW"])
+        raw=json.dumps({
+            "done":True, "model":"qwen2.5:1.5b-instruct", "eval_count":5,
+            "response":json.dumps({
+                "issuer":"NVDA","intent":"CASHFLOW",
+                "decision":"HUMAN_REVIEW_ONLY"
+            })
+        }).encode()
+        with patch("proofinvest.global_question_agent._call_loopback",
+                   return_value=raw) as local:
+            result=answer_global_question(q,use_local_model=True,
+                     consent_local_model=True,consent_question_text=True)
+        local.assert_called_once()
+        body=json.loads(local.call_args.args[0])
+        self.assertEqual(body["format"]["properties"]["intent"]["enum"],
+                         ["WORKING_CAPITAL","CASHFLOW"])
+        self.assertEqual(body["format"]["properties"]["issuer"]["enum"],
+                         ["NVDA"])
+        self.assertNotIn("65.47",body["prompt"])
+        self.assertNotIn("d07c1e",body["prompt"])
+        self.assertEqual(result["status"],"QUESTION_SOURCE_BOUND_LOCAL_REVIEW_HOLD",result)
+        self.assertEqual(result["intent"],"CASHFLOW")
+        self.assertIn("0.8555배",result["answer"])
+        self.assertEqual(result["local_model_calls"],1)
+        self.assertTrue(verify_global_question_answer(result,q))
+        forged=deepcopy(result)
+        forged["intent"]="SOURCE"
+        self.assertFalse(verify_global_question_answer(forged,q))
+        forged=deepcopy(result)
+        forged["answer"]="사세요"
+        self.assertFalse(verify_global_question_answer(forged,q))
+
+    def test_dynamic_tool_choice_still_blocks_unlisted_intent(self):
+        q="For NVIDIA check inventory and cash flow, but answer the cash flow first."
+        raw=json.dumps({
+            "done":True,"model":"qwen2.5:1.5b-instruct","eval_count":4,
+            "response":json.dumps({
+                "issuer":"NVDA","intent":"MARKET",
+                "decision":"HUMAN_REVIEW_ONLY"
+            }),
+        }).encode()
+        with patch("proofinvest.global_question_agent._call_loopback",
+                   return_value=raw):
+            with patch("proofinvest.global_question_agent.build_marketless_global_review",
+                       side_effect=AssertionError("NO_TOOL")) as tools:
+                result=answer_global_question(q,use_local_model=True,
+                    consent_local_model=True,consent_question_text=True)
+                self.assertEqual(result["status"],"BLOCKED")
+                self.assertEqual(result["reason_code"],"LOCAL_MODEL_PLAN_REJECTED")
+                tools.assert_not_called()
+
     def test_forged_source_or_words_fails_replay(self):
         q="NVIDIA 경쟁사 비교"
         r=answer_global_question(q)

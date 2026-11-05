@@ -103,37 +103,65 @@ def preflight_global_question(question: Any) -> dict[str, Any]:
                 all(tok in {"amd", "intc", "qcom"} for tok in
                     _OTHER_TICKERS.findall(q))):
             return _blocked("UNSUPPORTED_SECOND_PRIMARY_OR_MARKET_TICKER")
-    chosen = next((intent for intent, terms in _TERMS
-                   if any(term in q for term in terms)), None)
-    if chosen is None:
+    candidates = [
+        intent for intent, terms in _TERMS if any(term in q for term in terms)
+    ]
+    if not candidates:
         return _blocked("QUESTION_INTENT_NOT_SUPPORTED")
+    chosen = candidates[0]
     # If no usable peer comparison exists, the answer is UNAVAILABLE, never
     # silently substituted with unrelated company's financials.
     return {
         "status": "READY",
         "ticker": tickers[0], "intent": chosen,
+        "candidate_intents": candidates,
         "tool": "build_marketless_global_review",
         "local_model_required": False, "market_requests": 0,
     }
 
 
-def _optional_model_plan(question: str, ticker: str, intent: str) -> dict:
-    """One strict, non-streaming owner-controlled loopback request."""
+def _optional_model_plan(question: str, ticker: str,
+                         candidate_intents: list[str]) -> dict:
+    """One actual constrained local tool decision; no autonomous API access.
+
+    Deterministic code identifies the permitted tool set. The model chooses
+    ONE tool in that set based on the user's focus, not the deterministic
+    priority. Evidence remains inaccessible to the model.
+    """
+    if (type(ticker) is not str or ticker not in _ALIASES
+            or type(candidate_intents) is not list
+            or not 1 <= len(candidate_intents) <= len(_INTENTS)
+            or len(set(candidate_intents)) != len(candidate_intents)
+            or any(x not in _INTENTS for x in candidate_intents)):
+        raise ValueError("MODEL_TOOL_ALLOWLIST_INVALID")
     prompt = (
-        "Classify this operator-authored investment research question into "
-        "one *permitted* local read-only issuer review tool intent. "
-        "The deterministic security preflight already checked the allowed "
-        "issuer and intent. Output must exactly match these verified values: "
-        "issuer=" + ticker + "; intent=" + intent +
-        "; decision=HUMAN_REVIEW_ONLY. No free text or advice. "
-        "The operator question is: " + json.dumps(
-            question, ensure_ascii=False) + ". "
-        "Return a JSON object with issuer,intent,decision only."
+        "You are selecting ONE permitted read-only research tool for an "
+        "operator question. An independent validator already fixed the "
+        "issuer and ALLOWED tool names. You MUST choose based on which "
+        "topic the question explicitly asks to answer FIRST, not just the "
+        "first item in the list. If several are mentioned, choose the "
+        "explicit priority. Never output trade actions or free text. "
+        "Allowed issuer: " + ticker + ". Allowed intent tools: " +
+        ", ".join(candidate_intents) +
+        ". Meanings: GUARD=buy/sell safety; MARKET=price/index; "
+        "PEERS=company comparison; WORKING_CAPITAL=inventory/receivables; "
+        "CASHFLOW=operating cash flow/net income; REVENUE=sales growth; "
+        "SOURCE=filing provenance. Operator question: " +
+        json.dumps(question, ensure_ascii=False) +
+        ". Return JSON with issuer, intent, decision=HUMAN_REVIEW_ONLY."
     )
+    schema = {
+        **_MODEL_FORMAT,
+        "properties": {
+            **_MODEL_FORMAT["properties"],
+            "issuer": {"type": "string", "enum": [ticker]},
+            "intent": {"type": "string", "enum": candidate_intents},
+        },
+    }
     payload = json.dumps({
         "model": _MODEL, "prompt": prompt, "stream": False,
-        "format": _MODEL_FORMAT,
-        "options": {"temperature": 0, "num_predict": 96},
+        "format": schema,
+        "options": {"temperature": 0, "num_predict": 112},
     }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     if not 0 < len(payload) <= 2048:
         raise ValueError("BOUNDED_LOCAL_QUESTION_PROMPT_REQUIRED")
@@ -148,10 +176,14 @@ def _optional_model_plan(question: str, ticker: str, intent: str) -> dict:
             or not 0 < len(parsed["response"]) <= 512):
         raise ValueError("LOCAL_MODEL_RESPONSE_ENVELOPE_INVALID")
     out = _json_no_duplicate(parsed["response"].encode("utf-8"))
-    if out != {"issuer": ticker, "intent": intent,
-               "decision": "HUMAN_REVIEW_ONLY"}:
+    if (type(out) is not dict
+            or set(out) != {"issuer", "intent", "decision"}
+            or out.get("issuer") != ticker
+            or out.get("intent") not in candidate_intents
+            or out.get("decision") != "HUMAN_REVIEW_ONLY"):
         raise ValueError("LOCAL_MODEL_INTENT_OR_POLICY_INVALID")
-    return {"local_model_calls": 1, "model_protocol_verified": True}
+    return {"local_model_calls": 1, "model_protocol_verified": True,
+            "selected_intent": out["intent"]}
 
 
 def _answer(intent: str, report: dict[str, Any]) -> tuple[str, list[dict]]:
@@ -225,14 +257,16 @@ def answer_global_question(
         return route
     calls = 0
     model_valid = False
+    selected_intent = route["intent"]
     if use_local_model is True:
         if consent_local_model is not True or consent_question_text is not True:
             return _blocked("TWO_LOCAL_MODEL_CONSENTS_REQUIRED")
         try:
             result = _optional_model_plan(question, route["ticker"],
-                                          route["intent"])
+                                          route["candidate_intents"])
             calls = result["local_model_calls"]
             model_valid = result["model_protocol_verified"]
+            selected_intent = result["selected_intent"]
         except (OSError, ValueError, UnicodeError, TypeError,
                 KeyError, RecursionError):
             return _blocked("LOCAL_MODEL_PLAN_REJECTED", local_calls=1)
@@ -248,18 +282,19 @@ def answer_global_question(
             or report.get("ai_agent_executed") is not False
             or report.get("market_api_requests") != 0):
         return _blocked("ISSUER_OR_GUARD_SOURCE_REPLAY_FAILED", local_calls=calls)
-    content, refs = _answer(route["intent"], report)
+    content, refs = _answer(selected_intent, report)
     return {
         **_blocked("SOURCE_BOUND_HISTORICAL_HUMAN_ANSWER", local_calls=calls),
         "status": _STATUS,
-        "ticker": route["ticker"], "intent": route["intent"],
+        "ticker": route["ticker"], "intent": selected_intent,
+        "permitted_tool_intents": route["candidate_intents"],
         "question_sha256": sha256(question.encode("utf-8")).hexdigest(),
         "answer": content, "source_links": refs,
         "issuer_review_sha256": report["integrity_sha256"],
         "tool_calls": 1, "tool_trace": [
             {"step": "PREFLIGHT", "result": "ONE_SUPPORTED_ISSUER_INTENT"},
             {"step": "MODEL_VALIDATION", "result":
-                "OPTIONAL_LOCAL_PROTOCOL_VALIDATED" if model_valid else
+                "OPTIONAL_LOCAL_MODEL_SELECTED_ALLOWED_TOOL" if model_valid else
                 "DETERMINISTIC_ROUTE_NO_MODEL"},
             {"step": "SOURCE_REPLAY", "result": "ISSUER_B_C_GUARD_HOLD_VERIFIED"},
             {"step": "ANSWER", "result": "HUMAN_ONLY_EVIDENCE_REFS"},
@@ -274,22 +309,46 @@ def answer_global_question(
 
 
 def verify_global_question_answer(answer: Any, question: Any) -> bool:
-    """Recompute an answer; never use model-generated words for finance."""
+    """Independently replay selected financial tool and all resulting words.
+
+    A local server cannot cryptographically attest a model's identity. This
+    checks only permitted tool execution, result arithmetic and answer truth.
+    """
     if (type(answer) is not dict or answer.get("status") != _STATUS
             or type(question) is not str
             or answer.get("local_model_calls") not in (0, 1)
             or answer.get("local_model_protocol_verified") not in (True, False)):
         return False
     try:
-        result = answer_global_question(question)
-        if result.get("status") != _STATUS:
+        route = preflight_global_question(question)
+        if (route.get("status") != "READY"
+                or answer.get("ticker") != route["ticker"]
+                or answer.get("permitted_tool_intents") != route["candidate_intents"]
+                or answer.get("intent") not in route["candidate_intents"]):
+            return False
+        deterministic = answer_global_question(question)
+        if deterministic.get("status") != _STATUS:
             return False
         if answer["local_model_calls"] == 1:
-            # Protocol proof is a separate local trust boundary; the
-            # deterministic financial source and authored text are replayed.
-            result["local_model_calls"] = 1
-            result["local_model_protocol_verified"] = True
-            result["tool_trace"][1]["result"] = "OPTIONAL_LOCAL_PROTOCOL_VALIDATED"
-        return result == answer
+            if answer["local_model_protocol_verified"] is not True:
+                return False
+            # Rebuild an allowed *different* model-selected tool locally.
+            # Never re-invoke the model, and never trust supplied output text.
+            report = build_marketless_global_review(ticker=route["ticker"])
+            if not verify_marketless_global_review(report):
+                return False
+            authored_text, refs = _answer(answer["intent"], report)
+            deterministic["intent"] = answer["intent"]
+            deterministic["answer"] = authored_text
+            deterministic["source_links"] = refs
+            deterministic["local_model_calls"] = 1
+            deterministic["local_model_protocol_verified"] = True
+            deterministic["tool_trace"][1]["result"] = (
+                "OPTIONAL_LOCAL_MODEL_SELECTED_ALLOWED_TOOL"
+            )
+        elif (answer["intent"] != route["intent"]
+              or answer["local_model_protocol_verified"] is not False):
+            return False
+        return deterministic == answer
     except (ValueError, TypeError, KeyError, RecursionError):
         return False
