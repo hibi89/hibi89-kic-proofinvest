@@ -163,7 +163,11 @@ class RealIssuerOperatorMarketTests(unittest.TestCase):
             return_value=True,
         ):
             render_real_issuer_local_market_panel(st,ticker="NVDA")
-        self.assertEqual(len([x for x in st.events if x[0]=="upload"]),2)
+        uploads=[x[1] for x in st.events if x[0]=="upload"]
+        self.assertEqual(uploads, [
+            "p219_stock_close_json", "p219_ndx_close_json",
+            "p232_hold_receipt_json",
+        ])
 
     def test_native_streamlit_upload_controls_from_real_issuer(self):
         from pathlib import Path
