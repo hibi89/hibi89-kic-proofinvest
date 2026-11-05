@@ -1,4 +1,9 @@
-# KUODRA — final product acceptance score (P235 verified 75/100; 2026-11-05 KST)
+# KUODRA — final product acceptance score (P236 VERIFIED SEC general public filing policy 76/100; 2026-11-05 KST)
+
+### P236 first-party SEC public EDGAR general access/reuse policy VERIFIED (+1 SEC-source-rights precursor)
+
+Checked *live official SEC public policy* 2026-11-05 KST: [SEC Webmaster FAQ](https://www.sec.gov/files/about/webmaster-faq.htm) states public EDGAR filing content may be accessed and reused without fee or special permission, and [SEC Privacy Information — Website Dissemination](https://www.sec.gov/about/privacy-information) provides agency permission to copy/distribute publicly displayed information without requesting SEC approval. SEC registered marks, seal, logos/artwork, specific third-party attachments and separately licensed data are **not** granted; cite SEC appropriately and never imply SEC endorsement. For an automatically retrieved specific SEC document, exact TLS SEC server response, accession/CIK filing identity and byte hash, compliance with the SEC's fair-access restrictions, and operator-approved GET remain separate **unverified** gates. P105 SEC 403 path is NOT retried. The Nasdaq-100 series (third-party Nasdaq copyright), stock vendor agreements, commercial application and AI model processing rights are not implied by the SEC's license. New read-only product preflight with exact Apple 2026 manually reviewed ref + source-metadata replay and user-facing informational expander explicitly separates general policy from specific rights. It confirms generic SEC official public-content reuse as **one distinct newly met external permissions precursor** within the 3 pending SEC origin/rights points. Claims for `individual_source_document_use_rights_verified`, `exact_sec_edgar_original_bytes_authenticated`, `financial_ai_processing_rights_verified`, `nasdaq100_ndx_data_rights_verified` remain False. Initial CI #42042541754 showed 2 Dell source-failure tests were confused by policy `st.success`; change to `st.info` makes this an informational notice, not any verification success. Target commit SHA `4a0ca59a5493a4eab54b48c218f84061d11ab350` [CI #42042899663](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42042899663) **TERMINAL SUCCESS 5/5**. Actual terminal full 5/5 confirms **76/100 (24 remaining: SEC raw/authentication2, NDX+stock rights8, peers4, broader full AI1, Production4, official DAKER5)**. No score for code/tests alone or additional docs.
+
 
 ### P235 real Qwen1.5B 3-card grounded issuer facts model (+1 narrow factual AI point)
 
@@ -253,7 +258,7 @@ syntax 410/410 PASS. P204 provides separate guarded real Streamlit view;
 feature SHA bb681662a3ede6516cc20790c6e82d21b8e31080,
 CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/41891470826
 status at this checkpoint: RUNNING_OR_UNVERIFIED, Python 1835/1835 PASS and syntax
-411/411 PASS, Windows HTTP/SQLite/Docker PASS; Chromium pending if not terminal.
+411/411 PASS, Windows HTTP/SQLite/Docker PASS; Chromium PASS if not terminal.
 One formerly unearned source-PIT ID/anti-ticker-substitution subgate now
 genuinely satisfied via separate SEC INDEX vs issuer source evidence,
 old 12-point category split into 1 earned + 11 still blocked;
