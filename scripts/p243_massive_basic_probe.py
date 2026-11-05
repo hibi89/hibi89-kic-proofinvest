@@ -20,7 +20,7 @@ from urllib.error import HTTPError, URLError
 
 from proofinvest.market_provider_massive import (
     _KEY, _SYMBOL, _https_get, _url, parse_massive_daily,
-    free_basic_safe_as_of,
+    free_basic_safe_as_of, IndexDailyCalendarError,
 )
 
 _APPROVAL = "REQUEST MASSIVE BASIC PERSONAL"
@@ -145,6 +145,14 @@ def main(argv: list[str] | None = None) -> int:
                   "retries":0, "market_data_rights_verified":False}
         if http_code is not None:
             output["http_status"] = http_code
+        # Fixed-range diagnostic only: no raw timestamp, calendar date,
+        # market value, HTTP URL, key, body, headers or exception text.
+        if isinstance(exc, IndexDailyCalendarError):
+            if (0 <= exc.utc_weekday <= 6 and 0 <= exc.utc_hour <= 23
+                    and 0 <= exc.eastern_weekday <= 6):
+                output["index_calendar_utc_weekday"] = exc.utc_weekday
+                output["index_calendar_utc_hour"] = exc.utc_hour
+                output["index_calendar_et_weekday"] = exc.eastern_weekday
         print(json.dumps(output,sort_keys=True))
         return 2
     finally:

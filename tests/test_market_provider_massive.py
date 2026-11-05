@@ -9,8 +9,8 @@ import unittest
 from unittest.mock import patch
 
 from proofinvest.market_provider_massive import (
-    _https_get, _MAX_RESPONSE, analyze_massive_pair, fetch_massive_pair,
-    free_basic_safe_as_of,
+    _https_get, _MAX_RESPONSE, _eastern_trading_date,
+    analyze_massive_pair, fetch_massive_pair, free_basic_safe_as_of,
     parse_massive_daily,
 )
 
@@ -138,6 +138,58 @@ class MassiveBasicAdapterTests(unittest.TestCase):
                 (b"0"*(_MAX_RESPONSE+1),"NVDA",False)):
             with self.subTest(symbol=symbol,raw=raw[:40]), self.assertRaises(ValueError):
                 parse_massive_daily(raw,symbol=symbol,as_of="2026-10-01",index=index)
+
+    def test_ndx_utc_saturday_before_et_midnight_maps_friday_only(self):
+        # 2026 Jan 10 Sat 04:00 UTC = Friday Jan 9 23:00 EST.
+        # The actual market calendar is the New York civil day, NOT UTC.
+        jan = date(2026, 1, 5)
+        weekdays = [jan + timedelta(days=n) for n in range(115)
+                    if (jan + timedelta(days=n)).weekday() < 5][:65]
+        raw = json.loads(fixture("I:NDX", index=True))
+        friday_index = next(i for i,d in enumerate(weekdays) if d.weekday() == 4)
+        for i,d in enumerate(weekdays):
+            bar_dt = datetime(d.year,d.month,d.day,5,tzinfo=timezone.utc)
+            if i == friday_index:
+                bar_dt += timedelta(hours=23)
+                self.assertEqual(bar_dt.weekday(), 5)
+            raw["results"][i]["t"] = int(bar_dt.timestamp()*1000)
+        parsed = parse_massive_daily(json.dumps(raw).encode(),
+                symbol="I:NDX",index=True,as_of="2026-04-30")
+        self.assertEqual(parsed["point_count"],65)
+        self.assertEqual(parsed["close_observations"][friday_index]["date"],
+                         weekdays[friday_index].isoformat())
+        self.assertFalse(parsed["source_authenticated"])
+        self.assertFalse(parsed["source_rights_verified"])
+
+    def test_ndx_true_eastern_saturday_still_rejected(self):
+        # After midnight EST, UTC Sat 05:00 genuinely is Saturday.
+        raw = json.loads(fixture("I:NDX", index=True))
+        raw["results"][0]["t"] = int(datetime(
+            2026,1,10,5,tzinfo=timezone.utc).timestamp()*1000)
+        with self.assertRaisesRegex(ValueError,"NONTRADING_WEEKEND_BAR"):
+            parse_massive_daily(json.dumps(raw).encode(),
+                 symbol="I:NDX",index=True,as_of="2026-10-01")
+
+    def test_us_dst_transition_is_deterministic_without_tzdata(self):
+        def local_day(y,m,d,h):
+            return _eastern_trading_date(datetime(
+                y,m,d,h,tzinfo=timezone.utc)).isoformat()
+        self.assertEqual(local_day(2026,1,10,4),"2026-01-09")
+        self.assertEqual(local_day(2026,7,11,4),"2026-07-11")
+        self.assertEqual(local_day(2026,11,7,4),"2026-11-06")
+        self.assertEqual(local_day(2026,3,8,6),"2026-03-08")
+        self.assertEqual(local_day(2026,3,8,7),"2026-03-08")
+        self.assertEqual(local_day(2026,11,1,5),"2026-11-01")
+        self.assertEqual(local_day(2026,11,1,6),"2026-11-01")
+
+    def test_index_weekend_utc_rollover_cannot_bypass_requested_cutoff(self):
+        raw = json.loads(fixture("I:NDX",index=True))
+        raw["results"][0]["t"] = int(datetime(
+            2026,1,10,4,tzinfo=timezone.utc).timestamp()*1000)
+        # ET Friday 2026 Jan 9 is still after the requested cutoff Jan 8.
+        with self.assertRaisesRegex(ValueError,"BAR_AFTER_REQUESTED_CUTOFF"):
+            parse_massive_daily(json.dumps(raw).encode(),
+                symbol="I:NDX",index=True,as_of="2026-01-08")
 
     def test_ndx_weekend_future_and_invalid_close_have_separate_codes(self):
         raw = json.loads(fixture("I:NDX", index=True))

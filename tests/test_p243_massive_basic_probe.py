@@ -112,6 +112,36 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(reason,"PARSER_NONTRADING_WEEKEND_BAR")
         self.assertIsNone(status)
 
+    def test_index_et_weekend_reject_exposes_only_bounded_diagnostics(self):
+        # The safe response gives enough information to distinguish
+        # ET weekend source anomalies from UTC/ET date-boundary mistakes.
+        from proofinvest.market_provider_massive import IndexDailyCalendarError
+        calls=[]
+        def fake_transport(url):
+            calls.append(url)
+            if len(calls) == 2:
+                raise IndexDailyCalendarError(
+                    "NONTRADING_WEEKEND_BAR",
+                    utc_day=5, utc_hour=5, eastern_day=5)
+            return fixture("AAPL")
+        with patch.object(cli.sys.stdin, "isatty", return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input", return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass, "getpass", return_value=KEY)), (
+            patch.object(cli, "_https_get", side_effect=fake_transport)):
+            rc,out=self.capture(ARGS+["--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(out["failed_stage"],"index")
+        self.assertEqual(out["network_requests"],2)
+        self.assertEqual(out["retries"],0)
+        self.assertEqual(out["reason_code"],"PARSER_NONTRADING_WEEKEND_BAR")
+        self.assertEqual(out["index_calendar_utc_weekday"],5)
+        self.assertEqual(out["index_calendar_utc_hour"],5)
+        self.assertEqual(out["index_calendar_et_weekday"],5)
+        for forbidden in ("price","timestamp","apiKey","source_response","close"):
+            self.assertNotIn(forbidden, out)
+        self.assertNotIn(KEY,json.dumps(out))
+
     def test_unknown_error_does_not_expose_key(self):
         with patch.object(cli.sys.stdin,"isatty",return_value=True), (
             patch.object(cli.sys.stdout,"isatty",return_value=True)), (

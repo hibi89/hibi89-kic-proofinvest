@@ -75,6 +75,48 @@ def free_basic_safe_as_of(utc_today: date | None = None) -> str:
     return cursor.isoformat()
 
 
+class IndexDailyCalendarError(ValueError):
+    """Fixed-code reject with bounded clock diagnostics only; no raw bars."""
+    def __init__(self, code: str, *, utc_day: int, utc_hour: int,
+                 eastern_day: int):
+        super().__init__(code)
+        # Day/hour indices only, never quotes, API key or source response.
+        self.utc_weekday = utc_day
+        self.utc_hour = utc_hour
+        self.eastern_weekday = eastern_day
+
+
+def _eastern_trading_date(utc_dt: datetime) -> date:
+    """U.S. Eastern civil date for a UTC index daily-bar anchor.
+
+    Never use the machine's local zone. The standard-library-only DST
+    calculation makes the Windows distribution work without optional tzdata.
+    Supports the 1987-2006 U.S. DST rule and the 2007+ Energy Policy Act
+    rule within the provider's allowed year range. The caller must validate
+    the exchange's Monday-Friday trading calendar *after* conversion.
+    """
+    if (type(utc_dt) is not datetime or utc_dt.tzinfo != timezone.utc
+            or not 2000 <= utc_dt.year <= 2099):
+        raise ValueError("INVALID_INDEX_UTC_TIMESTAMP")
+    year = utc_dt.year
+
+    def _sunday(month: int, nth: int) -> date:
+        first = date(year, month, 1)
+        return first + timedelta(days=(6 - first.weekday()) % 7 + 7 * (nth - 1))
+
+    if year >= 2007:
+        spring = _sunday(3, 2)  # 02:00 Eastern Standard -> 07:00 UTC
+        autumn = _sunday(11, 1)  # 02:00 Eastern Daylight -> 06:00 UTC
+    else:
+        spring = _sunday(4, 1)
+        # Last Sunday in October under 1987-2006 rule.
+        autumn = _sunday(11, 1) - timedelta(days=7)
+    start = datetime(year, spring.month, spring.day, 7, tzinfo=timezone.utc)
+    end = datetime(year, autumn.month, autumn.day, 6, tzinfo=timezone.utc)
+    offset_hours = 4 if start <= utc_dt < end else 5
+    return (utc_dt - timedelta(hours=offset_hours)).date()
+
+
 def _day(value: str) -> date:
     if type(value) is not str:
         raise ValueError("INVALID_DATE")
@@ -134,7 +176,10 @@ def parse_massive_daily(raw: bytes, *, symbol: str, as_of: str,
             raise ValueError("INVALID_BAR_TIME_OR_CLOSE")
         try:
             dt = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
-            observed = dt.date()
+            # Index windows use Eastern market sessions, even if their
+            # UTC anchor falls on Saturday after a Friday ET session.
+            # Never relabel actual ET-Saturday/Sunday index data.
+            observed = _eastern_trading_date(dt) if index else dt.date()
             amount = Decimal(str(raw_close))
         except (ValueError, OverflowError, InvalidOperation) as exc:
             raise ValueError("INVALID_BAR_VALUE") from exc
@@ -150,6 +195,10 @@ def parse_massive_daily(raw: bytes, *, symbol: str, as_of: str,
         # Distinguish exchange calendar, cutoff and numeric anomalies without
         # logging provider-supplied values or silently accepting suspect bars.
         if observed.weekday() >= 5:
+            if index:
+                raise IndexDailyCalendarError(
+                    "NONTRADING_WEEKEND_BAR", utc_day=dt.weekday(),
+                    utc_hour=dt.hour, eastern_day=observed.weekday())
             raise ValueError("NONTRADING_WEEKEND_BAR")
         if observed > cutoff:
             raise ValueError("BAR_AFTER_REQUESTED_CUTOFF")
