@@ -143,6 +143,11 @@ def _execute(ticker: str, as_of: str, question: str,
         "filing_accession":work["receipt"]["selected_10k_accession"],
         "filing_date":work["receipt"]["selected_10k_filing_date"],
         "sources_sha256":dict(work["receipt"]["source_sha256"]),
+        "optional_market_sha256": (
+            sha256(market_json).hexdigest() if market_json is not None else None),
+        "optional_industry_sha256": (
+            sha256(industry_json).hexdigest() if industry_json is not None else None),
+        "local_report_sha256":work["report"]["report_sha256"],
         "source_urls":dict(work["receipt"]["source_urls"]),
         "fiscal_revenue_growth_pct":work["revenue"]["growth_pct"],
         "cash_to_net_income_pct":work["engine_b"].get("cash_to_net_income_pct"),
