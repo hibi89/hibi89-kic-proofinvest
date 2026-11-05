@@ -149,7 +149,10 @@ def run(output: Path) -> dict:
                                 )).to_be_visible(timeout=25000)
                                 # The only selectbox within the form is issuer;
                                 # do not rely on global widget indices.
-                                form = page.get_by_test_id("stForm").first
+                                form = page.get_by_test_id("stForm").filter(
+                                    has=page.get_by_role("button",
+                                        name="발행사·경쟁사 검산 및 Guard",exact=True)
+                                ).first
                                 selector = form.get_by_test_id(
                                     "stSelectbox").first
                                 expect(selector).to_be_visible(timeout=25000)
