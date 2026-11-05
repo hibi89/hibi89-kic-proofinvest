@@ -88,11 +88,15 @@ def _json_no_duplicate(raw: bytes) -> Any:
     )
 
 
-def _call_loopback(raw: bytes, *, port: int) -> bytes:
+def _call_loopback(raw: bytes, *, port: int, timeout_seconds: int = _TIMEOUT) -> bytes:
     if type(port) is not int or not 1024 <= port <= 65535:
         raise ValueError("MODEL_LOCAL_PORT_INVALID")
     if type(raw) is not bytes or not 0 < len(raw) <= _MAX_REQUEST:
         raise ValueError("MODEL_REQUEST_TOO_LARGE")
+    # Per-call timeout can accommodate a cold but user-owned small CPU model.
+    # Keep the normal 8s default and refuse unbounded or boolean overrides.
+    if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 24:
+        raise ValueError("MODEL_LOCAL_TIMEOUT_INVALID")
     # No proxy, redirect, DNS, TLS downgrade, arbitrary URL or remote host.
     request = urllib.request.Request(
         f"http://127.0.0.1:{port}/api/generate", data=raw,
@@ -106,7 +110,7 @@ def _call_loopback(raw: bytes, *, port: int) -> bytes:
         urllib.request.ProxyHandler({}), _NoRedirect(),
     )
     try:
-        with opener.open(request, timeout=_TIMEOUT) as response:
+        with opener.open(request, timeout=timeout_seconds) as response:
             if (response.status != 200 or response.geturl() != request.full_url
                     or response.headers.get("Content-Type", "").split(";", 1)[0]
                     .strip().lower() != "application/json"

@@ -75,8 +75,8 @@ class SourceCardQwenTests(unittest.TestCase):
 
     def test_single_local_only_source_status_request(self):
         calls=[]
-        def call(data,*,port):
-            calls.append((data,port))
+        def call(data,*,port,timeout_seconds):
+            calls.append((data,port,timeout_seconds))
             return reply()
         with patch.object(p,"_call_loopback",side_effect=call):
             res=p.run_local_public_evidence_summary(
@@ -84,8 +84,9 @@ class SourceCardQwenTests(unittest.TestCase):
                 public_fact_summary_consent=True)
         self.assertTrue(res["source_bound_multi_fact_model_verified"])
         self.assertEqual(len(calls),1)
-        data,port=calls[0]
+        data,port,timeout_seconds=calls[0]
         self.assertEqual(port,11435)
+        self.assertEqual(timeout_seconds,24)
         payload=json.loads(data)
         self.assertEqual(payload["model"],p._MODEL)
         self.assertEqual(payload["format"]["properties"]["scenario"]["enum"],

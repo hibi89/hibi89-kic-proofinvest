@@ -30,4 +30,7 @@ docker exec "$container" ollama pull qwen2.5:1.5b-instruct
 docker exec "$container" ollama list | grep -E "qwen2.5:1.5b-instruct[[:space:]]+65ec06548149" >/dev/null || {
   echo P235_WRONG_OFFICIAL_MODEL_DIGEST >&2; exit 1;
 }
+# Warm only the public 1.5B model on disposable CPU before the bounded
+# real request. Avoid confusing cold-start latency with evidence failure.
+docker exec "$container" ollama run qwen2.5:1.5b-instruct "Return READY only." >/dev/null
 python3 -B -m scripts.real_qwen_public_brief_ci_smoke

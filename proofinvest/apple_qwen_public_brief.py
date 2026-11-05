@@ -192,7 +192,7 @@ def run_local_public_evidence_summary(
     if not 0 < len(payload) <= 2048:
         return _blocked("BOUNDED_MODEL_REQUEST_EXCEEDED")
     try:
-        raw = _call_loopback(payload,port=port)
+        raw = _call_loopback(payload,port=port,timeout_seconds=24)
     except (ValueError,OSError,TypeError,UnicodeError):
         return _blocked("LOCAL_MODEL_HTTP_UNAVAILABLE",1)
     return verify_public_evidence_model_response(raw)
