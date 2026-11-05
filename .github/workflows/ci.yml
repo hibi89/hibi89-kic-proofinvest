@@ -180,6 +180,19 @@ jobs:
         run: |
           python -B -m scripts.nvidia_audit_download_browser_smoke /tmp/kic-p213-nvda-browser
           python -c 'import json; x=json.load(open("/tmp/kic-p213-nvda-browser/p213-nvda-download-browser.json")); assert x["status"]=="PASS" and x["chromium_download_verified"] and x["new_session_consent_required"] and x["guard_decision"]=="HOLD" and x["replay"]=="LOCAL_NVDA_BUNDLE_DIGEST_AND_REPLAY_PASS" and len(x["issuer_original_sha256"])==64 and len(x["download_sha256"])==64 and x["external_http_allowed"] is False and x["sec_original_authenticated"] is False and x["source_rights_verified"] is False and x["trade_executed"] is False and x["public_production_verified"] is False'
+      - name: P221 actual Chromium issuer Engine B + local NDX Engine A download
+        run: |
+          python -B -m scripts.real_issuer_ab_browser_smoke /tmp/kic-p221-issuer-ab-browser
+          python -c 'import json; x=json.load(open("/tmp/kic-p221-issuer-ab-browser/p221-browser-receipt.json")); assert x["status"]=="PASS" and x["actual_streamlit_download"] and x["joined_ab_checksum_valid"] and x["guard_preview"]=="HOLD" and x["stock_ndx_issuer_bound"] and x["external_http_allowed"] is False and x["market_rights_verified"] is False and x["sec_raw_bytes_verified"] is False and x["trade_executed"] is False'
+      - name: Archive P221 source-derived local A/B browser evidence (synthetic market only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-p221-issuer-ab-browser
+          path: |
+            /tmp/kic-p221-issuer-ab-browser/p221-ab-review.png
+            /tmp/kic-p221-issuer-ab-browser/p221-browser-receipt.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Archive P213 NVIDIA real-source-derived local Chromium receipt (not publisher raw)
         uses: actions/upload-artifact@v4
         with:
