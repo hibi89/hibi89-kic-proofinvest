@@ -293,6 +293,39 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
         file_name="kuodra-" + result["ticker"].lower() + "-ab-UNVERIFIED.json",
         mime="application/json", key="p219_local_market_summary",
     )
+    if result["ticker"] == "NVDA":
+        from .real_issuer_abc_local_review import (
+            build_partial_source_bound_abc, replay_partial_source_bound_abc,
+        )
+        abc=build_partial_source_bound_abc(ab_review=result)
+        if (abc["status"]=="REAL_ISSUER_B_LOCAL_A_PEER_C_PARTIAL_UNVERIFIED"
+                and replay_partial_source_bound_abc(abc)):
+            st.subheader("A/B/C · 발행사·로컬 시장·AMD/Intel 출처결합 검산 (제한)")
+            st.caption("A=제공자 미인증 로컬 주가·NDX, B=NVIDIA 발행사 GAAP, "
+                       "C=AMD·Intel 공식 감사 10-K 공개 수치. 3엔진의 전체 "
+                       "라이선스·원본바이트·산업 대표성은 미검증.")
+            st.json({
+                "ticker":abc["ticker"],
+                "issuer_sha256":abc["source_linked_issuer_sha256"],
+                "stock_input_sha256":abc["stock_uploaded_sha256"],
+                "ndx_input_sha256":abc["ndx_uploaded_sha256"],
+                "peers":abc["engine_c_partial"]["peer_count"],
+                "derived_sha256":abc["derived_sha256"],
+                "guard_policy_preview":"HOLD",
+                "full_abc_complete":False,
+            })
+            st.download_button(
+                "실제 발행사 A/B/C 제한 결합 JSON (출처·이용권 미인증)",
+                data=json.dumps(abc,ensure_ascii=False,sort_keys=True,
+                                separators=(",",":"),allow_nan=False).encode("utf-8"),
+                file_name="kuodra-nvda-partial-abc-UNVERIFIED.json",
+                mime="application/json",key="p224_partial_abc_download",
+            )
+            st.warning("3개 엔진의 출처 결합은 개인 검산용입니다. "
+                       "시장 제공자 진위·공시 원본 바이트·이용권·모델 처리는 "
+                       "인증하지 않았고 매매 승인은 불가합니다. Guard HOLD.")
+        else:
+            st.warning("Engine C 동종기업 원문 교차검증 불일치로 통합 보고서를 차단했습니다.")
     st.warning(
         "지수·주가 제공자 및 재사용 이용권은 인증되지 않았습니다. "
         "출력의 SHA-256은 변조 탐지용 비밀키 없는 체크섬일 뿐 출처 인증이 아닙니다. "

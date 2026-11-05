@@ -244,6 +244,41 @@ def run(output: Path) -> dict:
                                 or "Time Series (Daily)" in raw.decode("utf-8")
                                 or "4. close" in raw.decode("utf-8")):
                             raise AssertionError("P221_REVIEW_PROVENANCE_OR_SAFETY_FAILED")
+                        # P224: after the actual operator A/B files and
+                        # two audited peer reviews, download ONE A/B/C packet.
+                        from proofinvest.real_issuer_abc_local_review import (
+                            replay_partial_source_bound_abc,
+                        )
+                        expect(page.get_by_role(
+                            "heading",
+                            name="A/B/C · 발행사·로컬 시장·AMD/Intel 출처결합 검산 (제한)",
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as abc_event:
+                            page.get_by_role(
+                                "button",
+                                name="실제 발행사 A/B/C 제한 결합 JSON (출처·이용권 미인증)",
+                                exact=True,
+                            ).click()
+                        abc_download=abc_event.value
+                        if abc_download.suggested_filename != (
+                                "kuodra-nvda-partial-abc-UNVERIFIED.json"):
+                            raise AssertionError("P224_ABC_FILENAME_INVALID")
+                        abc_bytes=Path(abc_download.path()).read_bytes()
+                        abc=json.loads(abc_bytes)
+                        if (not replay_partial_source_bound_abc(abc)
+                                or abc["engine_ab_partial"]!=report
+                                or abc["source_linked_issuer_sha256"]!=real["source_sha256"]
+                                or abc["engine_c_partial"]["peer_count"]!=2
+                                or abc["engine_c_partial"]["nvda_minus_intc_growth_pp"]!="65.94"
+                                or abc["stock_uploaded_sha256"]!=sha256(stock).hexdigest()
+                                or abc["ndx_uploaded_sha256"]!=sha256(index).hexdigest()
+                                or abc["guard_policy_preview"]!="HOLD"
+                                or abc["full_abc_complete"] is not False
+                                or abc["market_rights_verified"] is not False
+                                or abc["peer_rights_verified"] is not False
+                                or abc["trade_executed"] is not False
+                                or '"Time Series (Daily)"' in abc_bytes.decode("utf-8")):
+                            raise AssertionError("P224_ABC_REPLAY_FAILED")
                         page.screenshot(
                             path=str(output / "p221-ab-review.png"),
                             full_page=False)
@@ -260,6 +295,7 @@ def run(output: Path) -> dict:
                             "amd_official_10k_and_press_crosschecked": True,
                             "two_distinct_audited_10k_peers_download_verified": True,
                             "intel_official_10k_and_release_crosschecked": True,
+                            "single_abc_download_and_replay_verified": True,
                             "market_rights_verified": False,
                             "sec_raw_bytes_verified": False,
                             "trade_executed": False,
