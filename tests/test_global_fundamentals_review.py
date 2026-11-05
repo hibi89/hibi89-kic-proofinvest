@@ -71,7 +71,7 @@ class GlobalFundamentalsReviewTests(unittest.TestCase):
             self.assertEqual(report["guard"]["decision"], "HOLD")
             self.assertFalse(report["external_sharing_allowed"])
             self.assertFalse(report["full_abc_complete"])
-            self.assertIn(b"REVIEW_CANDIDATE",
+            self.assertIn(b"INVENTORY_GROWTH_GAP",
                           marketless_global_review_html(report))
         forged = deepcopy(nvda)
         forged["engine_b"]["screening_signals"].clear()

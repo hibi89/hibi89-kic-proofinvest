@@ -103,7 +103,33 @@ def run(output: Path) -> dict:
                         evidence = []
                         for ticker in ("NVDA", "DELL"):
                             if ticker != "NVDA":
-                                page.get_by_test_id("stSelectbox").nth(1).click()
+                                # Start an independent Streamlit/browser session
+                                # after downloads to avoid stale form overlay state.
+                                page = context.new_page()
+                                page.on("pageerror",
+                                        lambda ex: js_errors.append(str(ex)))
+                                page.goto(URL, wait_until="domcontentloaded",
+                                          timeout=30000)
+                                expect(page.get_by_text(
+                                    "KUODRA — 오프라인 합성 데이터",
+                                )).to_be_visible(timeout=25000)
+                                page.get_by_test_id("stSelectbox").first.click()
+                                page.get_by_role(
+                                    "option", name=MODE, exact=True).click()
+                                expect(page.get_by_role(
+                                    "heading",
+                                    name="KUODRA · 글로벌 기업 재무·경쟁사 검증 (나스닥 없이)",
+                                )).to_be_visible(timeout=25000)
+                                # The only selectbox within the form is issuer;
+                                # do not rely on global widget indices.
+                                form = page.get_by_test_id("stForm").first
+                                selector = form.get_by_test_id(
+                                    "stSelectbox").first
+                                expect(selector).to_be_visible(timeout=25000)
+                                selector.click()
+                                expect(page.get_by_role(
+                                    "option", name=ticker, exact=True),
+                                ).to_be_visible(timeout=15000)
                                 page.get_by_role(
                                     "option", name=ticker, exact=True).click()
                             page.get_by_role(
