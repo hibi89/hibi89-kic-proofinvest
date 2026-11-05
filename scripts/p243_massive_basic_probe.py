@@ -16,12 +16,35 @@ import getpass
 import json
 import re
 import sys
+from urllib.error import HTTPError, URLError
 
 from proofinvest.market_provider_massive import (
     _KEY, _SYMBOL, _https_get, _url, parse_massive_daily,
 )
 
 _APPROVAL = "REQUEST MASSIVE BASIC PERSONAL"
+_SAFE_PARSE = frozenset({"INVALID_MASSIVE_JSON","PROVIDER_STATUS_SYMBOL_OR_PAGINATION_INVALID",
+    "INVALID_DAILY_OBSERVATION_COUNT","RESULTS_COUNT_MISMATCH","QUERY_COUNT_INVALID",
+    "UNADJUSTED_STOCK_ONLY","INDEX_ADJUSTED_FIELD_INVALID",
+    "INVALID_BAR_FIELDS","INVALID_BAR_TIME_OR_CLOSE",
+    "NON_DAILY_BAR_TIMESTAMP","INVALID_BAR_VALUE",
+    "NONTRADING_FUTURE_OR_BAD_CLOSE","UNSORTED_DUPLICATE_OR_GAPPED_BAR",
+    "ROUNDED_ZERO_CLOSE","RESPONSE_SYMBOL_OR_SIZE_INVALID"})
+def _diagnose(exc):
+    # Never emit exception text, URL, provider body, headers or API key.
+    if isinstance(exc, HTTPError):
+        code = exc.code
+        return ({401:"HTTP_AUTH_REJECTED",403:"HTTP_FORBIDDEN",
+                 404:"HTTP_NOT_FOUND",429:"HTTP_RATE_LIMITED"}.get(
+                     code,"HTTP_OTHER_ERROR"), code if code in (401,403,404,429) else None)
+    if isinstance(exc, (URLError, TimeoutError, OSError)):
+        return ("NETWORK_OR_TLS_UNAVAILABLE",None)
+    if isinstance(exc, ValueError):
+        msg = str(exc)
+        return ("PARSER_"+msg if msg in _SAFE_PARSE else
+                "PARSER_OR_RESPONSE_UNAVAILABLE",None)
+    return ("LOCAL_PROCESSING_UNAVAILABLE",None)
+
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -68,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests":0},sort_keys=True))
         return 2
     attempts = 0
+    stage = "stock"
     try:
         stock_url = _url(symbol=args.ticker, as_of=args.as_of,
                          api_key=key, index=False)
@@ -75,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         stock = parse_massive_daily(
             _https_get(stock_url), symbol=args.ticker,
             as_of=args.as_of, index=False)
+        stage = "index"
         index_url = _url(symbol="I:NDX", as_of=args.as_of,
                          api_key=key, index=True)
         attempts += 1
@@ -99,11 +124,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(receipt,sort_keys=True))
         return 0
     except (ValueError, TypeError, OSError, OverflowError, TimeoutError,
-            KeyError, RecursionError, AttributeError):
-        print(json.dumps({"status":"BLOCKED",
-                          "reason_code":"MASSIVE_PLAN_OR_RESPONSE_UNAVAILABLE",
-                          "network_requests":attempts,"retries":0,
-                          "market_data_rights_verified":False},sort_keys=True))
+            KeyError, RecursionError, AttributeError) as exc:
+        reason, http_code = _diagnose(exc)
+        output = {"status":"BLOCKED", "reason_code":reason,
+                  "failed_stage":stage, "network_requests":attempts,
+                  "retries":0, "market_data_rights_verified":False}
+        if http_code is not None:
+            output["http_status"] = http_code
+        print(json.dumps(output,sort_keys=True))
         return 2
     finally:
         key = None

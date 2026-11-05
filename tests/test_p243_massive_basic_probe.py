@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from urllib.error import HTTPError, URLError
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -86,6 +87,51 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(rc,2)
         self.assertEqual(out["network_requests"],1)
         self.assertEqual(len(urls),1)
+        self.assertNotIn(KEY,json.dumps(out))
+
+    def test_redacted_http_403_no_second_request(self):
+        def fail(url):
+            raise HTTPError(url,403,"SECRET "+KEY,{},None)
+        with patch.object(cli.sys.stdin,"isatty",return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=fail)):
+            rc,out=self.capture(ARGS+["--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(out["http_status"],403)
+        self.assertEqual(out["failed_stage"],"stock")
+        self.assertEqual(out["network_requests"],1)
+        self.assertNotIn(KEY,json.dumps(out))
+
+    def test_unknown_error_does_not_expose_key(self):
+        with patch.object(cli.sys.stdin,"isatty",return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=ValueError(KEY))):
+            rc,out=self.capture(ARGS+["--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(out["reason_code"],"PARSER_OR_RESPONSE_UNAVAILABLE")
+        self.assertNotIn(KEY,json.dumps(out))
+
+    def test_index_network_error_after_stock(self):
+        calls=[]
+        def fake(url):
+            calls.append(url)
+            if len(calls)==2:
+                raise URLError(KEY)
+            return fixture("AAPL")
+        with patch.object(cli.sys.stdin,"isatty",return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=fake)):
+            rc,out=self.capture(ARGS+["--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(out["failed_stage"],"index")
+        self.assertEqual(out["network_requests"],2)
+        self.assertEqual(out["reason_code"],"NETWORK_OR_TLS_UNAVAILABLE")
         self.assertNotIn(KEY,json.dumps(out))
 
     def test_bad_date_blocks_before_approval(self):
