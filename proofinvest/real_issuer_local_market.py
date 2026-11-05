@@ -323,6 +323,44 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                 mime="application/json",key="p224_partial_abc_download",
                 on_click="ignore",
             )
+            # P225: independently regenerate a conservative cross-source
+            # fact-review HTML, with A unavailable and B/C numeric-only.
+            from .real_issuer_abc_fact_review import (
+                build_source_factual_abc_brief,
+                replay_source_factual_abc_brief,
+                source_factual_brief_html,
+            )
+            brief=build_source_factual_abc_brief(abc)
+            if (brief["status"] ==
+                    "LOCAL_A_B_C_CLAIM_REVIEW_FOR_HUMAN_ONLY"
+                    and replay_source_factual_abc_brief(brief,abc)):
+                st.subheader("A/B/C · 실제 원문 연결 사실검산 설명서 (AI 아님)")
+                st.caption("A 제공자 미인증→UNAVAILABLE, B NVIDIA 실적 수치→"
+                           "VERIFIED(역사적 산술만), C AMD·Intel 수치→"
+                           "공개자료 대조만. 모델 호출·권한 인증·투자추천 없음.")
+                st.dataframe([
+                    {"엔진":item["engine"],"검토 항목":item["claim_id"],
+                     "검증 한계":item["verification"],"설명":item["text"]}
+                    for item in brief["claims"]
+                ],hide_index=True,use_container_width=True)
+                st.download_button(
+                    "A/B/C 출처·사실검산 설명서 HTML (AI 미실행)",
+                    data=source_factual_brief_html(brief,abc),
+                    file_name="kuodra-nvda-factual-review-NO-AI.html",
+                    mime="text/html",key="p225_fact_brief_html",
+                    on_click="ignore",
+                )
+                st.download_button(
+                    "A/B/C 출처·사실검산 설명서 JSON (AI 미실행)",
+                    data=json.dumps(brief,ensure_ascii=False,sort_keys=True,
+                                    separators=(",",":"),allow_nan=False).encode("utf-8"),
+                    file_name="kuodra-nvda-factual-review-NO-AI.json",
+                    mime="application/json",key="p225_fact_brief_json",
+                    on_click="ignore",
+                )
+            else:
+                st.warning("검증 가능한 출처연결 사실 설명을 생성할 수 없어 "
+                           "설명서 출력을 차단했습니다.")
             st.warning("3개 엔진의 출처 결합은 개인 검산용입니다. "
                        "시장 제공자 진위·공시 원본 바이트·이용권·모델 처리는 "
                        "인증하지 않았고 매매 승인은 불가합니다. Guard HOLD.")

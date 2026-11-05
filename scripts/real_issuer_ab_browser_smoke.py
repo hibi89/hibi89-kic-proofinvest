@@ -285,6 +285,53 @@ def run(output: Path) -> dict:
                                 or abc["trade_executed"] is not False
                                 or '"Time Series (Daily)"' in abc_bytes.decode("utf-8")):
                             raise AssertionError("P224_ABC_REPLAY_FAILED")
+                        # P225: the same operator event also yields a
+                        # strict source-level factual review without an LLM.
+                        from proofinvest.real_issuer_abc_fact_review import (
+                            build_source_factual_abc_brief,
+                            replay_source_factual_abc_brief,
+                            source_factual_brief_html,
+                        )
+                        expect(page.get_by_role(
+                            "heading",
+                            name="A/B/C · 실제 원문 연결 사실검산 설명서 (AI 아님)",
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as html_event:
+                            page.get_by_role("button",
+                                name="A/B/C 출처·사실검산 설명서 HTML (AI 미실행)",
+                                exact=True).click()
+                        html_file=html_event.value
+                        if html_file.suggested_filename != (
+                                "kuodra-nvda-factual-review-NO-AI.html"):
+                            raise AssertionError("P225_BAD_HTML_FILENAME")
+                        html_bytes=Path(html_file.path()).read_bytes()
+                        with page.expect_download(timeout=30000) as json_event:
+                            page.get_by_role("button",
+                                name="A/B/C 출처·사실검산 설명서 JSON (AI 미실행)",
+                                exact=True).click()
+                        json_file=json_event.value
+                        if json_file.suggested_filename != (
+                                "kuodra-nvda-factual-review-NO-AI.json"):
+                            raise AssertionError("P225_BAD_JSON_FILENAME")
+                        brief=json.loads(Path(json_file.path()).read_bytes())
+                        if (not replay_source_factual_abc_brief(brief,abc)
+                                or build_source_factual_abc_brief(abc)!=brief
+                                or source_factual_brief_html(brief,abc)!=html_bytes
+                                or [c["engine"] for c in brief["claims"]]!=
+                                   ["A","B","B","C","C"]
+                                or brief["review_outcomes"]!=
+                                   ["UNAVAILABLE","VERIFIED","VERIFIED","VERIFIED","VERIFIED"]
+                                or brief["llm_invoked"] is not False
+                                or brief["external_sharing_allowed"] is not False):
+                            raise AssertionError("P225_BRIEF_REPLAY_MISMATCH")
+                        if (brief["market_rights_verified"] is not False
+                                or brief["source_rights_verified"] is not False
+                                or brief["guard_policy_preview"]!="HOLD"
+                                or brief["trade_executed"] is not False
+                                or brief["investment_recommendation"] is not False
+                                or brief["network_requests"]!=0
+                                or b"Time Series (Daily)" in html_bytes):
+                            raise AssertionError("P225_GUARD_OR_EXPORT_CONTRACT")
                         page.screenshot(
                             path=str(output / "p221-ab-review.png"),
                             full_page=False)
@@ -302,6 +349,8 @@ def run(output: Path) -> dict:
                             "two_distinct_audited_10k_peers_download_verified": True,
                             "intel_official_10k_and_release_crosschecked": True,
                             "single_abc_download_and_replay_verified": True,
+                            "genuine_source_fact_brief_html_json_replayed": True,
+                            "real_llm_invoked": False,
                             "market_rights_verified": False,
                             "sec_raw_bytes_verified": False,
                             "trade_executed": False,
