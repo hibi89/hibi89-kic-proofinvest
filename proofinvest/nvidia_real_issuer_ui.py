@@ -94,6 +94,13 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
         if verdict["status"] == "REAL_ISSUER_NUMERIC_FACTS_MATCH_FOR_HUMAN_REVIEW":
             st.success("NVIDIA 발행사 근거 수치와 초안이 일치합니다 (인증/투자 승인 아님).")
             st.json(verdict)
+            st.download_button(
+                "검산된 수치·출처 근거 JSON (로컬 개인 검토, 외부공유 금지)",
+                data=(json.dumps(verdict, sort_keys=True, ensure_ascii=False,
+                                 allow_nan=False, separators=(",", ":")) + "\\n").encode("utf-8"),
+                file_name="kuodra-nvda-facts-UNVERIFIED.json",
+                mime="application/json", key="p217_nvda_fact_download",
+            )
         else:
             st.warning("발행사 수치·기간·출처 또는 투자 권고 제한과 불일치: 표시 차단")
             st.code(verdict["reason_code"], language="text")
