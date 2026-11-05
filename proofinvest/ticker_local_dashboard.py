@@ -172,6 +172,17 @@ def summarize_local_ticker_dashboard(workflow: Any) -> dict[str, Any]:
         "ticker": ticker, "cik": cik, "as_of": as_of,
         "report_sha256": report["report_sha256"], "guard_policy": "HOLD",
         "revenue_growth_pct": _number(revenue["growth_pct"]),
+        "evidence_completeness": {
+            "engine_a": "CALCULATED_UNVERIFIED" if a_ok and a["status"] == "REPORTED_UNVERIFIED" else "INSUFFICIENT_OR_UNAVAILABLE",
+            "engine_b": "CALCULATED_UNVERIFIED" if b["status"] == "REVIEWED_UNVERIFIED" else "INSUFFICIENT_OR_UNAVAILABLE",
+            "engine_c": "CALCULATED_UNVERIFIED" if c_ok and c["status"] == "OBSERVED_COMPARISON_UNVERIFIED" and c["peer_growth_observation_count"] >= 3 else "INSUFFICIENT_OR_UNAVAILABLE",
+            "all_three_complete": (
+                a_ok and a["status"] == "REPORTED_UNVERIFIED"
+                and b["status"] == "REVIEWED_UNVERIFIED"
+                and c_ok and c["status"] == "OBSERVED_COMPARISON_UNVERIFIED"
+                and c["peer_growth_observation_count"] >= 3
+            ),
+        },
         "engine_a": {
             "status": a["status"],
             "security_return_pct": _number(a.get("security_return_pct")) if a_ok else None,
@@ -208,6 +219,11 @@ def render_local_ticker_dashboard(st: Any, workflow: Any) -> None:
     st.metric("연매출 성장률 (로컬 재검산 · 미인증)", result["revenue_growth_pct"] + "%")
     st.metric("Guard 정책 (실행 아님)", result["guard_policy"])
     a, b, c = (result[k] for k in ("engine_a", "engine_b", "engine_c"))
+    completeness = result["evidence_completeness"]
+    st.subheader("Engine A/B/C · 입력 근거 충족 현황")
+    st.json(completeness)
+    if not completeness["all_three_complete"]:
+        st.warning("A/B/C 전체 실증 분석은 완료되지 않았습니다. 부족한 입력·동종기업 표본을 확인하십시오.")
     st.subheader("Engine A · 가격/벤치마크 설명적 비교")
     st.metric("주가 수익률 (미인증)", a["security_return_pct"] + "%" if a["security_return_pct"] is not None else "자료 없음")
     st.metric("지수 수익률 (미인증)", a["benchmark_return_pct"] + "%" if a["benchmark_return_pct"] is not None else "자료 없음")
