@@ -137,3 +137,19 @@ class LocalP231ReceiptReplayTests(unittest.TestCase):
             denied = main(args)
         self.assertEqual(denied, 2)
         self.assertEqual(json.loads(stdout.getvalue())["status"], "BLOCKED")
+
+    def test_native_ui_offers_independent_read_only_receipt_action(self):
+        from unittest.mock import patch
+        from streamlit.testing.v1 import AppTest
+        app = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+        mode = "KUODRA · 실제 발행사 종목 직접 입력 (2종 · 제한)"
+        with patch("proofinvest.kuodra_local_workspace_ui.local_workspace_enabled",
+                   return_value=True):
+            at = AppTest.from_file(str(app)).run(timeout=30)
+            at.selectbox[0].set_value(mode).run(timeout=30)
+            next(x for x in at.text_input
+                 if x.key == "p218_real_issuer_input").set_value("NVDA").run(timeout=30)
+            self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+            self.assertTrue(any(x.key == "p232_replay_receipt" for x in at.button))
+            self.assertFalse(any("A/B/C 영수증 ↔ 원본 검산자료 ↔ 로컬 SQLite 일치"
+                                 in x.value for x in at.success))

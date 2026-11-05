@@ -250,7 +250,18 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
             "A/B/C 출처결합 Guard HOLD 로컬 감사기록 (원본 저장 안 함)",
             key="p231_local_audit_run",
         )
-    if not (submitted or audit_submitted):
+        receipt_upload = st.file_uploader(
+            "P231 로컬 Guard HOLD 영수증 검증용 JSON (DB 쓰기 없음)",
+            type=["json"], key="p232_hold_receipt_json",
+        )
+        replay_submitted = st.form_submit_button(
+            "다운로드한 Guard HOLD 영수증과 로컬 SQLite 대조 (읽기 전용)",
+            key="p232_replay_receipt",
+        )
+    if not (submitted or audit_submitted or replay_submitted):
+        return
+    if replay_submitted and receipt_upload is None:
+        st.warning("감사영수증 JSON과 원래 주가/NDX 파일 두 개가 필요합니다.")
         return
     if audit_submitted and not audit_ack:
         st.warning("로컬 SQLite 감사기록 별도 동의가 필요합니다.")
@@ -335,6 +346,44 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                 "guard_policy_preview":"HOLD",
                 "full_abc_complete":False,
             })
+            # P232: independent local receipt replay, explicitly user-triggered.
+            # Read-only mode never creates missing SQLite data or grants rights.
+            if replay_submitted:
+                from pathlib import Path
+                from .real_issuer_abc_receipt_replay import verify_p231_local_receipt
+                try:
+                    if (type(getattr(receipt_upload, "size", None)) is not int
+                            or not 0 < receipt_upload.size <= 1048576):
+                        raise ValueError("RECEIPT_SIZE_INVALID")
+                    receipt_bytes = receipt_upload.getvalue()
+                    if (type(receipt_bytes) is not bytes
+                            or len(receipt_bytes) != receipt_upload.size):
+                        raise ValueError("RECEIPT_BYTES_INVALID")
+                    receipt = json.loads(receipt_bytes)
+                    checked = verify_p231_local_receipt(
+                        abc_review=abc, receipt=receipt,
+                        audit_db_path=Path.home() /
+                            "kuodra-real-abc-guard-audit.sqlite3",
+                    )
+                except (TypeError, ValueError, OSError, RecursionError,
+                        UnicodeError):
+                    checked = {"status": "BLOCKED",
+                               "reason_code": "INVALID_RECEIPT_UPLOAD"}
+                if checked["status"] == "VERIFIED_LOCAL_RECEIPT_MATCH_ONLY":
+                    st.success("A/B/C 영수증 ↔ 원본 검산자료 ↔ 로컬 SQLite 일치")
+                    st.json({
+                        "event_hash": checked["event_hash"],
+                        "local_chain_valid": True,
+                        "receipt_matches_local_source": True,
+                        "source_authenticated_by_sec": False,
+                        "market_rights_verified": False,
+                        "peer_rights_verified": False,
+                        "full_abc_complete": False,
+                        "trade_executed": False,
+                    })
+                else:
+                    st.warning("영수증·원본 검산자료·SQLite 기록이 일치하지 않습니다.")
+                    st.code(checked["reason_code"], language="text")
             # P231: exact same operator form event, with separate consent,
             # source replay and only bounded SHA/status fields written locally.
             if audit_submitted and audit_ack:
