@@ -70,6 +70,9 @@ def render_owner_source_question(st)->None:
     except (ValueError,TypeError,AttributeError):
         st.warning("원본 4개 파일과 크기를 확인하세요. 분석을 실행하지 않았습니다.")
         return
+    # Normalize the user-entered US ticker once; original filenames and
+    # source CIK / selected annual accession are still independently checked.
+    ticker=ticker.strip().upper()
     result=answer_owner_source_question(
         ticker=ticker,as_of=as_of,question=question,sources=files,
         market_json=market_raw,industry_json=industry_raw,

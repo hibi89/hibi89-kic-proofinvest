@@ -128,7 +128,8 @@ def _optional_model_plan(question: str, ticker: str,
     ONE tool in that set based on the user's focus, not the deterministic
     priority. Evidence remains inaccessible to the model.
     """
-    if (type(ticker) is not str or ticker not in _ALIASES
+    from .ticker_research_intake import _TICKER
+    if (type(ticker) is not str or _TICKER.fullmatch(ticker) is None
             or type(candidate_intents) is not list
             or not 1 <= len(candidate_intents) <= len(_INTENTS)
             or len(set(candidate_intents)) != len(candidate_intents)
