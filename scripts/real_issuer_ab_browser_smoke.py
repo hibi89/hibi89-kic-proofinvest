@@ -450,6 +450,47 @@ def run(output: Path) -> dict:
                                 or brief["network_requests"]!=0
                                 or b"Time Series (Daily)" in html_bytes):
                             raise AssertionError("P225_GUARD_OR_EXPORT_CONTRACT")
+                        # P231: new explicit local persistence authorization,
+                        # same uploaded A/B/C source bytes, actual SQLite
+                        # chain and owner-only downloaded HOLD audit receipt.
+                        audit_consent = page.get_by_role(
+                            "checkbox",
+                            name="개인 로컬 SQLite에 검산 해시와 Guard HOLD를 기록하는 데 별도 동의",
+                            exact=True,
+                        )
+                        expect(audit_consent).not_to_be_checked()
+                        audit_consent.check()
+                        expect(audit_consent).to_be_checked()
+                        page.get_by_role("button",
+                            name="A/B/C 출처결합 Guard HOLD 로컬 감사기록 (원본 저장 안 함)",
+                            exact=True).click()
+                        expect(page.get_by_text(
+                            "A/B/C 출처결합 Guard HOLD SQLite 감사 기록 완료 (로컬 전용)",
+                            exact=True)).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as hold_event:
+                            page.get_by_role("button",
+                                name="A/B/C Guard HOLD 로컬 감사영수증 JSON (원본 제외)",
+                                exact=True).click()
+                        hold_dl=hold_event.value
+                        if hold_dl.suggested_filename!=(
+                                "kuodra-nvda-partial-abc-hold-audit.json"):
+                            raise AssertionError("P231_HOLD_RECEIPT_FILENAME")
+                        hold=json.loads(Path(hold_dl.path()).read_bytes())
+                        from proofinvest.guard_audit import GuardAuditStore
+                        hold_db=Path(home)/"kuodra-real-abc-guard-audit.sqlite3"
+                        if (not hold_db.is_file()
+                                or not GuardAuditStore(hold_db).verify_chain()
+                                or hold["source_bound_abc_digest"]!=abc["derived_sha256"]
+                                or hold["guard"]["decision"]!="HOLD"
+                                or hold["guard"]["trade_executed"] is not False
+                                or hold["market_rights_verified"] is not False
+                                or hold["peer_rights_verified"] is not False
+                                or hold["full_abc_complete"] is not False
+                                or hold["audit"]["replayed"] is not False):
+                            raise AssertionError("P231_ABC_GUARD_SQLITE_CHAIN_NOT_VERIFIED")
+                        if (b"Time Series (Daily)" in Path(hold_dl.path()).read_bytes()
+                                or b"4. close" in Path(hold_dl.path()).read_bytes()):
+                            raise AssertionError("P231_PRIVATE_SOURCE_LEAK_IN_RECEIPT")
                         page.screenshot(
                             path=str(output / "p221-ab-review.png"),
                             full_page=False)

@@ -236,11 +236,24 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
         ack = st.checkbox(
             "내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
             value=False, key="p219_market_local_ack")
+        # P231: a separate explicit local-disk authorization. This checkbox
+        # and both submit actions are one atomic form, so no uploaded bytes
+        # need be retained across a Streamlit rerun.
+        audit_ack = st.checkbox(
+            "개인 로컬 SQLite에 검산 해시와 Guard HOLD를 기록하는 데 별도 동의",
+            value=False, key="p231_local_audit_ack")
         submitted = st.form_submit_button(
             "실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
             key="p219_market_local_review",
         )
-    if not submitted:
+        audit_submitted = st.form_submit_button(
+            "A/B/C 출처결합 Guard HOLD 로컬 감사기록 (원본 저장 안 함)",
+            key="p231_local_audit_run",
+        )
+    if not (submitted or audit_submitted):
+        return
+    if audit_submitted and not audit_ack:
+        st.warning("로컬 SQLite 감사기록 별도 동의가 필요합니다.")
         return
     if not ack or stock is None or index is None:
         st.warning("두 시장 파일과 로컬 산술검산 동의가 모두 필요합니다.")
@@ -322,6 +335,42 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                 "guard_policy_preview":"HOLD",
                 "full_abc_complete":False,
             })
+            # P231: exact same operator form event, with separate consent,
+            # source replay and only bounded SHA/status fields written locally.
+            if audit_submitted and audit_ack:
+                from pathlib import Path
+                from .real_issuer_abc_guard_audit import (
+                    run_source_bound_abc_hold_audit,
+                )
+                local_db = Path.home() / "kuodra-real-abc-guard-audit.sqlite3"
+                hold = run_source_bound_abc_hold_audit(
+                    abc_review=abc, audit_db_path=local_db,
+                    acknowledge_local_persistence=True,
+                )
+                if hold["status"] == "PARTIAL_SOURCE_BOUND_ABC_GUARD_HOLD_AUDIT_RECORDED":
+                    st.success("A/B/C 출처결합 Guard HOLD SQLite 감사 기록 완료 (로컬 전용)")
+                    st.json({
+                        "run_id": hold["report"]["run_id"],
+                        "source_bound_abc_digest": hold["report"]["source_bound_abc_digest"],
+                        "event_hash": hold["report"]["audit"]["event_hash"],
+                        "idempotent_replay": hold["report"]["audit"]["replayed"],
+                        "guard_decision": "HOLD",
+                        "market_rights_verified": False,
+                        "peer_rights_verified": False,
+                        "trade_executed": False,
+                    })
+                    st.download_button(
+                        "A/B/C Guard HOLD 로컬 감사영수증 JSON (원본 제외)",
+                        data=json.dumps(hold["report"],ensure_ascii=False,
+                                        sort_keys=True,separators=(",",":"),
+                                        allow_nan=False).encode("utf-8"),
+                        file_name="kuodra-nvda-partial-abc-hold-audit.json",
+                        mime="application/json",
+                        key="p231_abc_hold_receipt_download",
+                        on_click="ignore",
+                    )
+                else:
+                    st.warning("A/B/C 원문·시장·동종기업 검산 또는 로컬 감사 체인 실패")
             st.download_button(
                 "실제 발행사 A/B/C 제한 결합 JSON (출처·이용권 미인증)",
                 data=json.dumps(abc,ensure_ascii=False,sort_keys=True,
