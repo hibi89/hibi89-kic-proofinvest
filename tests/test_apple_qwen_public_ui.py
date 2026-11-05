@@ -25,5 +25,5 @@ class QwenLocalNativeUITests(unittest.TestCase):
                           if x.key == "p233_qwen_fact_execute")
             self.assertTrue(button.disabled)
             self.assertFalse(any("로컬 Qwen 실제 응답과 독립"
-                                 in x.message for x in at.success))
+                                 in x.value for x in at.success))
             call.assert_not_called()
