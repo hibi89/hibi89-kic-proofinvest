@@ -87,6 +87,21 @@ def _review_dell() -> dict[str, Any]:
     from .dell_working_capital_review import (
         actual_working_capital_receipt, review_real_working_capital,
     )
+    from .dell_regulator_index_match import reviewed_real_dell_regulator_issuer_evidence
+    regulator = reviewed_real_dell_regulator_issuer_evidence()
+    sec = regulator.get("evidence")
+    if (regulator.get("status") !=
+                "INDEPENDENT_SEC_FILING_INDEX_MATCHED_WITH_LIVE_ISSUER_XBRL"
+            or regulator.get("independent_regulator_index_metadata_reconciled") is not True
+            or regulator.get("sec_original_bytes_obtained") is not False
+            or regulator.get("raw_sec_edgar_original_authenticated") is not False
+            or regulator.get("commercial_and_model_processing_rights_proven") is not False
+            or type(sec) is not dict
+            or sec.get("ticker") != "DELL"
+            or sec.get("cik") != "0001571996"
+            or sec.get("accession") != "0001571996-26-000008"
+            or sec.get("report_end") != "2026-01-30"):
+        return _blocked("DELL_SEC_INDEX_ISSUER_IDENTITY_UNAVAILABLE")
     report = review_verified_dell_first_party_raw_evidence(
         as_of=_VINTAGE, receipt=actual_p195_source_receipt())
     capital = review_real_working_capital(
@@ -110,6 +125,8 @@ def _review_dell() -> dict[str, Any]:
             or e.get("ticker") != "DELL"
             or e.get("fiscal_year_end") != "2026-01-30"
             or e.get("prior_year_end") != "2025-01-31"
+            or e.get("raw_original_bytes_sha256") != sec.get("publisher_sha256")
+            or sec.get("publisher_official_url") != e.get("source_url")
             or e.get("raw_original_bytes_sha256") !=
                 actual_p195_source_receipt().get("source_original_sha256")
             or w.get("source_sha256") != actual_working_capital_receipt().get("source_sha256")
@@ -128,7 +145,10 @@ def _review_dell() -> dict[str, Any]:
     return {
         **_blocked("PINNED_FIRST_PARTY_ORIGIN_ONLY_RIGHTS_UNKNOWN"),
         "status": "REAL_ISSUER_HUMAN_REVIEW_ONLY",
-        "ticker": "DELL", "cik": None,
+        "ticker": "DELL", "cik": sec["cik"],
+        "filing_accession": sec["accession"],
+        "sec_index_metadata_reconciled": True,
+        "sec_index_url": sec["regulator_index_url"],
         "review_as_of": _VINTAGE, "fiscal_latest_end": e["fiscal_year_end"],
         "fiscal_prior_end": e["prior_year_end"],
         "source_kind": "FIRST_PARTY_10K_AND_UNAUDITED_RELEASE",
