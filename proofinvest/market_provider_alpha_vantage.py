@@ -15,7 +15,7 @@ import re
 import ssl
 from typing import Any, Callable
 from urllib.parse import urlencode
-from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
 _HOST = "https://www.alphavantage.co/query"
 _MAX_BODY = 262144
@@ -122,7 +122,9 @@ class _NoRedirect(HTTPRedirectHandler):
 
 def _https_get(url: str) -> bytes:
     """Fixed-host TLS GET, 8s timeout, no redirect and max 256KiB body."""
-    opener = build_opener(_NoRedirect(), HTTPSHandler(context=ssl.create_default_context()))
+    # Never inherit HTTP(S)_PROXY for requests whose URL contains an API key.
+    opener = build_opener(ProxyHandler({}), _NoRedirect(),
+                          HTTPSHandler(context=ssl.create_default_context()))
     with opener.open(Request(url, headers={"Accept": "application/json",
                                            "User-Agent": "KUODRA/1.0 licensed-data-client"}), timeout=8) as response:
         if response.status != 200 or response.geturl() != url:

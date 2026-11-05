@@ -16,7 +16,7 @@ import os
 import re
 from typing import Any, Callable
 from urllib.parse import urlencode
-from urllib.request import Request, HTTPSHandler, build_opener
+from urllib.request import Request, HTTPSHandler, ProxyHandler, build_opener
 import ssl
 
 from .market_provider_alpha_vantage import _NoRedirect
@@ -128,7 +128,9 @@ def parse_index_daily_bytes(raw: bytes, *, benchmark: str, as_of: str) -> dict:
 
 def _https_get_index(url: str) -> bytes:
     """Single official-domain TLS GET; no redirects, no retries, 8 MiB cap."""
-    opener = build_opener(_NoRedirect(), HTTPSHandler(context=ssl.create_default_context()))
+    # Explicit direct TLS: do not route key-bearing URLs via ambient proxies.
+    opener = build_opener(ProxyHandler({}), _NoRedirect(),
+                          HTTPSHandler(context=ssl.create_default_context()))
     with opener.open(Request(url, headers={"Accept": "application/json",
                                            "User-Agent": "KUODRA/1.0-entitlement-gated"}),
                      timeout=8) as response:

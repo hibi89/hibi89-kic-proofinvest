@@ -30,6 +30,42 @@ def fixture(symbol="AAPL", count=65):
 
 
 class AlphaVantageContractTests(unittest.TestCase):
+    def test_key_bearing_https_opener_ignores_ambient_proxy_settings(self):
+        # Transport construction only: no paid API key and no actual HTTP.
+        import proofinvest.market_provider_alpha_vantage as provider
+        from urllib.request import ProxyHandler
+        url = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY"
+        calls = []
+        class FakeResponse:
+            status = 200
+            def geturl(self):
+                return url
+            def read(self, limit):
+                self_limit = provider._MAX_BODY + 1
+                if limit != self_limit:
+                    raise AssertionError("INVALID_READ_BOUND")
+                return b'{}'
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+        class FakeOpener:
+            def open(self, request, timeout):
+                self_url = request.full_url
+                if self_url != url or timeout != 8:
+                    raise AssertionError("WRONG_URL_OR_TIMEOUT")
+                calls.append(1)
+                return FakeResponse()
+        def fake_build(*handlers):
+            proxies = [h.proxies for h in handlers if isinstance(h, ProxyHandler)]
+            self.assertEqual(proxies, [{}])
+            self.assertTrue(any(isinstance(h, provider._NoRedirect) for h in handlers))
+            return FakeOpener()
+        with patch.object(provider, "build_opener", side_effect=fake_build), (
+            patch.dict(os.environ, {"HTTPS_PROXY":"http://attacker.invalid:9999"})):
+            self.assertEqual(provider._https_get(url), b'{}')
+        self.assertEqual(calls, [1])
+
     def test_positive_strict_daily_parser(self):
         out = parse_daily_close_bytes(fixture(), ticker="AAPL", as_of="2026-11-03")
         self.assertEqual(out["status"], "PRICE_ONLY_UNVERIFIED")

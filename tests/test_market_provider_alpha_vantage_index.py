@@ -29,6 +29,41 @@ def sample_index(symbol="NDX", n=65, offset=0):
 
 
 class IndexProviderTests(unittest.TestCase):
+    def test_index_key_bearing_https_opener_disables_ambient_proxies(self):
+        # No vendor network; ensure premium API credentials never traverse
+        # OS-configured proxy handlers when a real request is authorized.
+        import proofinvest.market_provider_alpha_vantage_index as provider
+        from urllib.request import ProxyHandler
+        url = "https://www.alphavantage.co/query?function=INDEX_DATA"
+        calls = []
+        class FakeResponse:
+            status = 200
+            def geturl(self):
+                return url
+            def read(self, limit):
+                if limit != provider._MAX_RESPONSE + 1:
+                    raise AssertionError("INVALID_INDEX_READ_BOUND")
+                return b'{}'
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+        class FakeOpener:
+            def open(self, request, timeout):
+                if request.full_url != url or timeout != 8:
+                    raise AssertionError("INVALID_INDEX_REQUEST")
+                calls.append(1)
+                return FakeResponse()
+        def fake_build(*handlers):
+            proxies = [h.proxies for h in handlers if isinstance(h, ProxyHandler)]
+            self.assertEqual(proxies, [{}])
+            self.assertTrue(any(isinstance(h, provider._NoRedirect) for h in handlers))
+            return FakeOpener()
+        with patch.object(provider,"build_opener",side_effect=fake_build), (
+            patch.dict(os.environ,{"HTTPS_PROXY":"http://attacker.invalid:9999"})):
+            self.assertEqual(provider._https_get_index(url),b'{}')
+        self.assertEqual(calls,[1])
+
     def test_strict_real_index_symbol_contract(self):
         r = parse_index_daily_bytes(sample_index(), benchmark="NASDAQ_100", as_of="2026-10-01")
         self.assertEqual(r["index_symbol"], "NDX")
