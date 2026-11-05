@@ -25,6 +25,11 @@ def render_apple_fy2026_public_review(st) -> None:
         st.error("원본 출처/산술 계약 오류: 모든 표시를 차단합니다.")
         return
     st.markdown("[SEC 2026-11-03 원문 출처 확인](" + result["public_filing_url"] + ")")
+
+    # P236: first-party official EDGAR public *policy* evidence only;
+    # independent of specific raw SEC file authentication and API permissions.
+    from .sec_public_filing_policy_ui import render_sec_public_filing_policy
+    render_sec_public_filing_policy(st, result)
     st.caption("연결재무제표 · USD 백만 · FY2026 2026-09-26 · FY2025 2025-09-27")
     rows = [
         {"지표": name, "FY2026 (USD 백만)": row["2026_usd_millions"],
@@ -54,7 +59,9 @@ def render_apple_fy2026_public_review(st) -> None:
     })
     st.caption(
         "별도 유료 데이터 사용이나 SEC API 직접 재시도 없음. "
-        "원본 대외 재배포/외부 AI 전송 금지; 아래 공개 숫자 2개만 동의 후 로컬에서 처리."
+        "개별 원본·유료시장 데이터는 출처/권한 확인 전 재배포·외부 AI 전송 금지. "
+        "SEC 공개 EDGAR 일반 재사용 정책은 위 공식 근거 안내를 참조하세요. "
+        "아래 공개 숫자 2개만 동의 후 로컬에서 처리."
     )
 
     # P192: only appears on explicitly enabled loopback local workspace.
