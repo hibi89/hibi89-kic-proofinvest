@@ -146,7 +146,10 @@ class ActualIssuerLocalModelFocusTests(unittest.TestCase):
             next(x for x in at.text_input
                  if x.key=="p218_real_issuer_input").set_value("NVDA").run(timeout=30)
             self.assertFalse(at.exception,[str(x.message) for x in at.exception])
-            self.assertTrue(any("로컬 AI 검토 우선순위" in x.value
-                                for x in at.subheader))
-            self.assertFalse(next(x for x in at.checkbox
-                                  if x.key=="p226_model_expander").value)
+            # The gated panel is nested under actual A/B/C output and
+            # therefore must not be drawn without two user-uploaded
+            # market files and an explicit calculation click.
+            self.assertFalse(any("실제 발행사 A/B/C · 로컬 AI 검토 우선순위"
+                                 in x.value for x in at.subheader))
+            self.assertFalse(any(x.key=="p226_model_expander"
+                                 for x in at.checkbox))

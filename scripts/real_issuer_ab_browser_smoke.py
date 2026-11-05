@@ -202,11 +202,25 @@ def run(output: Path) -> dict:
                             "mimeType": "application/json",
                             "buffer": stock,
                         })
+                        # Each upload triggers a Streamlit backend rerun. Do
+                        # not upload the second file against a stale uploader
+                        # widget until the first file has a rendered receipt.
+                        expect(page.get_by_text(
+                            "synthetic-nvda.json", exact=True,
+                        )).to_be_visible(timeout=25000)
+                        uploader = page.locator('input[type="file"]')
+                        expect(uploader).to_have_count(2, timeout=25000)
                         uploader.nth(1).set_input_files({
                             "name": "synthetic-ndx.json",
                             "mimeType": "application/json",
                             "buffer": index,
                         })
+                        expect(page.get_by_text(
+                            "synthetic-ndx.json", exact=True,
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_text(
+                            "synthetic-nvda.json", exact=True,
+                        )).to_be_visible(timeout=25000)
                         review_button = page.get_by_role(
                             "button",
                             name="실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
