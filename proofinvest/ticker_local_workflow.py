@@ -182,8 +182,18 @@ def run_local_ticker_workflow(
         verification = verify_local_report(
             report, sources=sources, market_json=market_json,
             industry_json=industry_json)
-        replay_ok = verification.get("status") == "PASS"
-        step("verify_local_report", verification.get("reason_code", "UNAVAILABLE"),
+        replay_ok = (
+            type(verification) is dict
+            and verification.get("status") == "PASS"
+            and verification.get("report_semantics_recomputed") is True
+            and verification.get("source_authenticated") is False
+            and verification.get("source_rights_verified") is False
+            and verification.get("trade_executed") is False
+            and verification.get("network_requests") == 0
+        )
+        step("verify_local_report",
+             verification.get("reason_code", "INVALID")
+             if type(verification) is dict else "INVALID",
              accepted=replay_ok)
         if not replay_ok:
             out.update(reason_code="INDEPENDENT_REPLAY_FAILED",
