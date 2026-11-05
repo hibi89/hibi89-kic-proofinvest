@@ -180,11 +180,26 @@ def parse_owner_stock_csv(raw: bytes, *, ticker: str, as_of: str,
 
 
 def _trusted_shape(receipt: dict, *, kind: str, as_of: str) -> dict[str, str]:
-    if (type(receipt) is not dict
-            or receipt.get("schema") != (
-                "kuodra.fred-nasdaq100-offline.v1" if kind == "index"
-                else "kuodra.owner-stock-offline.v1")
-            or receipt.get("status") != "DAILY_CLOSE_UNVERIFIED"
+    if type(receipt) is not dict:
+        raise ValueError("OFFLINE_SOURCE_UNTRUSTED")
+    api_index = (kind == "index"
+                 and receipt.get("schema") == "kuodra.fred-nasdaq100-api.v1"
+                 and receipt.get("status") ==
+                 "FRED_API_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED"
+                 and receipt.get("provider") == "FRED_API_NASDAQ100_UNVERIFIED"
+                 and receipt.get("source_format") == "FRED_V1_JSON"
+                 and type(receipt.get("request_count")) is int
+                 and receipt["request_count"] == 1
+                 and type(receipt.get("network_requests")) is int
+                 and receipt["network_requests"] == 1
+                 and type(receipt.get("retries")) is int
+                 and receipt["retries"] == 0
+                 and receipt.get("trade_executed") is False)
+    if ((not api_index and (
+                receipt.get("schema") != (
+                    "kuodra.fred-nasdaq100-offline.v1" if kind == "index"
+                    else "kuodra.owner-stock-offline.v1")
+                or receipt.get("status") != "DAILY_CLOSE_UNVERIFIED"))
             or receipt.get("kind") != kind
             or receipt.get("basis") != "PRICE_ONLY_CLOSE"
             or receipt.get("as_of") != as_of
@@ -198,7 +213,7 @@ def _trusted_shape(receipt: dict, *, kind: str, as_of: str) -> dict[str, str]:
             or not _valid_source_url(receipt.get("source_url"))):
         raise ValueError("OFFLINE_SOURCE_UNTRUSTED")
     if kind == "index" and (
-            receipt.get("provider") != "FRED_OWNER_CSV_UNVERIFIED"
+            (not api_index and receipt.get("provider") != "FRED_OWNER_CSV_UNVERIFIED")
             or receipt.get("index_symbol") != "I:NDX"
             or receipt.get("series_id") != "NASDAQ100"
             or receipt.get("source_url") != _FRED_URL):
@@ -288,6 +303,9 @@ def analyze_offline_fred_pair(*, stock: dict, index: dict, ticker: str,
             "matched_period_end": common[-1],
             "stock_file_sha256": stock["source_sha256"],
             "index_file_sha256": index["source_sha256"],
+            "index_source_format": (
+                "FRED_V1_JSON" if index.get("schema") ==
+                "kuodra.fred-nasdaq100-api.v1" else "OWNER_CSV_UNVERIFIED"),
             "derived_payload_sha256": sha256(wire).hexdigest(),
             "market_analysis": {
                 k: result.get(k) for k in (

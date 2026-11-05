@@ -178,7 +178,11 @@ def parse_fred_nasdaq100_api_json(raw: bytes, *, as_of: str) -> dict[str, Any]:
 def run_one_fred_ndx_get(*, api_key: str, as_of: str,
                          explicit_approval: bool = False,
                          individual_research: bool = False,
-                         transport: Callable[[str], bytes] | None = None) -> dict:
+                         transport: Callable[[str], bytes] | None = None,
+                         paired_stock: dict | None = None,
+                         paired_ticker: str | None = None,
+                         paired_issuer_cik: str | None = None,
+                         paired_filing_date: str | None = None) -> dict:
     """No GET unless user explicitly opts in; bounded at most 1 HTTPS GET."""
     receipt = {
         "status": "BLOCKED", "reason_code": "FRED_APPROVAL_REQUIRED",
@@ -193,17 +197,54 @@ def run_one_fred_ndx_get(*, api_key: str, as_of: str,
         url = _url(api_key=api_key, as_of=as_of)
     except (TypeError, ValueError):
         return {**receipt, "reason_code": "FRED_KEY_OR_DATE_INVALID"}
+    pair_fields = (paired_ticker, paired_issuer_cik, paired_filing_date)
+    if paired_stock is None and any(x is not None for x in pair_fields):
+        return {**receipt, "reason_code": "FRED_PAIR_ARGS_INCOMPLETE"}
+    if paired_stock is not None:
+        try:
+            from .fred_nasdaq100_offline import _trusted_shape
+            _trusted_shape(paired_stock, kind="stock", as_of=as_of)
+            if (type(paired_ticker) is not str
+                    or paired_stock.get("ticker") != paired_ticker
+                    or type(paired_issuer_cik) is not str
+                    or re.fullmatch(r"[0-9]{10}", paired_issuer_cik) is None
+                    or paired_issuer_cik == "0000000000"
+                    or type(paired_filing_date) is not str
+                    or date.fromisoformat(paired_filing_date) >= _iso(as_of)
+                    or date.fromisoformat(paired_filing_date).isoformat() != paired_filing_date):
+                raise ValueError("FRED_PAIR_ARGUMENTS_INVALID")
+        except (ValueError, TypeError, AttributeError, KeyError, OverflowError):
+            return {**receipt, "reason_code": "FRED_PAIR_LOCAL_INPUT_INVALID"}
     result = {**receipt, "network_requests": 1}
     try:
         raw = (transport or _get)(url)
         parsed = parse_fred_nasdaq100_api_json(raw, as_of=as_of)
-        return {**result,
-                "status": parsed["status"], "reason_code": "SOURCE_AND_RIGHTS_UNVERIFIED",
-                "index_symbol": "I:NDX", "series_id": "NASDAQ100",
-                "point_count": parsed["point_count"],
-                "first_date": parsed["first_date"],
-                "last_date": parsed["last_date"],
-                "source_sha256": parsed["source_sha256"]}
+        summary = {**result,
+                   "status": parsed["status"], "reason_code": "SOURCE_AND_RIGHTS_UNVERIFIED",
+                   "index_symbol": "I:NDX", "series_id": "NASDAQ100",
+                   "point_count": parsed["point_count"],
+                   "first_date": parsed["first_date"], "last_date": parsed["last_date"],
+                   "source_sha256": parsed["source_sha256"]}
+        if paired_stock is not None:
+            from .fred_nasdaq100_offline import analyze_offline_fred_pair
+            pair = analyze_offline_fred_pair(
+                stock=paired_stock, index=parsed, ticker=paired_ticker,
+                issuer_cik=paired_issuer_cik, filing_date=paired_filing_date,
+                as_of=as_of)
+            summary["paired_engine_a"] = {
+                "status": ("FRED_API_ENGINE_A_DESCRIPTIVE_UNVERIFIED"
+                           if pair["status"] ==
+                           "OFFLINE_FRED_ENGINE_A_DESCRIPTIVE_UNVERIFIED"
+                           else "BLOCKED"),
+                "reason_code": pair["reason_code"],
+                "matched_observation_count": pair["matched_observation_count"],
+                "matched_period_start": pair.get("matched_period_start"),
+                "matched_period_end": pair.get("matched_period_end"),
+                "market_analysis": pair["market_analysis"],
+                "source_authenticated": False, "source_rights_verified": False,
+                "full_a_b_c_ready": False, "trade_executed": False,
+            }
+        return summary
     except HTTPError as exc:
         safe = {400: "FRED_BAD_REQUEST", 401: "FRED_UNAUTHORIZED",
                 403: "FRED_FORBIDDEN", 404: "FRED_NOT_FOUND",

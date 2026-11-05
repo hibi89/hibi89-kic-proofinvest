@@ -31,6 +31,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="One-shot official FRED NASDAQ100 personal request")
     ap.add_argument("--as-of", default=None, help="Historical point-in-time date YYYY-MM-DD")
     ap.add_argument("--live", action="store_true", help="Explicit personal FRED API GET")
+    ap.add_argument("--stock-csv", help="Optional local date,close CSV, RAM only")
+    ap.add_argument("--ticker", help="Stock ticker for local Engine A")
+    ap.add_argument("--issuer-cik", help="Owner-supplied 10-digit issuer CIK")
+    ap.add_argument("--filing-date", help="Owner-supplied SEC filing date")
+    ap.add_argument("--stock-source-url", help="Owner-claimed HTTPS stock source")
     args = ap.parse_args(argv)
     asof = args.as_of or _safe_date()
     try:
@@ -49,6 +54,28 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests":0, "retries":0,
                           "commercial_reuse_allowed":False},sort_keys=True))
         return 0
+    stock = None
+    extras = (args.ticker, args.issuer_cik, args.filing_date,
+              args.stock_source_url)
+    if args.stock_csv is None and any(x is not None for x in extras):
+        print(json.dumps({"status":"BLOCKED","reason_code":"PAIR_ARGS_INCOMPLETE",
+                          "network_requests":0,"retries":0}))
+        return 2
+    if args.stock_csv is not None:
+        try:
+            if any(not x for x in extras):
+                raise ValueError("PAIR_FIELDS_REQUIRED")
+            from proofinvest.fred_nasdaq100_offline import parse_owner_stock_csv
+            with open(args.stock_csv, "rb") as fh:
+                raw = fh.read(2097153)
+            stock = parse_owner_stock_csv(
+                raw, ticker=args.ticker, as_of=asof,
+                source_url=args.stock_source_url)
+            del raw
+        except (ValueError, TypeError, OSError, UnicodeError, OverflowError):
+            print(json.dumps({"status":"BLOCKED","reason_code":"LOCAL_STOCK_CSV_INVALID",
+                              "network_requests":0,"retries":0}))
+            return 2
     print("Personal research only. 1 FRED NASDAQ100 GET maximum; no retry.")
     print("FRED API terms:", _TERMS)
     print("NASDAQ100 is copyrighted Nasdaq data; commercial/AI/judge rights NOT verified.")
@@ -74,7 +101,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = run_one_fred_ndx_get(
             api_key=key, as_of=asof, explicit_approval=True,
-            individual_research=True)
+            individual_research=True, paired_stock=stock,
+            paired_ticker=args.ticker if stock is not None else None,
+            paired_issuer_cik=args.issuer_cik if stock is not None else None,
+            paired_filing_date=args.filing_date if stock is not None else None)
     finally:
         key = None
     print(json.dumps(result, sort_keys=True))

@@ -193,3 +193,99 @@ class FredApiOneShotTests(unittest.TestCase):
             rc=cli.main(["--live"])
         self.assertEqual(rc,2)
         self.assertEqual(json.loads(out[-1])["reason_code"],"OWNER_DECLINED")
+
+
+class FredApiOneShotPairTests(unittest.TestCase):
+    """Local stock and a single FRED v1 JSON response share one Engine A run."""
+
+    def stock(self):
+        from proofinvest.fred_nasdaq100_offline import parse_owner_stock_csv
+        from tests.test_fred_nasdaq100_offline import stock_data, SOURCE
+        return parse_owner_stock_csv(stock_data(), ticker="AAPL",
+                                     as_of=AS_OF, source_url=SOURCE)
+
+    def run_pair(self, **changes):
+        opts=dict(api_key=KEY, as_of=AS_OF, explicit_approval=True,
+                  individual_research=True, paired_stock=self.stock(),
+                  paired_ticker="AAPL", paired_issuer_cik="0000320193",
+                  paired_filing_date="2026-07-31",
+                  transport=lambda _: wire())
+        opts.update(changes)
+        return api.run_one_fred_ndx_get(**opts)
+
+    def test_actual_decimal_market_pair_in_same_approved_get(self):
+        calls=[]
+        result=self.run_pair(transport=lambda url:(calls.append(url),wire())[1])
+        self.assertEqual(len(calls),1)
+        self.assertEqual(result["network_requests"],1)
+        self.assertEqual(result["retries"],0)
+        a=result["paired_engine_a"]
+        self.assertEqual(a["status"],"FRED_API_ENGINE_A_DESCRIPTIVE_UNVERIFIED",a)
+        self.assertEqual(a["matched_observation_count"],42)
+        self.assertIsNotNone(a["market_analysis"]["beta"])
+        self.assertFalse(a["source_rights_verified"])
+        self.assertFalse(a["full_a_b_c_ready"])
+        self.assertNotIn(KEY,json.dumps(result))
+        self.assertNotIn("close_observations",json.dumps(result))
+
+    def test_permission_and_bad_stock_block_before_get(self):
+        for changed in ({"explicit_approval":False},
+                        {"paired_ticker":"MSFT"},
+                        {"paired_issuer_cik":"0000000000"},
+                        {"paired_filing_date":"2026-10-01"}):
+            calls=[]
+            result=self.run_pair(transport=lambda url:calls.append(url),**changed)
+            self.assertEqual(calls,[])
+            self.assertEqual(result["network_requests"],0)
+        stock=self.stock();stock["ai_processing_allowed"]=True
+        result=self.run_pair(paired_stock=stock,
+                             transport=lambda _:self.fail("GET"))
+        self.assertEqual(result["reason_code"],"FRED_PAIR_LOCAL_INPUT_INVALID")
+
+    def test_late_filing_rejects_pair_without_second_request(self):
+        calls=[]
+        result=self.run_pair(paired_filing_date="2026-09-01",
+                             transport=lambda url:(calls.append(url),wire())[1])
+        self.assertEqual(len(calls),1)
+        self.assertEqual(result["network_requests"],1)
+        self.assertEqual(result["paired_engine_a"]["status"],"BLOCKED")
+        self.assertIsNone(result["paired_engine_a"]["market_analysis"])
+
+    def test_cli_invalid_stock_blocks_before_tty_or_fred_get(self):
+        printed=[]
+        with patch.object(cli,"_safe_date",return_value=AS_OF), (
+            patch.object(api,"_get",side_effect=AssertionError("NO GET"))), (
+            patch("builtins.print",side_effect=lambda *a,**k:printed.append(
+                " ".join(map(str,a))))):
+            code=cli.main(["--live","--stock-csv","/missing_file",
+                           "--ticker","AAPL","--issuer-cik","0000320193",
+                           "--filing-date","2026-07-31",
+                           "--stock-source-url","https://example.org/source"])
+        self.assertEqual(code,2)
+        self.assertEqual(json.loads(printed[-1])["reason_code"],"LOCAL_STOCK_CSV_INVALID")
+
+    def test_cli_one_get_local_pair_no_raw_or_path_leak(self):
+        import tempfile
+        from pathlib import Path
+        from tests.test_fred_nasdaq100_offline import stock_data
+        printed=[]
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"stock.csv";path.write_bytes(stock_data())
+            with patch.object(cli,"_safe_date",return_value=AS_OF),(
+                patch.object(cli.sys.stdin,"isatty",return_value=True)),(
+                patch.object(cli.sys.stdout,"isatty",return_value=True)),(
+                patch("builtins.input",return_value=cli._APPROVAL)),(
+                patch.object(cli.getpass,"getpass",return_value=KEY)),(
+                patch.object(api,"_get",return_value=wire()) as get),(
+                patch("builtins.print",side_effect=lambda *a,**k:printed.append(
+                    " ".join(map(str,a))))):
+                code=cli.main(["--live","--stock-csv",str(path),
+                               "--ticker","AAPL","--issuer-cik","0000320193",
+                               "--filing-date","2026-07-31",
+                               "--stock-source-url","https://example.org/source"])
+            self.assertEqual(code,0)
+            get.assert_called_once()
+            self.assertEqual(json.loads(printed[-1])["paired_engine_a"]
+                             ["matched_observation_count"],42)
+            self.assertNotIn(str(path),str(printed))
+            self.assertNotIn(KEY,str(printed))
