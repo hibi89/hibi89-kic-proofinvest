@@ -97,7 +97,7 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
             st.download_button(
                 "검산된 수치·출처 근거 JSON (로컬 개인 검토, 외부공유 금지)",
                 data=(json.dumps(verdict, sort_keys=True, ensure_ascii=False,
-                                 allow_nan=False, separators=(",", ":")) + "\\n").encode("utf-8"),
+                                 allow_nan=False, separators=(",", ":"))).encode("utf-8"),
                 file_name="kuodra-nvda-facts-UNVERIFIED.json",
                 mime="application/json", key="p217_nvda_fact_download",
             )
