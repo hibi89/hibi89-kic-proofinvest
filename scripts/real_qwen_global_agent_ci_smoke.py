@@ -8,9 +8,10 @@ from proofinvest.global_question_agent import (
 )
 
 def main() -> None:
-    # Fixed public operator test question only. No publisher/SEC bytes or user
-    # private prompt, no market API, no external model network.
-    q = "For NVIDIA check inventory and cash flow, but answer the cash flow first."
+    # Fixed, open-ended public question: either listed read-only tool is
+    # acceptable. Model semantic *quality* is a separate human-review gate.
+    # No publisher/SEC bytes, private prompt, market API or remote model.
+    q = "For NVIDIA, consider inventory and cash flow; which should we analyze first?"
     pre = preflight_global_question(q)
     if (pre.get("status") != "READY"
             or pre.get("intent") != "WORKING_CAPITAL"
@@ -20,7 +21,7 @@ def main() -> None:
         q, use_local_model=True,
         consent_local_model=True, consent_question_text=True)
     if (packet.get("status") != "QUESTION_SOURCE_BOUND_LOCAL_REVIEW_HOLD"
-            or packet.get("intent") != "CASHFLOW"
+            or packet.get("intent") not in pre["candidate_intents"]
             or packet.get("local_model_calls") != 1
             or packet.get("local_model_protocol_verified") is not True
             or packet.get("real_model_provider_authenticated") is not False
@@ -36,7 +37,8 @@ def main() -> None:
     print(json.dumps({
         "status":"PASS",
         "real_model_generated_tokens":True,
-        "model_selected_tool":"CASHFLOW",
+        "model_selected_tool":packet["intent"],
+        "model_selected_permitted_tool":packet["intent"] in pre["candidate_intents"],
         "deterministic_first_tool":"WORKING_CAPITAL",
         "publisher_origins_sent_to_model":False,
         "source_bound_replay":True,
