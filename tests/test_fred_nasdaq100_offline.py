@@ -103,7 +103,9 @@ class FredOfflineContractTests(unittest.TestCase):
         # Replace the 2026-07-03 close row with an out-of-calendar missing row.
         for row, error in ((b"2026-07-04,.", "WEEKEND_DAILY_PRICE"),
                            (b"2026-10-02,.", "POST_AS_OF_DAILY_PRICE")):
-            altered = baseline.replace(b"2026-07-03,10007.500", row, 1)
+            altered = (baseline.replace(b"2026-07-03,10007.500", row, 1)
+                       if row.startswith(b"2026-07-04")
+                       else baseline + row + b"\n")
             with self.subTest(row=row), self.assertRaisesRegex(ValueError, error):
                 parse_fred_nasdaq100_csv(altered, as_of=AS_OF)
         # Ordinary missing market-holiday-style weekday rows remain allowed.
