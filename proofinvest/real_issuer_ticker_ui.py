@@ -137,6 +137,39 @@ def render_real_issuer_ticker_lookup(st) -> None:
             )
             st.warning("2개사 10-K 공개 숫자의 별도 수동 대조일 뿐 외부 공급자 원본 "
                        "바이트 SHA·재사용권·정확한 대표성·Engine C 완료 아님. Guard HOLD.")
+            # P227: independent issuer-10-K AMD Data Center business-segment
+            # trend, separate from total-company growth and unlicensed full C.
+            from .amd_datacenter_segment_bridge import review_amd_datacenter_segment
+            dc = review_amd_datacenter_segment(ticker=result["ticker"])
+            if dc["status"] == "AMD_DATACENTER_ACTUAL_10K_SEGMENT_HUMAN_REVIEW_ONLY":
+                st.subheader("Engine C · AMD 데이터센터 부문 실제 10-K 변화 (제한)")
+                st.caption(
+                    "AMD의 2025/2024 데이터센터 부문 GAAP 수치만 독립 검산. "
+                    "NVIDIA 전체 매출과 동질 비교하거나 업종 순위·전망을 내릴 수 없습니다. "
+                    "NVDA 결산일 29일 차이, 원문 SHA·이용권·모델 처리권 미확인."
+                )
+                left, right = st.columns(2)
+                left.metric("AMD 데이터센터 FY2025 성장률 (%)",
+                            dc["segment_growth_pct"])
+                right.metric("AMD 전체 매출 중 데이터센터 비중 (%)",
+                             dc["segment_share_of_amd_revenue_2025_pct"])
+                st.metric("데이터센터 비중 전년 대비 변화 (pp)",
+                          dc["segment_share_change_pp"])
+                st.markdown(
+                    f'[AMD 감사 10-K]({dc["amd_10k_url"]}) · '
+                    f'[AMD 독립 실적발표]({dc["amd_independent_release_url"]})'
+                )
+                st.download_button(
+                    "AMD 데이터센터 실제 10-K 수치 검산 JSON (개인 검토)",
+                    data=json.dumps(dc, ensure_ascii=False, sort_keys=True,
+                                    separators=(",", ":"), allow_nan=False).encode("utf-8"),
+                    file_name="kuodra-amd-data-center-source-UNVERIFIED.json",
+                    mime="application/json", key="p227_amd_datacenter_export",
+                )
+                st.warning("사업부·기업 간 직접 비교 불가 · Engine C 미완료 · Guard HOLD.")
+            else:
+                st.warning("AMD 데이터센터 원문 수치 검산이 실패하여 부문 비교를 표시하지 않습니다.")
+
         else:
             st.warning("두 동종기업의 공식 10-K 검산이 실패해 종합 비교를 표시하지 않습니다.")
     # P219: independent model-data calculation only when the operator
