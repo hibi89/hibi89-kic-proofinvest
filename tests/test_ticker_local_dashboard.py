@@ -226,3 +226,37 @@ class DashboardUnitTests(TestCase):
 
 if __name__ == "__main__":
     main()
+
+
+class EndToEndDashboardTests(TestCase):
+    def test_actual_four_source_pipeline_to_dashboard(self):
+        from proofinvest.ticker_local_dashboard import analyze_local_ticker_dashboard
+        from tests.test_ticker_local_report_replay import report_case
+        _, sources = report_case()
+        result = analyze_local_ticker_dashboard(
+            ticker="NVDA", as_of="2025-10-16", sources=sources)
+        self.assertEqual(result["status"], "LOCAL_SOURCE_REPLAYED_UNVERIFIED")
+        self.assertEqual(result["ticker"], "NVDA")
+        self.assertEqual(result["revenue_growth_pct"], "100.00")
+        self.assertEqual(result["guard_policy"], "HOLD")
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["source_rights_verified"])
+        self.assertFalse(result["trade_executed"])
+        self.assertNotIn("receipt", result)
+        self.assertNotIn("report", result)
+
+    def test_wrong_ticker_and_corrupt_source_fail_closed(self):
+        from proofinvest.ticker_local_dashboard import analyze_local_ticker_dashboard
+        from tests.test_ticker_local_report_replay import report_case
+        _, sources = report_case()
+        for ticker, raw in (
+            ("AAPL", sources),
+            ("NVDA", dict(sources, companyfacts=b"{}")),
+        ):
+            with self.subTest(ticker=ticker):
+                result = analyze_local_ticker_dashboard(
+                    ticker=ticker, as_of="2025-10-16", sources=raw)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertFalse(result["trade_executed"])
+                self.assertFalse(result["source_authenticated"])
+                self.assertNotIn("revenue_growth_pct", result)
