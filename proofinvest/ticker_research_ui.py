@@ -530,6 +530,112 @@ def _render_p166_original_source_replay(st, packet_upload) -> None:
                "투자 권고·거래·대회 제출 승인을 증명하지 않습니다.")
 
 
+def _render_p251_fred_offline_market_panel(st, *, ticker: str,
+                                          as_of: str, valid: bool) -> None:
+    """Private local stock+FRED NASDAQ100 research, no SEC/vendor GET.
+
+    No request, session persistence, unredacted CSV output, upload-back,
+    AI processing or rights elevation. The clicked action uses the user's
+    selected original files solely in memory.
+    """
+    st.subheader("실제 Nasdaq-100 FRED CSV · 개인 로컬 Engine A")
+    st.caption("FRED NASDAQ100 공식 시계열 CSV와 별도 종목 CSV를 직접 선택합니다. "
+               "모든 계산은 로컬·오프라인이며, 데이터 출처/상업/AI/대회 공개 사용권은 미검증입니다.")
+    index_upload = st.file_uploader(
+        "FRED NASDAQ100 일봉 CSV (observation_date,NASDAQ100)",
+        type=["csv"], key="kuodra_p251_fred_index",
+    )
+    stock_upload = st.file_uploader(
+        "종목 일봉 CSV (date,close) · 선택, 있으면 Engine A 계산",
+        type=["csv"], key="kuodra_p251_fred_stock",
+    )
+    issuer_cik = st.text_input(
+        "Engine A CIK (10자리, 종목 CSV 사용 시 필요)",
+        value="", max_chars=10, key="kuodra_p251_fred_cik",
+    )
+    filing_date = st.text_input(
+        "Engine A 공시일 (YYYY-MM-DD, 종목 CSV 사용 시 필요)",
+        value="", max_chars=10, key="kuodra_p251_fred_filing",
+    )
+    stock_url = st.text_input(
+        "종목 CSV 원천 HTTPS 주소 (사용자 표시값, 진위 미검증)",
+        value="", max_chars=400, key="kuodra_p251_fred_stock_url",
+    )
+    acknowledge = st.checkbox(
+        "개인 연구용 로컬 산술 검산만 동의합니다. CSV·제3자 이용권 미인증, "
+        "공개 전송·AI·투자 실행은 하지 않습니다.",
+        value=False, key="kuodra_p251_fred_ack",
+    )
+    stock_required = stock_upload is not None
+    enabled = bool(
+        valid and acknowledge and index_upload is not None
+        and (not stock_required or
+             (bool(issuer_cik) and bool(filing_date) and bool(stock_url)))
+    )
+    clicked = st.button(
+        "FRED 공식 Nasdaq-100 CSV 오프라인 확인·Engine A 계산",
+        disabled=not enabled, key="kuodra_p251_fred_run",
+    )
+    if not clicked:
+        return
+    # No external HTTP on this path. Strict original bytes are never
+    # persisted or inserted into UI/session state.
+    try:
+        from .fred_nasdaq100_offline import (
+            parse_fred_nasdaq100_csv, parse_owner_stock_csv,
+            analyze_offline_fred_pair,
+        )
+        index = parse_fred_nasdaq100_csv(
+            _read_uploaded(index_upload, 2097152), as_of=as_of)
+        summary = {
+            "status": "LOCAL_FRED_CSV_PARSED_ORIGIN_UNVERIFIED",
+            "ticker": ticker, "benchmark": "NASDAQ100",
+            "index_symbol": "I:NDX",
+            "as_of": as_of, "index_points": index["point_count"],
+            "index_first": index["first_date"],
+            "index_last": index["last_date"],
+            "index_missing_rows": index["missing_rows_ignored"],
+            "index_source_sha256": index["source_sha256"],
+            "network_requests": 0, "source_authenticated": False,
+            "source_rights_verified": False,
+            "commercial_reuse_allowed": False,
+            "public_display_allowed": False,
+            "ai_processing_allowed": False,
+            "full_a_b_c_ready": False, "trade_executed": False,
+        }
+        if stock_required:
+            stock = parse_owner_stock_csv(
+                _read_uploaded(stock_upload, 2097152),
+                ticker=ticker, as_of=as_of, source_url=stock_url,
+            )
+            pair = analyze_offline_fred_pair(
+                stock=stock, index=index, ticker=ticker,
+                issuer_cik=issuer_cik, filing_date=filing_date,
+                as_of=as_of,
+            )
+            if pair.get("status") != "OFFLINE_FRED_ENGINE_A_DESCRIPTIVE_UNVERIFIED":
+                st.warning("종목·지수 거래일/공시 후 기간 정합성 차단. "
+                           "가격을 보간하거나 재배열하지 않습니다.")
+                st.json({**summary, "status": "PAIR_BLOCKED",
+                         "reason_code": "OFFLINE_SOURCE_OR_CALENDAR_INVALID"})
+                return
+            summary["status"] = pair["status"]
+            summary["stock_source_sha256"] = pair["stock_file_sha256"]
+            summary["matched_observation_count"] = pair["matched_observation_count"]
+            summary["matched_period_start"] = pair["matched_period_start"]
+            summary["matched_period_end"] = pair["matched_period_end"]
+            st.metric("로컬 Engine A 베타 (공급자 미인증)",
+                      str(pair["market_analysis"].get("beta") or "산출 불가"))
+            st.json({"market_analysis": pair["market_analysis"]})
+        st.json(summary)
+        st.warning("FRED 공개 열람은 Nasdaq 원본 데이터의 상업·대회 심사·AI 처리"
+                   " 권한이 아닙니다. 파일은 로컬 산술 검증에만 사용합니다.")
+    except (ValueError, TypeError, OSError, UnicodeError,
+            RecursionError, OverflowError, KeyError):
+        st.warning("FRED/종목 CSV 형식·날짜·종가·크기 검증 실패. 원본 내용은 표시하지 않습니다.")
+        st.code("P251_LOCAL_SOURCE_INVALID_OR_UNAVAILABLE", language="text")
+
+
 def render_single_ticker_search(st) -> None:
     if not ticker_search_enabled(st):
         st.error("종목 검색은 로컬 서버에서만 활성화됩니다.")
@@ -596,6 +702,8 @@ def render_single_ticker_search(st) -> None:
         "SEC 원문 4종 자동 수집 실행", key="kuodra_p100_live",
         disabled=not can_fetch,
     )
+    _render_p251_fred_offline_market_panel(
+        st, ticker=key, as_of=as_of, valid=valid)
     _render_p164_downloaded_packet_inspector(st)
     from .ticker_local_model_triage_ui import render_local_model_triage_ui
     render_local_model_triage_ui(st)
