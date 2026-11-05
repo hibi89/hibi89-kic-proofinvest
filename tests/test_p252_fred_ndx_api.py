@@ -242,14 +242,15 @@ class FredApiOneShotPairTests(unittest.TestCase):
                              transport=lambda _:self.fail("GET"))
         self.assertEqual(result["reason_code"],"FRED_PAIR_LOCAL_INPUT_INVALID")
 
-    def test_late_filing_rejects_pair_without_second_request(self):
+    def test_late_filing_rejects_pair_before_first_request(self):
         calls=[]
         result=self.run_pair(paired_filing_date="2026-09-01",
                              transport=lambda url:(calls.append(url),wire())[1])
-        self.assertEqual(len(calls),1)
-        self.assertEqual(result["network_requests"],1)
-        self.assertEqual(result["paired_engine_a"]["status"],"BLOCKED")
-        self.assertIsNone(result["paired_engine_a"]["market_analysis"])
+        self.assertEqual(len(calls),0)
+        self.assertEqual(result["network_requests"],0)
+        self.assertEqual(result["status"],"BLOCKED")
+        self.assertEqual(result["reason_code"],"FRED_PAIR_LOCAL_INPUT_INVALID")
+        self.assertNotIn("paired_engine_a",result)
 
     def test_cli_invalid_stock_blocks_before_tty_or_fred_get(self):
         printed=[]
