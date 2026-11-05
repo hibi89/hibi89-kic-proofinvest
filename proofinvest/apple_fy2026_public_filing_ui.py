@@ -64,3 +64,7 @@ def render_apple_fy2026_public_review(st) -> None:
 
     from .apple_public_model_ui import render_apple_public_model_check
     render_apple_public_model_check(st)
+
+    # Optional stronger P233 Qwen check: separate two consents, no auto model call.
+    from .apple_qwen_public_ui import render_apple_public_qwen_check
+    render_apple_public_qwen_check(st)

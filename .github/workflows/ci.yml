@@ -355,3 +355,19 @@ jobs:
           python-version: '3.11'
       - name: Real 135M model generation and safe KUODRA triage (no user input)
         run: bash scripts/real_local_model_inference_ci.sh
+
+  p233-real-qwen-public-fact:
+    name: P233 actual Apache-2.0 Qwen local public financial fact
+    # Pull one public model only for an explicitly labeled feature commit.
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[qwen-real-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: True local Qwen output on two PUBLIC numeric facts (no originals/NDX)
+        run: bash scripts/real_qwen_public_facts_ci.sh
