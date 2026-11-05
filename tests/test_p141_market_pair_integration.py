@@ -53,6 +53,28 @@ class RealEngineAndUiTests(unittest.TestCase):
         self.assertFalse(result["source_rights_verified"])
         self.assertFalse(result["full_a_b_c_ready"])
 
+    def test_postfiling_subset_reaches_real_decimal_ols_without_network(self):
+        # No stub: exercise the actual Decimal Engine A on a bounded
+        # recent-filing subset after removing all pre-filing observations.
+        stock,index=sources()
+        with patch("urllib.request.urlopen",
+                   side_effect=AssertionError("NO_PROVIDER_REQUEST")):
+            result=analyze_price_index_pair(
+                stock=stock,index=index,ticker="NVDA",
+                issuer_cik="0001045810",filing_date="2026-07-31",
+                as_of="2026-10-01")
+        self.assertEqual(result["status"],
+                         "ENGINE_A_PRICE_INDEX_DESCRIPTIVE_UNVERIFIED",result)
+        self.assertEqual(result["matched_observation_count"],42)
+        self.assertEqual(result["matched_period_start"],"2026-08-03")
+        self.assertEqual(result["matched_period_end"],"2026-09-29")
+        self.assertEqual(result["market_analysis"]["status"],"REPORTED_UNVERIFIED")
+        self.assertIsNotNone(result["market_analysis"]["beta"])
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["source_rights_verified"])
+        self.assertFalse(result["full_a_b_c_ready"])
+        self.assertEqual(result["network_requests"],0)
+
     def test_hidden_without_license_and_approval_click(self):
         st = FakeSt(clicked=LABEL, values={
             "kuodra_p100_ticker": "NVDA", "kuodra_p100_as_of": "2026-02-01",

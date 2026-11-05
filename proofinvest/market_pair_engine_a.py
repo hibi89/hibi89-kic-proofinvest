@@ -117,14 +117,19 @@ def build_market_reality_payload(*, stock: dict, index: dict,
             raise ValueError("SOURCE_HASH_INVALID")
     stock_map = _points(stock, kind="stock", cutoff=cutoff)
     index_map = _points(index, kind="index", cutoff=cutoff)
-    common = sorted(set(stock_map) & set(index_map))
-    # Missing sessions must not be quietly forward-filled or interpolated.
-    if (len(common) < 31 or len(common) * 5 < len(stock_map) * 4
-            or len(common) * 5 < len(index_map) * 4):
-        raise ValueError("PRICE_INDEX_CALENDAR_NOT_COMPATIBLE")
+    # Compact vendor replies may contain older, pre-filing observations.
+    # They are never eligible evidence for a post-disclosure Engine A review.
+    # Filter both receipts BEFORE checking 80% calendar overlap: comparing
+    # only post-filing pairs must not penalize an otherwise valid lookback.
+    stock_eligible = {day for day in stock_map if _date(day) > filing}
+    index_eligible = {day for day in index_map if _date(day) > filing}
+    common = sorted(stock_eligible & index_eligible)
+    # No interpolation, synthetic rows, filing-day lookahead or permission
+    # promotion; fewer than 31 matched post-filing sessions remain blocked.
+    if (len(common) < 31 or len(common) * 5 < len(stock_eligible) * 4
+            or len(common) * 5 < len(index_eligible) * 4):
+        raise ValueError("POST_FILING_PRICE_INDEX_CALENDAR_NOT_COMPATIBLE")
     common = common[-100:]
-    if _date(common[0]) <= filing:
-        raise ValueError("PRICE_WINDOW_NOT_AFTER_SEC_FILING")
     if _date(common[-1]) > cutoff:
         raise ValueError("FUTURE_PRICE_OR_INDEX_FOR_AS_OF")
     if (cutoff - _date(common[-1])).days > 7:

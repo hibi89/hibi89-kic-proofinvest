@@ -83,12 +83,62 @@ class PairEngineContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.make_payload(index=b)
 
-    def test_no_lookahead_before_same_day_filing(self):
+    def test_same_day_filing_excluded_even_if_older_data_in_vendor_response(self):
         a, b = sources()
-        with self.assertRaises(ValueError):
+        packet = build_market_reality_payload(
+            stock=a, index=b, ticker="NVDA", issuer_cik="0001045810",
+            filing_date="2026-07-01", as_of="2026-10-01")
+        self.assertEqual(packet["security"]["observations"][0]["date"], "2026-07-02")
+        self.assertEqual(packet["index"]["observations"][0]["date"], "2026-07-02")
+        self.assertEqual(len(packet["index"]["observations"]),64)
+        self.assertTrue(all(row["date"] > "2026-07-01"
+                            for row in packet["security"]["observations"]))
+        self.assertNotIn("2026-07-01", repr(packet["security"]["observations"]))
+
+    def test_recent_filing_only_postfiling_market_sessions_used(self):
+        # Old code discarded a valid 42-session sample because the compact
+        # 65-row response also carried days before the issuer's filing.
+        a, b = sources()
+        packet = build_market_reality_payload(
+            stock=a, index=b, ticker="NVDA", issuer_cik="0001045810",
+            filing_date="2026-07-31", as_of="2026-10-01")
+        self.assertEqual(len(packet["index"]["observations"]),42)
+        self.assertEqual(packet["security"]["observations"][0]["date"],"2026-08-03")
+        self.assertEqual(packet["index"]["observations"][-1]["date"],"2026-09-29")
+        self.assertEqual(packet["index"]["observations"],
+                         [{"date":r["date"], "value":b["close_observations"][i]["close"]}
+                          for i,r in enumerate(b["close_observations"])
+                          if r["date"] > "2026-07-31"])
+
+    def test_recent_filing_with_insufficient_postfiling_history_still_blocks(self):
+        a, b = sources()
+        for filing in ("2026-08-20", "2026-09-01", "2026-09-29"):
+            with self.subTest(filing=filing),self.assertRaisesRegex(
+                ValueError,"POST_FILING_PRICE_INDEX_CALENDAR_NOT_COMPATIBLE"):
+                build_market_reality_payload(
+                    stock=a,index=b,ticker="NVDA",issuer_cik="0001045810",
+                    filing_date=filing,as_of="2026-10-01")
+
+    def test_missing_postfiling_sessions_still_fail_eighty_percent_overlap(self):
+        a,b=sources()
+        # At least 31 index dates remain, but 10 of 42 eligible dates are
+        # missing; 32/42 < 80%, so no silent interpolation is permitted.
+        omitted=0
+        new_rows=[]
+        for row in b["close_observations"]:
+            if row["date"] > "2026-07-31" and omitted < 10:
+                omitted += 1
+                continue
+            new_rows.append(row)
+        b["close_observations"]=new_rows
+        b["point_count"]=len(new_rows)
+        self.assertEqual(omitted,10)
+        with self.assertRaisesRegex(
+            ValueError,"POST_FILING_PRICE_INDEX_CALENDAR_NOT_COMPATIBLE"):
             build_market_reality_payload(
-                stock=a, index=b, ticker="NVDA", issuer_cik="0001045810",
-                filing_date="2026-07-01", as_of="2026-10-01")
+                stock=a,index=b,ticker="NVDA",issuer_cik="0001045810",
+                filing_date="2026-07-31",as_of="2026-10-01")
+
 
     def test_future_session_in_either_receipt_fails_before_ols(self):
         # A single future-only row cannot be silently discarded by the
