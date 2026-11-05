@@ -104,6 +104,14 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(out["network_requests"],1)
         self.assertNotIn(KEY,json.dumps(out))
 
+    def test_ndx_calendar_error_is_sanitized_without_raw_data(self):
+        reason,status=cli._diagnose(ValueError("BAR_AFTER_REQUESTED_CUTOFF"))
+        self.assertEqual(reason,"PARSER_BAR_AFTER_REQUESTED_CUTOFF")
+        self.assertIsNone(status)
+        reason,status=cli._diagnose(ValueError("NONTRADING_WEEKEND_BAR"))
+        self.assertEqual(reason,"PARSER_NONTRADING_WEEKEND_BAR")
+        self.assertIsNone(status)
+
     def test_unknown_error_does_not_expose_key(self):
         with patch.object(cli.sys.stdin,"isatty",return_value=True), (
             patch.object(cli.sys.stdout,"isatty",return_value=True)), (

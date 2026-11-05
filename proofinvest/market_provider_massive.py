@@ -142,9 +142,16 @@ def parse_massive_daily(raw: bytes, *, symbol: str, as_of: str,
             amount = Decimal(str(raw_close))
         except (ValueError, OverflowError, InvalidOperation) as exc:
             raise ValueError("INVALID_BAR_VALUE") from exc
-        if (observed.weekday() >= 5 or observed > cutoff
-                or not amount.is_finite() or not Decimal(0) < amount < Decimal("1e10")):
-            raise ValueError("NONTRADING_FUTURE_OR_BAD_CLOSE")
+        # Distinguish exchange calendar, cutoff and numeric anomalies without
+        # logging provider-supplied values or silently accepting suspect bars.
+        if observed.weekday() >= 5:
+            raise ValueError("NONTRADING_WEEKEND_BAR")
+        if observed > cutoff:
+            raise ValueError("BAR_AFTER_REQUESTED_CUTOFF")
+        if not amount.is_finite():
+            raise ValueError("NONFINITE_CLOSE")
+        if not Decimal(0) < amount < Decimal("1e10"):
+            raise ValueError("CLOSE_OUT_OF_BOUNDS")
         if previous is not None and not 1 <= (observed - previous).days <= 7:
             raise ValueError("UNSORTED_DUPLICATE_OR_GAPPED_BAR")
         previous = observed

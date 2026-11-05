@@ -139,6 +139,25 @@ class MassiveBasicAdapterTests(unittest.TestCase):
             with self.subTest(symbol=symbol,raw=raw[:40]), self.assertRaises(ValueError):
                 parse_massive_daily(raw,symbol=symbol,as_of="2026-10-01",index=index)
 
+    def test_ndx_weekend_future_and_invalid_close_have_separate_codes(self):
+        raw = json.loads(fixture("I:NDX", index=True))
+        def verify(row, expected):
+            data = dict(raw)
+            data["results"] = [dict(x) for x in raw["results"]]
+            data["results"][0] = dict(row)
+            with self.assertRaisesRegex(ValueError, "^" + expected + "$"):
+                parse_massive_daily(json.dumps(data).encode(), symbol="I:NDX",
+                                    as_of="2026-10-01", index=True)
+        weekend = dict(raw["results"][0])
+        weekend["t"] = int(datetime(2026,7,4,5,tzinfo=timezone.utc).timestamp()*1000)
+        verify(weekend,"NONTRADING_WEEKEND_BAR")
+        future = dict(raw["results"][0])
+        future["t"] = int(datetime(2026,10,2,5,tzinfo=timezone.utc).timestamp()*1000)
+        verify(future,"BAR_AFTER_REQUESTED_CUTOFF")
+        negative = dict(raw["results"][0])
+        negative["c"] = -1
+        verify(negative,"CLOSE_OUT_OF_BOUNDS")
+
     def test_duplicate_bar_calendar_and_nonfinite_close_are_blocked(self):
         raw=json.loads(fixture())
         raw["results"].append(raw["results"][-1])
