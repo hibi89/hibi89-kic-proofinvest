@@ -20,6 +20,7 @@ _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
 _SOURCE_SEC_WEB_GUARD = "KUODRA · Apple SEC 웹텍스트 수동검산 → Guard (오프라인)"
 _SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
 _SOURCE_TICKER_SEARCH = "KUODRA · 종목 1개 검색 (로컬 전용)"
+_SOURCE_KR_LOCAL = "KUODRA · 한국 주식 시연 (로컬 전용)"
 _SOURCE_APPLE_2026_PUBLIC = "KUODRA · Apple FY2026 실제 공시 수치 검산 (원본 미인증)"
 _SOURCE_NVDA_IR_HISTORY = "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"
 _SOURCE_NVDA_FY2026_REAL = "KUODRA · NVIDIA FY2026 공식 발행사 원문 검증 (제한)"
@@ -615,6 +616,7 @@ def render_app(st) -> None:
             ticker_ui_file = Path(__file__).resolve().parent / "proofinvest/ticker_research_ui.py"
             if ticker_ui_file.is_file():
                 available_sources.append(_SOURCE_TICKER_SEARCH)
+            available_sources.append(_SOURCE_KR_LOCAL)
             # Separate historical issuer-IR reference: never SEC or live market data.
             ir_ui_file = Path(__file__).resolve().parent / "proofinvest/issuer_ir_local_ui.py"
             ir_facts = Path(__file__).resolve().parent / "docs/evidence/nvda_fy2025_issuer_ir.json"
@@ -648,6 +650,10 @@ def render_app(st) -> None:
     if source == _SOURCE_TICKER_SEARCH:
         from proofinvest.ticker_research_ui import render_single_ticker_search
         render_single_ticker_search(st)
+        return
+    if source == _SOURCE_KR_LOCAL:
+        from proofinvest.kr_stock_demo_ui import render_kr_stock_demo
+        render_kr_stock_demo(st)
         return
     if source == _SOURCE_APPLE_2026_PUBLIC:
         from proofinvest.apple_fy2026_public_filing_ui import render_apple_fy2026_public_review
