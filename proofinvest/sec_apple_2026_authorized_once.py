@@ -104,6 +104,16 @@ def read_apple_2026_sec_original_once(
                 or replay.get("sec_edgar_original_byte_identical_authenticated") is not False):
             return _failure("SEC_DIRECT_RECEIVED_BYTES_FAILED_IXBRL_REPLAY",
                             attempted=attempted)
+        # A test-injected opener is not a transport attestation. Even when
+        # all six public figures match, NEVER claim SEC TLS was observed.
+        if opener is not None:
+            return {
+                **_failure("TEST_INJECTED_TRANSPORT_UNAUTHENTICATED",
+                           attempted=attempted),
+                "status": "TEST_DOUBLE_LOCAL_IXBRL_MATCH_NOT_SEC_ORIGIN",
+                "local_synthetic_sha256": replay["local_html_sha256"],
+                "checked_gaap_facts": 6,
+            }
         return {
             **_failure("ONE_BOUNDED_SEC_HTTPS_RESPONSE_MATCHED",attempted=attempted),
             "status": "SEC_DIRECT_HTTPS_APPLE_2026_SIX_FACTS_OBSERVED",
