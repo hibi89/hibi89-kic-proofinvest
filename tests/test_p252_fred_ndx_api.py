@@ -169,7 +169,7 @@ class FredApiOneShotTests(unittest.TestCase):
             patch.object(cli.sys.stdout,"isatty",return_value=True)),(
             patch("builtins.input",return_value=cli._APPROVAL)),(
             patch.object(cli.getpass,"getpass",return_value=KEY)),(
-            patch.object(api,"_get",return_value=wire()) as req),(
+            patch.object(api,"_get",return_value=wire())) as req,(
             patch("builtins.print",side_effect=lambda *a,**k: out.append(
                 " ".join(map(str,a))))):
             rc=cli.main(["--live"])
