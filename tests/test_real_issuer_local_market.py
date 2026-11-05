@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from proofinvest.real_issuer_local_market import (
     review_real_issuer_local_market_pair, render_real_issuer_local_market_panel,
+    verify_derived_ab_checksum,
 )
 
 
@@ -59,6 +60,44 @@ class RealIssuerOperatorMarketTests(unittest.TestCase):
                 self.assertNotIn("close_observations", repr(r))
                 self.assertNotIn("Meta Data", repr(r))
                 self.assertNotIn("apikey", repr(r))
+                self.assertTrue(verify_derived_ab_checksum(r))
+                self.assertEqual(r["combined_review_schema"],
+                                 "kuodra.p220-issuer-financial-market-joined.v1")
+                self.assertEqual(r["engine_b"]["issuer_financial_source_sha256"],
+                                 r["issuer_source_sha256"])
+                self.assertEqual(r["engine_b"]["issuer_source_ci_run"].startswith("https://"), True)
+                expected = ("65.47", "0.8555") if ticker == "NVDA" else ("18.80", "1.8843")
+                self.assertEqual(r["engine_b"]["revenue_growth_pct"], expected[0])
+                self.assertEqual(r["engine_b"]["cashflow_to_net_income_ratio"], expected[1])
+                forged = deepcopy(r)
+                forged["engine_b"]["revenue_growth_pct"] = "999.99"
+                self.assertFalse(verify_derived_ab_checksum(forged))
+                self.assertFalse(r["source_authenticated_by_sec"])
+                self.assertFalse(r["commercial_reuse_allowed"])
+
+    def test_recomputed_real_issuer_financials_fail_closed_on_mutation(self):
+        from proofinvest.real_issuer_ticker_review import review_supported_real_ticker
+        actual = review_supported_real_ticker("NVDA")
+        self.assertEqual(actual["status"], "REAL_ISSUER_HUMAN_REVIEW_ONLY")
+        for key, forged_value in (
+            ("issuer_revenue_growth_pct", "66.00"),
+            ("cashflow_to_net_income_ratio", "1.0000"),
+            ("review_as_of", "2026-11-06"),
+            ("financial_review", "FULLY_LICENSED"),
+        ):
+            with self.subTest(key=key):
+                manipulated = dict(actual)
+                manipulated[key] = forged_value
+                with patch(
+                    "proofinvest.real_issuer_local_market.review_supported_real_ticker",
+                    return_value=manipulated,
+                ):
+                    result = review_real_issuer_local_market_pair(
+                        ticker="NVDA", stock_json=vendor_form("NVDA"),
+                        ndx_json=vendor_form("NDX", base=10000))
+                    self.assertEqual(result["status"], "BLOCKED")
+                    self.assertNotIn("engine_b", result)
+                    self.assertEqual(result["guard_policy_preview"], "HOLD")
 
     def test_wrong_issuer_ndx_qqq_and_as_of_fail_closed(self):
         for ticker, rawstock, rawidx, asof in (

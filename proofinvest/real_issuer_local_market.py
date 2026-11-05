@@ -9,6 +9,7 @@ in prior one-shot official-publisher tests.
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from typing import Any
 
 from .real_issuer_ticker_review import review_supported_real_ticker
@@ -17,6 +18,52 @@ _AS_OF = "2026-11-05"
 _PUBLISHER_AVAILABLE_AFTER = {"NVDA": "2026-02-25", "DELL": "2026-03-16"}
 _MAX_STOCK = 262144
 _MAX_INDEX = 8388608
+_AB_SCHEMA = "kuodra.p220-issuer-financial-market-joined.v1"
+_PINNED_ENGINE_B = {
+    "NVDA": ("65.47", "0.8555", "1.30", "46.86"),
+    "DELL": ("18.80", "1.8843", "51.96", "36.60"),
+}
+_FINANCIAL_KEYS = (
+    "issuer_revenue_growth_pct", "cashflow_to_net_income_ratio",
+    "receivables_minus_revenue_growth_pp",
+    "inventory_minus_revenue_growth_pp",
+)
+
+
+def _canonical_derived_bytes(packet: dict[str, Any]) -> bytes:
+    return json.dumps(packet, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"), allow_nan=False).encode("utf-8")
+
+
+def verify_derived_ab_checksum(packet: Any) -> bool:
+    """Detect accidental changes to the derived local packet; not authentication.
+
+    An attacker may recalculate this unkeyed digest. The attached source
+    digests likewise cannot establish provider identity or usage rights.
+    """
+    if (type(packet) is not dict
+            or packet.get("combined_review_schema") != _AB_SCHEMA
+            or packet.get("status") != "REAL_ISSUER_WITH_LOCAL_NDX_MATH_UNVERIFIED"
+            or packet.get("guard_policy_preview") != "HOLD"
+            or packet.get("full_abc_complete") is not False
+            or packet.get("market_rights_verified") is not False
+            or packet.get("stock_provider_authenticated") is not False
+            or packet.get("ndx_provider_authenticated") is not False
+            or type(packet.get("engine_a")) is not dict
+            or type(packet.get("engine_b")) is not dict
+            or packet.get("combined_review_digest_kind") !=
+               "UNKEYED_DERIVED_INTEGRITY_ONLY"):
+        return False
+    digest = packet.get("combined_review_sha256")
+    if type(digest) is not str or len(digest) != 64 or any(
+            char not in "0123456789abcdef" for char in digest):
+        return False
+    try:
+        unsigned = dict(packet)
+        del unsigned["combined_review_sha256"]
+        return sha256(_canonical_derived_bytes(unsigned)).hexdigest() == digest
+    except (ValueError, TypeError, OverflowError, RecursionError):
+        return False
 
 
 def _blocked(code: str) -> dict[str, Any]:
@@ -65,6 +112,17 @@ def review_real_issuer_local_market_pair(
             or len(issuer["source_sha256"]) != 64):
         return _blocked("REAL_ISSUER_ORIGINAL_SOURCE_NOT_ATTESTED")
     ticker = issuer["ticker"]
+    # P220: refuse a partial or altered issuer fact bridge, even if market
+    # files are independently well formed. This remains a historical pin.
+    if (issuer.get("review_as_of") != as_of
+            or issuer.get("financial_review") !=
+               "ISSUER_ENGINE_B_NUMERICAL_SCREEN_UNVERIFIED"
+            or tuple(issuer.get(key) for key in _FINANCIAL_KEYS)
+               != _PINNED_ENGINE_B[ticker]
+            or any(type(issuer.get(key)) is not str for key in (
+                "fiscal_prior_end", "fiscal_latest_end", "source_url",
+                "source_ci_run"))):
+        return _blocked("PINNED_REAL_ISSUER_ENGINE_B_REPLAY_FAILED")
     try:
         from .market_provider_alpha_vantage import parse_daily_close_bytes
         from .market_provider_alpha_vantage_index import parse_index_daily_bytes
@@ -105,9 +163,11 @@ def review_real_issuer_local_market_pair(
                        for k in ("security_return_pct", "benchmark_return_pct",
                                  "beta", "r_squared"))):
             return _blocked("ENGINE_A_METRIC_CONTRACT_INVALID")
-        return {
+        packet = {
             **_blocked("LOCAL_DESCRIPTIVE_MATH_ONLY_RIGHTS_UNCONFIRMED"),
             "status": "REAL_ISSUER_WITH_LOCAL_NDX_MATH_UNVERIFIED",
+            "combined_review_schema": _AB_SCHEMA,
+            "combined_review_digest_kind": "UNKEYED_DERIVED_INTEGRITY_ONLY",
             "ticker": ticker, "cik": issuer["cik"],
             "as_of": as_of,
             "issuer_source_sha256": issuer["source_sha256"],
@@ -129,7 +189,24 @@ def review_real_issuer_local_market_pair(
                 "beta_descriptive": a["beta"],
                 "r_squared_descriptive": a["r_squared"],
             },
+            "engine_b": {
+                "status": "REAL_PUBLISHER_DERIVED_PARTIAL_FINANCIAL_SCREEN",
+                "fiscal_prior_end": issuer["fiscal_prior_end"],
+                "fiscal_latest_end": issuer["fiscal_latest_end"],
+                "revenue_growth_pct": issuer["issuer_revenue_growth_pct"],
+                "cashflow_to_net_income_ratio":
+                    issuer["cashflow_to_net_income_ratio"],
+                "receivables_minus_revenue_growth_pp":
+                    issuer["receivables_minus_revenue_growth_pp"],
+                "inventory_minus_revenue_growth_pp":
+                    issuer["inventory_minus_revenue_growth_pp"],
+                "issuer_financial_source_sha256": issuer["source_sha256"],
+                "issuer_source_ci_run": issuer["source_ci_run"],
+            },
         }
+        packet["combined_review_sha256"] = sha256(
+            _canonical_derived_bytes(packet)).hexdigest()
+        return packet
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError,
             ArithmeticError, RecursionError, UnicodeError):
         return _blocked("LOCAL_PRICE_OR_INDEX_INPUT_INVALID")
@@ -181,7 +258,10 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
         st.warning("발행사·종목/NDX·기준일·원본 또는 투자정보 자료가 불일치합니다.")
         st.code(result["reason_code"], language="text")
         return
-    st.success("실제 발행사 근거 + 로컬 주가/NDX 산술검산 연결 (미인증)")
+    if not verify_derived_ab_checksum(result):
+        st.warning("결합 A/B 보고서의 산술 결과 체크섬이 일치하지 않습니다.")
+        return
+    st.success("실제 발행사 Engine B + 로컬 Engine A 결합 (시장 미인증)")
     st.caption(
         result["matched_start"] + " ~ " + result["matched_end"] +
         " · 겹치는 종가 " + str(result["matched_sessions"]) + "거래일"
@@ -190,19 +270,31 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
     st.metric("종목 단순수익률 (미인증)", market["stock_simple_return_pct"] or "자료 없음")
     st.metric("NDX 단순수익률 (미인증)", market["ndx_simple_return_pct"] or "자료 없음")
     st.metric("설명적 베타 (원인·거품 아님)", market["beta_descriptive"] or "자료 없음")
+    issuer_b = result["engine_b"]
+    st.subheader("Engine B · 발행사 원문 근거 재무 검산 (부분)")
+    st.metric("발행사 매출 증가율 (%)", issuer_b["revenue_growth_pct"])
+    st.metric("발행사 영업현금/순이익", issuer_b["cashflow_to_net_income_ratio"])
+    st.caption(
+        "매출채권 증가율 차이 " +
+        issuer_b["receivables_minus_revenue_growth_pp"] +
+        "pp · 재고 증가율 차이 " +
+        issuer_b["inventory_minus_revenue_growth_pp"] + "pp"
+    )
     st.json({
         "market_math": market["status"], "market_rights_verified": False,
         "market_provider_authenticated": False,
         "guard_policy_preview": "HOLD", "full_abc_complete": False,
+        "report_integrity_only_sha256": result["combined_review_sha256"],
     })
     st.download_button(
-        "로컬 종목/NDX 산술검산 요약 JSON (원본·API키 제외)",
+        "발행사 재무 B + 로컬 시장 A 결합 JSON (원본·API키 제외)",
         data=json.dumps(result, ensure_ascii=False, sort_keys=True,
                         separators=(",", ":"), allow_nan=False).encode("utf-8"),
-        file_name="kuodra-" + result["ticker"].lower() + "-ndx-UNVERIFIED.json",
+        file_name="kuodra-" + result["ticker"].lower() + "-ab-UNVERIFIED.json",
         mime="application/json", key="p219_local_market_summary",
     )
     st.warning(
         "지수·주가 제공자 및 재사용 이용권은 인증되지 않았습니다. "
-        "출력은 개인 로컬 검토용 산술 결과이며 투자 권고/매매 승인 불가."
+        "출력의 SHA-256은 변조 탐지용 비밀키 없는 체크섬일 뿐 출처 인증이 아닙니다. "
+        "개인 로컬 검토용이며 Engine C·투자 권고·매매 승인 불가."
     )
