@@ -202,6 +202,61 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(receipt["reason_code"],"INVALID_TICKER_OR_DATE")
         self.assertEqual(receipt["network_requests"],0)
 
+    def test_index_only_dry_run_zero_gets_zero_key_reads(self):
+        with patch.object(cli,"_https_get",side_effect=AssertionError("NO GET")), (
+            patch.object(cli.getpass,"getpass",side_effect=AssertionError("NO KEY"))):
+            rc,out=self.capture(ARGS+["--index-only"])
+        self.assertEqual(rc,0)
+        self.assertEqual(out["status"],"DRY_RUN_NO_REQUEST")
+        self.assertEqual(out["index_only"],True)
+        self.assertEqual(out["network_requests"],0)
+        self.assertIsNone(out["ticker"])
+
+    def test_index_only_live_one_ndx_get_no_stock_key_leak(self):
+        calls=[]
+        def fake_get(url):
+            calls.append(url)
+            if "/ticker/AAPL/" in url:
+                raise AssertionError("STOCK MUST NOT BE REQUESTED")
+            return fixture("I:NDX",index=True)
+        with patch.object(cli.sys.stdin,"isatty",return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=fake_get)):
+            rc,out=self.capture(ARGS+["--index-only","--live"])
+        self.assertEqual(rc,0,out)
+        self.assertEqual(len(calls),1)
+        self.assertIn("/ticker/I:NDX/",calls[0])
+        self.assertEqual(out["status"],"NDX_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED")
+        self.assertEqual(out["network_requests"],1)
+        self.assertNotIn("stock_points",out)
+        self.assertEqual(out["index_points"],65)
+        self.assertFalse(out["market_data_rights_verified"])
+        self.assertFalse(out["commercial_reuse_allowed"])
+        self.assertNotIn(KEY,json.dumps(out))
+
+    def test_index_only_fail_closed_no_retries_or_stock(self):
+        calls=[]
+        def fake_get(url):
+            calls.append(url)
+            raise cli.IndexDailyCalendarError(
+                "NONTRADING_WEEKEND_BAR",utc_day=5,
+                utc_hour=5,eastern_day=5)
+        with patch.object(cli.sys.stdin,"isatty",return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=fake_get)):
+            rc,out=self.capture(ARGS+["--index-only","--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(len(calls),1)
+        self.assertEqual(out["failed_stage"],"index")
+        self.assertEqual(out["network_requests"],1)
+        self.assertEqual(out["retries"],0)
+        self.assertEqual(out["index_calendar_et_weekday"],5)
+        self.assertNotIn(KEY,json.dumps(out))
+
     def test_bad_date_blocks_before_approval(self):
         with patch.object(cli,"_https_get",side_effect=AssertionError("REQUEST")), (
             patch.object(cli.getpass,"getpass",side_effect=AssertionError("KEY"))):

@@ -55,6 +55,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--live", action="store_true",
                         help="Allow up to two actual Massive HTTPS GETs after TTY confirmation")
     parser.add_argument("--ticker", default="AAPL", help="One uppercase stock ticker")
+    parser.add_argument("--index-only", action="store_true",
+                        help="One genuine I:NDX request only; skip redundant stock GET")
     safe_as_of = free_basic_safe_as_of()
     parser.add_argument("--as-of", default=safe_as_of,
                         help="historical EOD YYYY-MM-DD (default: conservative free Basic date)")
@@ -77,7 +79,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if not args.live:
         print(json.dumps({"status":"DRY_RUN_NO_REQUEST",
-                          "ticker":args.ticker,"index":"I:NDX",
+                          "ticker":None if args.index_only else args.ticker,
+                          "index":"I:NDX","index_only":args.index_only,
                           "as_of":args.as_of,"network_requests":0,
                           "commercial_reuse_allowed":False},sort_keys=True))
         return 0
@@ -86,10 +89,13 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests":0},sort_keys=True))
         return 2
     print("Only personal research with your $0 Individual Basic account.")
-    print("2 requests maximum (stock once, actual I:NDX once).")
+    max_gets = 1 if args.index_only else 2
+    print(str(max_gets) + " request(s) maximum; "
+          + ("I:NDX only." if args.index_only else "stock once, actual I:NDX once."))
     print("Never paste your key into chat, GitHub, or screenshots.")
     try:
-        consent = input("Type REQUEST MASSIVE BASIC PERSONAL for 2 live GETs: ").strip()
+        consent = input("Type REQUEST MASSIVE BASIC PERSONAL for "
+                        + str(max_gets) + " live GET(s): ").strip()
     except (EOFError, KeyboardInterrupt):
         consent = ""
     if consent != _APPROVAL:
@@ -105,14 +111,16 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests":0},sort_keys=True))
         return 2
     attempts = 0
-    stage = "stock"
+    stage = "index" if args.index_only else "stock"
     try:
-        stock_url = _url(symbol=args.ticker, as_of=args.as_of,
-                         api_key=key, index=False)
-        attempts += 1
-        stock = parse_massive_daily(
-            _https_get(stock_url), symbol=args.ticker,
-            as_of=args.as_of, index=False)
+        stock = None
+        if not args.index_only:
+            stock_url = _url(symbol=args.ticker, as_of=args.as_of,
+                             api_key=key, index=False)
+            attempts += 1
+            stock = parse_massive_daily(
+                _https_get(stock_url), symbol=args.ticker,
+                as_of=args.as_of, index=False)
         stage = "index"
         index_url = _url(symbol="I:NDX", as_of=args.as_of,
                          api_key=key, index=True)
@@ -120,14 +128,13 @@ def main(argv: list[str] | None = None) -> int:
         ndx = parse_massive_daily(_https_get(index_url), symbol="I:NDX",
                                   as_of=args.as_of, index=True)
         receipt = {
-            "status":"TWO_SOURCE_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED",
-            "stock_ticker":args.ticker,"index_symbol":"I:NDX",
+            "status":("NDX_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED"
+                      if args.index_only else
+                      "TWO_SOURCE_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED"),
+            "index_symbol":"I:NDX", "index_only":args.index_only,
             "as_of":args.as_of,
-            "stock_points":stock["point_count"],
             "index_points":ndx["point_count"],
-            "stock_first":stock["first_date"],"stock_last":stock["last_date"],
             "index_first":ndx["first_date"],"index_last":ndx["last_date"],
-            "stock_body_sha256":stock["source_sha256"],
             "index_body_sha256":ndx["source_sha256"],
             "provider":"massive", "network_requests":attempts,"retries":0,
             "provider_origin_independently_authenticated":False,
@@ -135,6 +142,12 @@ def main(argv: list[str] | None = None) -> int:
             "commercial_reuse_allowed":False,"external_display_allowed":False,
             "full_a_b_c_ready":False,
         }
+        if stock is not None:
+            receipt.update({
+                "stock_ticker":args.ticker, "stock_points":stock["point_count"],
+                "stock_first":stock["first_date"], "stock_last":stock["last_date"],
+                "stock_body_sha256":stock["source_sha256"],
+            })
         print(json.dumps(receipt,sort_keys=True))
         return 0
     except (ValueError, TypeError, OSError, OverflowError, TimeoutError,
