@@ -106,10 +106,19 @@ def run(output: Path) -> dict:
                             "heading",
                             name="KUODRA · 종목 입력 → 실제 발행사 제한 재무검토",
                         )).to_be_visible(timeout=25000)
-                        page.get_by_label(
+                        # Streamlit text_input commits on Enter/blur, not
+                        # necessarily on Playwright fill() alone. Trigger the
+                        # actual user commit before expecting upload controls.
+                        ticker_input = page.get_by_label(
                             "미국 종목코드 입력 (NVDA 또는 DELL)",
                             exact=True,
-                        ).fill("NVDA")
+                        )
+                        ticker_input.fill("NVDA")
+                        ticker_input.press("Enter")
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine A · 로컬 종목 주가 + 실제 NDX 종목코드 형식 검산",
+                        )).to_be_visible(timeout=25000)
                         uploader = page.locator('input[type="file"]')
                         expect(uploader).to_have_count(2, timeout=25000)
                         uploader.nth(0).set_input_files({
