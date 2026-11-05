@@ -233,6 +233,10 @@ def verify_nvidia_audit_bundle(
                        for item in entries)):
             raise ValueError("NVDA_ZIP_STRUCTURE_DENIED")
         parts = {item.filename: zipped.read(item) for item in entries}
+    # A valid digest alone does not prove canonical archive framing: ZipFile
+    # tolerates trailing bytes and alternate ZIP headers. Require exact P212 bytes.
+    if archive != _zip(parts):
+        raise ValueError("NVDA_ZIP_NONCANONICAL_FRAMING")
     try:
         report = json.loads(parts["review.json"].decode("utf-8"))
         manifest = json.loads(parts["manifest.json"].decode("utf-8"))
