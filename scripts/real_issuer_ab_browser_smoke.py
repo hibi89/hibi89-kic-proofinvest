@@ -182,6 +182,19 @@ def run(output: Path) -> dict:
                                 or cohort_report["engine_c_complete"] is not False
                                 or cohort_report["guard_policy_preview"] != "HOLD"):
                             raise AssertionError("P223_TWO_PEER_AUDITED_FINANCIAL_REPLAY_FAILED")
+                        # Commit the checkbox's Streamlit rerun *before*
+                        # uploading either file. Late checkbox reruns can
+                        # supersede an in-flight file upload, leaving the
+                        # upload-dependent review button disabled.
+                        ack = page.get_by_role(
+                            "checkbox",
+                            name="내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
+                            exact=True,
+                        )
+                        expect(ack).not_to_be_checked()
+                        ack.focus()
+                        ack.press("Space")
+                        expect(ack).to_be_checked(timeout=20000)
                         uploader = page.locator('input[type="file"]')
                         expect(uploader).to_have_count(2, timeout=25000)
                         uploader.nth(0).set_input_files({
@@ -194,20 +207,13 @@ def run(output: Path) -> dict:
                             "mimeType": "application/json",
                             "buffer": index,
                         })
-                        ack = page.get_by_role(
-                            "checkbox",
-                            name="내 로컬 파일로 미인증 산술검산만 진행하며 외부 재배포·투자 승인하지 않음",
-                            exact=True,
-                        )
-                        expect(ack).not_to_be_checked()
-                        ack.focus()
-                        ack.press("Space")
-                        expect(ack).to_be_checked(timeout=20000)
-                        page.get_by_role(
+                        review_button = page.get_by_role(
                             "button",
                             name="실제 발행사 자료와 주가/NDX 계산 연결 (네트워크 0)",
                             exact=True,
-                        ).click()
+                        )
+                        expect(review_button).to_be_enabled(timeout=25000)
+                        review_button.click()
                         expect(page.get_by_text(
                             "실제 발행사 Engine B + 로컬 Engine A 결합 (시장 미인증)",
                             exact=True,
