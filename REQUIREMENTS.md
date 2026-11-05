@@ -1,3 +1,10 @@
+## 2026-11-06 KST — KIC global issuer strategy supersedes KR-first demo positioning
+
+- **Primary contest story:** global investment-research verification Agent for U.S. issuer data. Existing first-party NVIDIA/Dell source verification, SEC/source limitations, issuer financial integrity, AMD/Intel peer corroboration, Guard HOLD and provenance-aware report are central. Optional Nasdaq/index operation is rights-gated; lack of an authorized index must not block financial B or peer C review.
+- **Secondary / preserved:** Korean stock/KOSPI/KOSDAQ local CSV P261 remains an optional demonstration, NOT a claim of completed OpenDART live integration, licensed KRX feed or a change of KIC competition target. Do not delete US/SEC/NDX code or misidentify Korean issuer as US CIK.
+- **Implemented P262:** dedicated human-triggered local-only no-index B/C Guard workflow and replayable HTML/JSON export at `proofinvest/global_fundamentals_review.py`, `proofinvest/global_fundamentals_ui.py`. Historical publisher first-party original receipts are *not* independent current SEC original attestation, licensed reuse, complete AI Agent or investment recommendation. Engine A unavailable and full A/B/C completion FALSE when entitled market data absent. Primary requirements for live genuine AI tool execution, data rights, publicly accessible Production and real E2E still open.
+- **Safety:** No paid data, external source GET (including blocked SEC403/FRED), market data display/distribution, external model sending, provider outreach, deployment or DAKER upload without separate owner permission and actual rights. Official KIC prelim exact private PDF and separate DAKER approval gate unchanged.
+
 ## 2026-11-06 KST — Owner clarification: Korean-equity demo, licensed Nasdaq operational path
 
 - **Demo target:** Korean listed company prices and KOSPI/KOSDAQ comparison, Korean official filing/financial data where separately obtained and verified. The current implemented step is **loopback-only local CSV descriptive market regression**, not authenticated KRX data, DART A/B/C integration, or a public judge-facing real-data demonstration.
