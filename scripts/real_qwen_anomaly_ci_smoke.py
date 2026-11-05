@@ -1,4 +1,4 @@
-"""P234 actual Qwen 0.5B two independent opposite public financial signals.
+"""P234 actual Qwen 1.5B two independent opposite public financial signals.
 
 Execute inside the already-provisioned, pinned Docker Ollama Qwen job, after
 P233. No additional model download, no private data, no unsolicited HTTP.
@@ -33,7 +33,7 @@ def main() -> int:
         raise ValueError("P234_REAL_FINANCIAL_TWO_SIGNALS_NOT_INDEPENDENTLY_MATCHED:"+
                          str(result.get("reason_code", "UNAVAILABLE"))[:95])
     print(json.dumps({
-        "status": "PASS", "model": "qwen2.5:0.5b-instruct",
+        "status": "PASS", "model": "qwen2.5:1.5b-instruct",
         "genuine_generated_tokens": True,
         "independent_derived_public_checks": 2,
         "positive_inventory_divergence_verified": True,

@@ -357,7 +357,7 @@ jobs:
         run: bash scripts/real_local_model_inference_ci.sh
 
   p233-real-qwen-public-fact:
-    name: P233+P234 genuine Qwen public fact and financial anomaly
+    name: P233 genuine Qwen 0.5B public fact
     # Pull one public model only for an explicitly labeled feature commit.
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[qwen-real-e2e]')
     runs-on: ubuntu-latest
@@ -371,3 +371,19 @@ jobs:
           python-version: '3.11'
       - name: True local Qwen output on two PUBLIC numeric facts (no originals/NDX)
         run: bash scripts/real_qwen_public_facts_ci.sh
+
+  p234-real-qwen15-anomaly:
+    name: P234 actual Qwen 1.5B opposing public financial signal verification
+    # Explicit one-off model download. Never run on docs/tests commits.
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[qwen15-real-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Real Qwen 1.5B dual human-only financial signal and negative control
+        run: bash scripts/real_qwen15_anomaly_ci.sh

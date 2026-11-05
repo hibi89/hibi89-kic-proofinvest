@@ -22,7 +22,7 @@ from .apple_fy2026_public_filing_review import (
 )
 from .ticker_local_model_triage import _call_loopback, _json_no_duplicate
 
-_MODEL = "qwen2.5:0.5b-instruct"
+_MODEL = "qwen2.5:1.5b-instruct"
 _CITE = "AAPL_FY2026_ITEM8_PUBLIC_DERIVED_GROWTH"
 _SCHEMA = "kuodra.p234-qwen-public-financial-signals.v1"
 _HUMAN = "HUMAN_REVIEW_ONLY"

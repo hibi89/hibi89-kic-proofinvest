@@ -6,9 +6,9 @@ def render_apple_public_anomaly_model(st) -> None:
     from .kuodra_local_workspace_ui import local_workspace_enabled
     if not local_workspace_enabled(st):
         return
-    st.subheader("Qwen 실제 재무 이상징후 2종 교차검산 (선택)")
+    st.subheader("Qwen2.5 1.5B 재무 이상징후 2종 교차검산 (선택)")
     st.caption(
-        "FY2026 Apple 공개 공시 숫자에서 로컬 계산한 매출·재고·매출채권 "
+        "Qwen2.5 1.5B Instruct 로컬 서버 전용입니다. FY2026 Apple 공개 공시 숫자에서 로컬 계산한 매출·재고·매출채권 "
         "증가율 3개만 127.0.0.1:11435 로컬 모델에 각각 두 번에 나눠 전달하며, "
         "모델의 서로 반대인 두 결과는 Decimal로 재검산합니다. "
         "원본·사용자 파일·API 키·주가·Nasdaq-100·경쟁기업 수치는 "

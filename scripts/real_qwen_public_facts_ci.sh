@@ -34,4 +34,3 @@ docker exec "$container" ollama list | grep -E "qwen2.5:0.5b-instruct[[:space:]]
   echo "P233_MODEL_DIGEST_DOES_NOT_MATCH_OFFICIAL_REGISTRY" >&2; exit 1;
 }
 python3 -B -m scripts.real_qwen_public_facts_ci_smoke
-python3 -B -m scripts.real_qwen_anomaly_ci_smoke
