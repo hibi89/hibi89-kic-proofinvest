@@ -58,10 +58,10 @@ def verify_local_report_bundle(path: Path, expected_sha256: str) -> dict[str, An
         raise ValueError("ZIP_RECEIPT_SHA256_MISMATCH")
     # Reject prefixed/trailing payloads even when an attacker supplies a new
     # matching digest. Exporter writes an ordinary ZIP with no archive comment.
-    if (not payload.startswith(b"PK\\x03\\x04")
+    if (not payload.startswith(b"PK\x03\x04")
             or len(payload) < 22
-            or payload[-22:-18] != b"PK\\x05\\x06"
-            or payload[-2:] != b"\\x00\\x00"):
+            or payload[-22:-18] != b"PK\x05\x06"
+            or payload[-2:] != b"\x00\x00"):
         raise ValueError("ZIP_NONCANONICAL_ENVELOPE")
     with ZipFile(BytesIO(payload), mode="r") as archive:
         entries = archive.infolist()
