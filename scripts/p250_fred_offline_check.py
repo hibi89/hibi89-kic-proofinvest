@@ -13,7 +13,7 @@ import stat
 
 from proofinvest.fred_nasdaq100_offline import (
     parse_fred_nasdaq100_csv, parse_owner_stock_csv,
-    analyze_offline_fred_pair,
+    parse_owner_alpha_vantage_json, analyze_offline_fred_pair,
 )
 
 _MAX_INPUT = 2_097_152
@@ -47,20 +47,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fred-csv", required=True,
                         help="User-selected local FRED NASDAQ100 CSV filename")
     parser.add_argument("--as-of", default=datetime.now(timezone.utc).date().isoformat())
-    parser.add_argument("--stock-csv", help="Optional local date,close CSV")
+    stock_group = parser.add_mutually_exclusive_group()
+    stock_group.add_argument("--stock-csv", help="Optional local date,close CSV")
+    stock_group.add_argument("--stock-alpha-json",
+                             help="Optional owner-local Alpha Vantage daily JSON, RAM only")
     parser.add_argument("--ticker")
     parser.add_argument("--issuer-cik")
     parser.add_argument("--filing-date")
     parser.add_argument("--stock-source-url",
                         help="User supplied HTTPS descriptive source URL (unverified)")
     args = parser.parse_args(argv)
-    if args.stock_csv is None and any((
-            args.ticker, args.issuer_cik, args.filing_date, args.stock_source_url)):
-        print(json.dumps({"status":"BLOCKED","reason_code":"STOCK_INPUT_INCOMPLETE",
-                          "network_requests":0}))
-        return 2
-    if args.stock_csv is not None and not all((
-            args.ticker, args.issuer_cik, args.filing_date, args.stock_source_url)):
+    selected = args.stock_csv or args.stock_alpha_json
+    extras = (args.ticker, args.issuer_cik,
+              args.filing_date, args.stock_source_url)
+    incomplete = (
+        (selected is None and any(extras))
+        or (selected is not None and not all(extras[:3]))
+        or (args.stock_csv is not None and not args.stock_source_url)
+        or (args.stock_alpha_json is not None
+            and args.stock_source_url is not None)
+    )
+    if incomplete:
         print(json.dumps({"status":"BLOCKED","reason_code":"STOCK_INPUT_INCOMPLETE",
                           "network_requests":0}))
         return 2
@@ -80,10 +87,16 @@ def main(argv: list[str] | None = None) -> int:
             "public_display_allowed":False, "commercial_reuse_allowed":False,
             "ai_processing_allowed":False, "full_a_b_c_ready":False,
         }
-        if args.stock_csv is not None:
-            stock = parse_owner_stock_csv(
+        if selected is not None:
+            # Distinct formats remain distinct: JSON SHA is NEVER relabeled
+            # as an owner CSV SHA or provider-authenticated market data.
+            stock = (parse_owner_stock_csv(
                 _load_readonly(args.stock_csv), ticker=args.ticker,
                 as_of=args.as_of, source_url=args.stock_source_url)
+                if args.stock_csv is not None
+                else parse_owner_alpha_vantage_json(
+                    _load_readonly(args.stock_alpha_json),
+                    ticker=args.ticker, as_of=args.as_of))
             result = analyze_offline_fred_pair(
                 stock=stock,index=fred,ticker=args.ticker,
                 issuer_cik=args.issuer_cik,filing_date=args.filing_date,

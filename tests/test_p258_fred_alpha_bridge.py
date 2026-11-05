@@ -111,6 +111,75 @@ class LocalAlphaToFredTests(unittest.TestCase):
                 self.assertEqual(json.loads(out[-1])["reason_code"],
                                  "LOCAL_ALPHA_JSON_INVALID")
 
+
+    def test_p250_paired_alpha_json_and_fred_csv_run_with_zero_network(self):
+        from scripts import p250_fred_offline_check as offline
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            fred=Path(tmp)/"index.csv"
+            stock=Path(tmp)/"stock.json"
+            fred.write_bytes(fred_data())
+            stock.write_bytes(self.original)
+            output=io.StringIO()
+            with (patch.object(fred_api, "_get",
+                               side_effect=AssertionError("NO_FRED_GET")),
+                  redirect_stdout(output)):
+                rc=offline.main(["--fred-csv",str(fred),
+                                 "--stock-alpha-json",str(stock),
+                                 "--ticker","AAPL","--issuer-cik",CIK,
+                                 "--filing-date",FILING,"--as-of",AS_OF])
+            self.assertEqual(rc,0,output.getvalue())
+            result=json.loads(output.getvalue())
+            self.assertEqual(result["status"],
+                             "LOCAL_FRED_CSV_PARSED_ORIGIN_UNVERIFIED")
+            self.assertEqual(result["pair"]["matched_observation_count"],42)
+            self.assertEqual(result["pair"]["stock_source_format"],
+                             "ALPHA_VANTAGE_OWNER_JSON")
+            self.assertEqual(result["network_requests"],0)
+            self.assertFalse(result["market_data_rights_verified"])
+            self.assertFalse(result["pair"]["full_a_b_c_ready"])
+            self.assertNotIn(str(fred),output.getvalue())
+            self.assertNotIn(str(stock),output.getvalue())
+            self.assertNotIn("close_observations",output.getvalue())
+
+    def test_p250_bad_alpha_json_rejected_without_raw_leak_or_http(self):
+        from scripts import p250_fred_offline_check as offline
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            fred=Path(tmp)/"fred.csv"
+            stock=Path(tmp)/"alpha.json"
+            fred.write_bytes(fred_data())
+            stock.write_bytes(fixture(symbol="MSFT"))
+            out=io.StringIO()
+            with redirect_stdout(out):
+                rc=offline.main(["--fred-csv",str(fred),
+                                 "--stock-alpha-json",str(stock),
+                                 "--ticker","AAPL","--issuer-cik",CIK,
+                                 "--filing-date",FILING,"--as-of",AS_OF])
+            self.assertEqual(rc,2)
+            result=json.loads(out.getvalue())
+            self.assertEqual(result["status"],"BLOCKED")
+            self.assertEqual(result["reason_code"],"FILE_OR_FORMAT_UNAVAILABLE")
+            self.assertEqual(result["network_requests"],0)
+            self.assertNotIn(str(stock),out.getvalue())
+
+    def test_p250_alpha_json_with_owner_claimed_url_fails(self):
+        from scripts import p250_fred_offline_check as offline
+        import io
+        from contextlib import redirect_stdout
+        out=io.StringIO()
+        with redirect_stdout(out):
+            rc=offline.main(["--fred-csv","unopened.csv",
+                             "--stock-alpha-json","unopened.json",
+                             "--ticker","AAPL","--issuer-cik",CIK,
+                             "--filing-date",FILING,"--as-of",AS_OF,
+                             "--stock-source-url","https://wrong.example/"])
+        self.assertEqual(rc,2)
+        self.assertEqual(json.loads(out.getvalue())["reason_code"],
+                         "STOCK_INPUT_INCOMPLETE")
+
     def test_direct_fred_call_still_requires_separate_approval(self):
         with patch.object(fred_api,"_get",
                           side_effect=AssertionError("NETWORK")):
