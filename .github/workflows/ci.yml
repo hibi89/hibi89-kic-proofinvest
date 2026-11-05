@@ -180,6 +180,8 @@ jobs:
         run: |
           python -B -m scripts.nvidia_audit_download_browser_smoke /tmp/kic-p213-nvda-browser
           python -c 'import json; x=json.load(open("/tmp/kic-p213-nvda-browser/p213-nvda-download-browser.json")); assert x["status"]=="PASS" and x["chromium_download_verified"] and x["new_session_consent_required"] and x["guard_decision"]=="HOLD" and x["replay"]=="LOCAL_NVDA_BUNDLE_DIGEST_AND_REPLAY_PASS" and len(x["issuer_original_sha256"])==64 and len(x["download_sha256"])==64 and x["external_http_allowed"] is False and x["sec_original_authenticated"] is False and x["source_rights_verified"] is False and x["trade_executed"] is False and x["public_production_verified"] is False'
+      - name: P266 actual Chromium owner-upload 4 files -> 7 tools -> Guard and export
+        run: python -B -m scripts.owner_source_global_browser_smoke
       - name: P263 Chromium global issuer B/C -> Guard -> JSON/HTML (no market API)
         run: |
           python -B -m scripts.global_fundamentals_browser_smoke /tmp/kic-p263-global-browser
