@@ -182,6 +182,37 @@ def run(output: Path) -> dict:
                                 or cohort_report["engine_c_complete"] is not False
                                 or cohort_report["guard_policy_preview"] != "HOLD"):
                             raise AssertionError("P223_TWO_PEER_AUDITED_FINANCIAL_REPLAY_FAILED")
+                        # P228: genuine Chromium asserts both the new AMD
+                        # audited operating-profit metric and downloaded JSON.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine C · AMD 영업이익률 원문 2개 연도 검산 (제한)",
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_text(
+                            "AMD FY2025 GAAP 영업이익률 (%)",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as op_event:
+                            page.get_by_role(
+                                "button",
+                                name="AMD 감사 영업이익률 검산 JSON (원본·시장 데이터 제외)",
+                                exact=True,
+                            ).click()
+                        op_dl = op_event.value
+                        if op_dl.suggested_filename != (
+                                "kuodra-amd-operating-margin-UNVERIFIED.json"):
+                            raise AssertionError("P228_OP_MARGIN_EXPORT_FILENAME")
+                        op_data = json.loads(Path(op_dl.path()).read_bytes())
+                        if (op_data["status"] != "AMD_AUDITED_OPERATING_MARGIN_HUMAN_ONLY"
+                                or op_data["operating_margin_2025_pct"] != "10.66"
+                                or op_data["operating_margin_2024_pct"] != "7.37"
+                                or op_data["operating_margin_change_pp"] != "3.30"
+                                or op_data["operating_income_growth_pct"] != "94.42"
+                                or op_data["peer_rights_verified"] is not False
+                                or op_data["engine_c_complete"] is not False
+                                or op_data["trade_executed"] is not False
+                                or op_data["guard_policy_preview"] != "HOLD"):
+                            raise AssertionError("P228_REAL_OP_MARGIN_DOWNLOAD_REPLAY")
                         # Form-based atomic submit: checkbox and both local
                         # file widgets are buffered in the client until one
                         # deliberate click, preventing premature reruns.

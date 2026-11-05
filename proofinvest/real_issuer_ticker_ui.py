@@ -170,6 +170,40 @@ def render_real_issuer_ticker_lookup(st) -> None:
             else:
                 st.warning("AMD 데이터센터 원문 수치 검산이 실패하여 부문 비교를 표시하지 않습니다.")
 
+            # P228: cross-replayed AMD audited operating-profit history
+            # distinct from P227 segment mix and P222 total revenue trend.
+            from .amd_operating_profit_review import review_amd_operating_profit
+            op = review_amd_operating_profit(ticker=result["ticker"])
+            if op["status"] == "AMD_AUDITED_OPERATING_MARGIN_HUMAN_ONLY":
+                st.subheader("Engine C · AMD 영업이익률 원문 2개 연도 검산 (제한)")
+                st.caption(
+                    "AMD 감사 10-K 및 독립 실적발표 GAAP 영업이익·매출만 검산. "
+                    "2025년 MI308 수출통제 관련 재고비용 효과 미조정. "
+                    "NVIDIA 전체기업과 직접 비교·투자 예측 불가, 결산일 29일 차이. "
+                    "원문 SHA·사용권 미검증, Guard HOLD."
+                )
+                op_left, op_right = st.columns(2)
+                op_left.metric("AMD FY2025 GAAP 영업이익률 (%)",
+                               op["operating_margin_2025_pct"])
+                op_right.metric("AMD FY2024 GAAP 영업이익률 (%)",
+                                op["operating_margin_2024_pct"])
+                st.metric("AMD GAAP 영업이익률 변화 (pp)",
+                          op["operating_margin_change_pp"])
+                st.markdown(
+                    f'[AMD 2025 감사 10-K]({op["amd_10k_url"]}) · '
+                    f'[AMD 독립 실적발표]({op["amd_release_url"]})'
+                )
+                st.download_button(
+                    "AMD 감사 영업이익률 검산 JSON (원본·시장 데이터 제외)",
+                    data=json.dumps(op, ensure_ascii=False, sort_keys=True,
+                                    separators=(",", ":"), allow_nan=False).encode("utf-8"),
+                    file_name="kuodra-amd-operating-margin-UNVERIFIED.json",
+                    mime="application/json", key="p228_amd_gaap_op_export",
+                )
+                st.warning("순이익률·매출총이익률과 구분. 시장/AI/라이선스 인증 안 됨 · Engine C 미완료.")
+            else:
+                st.warning("AMD 감사 영업이익률 재검산 실패: 미인증 결과를 숨깁니다.")
+
         else:
             st.warning("두 동종기업의 공식 10-K 검산이 실패해 종합 비교를 표시하지 않습니다.")
     # P219: independent model-data calculation only when the operator
