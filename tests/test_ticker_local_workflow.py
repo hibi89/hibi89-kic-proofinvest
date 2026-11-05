@@ -108,6 +108,31 @@ class LocalTickerWorkflowTests(unittest.TestCase):
         self.assertEqual(out["tool_calls_executed"], 3)
         self.assertIsNone(out["report"])
 
+    def test_unauthorized_report_blocks_before_independent_replay(self):
+        _, raws = report_case()
+        from proofinvest import ticker_local_report
+        real_make = ticker_local_report.make_local_report
+        for change in (
+            lambda report: report["limits"].update(trade_executed=True),
+            lambda report: report["source_rights_ledger"].update(
+                external_sharing_allowed=True),
+        ):
+            def forged(*args, **kwargs):
+                report = real_make(*args, **kwargs)
+                change(report)
+                return report
+            with patch.object(ticker_local_report, "make_local_report",
+                              side_effect=forged), patch.object(
+                                  ticker_local_report, "verify_local_report",
+                                  side_effect=AssertionError("REPLAY_MUST_NOT_RUN")):
+                out = run_local_ticker_workflow(
+                    ticker="NVDA", as_of="2025-10-16", sources=raws)
+            self.assertEqual(out["status"], "BLOCKED")
+            self.assertEqual(out["reason_code"], "REPORT_TRUST_CONTRACT_INVALID")
+            self.assertIsNone(out["report"])
+            self.assertEqual(out["tool_calls_executed"], 6)
+            self.assertFalse(out["tool_trace"][-1]["accepted"])
+
     def test_report_replay_disagreement_does_not_emit_successful_report(self):
         _, raw = report_case()
         from proofinvest import ticker_local_report
