@@ -162,9 +162,11 @@ def run_local_ticker_workflow(
         # the independent replay stage or be returned as review-ready.
         report_ok = (
             type(report) is dict
-            and report.get("source_authenticated") is False
-            and report.get("source_rights_verified") is False
-            and report.get("trade_executed") is False
+            and report.get("status") == "STRUCTURAL_ARITHMETIC_ONLY_UNVERIFIED"
+            and type(report.get("limits")) is dict
+            and all(report["limits"].get(key) is False for key in (
+                "source_authenticated", "source_rights_verified",
+                "trade_executed", "official_contest_submission"))
             and report.get("guard_policy_preview") in ("HOLD", "REJECT")
             and type(report.get("source_rights_ledger")) is dict
             and report["source_rights_ledger"].get("external_sharing_allowed") is False
