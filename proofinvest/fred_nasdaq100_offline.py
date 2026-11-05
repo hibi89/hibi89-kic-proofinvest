@@ -86,14 +86,17 @@ def _parse_csv(raw: bytes, *, as_of: str, header: tuple[str, str],
             if previous_input is not None and d <= previous_input:
                 raise ValueError("UNSORTED_DUPLICATE_CSV_DATE")
             previous_input = d
-            value = row[1]
-            if allow_missing and value in ("", "."):
-                missing += 1  # FRED missing values, never forward-filled
-                continue
+            # Calendar validation applies to every input row, including
+            # missing '.' FRED values. Otherwise a missing weekend/future
+            # row can silently bypass the claimed as-of source contract.
             if d.weekday() >= 5:
                 raise ValueError("WEEKEND_DAILY_PRICE")
             if d > cutoff:
                 raise ValueError("POST_AS_OF_DAILY_PRICE")
+            value = row[1]
+            if allow_missing and value in ("", "."):
+                missing += 1  # valid dated missing values, no forward fill
+                continue
             close = _price(value)
             if points and (d - _iso(points[-1]["date"])).days > 7:
                 # Gaps in actual observations must never be silently filled.

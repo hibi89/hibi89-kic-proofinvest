@@ -96,6 +96,22 @@ class FredOfflineContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"WEEKEND_DAILY_PRICE"):
             parse_fred_nasdaq100_csv(raw,as_of=AS_OF)
 
+
+    def test_missing_fred_calendar_rows_must_still_obey_trading_date_and_asof(self):
+        """A '.' price is not an exemption from calendar/source-vintage checks."""
+        baseline = fred_data()
+        # Replace the 2026-07-03 close row with an out-of-calendar missing row.
+        for row, error in ((b"2026-07-04,.", "WEEKEND_DAILY_PRICE"),
+                           (b"2026-10-02,.", "POST_AS_OF_DAILY_PRICE")):
+            altered = baseline.replace(b"2026-07-03,10007.500", row, 1)
+            with self.subTest(row=row), self.assertRaisesRegex(ValueError, error):
+                parse_fred_nasdaq100_csv(altered, as_of=AS_OF)
+        # Ordinary missing market-holiday-style weekday rows remain allowed.
+        valid = baseline.replace(b"2026-07-03,10007.500", b"2026-07-03,.", 1)
+        parsed = parse_fred_nasdaq100_csv(valid, as_of=AS_OF)
+        self.assertEqual(parsed["missing_rows_ignored"], 1)
+        self.assertEqual(parsed["point_count"], 64)
+
     def test_duplicate_date_and_inversion_rejected(self):
         raw=fred_data().replace(
             b"2026-07-02,",b"2026-07-01,",1)

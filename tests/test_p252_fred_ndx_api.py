@@ -103,6 +103,24 @@ class FredApiOneShotTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"WEEKEND_DAILY_PRICE"):
             api.parse_fred_nasdaq100_api_json(json.dumps(x).encode(),as_of=AS_OF)
 
+
+    def test_missing_weekend_or_post_asof_api_observation_never_passes(self):
+        """The JSON-to-CSV validation must reject invalid dates even with '.'."""
+        from copy import deepcopy
+        for day, code in (("2026-07-04", "WEEKEND_DAILY_PRICE"),
+                          ("2026-10-02", "FRED_OBSERVATION_ORDER_OR_CUTOFF")):
+            obj = json.loads(wire())
+            idx = 2
+            obj["observations"][idx]["date"] = day
+            obj["observations"][idx]["value"] = "."
+            # Future JSON entries may first be rejected by the API window/order.
+            with self.subTest(day=day), self.assertRaises(ValueError) as exc:
+                api.parse_fred_nasdaq100_api_json(
+                    json.dumps(obj).encode(), as_of=AS_OF)
+            self.assertIn(str(exc.exception), (
+                "WEEKEND_DAILY_PRICE", "FRED_OBSERVATION_ORDER_OR_CUTOFF",
+                "UNSORTED_DUPLICATE_CSV_DATE"))
+
     def test_fred_missing_value_never_forward_filled(self):
         x=json.loads(wire());x["observations"][5]["value"]="."
         result=api.parse_fred_nasdaq100_api_json(json.dumps(x).encode(),as_of=AS_OF)
