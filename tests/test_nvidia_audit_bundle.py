@@ -102,6 +102,15 @@ class P212RealNvidiaExportTests(unittest.TestCase):
             p.verify_nvidia_audit_bundle(changed,
                                          expected_sha256=sha256(changed).hexdigest())
 
+    def test_noncanonical_zip_framing_rejected_even_with_matching_digest(self):
+        blob, digest = p.build_nvidia_audit_bundle(self.real())
+        self.assertEqual(p.verify_nvidia_audit_bundle(
+            blob, expected_sha256=digest)["guard_decision"], "HOLD")
+        tampered = blob + b"UNVERIFIED-TRAILER"
+        with self.assertRaisesRegex(ValueError, "NVDA_ZIP_NONCANONICAL_FRAMING"):
+            p.verify_nvidia_audit_bundle(
+                tampered, expected_sha256=sha256(tampered).hexdigest())
+
     def test_verification_cli_readonly_no_network_and_hash_required(self):
         blob, digest = p.build_nvidia_audit_bundle(self.real())
         self.out.write_bytes(blob)
