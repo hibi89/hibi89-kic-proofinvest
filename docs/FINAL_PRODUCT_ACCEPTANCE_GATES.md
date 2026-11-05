@@ -1,4 +1,9 @@
-# KUODRA — final product acceptance score (verified P231, 2026-11-05 KST)
+# KUODRA — final product acceptance score (P232 verified; 73/100 unchanged, 2026-11-05 KST)
+
+### P232 independent real local Guard HOLD receipt ↔ SQLite record replay (quality improvement, +0 final acceptance points)
+
+P231 already earned one actual A/B/C-derived Guard-to-SQLite *write and user receipt* prerequisite. P232 adds an independently **read-only local re-verifier**: same operator's derived A/B/C JSON + downloaded HOLD receipt + existing SQLite ledger, independently recomputed source digest/evidence/request hash + Guard HOLD invariants + exact immutable-view event/registry/whole hash-chain match. Refuses forged rights/status, changed local A/B/C input, absent DB, corrupted row or mismatched receipt; it never creates an absent DB, sends originals, contacts a market/SEC provider, grants source/model rights or executes a trade. Native Streamlit third optional receipt uploader lets the user re-upload the actual receipt in the original atomic market form; Chromium proved physical file replay and forged receipt rejection. New CLI `python -m scripts.verify_p231_receipt --abc-review abc.json --receipt hold.json --audit-db local.sqlite3`. Functional SHA `714120904de1cc6041eadd4696910497e664df97` [full CI #42029215581](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42029215581) 5/5 SUCCESS, Python 1962 PASS, syntax 462 PASS, native Windows HTTP/SQLite, isolated nonroot/no-network Docker, actual Chromium. Initial UI CI #42028865154 failed old test-upload count (2→3), corrected after targeted tests; no repetitive failed SHA retries. **This adds user-verifiable trust but not genuinely licensed market/peer/SEC bytes or external model/Production rights; internal final acceptance stays 73/100, 27 unearned (SEC3, market8, peers4, financial AI3, Production4, DAKER5), RELEASE HOLD.** Do not award an artificial one point by splitting an external-gated category.
+
 
 ### P231 standalone source-bound partial A/B/C-to-Guard SQLite user workflow (+1 narrow final-product precursor)
 
@@ -250,5 +255,6 @@ failed exact GAAP-header regression before GET and corrected #41890670220
 failed PUBLIC_FY2026_REPORT_FACT_MISSING_FY2026_REVENUE_USD_MILLIONS.
 Stop all these same-route blind retries; no claims of genuine P200/P201/P202
 success/points. No PDF, DAKER submission or paid user data changes.
+
 
 
