@@ -23,6 +23,7 @@ _SOURCE_TICKER_SEARCH = "KUODRA · 종목 1개 검색 (로컬 전용)"
 _SOURCE_APPLE_2026_PUBLIC = "KUODRA · Apple FY2026 실제 공시 수치 검산 (원본 미인증)"
 _SOURCE_NVDA_IR_HISTORY = "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"
 _SOURCE_NVDA_FY2026_REAL = "KUODRA · NVIDIA FY2026 공식 발행사 원문 검증 (제한)"
+_SOURCE_REAL_ISSUER_TICKER = "KUODRA · 실제 발행사 종목 직접 입력 (2종 · 제한)"
 
 _DIRECT = "합성 fixture 직접 계산"
 _STORED = "저장된 결과 재조회 (재계산 없음)"
@@ -576,6 +577,9 @@ def render_app(st) -> None:
     public_2026_ui = Path(__file__).resolve().parent / "proofinvest/apple_fy2026_public_filing_ui.py"
     if public_2026_ui.is_file():
         available_sources.append(_SOURCE_APPLE_2026_PUBLIC)
+    real_ticker_ui = Path(__file__).resolve().parent / "proofinvest/real_issuer_ticker_ui.py"
+    if real_ticker_ui.is_file():
+        available_sources.append(_SOURCE_REAL_ISSUER_TICKER)
     nvidia_real_ui = Path(__file__).resolve().parent / "proofinvest/nvidia_real_issuer_ui.py"
     if nvidia_real_ui.is_file():
         available_sources.append(_SOURCE_NVDA_FY2026_REAL)
@@ -646,6 +650,10 @@ def render_app(st) -> None:
     if source == _SOURCE_APPLE_2026_PUBLIC:
         from proofinvest.apple_fy2026_public_filing_ui import render_apple_fy2026_public_review
         render_apple_fy2026_public_review(st)
+        return
+    if source == _SOURCE_REAL_ISSUER_TICKER:
+        from proofinvest.real_issuer_ticker_ui import render_real_issuer_ticker_lookup
+        render_real_issuer_ticker_lookup(st)
         return
     if source == _SOURCE_NVDA_FY2026_REAL:
         from proofinvest.nvidia_real_issuer_ui import render_nvidia_fy2026_real_issuer
