@@ -143,6 +143,45 @@ def parse_fred_nasdaq100_csv(raw: bytes, *, as_of: str) -> dict[str, Any]:
     }
 
 
+
+def parse_owner_alpha_vantage_json(raw: bytes, *, ticker: str,
+                                  as_of: str) -> dict[str, Any]:
+    """Convert existing local Alpha JSON to typed Engine A stock points.
+
+    Preserve original JSON digest and declared Alpha provenance, not a
+    repackaged CSV digest or a vendor authentication/entitlement claim.
+    No network call, original storage, LLM processing or share/trade.
+    """
+    from .market_provider_alpha_vantage import parse_daily_close_bytes
+    parsed = parse_daily_close_bytes(raw, ticker=ticker, as_of=as_of)
+    if (parsed.get("schema") != "kuodra.alpha-vantage-daily-source.v1"
+            or parsed.get("status") != "PRICE_ONLY_UNVERIFIED"
+            or parsed.get("issuer_authenticated") is not False
+            or parsed.get("market_data_rights_verified") is not False
+            or parsed.get("full_a_b_c_ready") is not False
+            or parsed.get("trade_executed") is not False):
+        raise ValueError("LOCAL_ALPHA_SOURCE_CONTRACT_INVALID")
+    return {
+        "schema": "kuodra.alpha-vantage-stock-offline.v1",
+        "status": "DAILY_CLOSE_UNVERIFIED",
+        "provider": "ALPHA_VANTAGE_OWNER_JSON_UNVERIFIED",
+        "source_format": "ALPHA_VANTAGE_OWNER_JSON",
+        "kind": "stock", "ticker": ticker, "basis": "PRICE_ONLY_CLOSE",
+        "as_of": as_of,
+        "source_url": "https://www.alphavantage.co/query",
+        "source_sha256": parsed["source_sha256"],
+        "point_count": parsed["point_count"],
+        "first_date": parsed["first_date"],
+        "last_date": parsed["last_date"],
+        "close_observations": parsed["close_observations"],
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "commercial_reuse_allowed": False,
+        "public_display_allowed": False,
+        "ai_processing_allowed": False,
+    }
+
+
 def _valid_source_url(url: str) -> bool:
     if type(url) is not str or len(url) > 400:
         return False
@@ -185,6 +224,14 @@ def parse_owner_stock_csv(raw: bytes, *, ticker: str, as_of: str,
 def _trusted_shape(receipt: dict, *, kind: str, as_of: str) -> dict[str, str]:
     if type(receipt) is not dict:
         raise ValueError("OFFLINE_SOURCE_UNTRUSTED")
+    alpha_stock = (
+        kind == "stock"
+        and receipt.get("schema") == "kuodra.alpha-vantage-stock-offline.v1"
+        and receipt.get("status") == "DAILY_CLOSE_UNVERIFIED"
+        and receipt.get("provider") == "ALPHA_VANTAGE_OWNER_JSON_UNVERIFIED"
+        and receipt.get("source_format") == "ALPHA_VANTAGE_OWNER_JSON"
+        and receipt.get("source_url") == "https://www.alphavantage.co/query"
+    )
     api_index = (kind == "index"
                  and receipt.get("schema") == "kuodra.fred-nasdaq100-api.v1"
                  and receipt.get("status") ==
@@ -198,7 +245,7 @@ def _trusted_shape(receipt: dict, *, kind: str, as_of: str) -> dict[str, str]:
                  and type(receipt.get("retries")) is int
                  and receipt["retries"] == 0
                  and receipt.get("trade_executed") is False)
-    if ((not api_index and (
+    if ((not api_index and not alpha_stock and (
                 receipt.get("schema") != (
                     "kuodra.fred-nasdaq100-offline.v1" if kind == "index"
                     else "kuodra.owner-stock-offline.v1")
@@ -222,7 +269,8 @@ def _trusted_shape(receipt: dict, *, kind: str, as_of: str) -> dict[str, str]:
             or receipt.get("source_url") != _FRED_URL):
         raise ValueError("INDEX_SOURCE_IDENTITY_MISMATCH")
     if kind == "stock" and (
-            receipt.get("provider") != "OWNER_CSV_ORIGIN_UNVERIFIED"
+            (not alpha_stock and
+             receipt.get("provider") != "OWNER_CSV_ORIGIN_UNVERIFIED")
             or type(receipt.get("ticker")) is not str
             or _SYMBOL.fullmatch(receipt["ticker"]) is None):
         raise ValueError("STOCK_SOURCE_IDENTITY_MISMATCH")
@@ -305,6 +353,10 @@ def analyze_offline_fred_pair(*, stock: dict, index: dict, ticker: str,
             "matched_period_start": common[0],
             "matched_period_end": common[-1],
             "stock_file_sha256": stock["source_sha256"],
+            "stock_source_format": (
+                "ALPHA_VANTAGE_OWNER_JSON" if stock.get("schema") ==
+                "kuodra.alpha-vantage-stock-offline.v1"
+                else "OWNER_CSV_UNVERIFIED"),
             "index_file_sha256": index["source_sha256"],
             "index_source_format": (
                 "FRED_V1_JSON" if index.get("schema") ==

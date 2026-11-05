@@ -31,7 +31,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="One-shot official FRED NASDAQ100 personal request")
     ap.add_argument("--as-of", default=None, help="Historical point-in-time date YYYY-MM-DD")
     ap.add_argument("--live", action="store_true", help="Explicit personal FRED API GET")
-    ap.add_argument("--stock-csv", help="Optional local date,close CSV, RAM only")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("--stock-csv", help="Optional local date,close CSV, RAM only")
+    group.add_argument("--stock-alpha-json",
+                       help="Optional owner-local Alpha Vantage daily JSON, RAM only")
     ap.add_argument("--ticker", help="Stock ticker for local Engine A")
     ap.add_argument("--issuer-cik", help="Owner-supplied 10-digit issuer CIK")
     ap.add_argument("--filing-date", help="Owner-supplied SEC filing date")
@@ -48,25 +51,38 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests": 0, "retries": 0}, sort_keys=True))
         return 2
     stock = None
+    selected = args.stock_csv or args.stock_alpha_json
     extras = (args.ticker, args.issuer_cik, args.filing_date,
               args.stock_source_url)
-    if args.stock_csv is None and any(x is not None for x in extras):
+    if selected is None and any(x is not None for x in extras):
         print(json.dumps({"status":"BLOCKED","reason_code":"PAIR_ARGS_INCOMPLETE",
                           "network_requests":0,"retries":0}))
         return 2
-    if args.stock_csv is not None:
+    if selected is not None:
+        error = ("LOCAL_ALPHA_JSON_INVALID" if args.stock_alpha_json
+                 else "LOCAL_STOCK_CSV_INVALID")
         try:
-            if any(not x for x in extras):
+            if (any(not x for x in (args.ticker, args.issuer_cik,
+                                    args.filing_date))
+                    or (args.stock_csv is not None and
+                        not args.stock_source_url)
+                    or (args.stock_alpha_json is not None and
+                        args.stock_source_url is not None)):
                 raise ValueError("PAIR_FIELDS_REQUIRED")
-            from proofinvest.fred_nasdaq100_offline import parse_owner_stock_csv
-            with open(args.stock_csv, "rb") as fh:
-                raw = fh.read(2097153)
-            stock = parse_owner_stock_csv(
-                raw, ticker=args.ticker, as_of=asof,
-                source_url=args.stock_source_url)
+            with open(selected, "rb") as handle:
+                raw = handle.read(2097153 if args.stock_csv else 262145)
+            if args.stock_csv is not None:
+                from proofinvest.fred_nasdaq100_offline import parse_owner_stock_csv
+                stock = parse_owner_stock_csv(
+                    raw, ticker=args.ticker, as_of=asof,
+                    source_url=args.stock_source_url)
+            else:
+                from proofinvest.fred_nasdaq100_offline import parse_owner_alpha_vantage_json
+                stock = parse_owner_alpha_vantage_json(
+                    raw, ticker=args.ticker, as_of=asof)
             del raw
         except (ValueError, TypeError, OSError, UnicodeError, OverflowError):
-            print(json.dumps({"status":"BLOCKED","reason_code":"LOCAL_STOCK_CSV_INVALID",
+            print(json.dumps({"status":"BLOCKED","reason_code":error,
                               "network_requests":0,"retries":0}))
             return 2
     planned = None
