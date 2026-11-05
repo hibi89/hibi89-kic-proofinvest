@@ -75,6 +75,10 @@ def render_real_issuer_ticker_lookup(st) -> None:
         "engine_c_complete": False,
         "full_abc_complete": False,
     })
+    # P219: independent model-data calculation only when the operator
+    # explicitly supplies locally held market responses. No provider GET.
+    from .real_issuer_local_market import render_real_issuer_local_market_panel
+    render_real_issuer_local_market_panel(st, ticker=result["ticker"])
     st.warning(
         "발행사 홈페이지 원본 확인은 SEC EDGAR 원본 바이트 인증과 다릅니다. "
         "데이터 이용권·모델 처리권·진짜 주가/지수/동종기업 공급자는 미확인입니다. "
