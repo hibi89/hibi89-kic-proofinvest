@@ -106,10 +106,13 @@ class P212RealNvidiaExportTests(unittest.TestCase):
         blob, digest = p.build_nvidia_audit_bundle(self.real())
         self.assertEqual(p.verify_nvidia_audit_bundle(
             blob, expected_sha256=digest)["guard_decision"], "HOLD")
-        tampered = blob + b"UNVERIFIED-TRAILER"
-        with self.assertRaisesRegex(ValueError, "NVDA_ZIP_NONCANONICAL_FRAMING"):
-            p.verify_nvidia_audit_bundle(
-                tampered, expected_sha256=sha256(tampered).hexdigest())
+        for tampered in (blob + b"UNVERIFIED-TRAILER",
+                         b"UNVERIFIED-PREFIX" + blob,
+                         blob + blob):
+            with self.subTest(length=len(tampered)):
+                with self.assertRaisesRegex(ValueError, "NVDA_ZIP_NONCANONICAL_FRAMING"):
+                    p.verify_nvidia_audit_bundle(
+                        tampered, expected_sha256=sha256(tampered).hexdigest())
 
     def test_verification_cli_readonly_no_network_and_hash_required(self):
         blob, digest = p.build_nvidia_audit_bundle(self.real())
