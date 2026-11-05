@@ -68,3 +68,7 @@ def render_apple_fy2026_public_review(st) -> None:
     # Optional stronger P233 Qwen check: separate two consents, no auto model call.
     from .apple_qwen_public_ui import render_apple_public_qwen_check
     render_apple_public_qwen_check(st)
+
+    # P234 financial anomalies: two separate opt-ins, public derived rates only.
+    from .apple_qwen_anomaly_ui import render_apple_public_anomaly_model
+    render_apple_public_anomaly_model(st)
