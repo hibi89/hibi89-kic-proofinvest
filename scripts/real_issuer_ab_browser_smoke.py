@@ -527,11 +527,22 @@ def run(output: Path) -> dict:
                         )).to_be_visible(timeout=25000)
                         forged=dict(hold)
                         forged["market_rights_verified"]=True
+                        # Streamlit's uploader keeps its first accepted
+                        # object unless the old selection is removed first.
+                        # Explicitly remove the prior file before replacing it.
+                        page.get_by_role(
+                            "button", name="Remove p231-owner-hold-receipt.json",
+                            exact=True,
+                        ).click()
                         uploader.nth(2).set_input_files({
                             "name":"forged-p231-rights.json",
                             "mimeType":"application/json",
                             "buffer":json.dumps(forged).encode("utf-8"),
                         })
+                        expect(page.get_by_role(
+                            "button", name="Remove forged-p231-rights.json",
+                            exact=True,
+                        )).to_be_visible(timeout=15000)
                         page.get_by_role(
                             "button",
                             name="다운로드한 Guard HOLD 영수증과 로컬 SQLite 대조 (읽기 전용)",
