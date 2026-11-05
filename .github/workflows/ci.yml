@@ -387,3 +387,20 @@ jobs:
           python-version: '3.11'
       - name: Real Qwen 1.5B dual human-only financial signal and negative control
         run: bash scripts/real_qwen15_anomaly_ci.sh
+
+  p235-real-public-evidence-model:
+    name: P235 genuine Qwen1.5B three-source-card grounded public brief
+    # Model is ~986 MB: only one owner-initiated distinct code proof,
+    # not on every routine test or documentation update.
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[qwen-brief-real-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Actual Qwen1.5B public financial evidence-card summary
+        run: bash scripts/real_qwen_public_brief_ci.sh
