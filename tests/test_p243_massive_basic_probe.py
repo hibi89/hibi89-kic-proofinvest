@@ -134,6 +134,36 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(out["reason_code"],"NETWORK_OR_TLS_UNAVAILABLE")
         self.assertNotIn(KEY,json.dumps(out))
 
+    def test_default_probe_date_never_asks_for_current_utc_session(self):
+        with patch.object(cli, "free_basic_safe_as_of",
+                          return_value="2026-11-04"), (
+            patch.object(cli, "_https_get", side_effect=AssertionError("HTTP")):
+            code,receipt=self.capture(["--ticker", "AAPL"])
+        self.assertEqual(code,0)
+        self.assertEqual(receipt["as_of"],"2026-11-04")
+        self.assertEqual(receipt["network_requests"],0)
+
+    def test_explicit_same_day_basic_date_blocks_before_key_and_get(self):
+        with patch.object(cli, "free_basic_safe_as_of",
+                          return_value="2026-11-04"), (
+            patch.object(cli, "_https_get", side_effect=AssertionError("HTTP"))), (
+            patch.object(cli.getpass, "getpass",
+                         side_effect=AssertionError("MUST NOT READ KEY"))):
+            code,receipt=self.capture(
+                ["--ticker","AAPL","--as-of","2026-11-05","--live"])
+        self.assertEqual(code,2)
+        self.assertEqual(receipt["reason_code"],"FREE_BASIC_EOD_NOT_AVAILABLE_YET")
+        self.assertEqual(receipt["safe_as_of"],"2026-11-04")
+        self.assertEqual(receipt["network_requests"],0)
+
+    def test_noncanonical_invalid_calendar_date_blocks_with_no_http(self):
+        with patch.object(cli, "_https_get", side_effect=AssertionError("HTTP")):
+            code,receipt=self.capture(
+                ["--ticker","AAPL","--as-of","2026-02-30","--live"])
+        self.assertEqual(code,2)
+        self.assertEqual(receipt["reason_code"],"INVALID_TICKER_OR_DATE")
+        self.assertEqual(receipt["network_requests"],0)
+
     def test_bad_date_blocks_before_approval(self):
         with patch.object(cli,"_https_get",side_effect=AssertionError("REQUEST")), (
             patch.object(cli.getpass,"getpass",side_effect=AssertionError("KEY"))):

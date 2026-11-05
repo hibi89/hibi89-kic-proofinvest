@@ -57,6 +57,24 @@ def _bad_constant(_):
     raise ValueError("INVALID_NONFINITE_JSON_VALUE")
 
 
+def free_basic_safe_as_of(utc_today: date | None = None) -> str:
+    """Conservatively select two completed weekdays before UTC today.
+
+    Massive free EOD aggregates exclude the CURRENT Eastern trading day until
+    after 00:00 ET, which may lag UTC/KST. Backing off two weekdays avoids an
+    in-progress U.S. session without relying on Windows zoneinfo/tzdata or
+    inventing holiday calendars. Deliberately favors safety over freshness.
+    """
+    cursor = utc_today if utc_today is not None else datetime.now(timezone.utc).date()
+    if type(cursor) is not date:
+        raise ValueError("UTC_DATE_INVALID")
+    for _ in range(2):
+        cursor -= timedelta(days=1)
+        while cursor.weekday() >= 5:
+            cursor -= timedelta(days=1)
+    return cursor.isoformat()
+
+
 def _day(value: str) -> date:
     if type(value) is not str:
         raise ValueError("INVALID_DATE")
@@ -291,7 +309,7 @@ def fetch_massive_pair(*, ticker: str, issuer_cik: str, filing_date: str,
                 or type(issuer_cik) is not str
                 or re.fullmatch(r"[0-9]{10}", issuer_cik) is None
                 or issuer_cik == "0000000000" or _day(filing_date) >= _day(as_of)
-                or _day(as_of) > datetime.now(timezone.utc).date()
+                or _day(as_of) > _day(free_basic_safe_as_of())
                 or type(api_key) is not str or _KEY.fullmatch(api_key) is None):
             return _blocked("PRE_NETWORK_IDENTITY_DATE_OR_KEY_INVALID")
     except (ValueError, OverflowError, TypeError):

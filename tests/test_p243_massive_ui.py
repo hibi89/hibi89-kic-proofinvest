@@ -19,6 +19,19 @@ GATES = {
 
 
 class MassiveResearchUiTests(unittest.TestCase):
+    def test_free_basic_today_button_disabled_even_with_owner_gates(self):
+        st = FakeSt(clicked=LABEL, values={
+            "kuodra_p100_ticker": "NVDA",
+            "kuodra_p100_as_of": "2026-02-01",
+        }, uploads=make_inputs(), checks={"kuodra_p243_massive_ack": True})
+        with patch.dict(os.environ,GATES,clear=True), (
+            patch("proofinvest.market_provider_massive.free_basic_safe_as_of",
+                  return_value="2026-01-31")), (
+            patch("proofinvest.market_provider_massive.fetch_massive_pair",
+                  side_effect=AssertionError("NO PROVIDER HTTP"))):
+            ui.render_single_ticker_search(st)
+        self.assertTrue(any(label==LABEL and disabled for label,disabled in st.buttons))
+
     def test_missing_personal_license_gate_disables_button(self):
         st = FakeSt(clicked=LABEL, values={
             "kuodra_p100_ticker": "NVDA", "kuodra_p100_as_of": "2026-02-01",

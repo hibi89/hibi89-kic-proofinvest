@@ -20,6 +20,7 @@ from urllib.error import HTTPError, URLError
 
 from proofinvest.market_provider_massive import (
     _KEY, _SYMBOL, _https_get, _url, parse_massive_daily,
+    free_basic_safe_as_of,
 )
 
 _APPROVAL = "REQUEST MASSIVE BASIC PERSONAL"
@@ -52,13 +53,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--live", action="store_true",
                         help="Allow up to two actual Massive HTTPS GETs after TTY confirmation")
     parser.add_argument("--ticker", default="AAPL", help="One uppercase stock ticker")
-    parser.add_argument("--as-of", default=datetime.now(timezone.utc).date().isoformat(),
-                        help="UTC date YYYY-MM-DD")
+    safe_as_of = free_basic_safe_as_of()
+    parser.add_argument("--as-of", default=safe_as_of,
+                        help="historical EOD YYYY-MM-DD (default: conservative free Basic date)")
     args = parser.parse_args(argv)
-    if (_SYMBOL.fullmatch(args.ticker) is None
-            or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", args.as_of)
-            or args.as_of > datetime.now(timezone.utc).date().isoformat()):
+    try:
+        validated_asof = datetime.strptime(args.as_of, "%Y-%m-%d").date()
+        valid = (args.as_of == validated_asof.isoformat()
+                 and _SYMBOL.fullmatch(args.ticker) is not None)
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
         print(json.dumps({"status":"BLOCKED","reason_code":"INVALID_TICKER_OR_DATE",
+                          "network_requests":0},sort_keys=True))
+        return 2
+    if args.as_of > safe_as_of:
+        print(json.dumps({"status":"BLOCKED",
+                          "reason_code":"FREE_BASIC_EOD_NOT_AVAILABLE_YET",
+                          "safe_as_of":safe_as_of,
                           "network_requests":0},sort_keys=True))
         return 2
     if not args.live:

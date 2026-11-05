@@ -1063,6 +1063,14 @@ def render_single_ticker_search(st) -> None:
     )) and bool(os.environ.get("MASSIVE_API_KEY"))
     st.caption("Massive 무료 Stocks/Indices Basic: 실제 I:NDX 및 종목 일봉. "
                "개인 연구 전용·이용권 미인증. 계정 생성만으로 조회를 승인하지 않습니다.")
+    from .market_provider_massive import free_basic_safe_as_of
+    massive_safe_as_of = free_basic_safe_as_of()
+    massive_date_ready = bool(
+        valid and type(as_of) is str and as_of <= massive_safe_as_of)
+    if not massive_date_ready:
+        st.info("Massive Basic은 미국 동부시간 당일 EOD 데이터가 제공되지 않습니다. "
+                "조회 기준일을 " + massive_safe_as_of
+                + " 또는 이전의 검증 가능한 날짜로 변경하십시오.")
     massive_ack = st.checkbox(
         "내 개인 연구용으로만 Massive 주가·I:NDX 최대 2회 조회에 개별 동의합니다",
         value=False, key="kuodra_p243_massive_ack",
@@ -1070,7 +1078,7 @@ def render_single_ticker_search(st) -> None:
     massive_clicked = st.button(
         "Massive 무료 플랜 · 로컬 SEC 검산 후 주가+NDX 분석 (최대 2회)",
         key="kuodra_p243_massive_run",
-        disabled=not (massive_enabled and massive_ack and valid
+        disabled=not (massive_enabled and massive_ack and massive_date_ready
                       and (operator_zip is not None or
                            all(x is not None for x in (
                                ticker_map, submissions, companyfacts_local, original_local)))),

@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from proofinvest.market_provider_massive import (
     _https_get, _MAX_RESPONSE, analyze_massive_pair, fetch_massive_pair,
+    free_basic_safe_as_of,
     parse_massive_daily,
 )
 
@@ -50,6 +51,28 @@ def receipts():
 
 
 class MassiveBasicAdapterTests(unittest.TestCase):
+    def test_free_basic_utc_eod_cutoff_weekend_and_dst_independent(self):
+        # Conservative UTC-only selection; safe even when Korean morning is
+        # still the previous U.S. trading day.
+        self.assertEqual(free_basic_safe_as_of(date(2026,11,6)), "2026-11-04")
+        self.assertEqual(free_basic_safe_as_of(date(2026,11,7)), "2026-11-05")
+        self.assertEqual(free_basic_safe_as_of(date(2026,11,9)), "2026-11-05")
+        self.assertEqual(free_basic_safe_as_of(date(2026,11,10)), "2026-11-06")
+
+    def test_free_basic_blocks_unsafe_current_session_before_http(self):
+        with patch.dict(os.environ, GATES, clear=True), (
+            patch("proofinvest.market_provider_massive.free_basic_safe_as_of",
+                  return_value="2026-10-01")):
+            result = fetch_massive_pair(
+                ticker="NVDA", issuer_cik="0001045810",
+                filing_date="2026-07-31", as_of="2026-10-02", api_key=KEY,
+                explicit_click=True, individual_research_approved=True,
+                stock_transport=lambda _: self.fail("STOCK GET NOT ALLOWED"),
+                index_transport=lambda _: self.fail("NDX GET NOT ALLOWED"),
+            )
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["network_requests"], 0)
+
     def test_actual_ndx_symbol_daily_schema_and_eod_bar_math(self):
         a,b = receipts()
         self.assertEqual(a["status"], "DAILY_CLOSE_UNVERIFIED")
