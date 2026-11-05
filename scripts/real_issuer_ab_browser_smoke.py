@@ -119,6 +119,45 @@ def run(output: Path) -> dict:
                             "heading",
                             name="Engine A · 로컬 종목 주가 + 실제 NDX 종목코드 형식 검산",
                         )).to_be_visible(timeout=25000)
+                        # P229: actual Chromium on the NVDA ticker page,
+                        # no external request and a redacted license-gap JSON.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine A · NDX 공급자 사용권 사전검증 (외부 요청 0)",
+                        )).to_be_visible(timeout=25000)
+                        page.get_by_role(
+                            "button",
+                            name="NDX 공급자 사용권 사전점검 (외부 요청 0)",
+                            exact=True,
+                        ).click()
+                        expect(page.get_by_text(
+                            "NDX 공급자 실계정·이용권 미검증",
+                            exact=False,
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as rights_event:
+                            page.get_by_role(
+                                "button",
+                                name="NDX 출처·계정 사용권 미검증 확인서 JSON",
+                                exact=True,
+                            ).click()
+                        rights_download=rights_event.value
+                        if rights_download.suggested_filename != (
+                                "kuodra-ndx-license-gaps-UNVERIFIED.json"):
+                            raise AssertionError("P229_LICENSE_GAPS_DOWNLOAD_NAME")
+                        rights_report=json.loads(
+                            Path(rights_download.path()).read_bytes())
+                        from proofinvest.real_issuer_ndx_license_gap import (
+                            replay_issuer_ndx_license_gap,
+                        )
+                        if (not replay_issuer_ndx_license_gap(rights_report)
+                                or rights_report["ticker"]!="NVDA"
+                                or rights_report["candidate_provider"]!="massive"
+                                or rights_report["intended_use"]!="internal_research"
+                                or rights_report["benchmark"]!="NASDAQ_100"
+                                or rights_report["request_execution_authorized"] is not False
+                                or rights_report["licensed_stock_and_ndx_available"] is not False
+                                or rights_report["trade_executed"] is not False):
+                            raise AssertionError("P229_LICENSE_GAPS_UNVERIFIED_CONTRACT")
                         # Independent P222 real audited AMD 10-K + issuer
                         # press-release comparison must be visible and
                         # downloadable in the same genuine ticker UI.

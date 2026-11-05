@@ -75,6 +75,10 @@ def render_real_issuer_ticker_lookup(st) -> None:
         "engine_c_complete": False,
         "full_abc_complete": False,
     })
+    # P229: issuer-bound license/entitlement gap inspection, user-clicked
+    # without vendor credentials, data fetch, paid operation or rights grant.
+    from .real_issuer_ndx_license_gap import render_issuer_ndx_license_gap_panel
+    render_issuer_ndx_license_gap_panel(st, ticker=result["ticker"])
     if result["ticker"] == "NVDA":
         # P222: independent audited AMD filing + press-release arithmetic
         # crosscheck; intentionally separate from licensed/full Engine C.
