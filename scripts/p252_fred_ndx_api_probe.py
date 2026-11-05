@@ -47,13 +47,6 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"status": "BLOCKED", "reason_code": "FRED_AS_OF_DATE_NOT_SAFE",
                           "network_requests": 0, "retries": 0}, sort_keys=True))
         return 2
-    if not args.live:
-        print(json.dumps({"status":"DRY_RUN_NO_REQUEST",
-                          "series_id":"NASDAQ100", "index_symbol":"I:NDX",
-                          "provider":"FRED", "as_of":asof,
-                          "network_requests":0, "retries":0,
-                          "commercial_reuse_allowed":False},sort_keys=True))
-        return 0
     stock = None
     extras = (args.ticker, args.issuer_cik, args.filing_date,
               args.stock_source_url)
@@ -76,6 +69,30 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status":"BLOCKED","reason_code":"LOCAL_STOCK_CSV_INVALID",
                               "network_requests":0,"retries":0}))
             return 2
+    planned = None
+    if stock is not None:
+        from proofinvest.fred_nasdaq100_offline import plan_local_stock_for_fred_index
+        planned = plan_local_stock_for_fred_index(
+            stock=stock, ticker=args.ticker, issuer_cik=args.issuer_cik,
+            filing_date=args.filing_date, as_of=asof)
+        if planned["status"] != "LOCAL_STOCK_READY_INDEX_REQUIRED_UNVERIFIED":
+            print(json.dumps({"status":"BLOCKED",
+                              "reason_code":"LOCAL_STOCK_POST_FILING_WINDOW_INVALID",
+                              "network_requests":0,"retries":0},sort_keys=True))
+            return 2
+    if not args.live:
+        receipt = {"status": "DRY_RUN_PAIR_READY_NO_REQUEST" if planned else
+                   "DRY_RUN_NO_REQUEST",
+                   "series_id":"NASDAQ100","index_symbol":"I:NDX",
+                   "provider":"FRED","as_of":asof,
+                   "network_requests":0,"retries":0,
+                   "commercial_reuse_allowed":False,
+                   "public_display_allowed":False,
+                   "ai_processing_allowed":False}
+        if planned is not None:
+            receipt["stock_preflight"] = planned
+        print(json.dumps(receipt,sort_keys=True))
+        return 0
     print("Personal research only. 1 FRED NASDAQ100 GET maximum; no retry.")
     print("FRED API terms:", _TERMS)
     print("NASDAQ100 is copyrighted Nasdaq data; commercial/AI/judge rights NOT verified.")

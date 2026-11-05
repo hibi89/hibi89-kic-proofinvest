@@ -201,19 +201,12 @@ def run_one_fred_ndx_get(*, api_key: str, as_of: str,
     if paired_stock is None and any(x is not None for x in pair_fields):
         return {**receipt, "reason_code": "FRED_PAIR_ARGS_INCOMPLETE"}
     if paired_stock is not None:
-        try:
-            from .fred_nasdaq100_offline import _trusted_shape
-            _trusted_shape(paired_stock, kind="stock", as_of=as_of)
-            if (type(paired_ticker) is not str
-                    or paired_stock.get("ticker") != paired_ticker
-                    or type(paired_issuer_cik) is not str
-                    or re.fullmatch(r"[0-9]{10}", paired_issuer_cik) is None
-                    or paired_issuer_cik == "0000000000"
-                    or type(paired_filing_date) is not str
-                    or date.fromisoformat(paired_filing_date) >= _iso(as_of)
-                    or date.fromisoformat(paired_filing_date).isoformat() != paired_filing_date):
-                raise ValueError("FRED_PAIR_ARGUMENTS_INVALID")
-        except (ValueError, TypeError, AttributeError, KeyError, OverflowError):
+        from .fred_nasdaq100_offline import plan_local_stock_for_fred_index
+        planned = plan_local_stock_for_fred_index(
+            stock=paired_stock, ticker=paired_ticker,
+            issuer_cik=paired_issuer_cik,
+            filing_date=paired_filing_date, as_of=as_of)
+        if planned["status"] != "LOCAL_STOCK_READY_INDEX_REQUIRED_UNVERIFIED":
             return {**receipt, "reason_code": "FRED_PAIR_LOCAL_INPUT_INVALID"}
     result = {**receipt, "network_requests": 1}
     try:

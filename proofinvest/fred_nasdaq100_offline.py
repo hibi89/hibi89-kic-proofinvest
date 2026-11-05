@@ -316,3 +316,65 @@ def analyze_offline_fred_pair(*, stock: dict, index: dict, ticker: str,
         }
     except (ValueError, TypeError, AttributeError, KeyError, OverflowError):
         return blocked
+
+def plan_local_stock_for_fred_index(*, stock: dict, ticker: str,
+                                    issuer_cik: str, filing_date: str,
+                                    as_of: str) -> dict[str, Any]:
+    """P256: validate stock and feasible post-filing window BEFORE a FRED GET.
+
+    Local facts are strictly owner asserted. A ready plan does not prove any
+    index overlap, vendor authenticity, legal entitlement, or SEC accession.
+    Returns only redacted metadata; never raw closes or complete trade dates.
+    """
+    blocked = {
+        "schema": "kuodra.fred-local-stock-pair-plan.v1",
+        "status": "BLOCKED",
+        "reason_code": "LOCAL_STOCK_OR_FILING_NOT_ELIGIBLE",
+        "network_requests": 0,
+        "stock_source_sha256": None,
+        "source_authenticated": False,
+        "source_rights_verified": False,
+        "commercial_reuse_allowed": False,
+        "public_display_allowed": False,
+        "ai_processing_allowed": False,
+        "full_a_b_c_ready": False,
+        "trade_executed": False,
+    }
+    try:
+        if (type(stock) is not dict
+                or type(ticker) is not str or _SYMBOL.fullmatch(ticker) is None
+                or stock.get("ticker") != ticker
+                or type(issuer_cik) is not str
+                or _CIK.fullmatch(issuer_cik) is None
+                or issuer_cik == "0000000000"):
+            raise ValueError("INVALID_STOCK_IDENTITY")
+        cutoff, filed = _iso(as_of), _iso(filing_date)
+        if filed >= cutoff:
+            raise ValueError("FILING_AFTER_CUTOFF")
+        rows = _trusted_shape(stock, kind="stock", as_of=as_of)
+        # FRED v1 adapter only requests this historical window. A local
+        # stock dataset with fewer than 31 eligible sessions in this window
+        # cannot possibly satisfy the actual Engine A index overlap gate.
+        from datetime import timedelta
+        first = cutoff - timedelta(days=190)
+        eligible = [d for d in rows if filed < _iso(d) <= cutoff
+                    and _iso(d) >= first]
+        if (len(eligible) < 31
+                or (cutoff - _iso(eligible[-1])).days > 7
+                or any((_iso(b) - _iso(a)).days > 7
+                       for a, b in zip(eligible, eligible[1:]))):
+            raise ValueError("INSUFFICIENT_POSSIBLE_POST_FILING_MATCHES")
+        return {
+            **blocked,
+            "status": "LOCAL_STOCK_READY_INDEX_REQUIRED_UNVERIFIED",
+            "reason_code": "FRED_INDEX_MATCH_AND_RIGHTS_NOT_VERIFIED",
+            "ticker": ticker, "issuer_cik": issuer_cik, "as_of": as_of,
+            "filing_date": filing_date,
+            "eligible_post_filing_sessions": len(eligible),
+            "first_eligible_date": eligible[0],
+            "last_eligible_date": eligible[-1],
+            "stock_source_sha256": stock["source_sha256"],
+        }
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        return blocked
+

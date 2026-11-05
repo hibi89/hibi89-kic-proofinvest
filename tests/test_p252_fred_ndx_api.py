@@ -289,3 +289,112 @@ class FredApiOneShotPairTests(unittest.TestCase):
                              ["matched_observation_count"],42)
             self.assertNotIn(str(path),str(printed))
             self.assertNotIn(KEY,str(printed))
+
+
+class FredStockPreflightNoGetTests(unittest.TestCase):
+    """P256: dry-run validates local stock and filing window before any GET."""
+
+    def _stock(self, raw=None):
+        from proofinvest.fred_nasdaq100_offline import parse_owner_stock_csv
+        from tests.test_fred_nasdaq100_offline import stock_data, SOURCE
+        return parse_owner_stock_csv(
+            raw if raw is not None else stock_data(),
+            ticker="AAPL", as_of=AS_OF, source_url=SOURCE)
+
+    def _plan(self, stock=None, **changes):
+        from proofinvest.fred_nasdaq100_offline import plan_local_stock_for_fred_index
+        kw=dict(stock=self._stock() if stock is None else stock,
+                ticker="AAPL",issuer_cik="0000320193",
+                filing_date="2026-07-31",as_of=AS_OF)
+        kw.update(changes)
+        return plan_local_stock_for_fred_index(**kw)
+
+    def test_eligible_stock_has_metadata_only_and_index_remains_required(self):
+        p=self._plan()
+        self.assertEqual(p["status"],"LOCAL_STOCK_READY_INDEX_REQUIRED_UNVERIFIED",p)
+        self.assertEqual(p["eligible_post_filing_sessions"],42)
+        self.assertFalse(p["source_authenticated"])
+        self.assertFalse(p["ai_processing_allowed"])
+        self.assertEqual(p["network_requests"],0)
+        self.assertNotIn("close_observations",str(p))
+        self.assertNotIn("100.0000",str(p))
+
+    def test_31_session_minimum_and_filing_date_block(self):
+        for filed in ("2026-08-19","2026-09-01","2026-10-01"):
+            with self.subTest(filed=filed):
+                self.assertEqual(self._plan(filing_date=filed)["status"],"BLOCKED")
+        self.assertEqual(self._plan(filing_date="2026-07-31")["status"],
+                         "LOCAL_STOCK_READY_INDEX_REQUIRED_UNVERIFIED")
+
+    def test_identity_and_unsafe_receipt_fail_before_network(self):
+        for kwargs in ({"ticker":"MSFT"},{"issuer_cik":"0000000000"},
+                       {"issuer_cik":"AAPL"},{"filing_date":"bad"}):
+            self.assertEqual(self._plan(**kwargs)["status"],"BLOCKED")
+        s=self._stock()
+        s["source_authenticated"]=True
+        self.assertEqual(self._plan(stock=s)["status"],"BLOCKED")
+
+    def test_live_fred_rejects_short_stock_window_without_get(self):
+        called=[]
+        got=api.run_one_fred_ndx_get(
+            api_key=KEY,as_of=AS_OF,explicit_approval=True,
+            individual_research=True,paired_stock=self._stock(),
+            paired_ticker="AAPL",paired_issuer_cik="0000320193",
+            paired_filing_date="2026-09-01",
+            transport=lambda url:called.append(url))
+        self.assertEqual(got["reason_code"],"FRED_PAIR_LOCAL_INPUT_INVALID")
+        self.assertEqual(got["network_requests"],0)
+        self.assertEqual(called,[])
+
+    def test_cli_dry_run_checks_real_local_stock_without_tty(self):
+        import tempfile
+        from pathlib import Path
+        from tests.test_fred_nasdaq100_offline import stock_data
+        outputs=[]
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"owner.csv";path.write_bytes(stock_data())
+            with patch.object(cli,"_safe_date",return_value=AS_OF), (
+                patch.object(api,"_get",side_effect=AssertionError("NETWORK"))), (
+                patch("builtins.print",side_effect=lambda *a,**k:outputs.append(
+                    " ".join(map(str,a))))):
+                rc=cli.main(["--stock-csv",str(path),"--ticker","AAPL",
+                             "--issuer-cik","0000320193",
+                             "--filing-date","2026-07-31",
+                             "--stock-source-url","https://example.org/market-data"])
+            self.assertEqual(rc,0)
+            out=json.loads(outputs[-1])
+            self.assertEqual(out["status"],"DRY_RUN_PAIR_READY_NO_REQUEST")
+            self.assertEqual(out["stock_preflight"]["eligible_post_filing_sessions"],42)
+            self.assertEqual(out["network_requests"],0)
+            self.assertNotIn(str(path),str(outputs))
+            self.assertNotIn("close_observations",str(outputs))
+
+    def test_cli_dry_run_insufficient_period_blocks_no_get(self):
+        import tempfile
+        from pathlib import Path
+        from tests.test_fred_nasdaq100_offline import stock_data
+        lines=[]
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"owner.csv";path.write_bytes(stock_data())
+            with patch.object(cli,"_safe_date",return_value=AS_OF), (
+                patch.object(api,"_get",side_effect=AssertionError("NETWORK"))), (
+                patch("builtins.print",side_effect=lambda *a,**k:lines.append(
+                    " ".join(map(str,a))))):
+                rc=cli.main(["--stock-csv",str(path),"--ticker","AAPL",
+                             "--issuer-cik","0000320193",
+                             "--filing-date","2026-09-01",
+                             "--stock-source-url","https://example.org/market-data"])
+        self.assertEqual(rc,2)
+        self.assertEqual(json.loads(lines[-1])["reason_code"],
+                         "LOCAL_STOCK_POST_FILING_WINDOW_INVALID")
+
+    def test_cli_dry_run_incomplete_pair_arguments_block(self):
+        lines=[]
+        with patch.object(cli,"_safe_date",return_value=AS_OF), (
+            patch.object(api,"_get",side_effect=AssertionError("NETWORK"))), (
+            patch("builtins.print",side_effect=lambda *a,**k:lines.append(
+                " ".join(map(str,a))))):
+            rc=cli.main(["--ticker","AAPL"])
+        self.assertEqual(rc,2)
+        self.assertEqual(json.loads(lines[-1])["reason_code"],"PAIR_ARGS_INCOMPLETE")
+
