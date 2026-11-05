@@ -296,6 +296,17 @@ def run(output: Path) -> dict:
                             "heading",
                             name="A/B/C · 실제 원문 연결 사실검산 설명서 (AI 아님)",
                         )).to_be_visible(timeout=25000)
+                        # P226 opt-in local model path starts strictly
+                        # disabled. The browser must not issue any model POST.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="실제 발행사 A/B/C · 로컬 AI 검토 우선순위 (기본 차단)",
+                        )).to_be_visible(timeout=25000)
+                        expect(page.get_by_role(
+                            "checkbox",
+                            name="실제 발행사 로컬 모델 선택기 열기 (기본 비활성)",
+                            exact=True,
+                        )).not_to_be_checked()
                         with page.expect_download(timeout=30000) as html_event:
                             page.get_by_role("button",
                                 name="A/B/C 출처·사실검산 설명서 HTML (AI 미실행)",
@@ -351,6 +362,7 @@ def run(output: Path) -> dict:
                             "single_abc_download_and_replay_verified": True,
                             "genuine_source_fact_brief_html_json_replayed": True,
                             "real_llm_invoked": False,
+                            "real_source_model_focus_default_off": True,
                             "market_rights_verified": False,
                             "sec_raw_bytes_verified": False,
                             "trade_executed": False,

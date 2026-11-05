@@ -343,6 +343,12 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                      "검증 한계":item["verification"],"설명":item["text"]}
                     for item in brief["claims"]
                 ],hide_index=True,use_container_width=True)
+                # P226 real-source model triage requires independent two
+                # explicit consents; default path is pure, zero HTTP.
+                from .real_issuer_model_focus import (
+                    render_real_issuer_model_focus_panel,
+                )
+                render_real_issuer_model_focus_panel(st,abc,brief)
                 st.download_button(
                     "A/B/C 출처·사실검산 설명서 HTML (AI 미실행)",
                     data=source_factual_brief_html(brief,abc),
