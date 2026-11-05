@@ -292,6 +292,7 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                         separators=(",", ":"), allow_nan=False).encode("utf-8"),
         file_name="kuodra-" + result["ticker"].lower() + "-ab-UNVERIFIED.json",
         mime="application/json", key="p219_local_market_summary",
+        on_click="ignore",
     )
     if result["ticker"] == "NVDA":
         from .real_issuer_abc_local_review import (
@@ -320,6 +321,7 @@ def render_real_issuer_local_market_panel(st, *, ticker: str) -> None:
                                 separators=(",",":"),allow_nan=False).encode("utf-8"),
                 file_name="kuodra-nvda-partial-abc-UNVERIFIED.json",
                 mime="application/json",key="p224_partial_abc_download",
+                on_click="ignore",
             )
             st.warning("3개 엔진의 출처 결합은 개인 검산용입니다. "
                        "시장 제공자 진위·공시 원본 바이트·이용권·모델 처리는 "
