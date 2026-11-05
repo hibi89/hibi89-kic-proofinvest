@@ -118,6 +118,42 @@ class P238OneOfficialGetTests(unittest.TestCase):
             network.assert_called_once()
             self.assertEqual(r["status"],"BLOCKED")
 
+    def test_p239_length_mismatch_reports_safe_bounded_count_not_raw(self):
+        # A declared correct length does NOT establish a complete body.
+        # This simulates the actual P239 branch without contacting the SEC.
+        ua=p.validate_owner_contact("p238@mock-research-lab.org")
+        original=synthetic()
+        for body,observed,capped in (
+            (original[:-13],len(original)-13,False),
+            (original+b"?",len(original)+1,True),
+            (original+b"oversize",len(original)+1,True),
+        ):
+            with self.subTest(observed=observed,capped=capped):
+                resp=Response(body,declared=p._SIZE)
+                calls=[]
+                def fake(_):
+                    calls.append(1)
+                    return resp
+                out=p.read_apple_2026_sec_original_once(
+                    authorized=True,user_agent=ua,opener=fake)
+                self.assertEqual(calls,[1])
+                self.assertEqual(resp.read_calls,1)
+                self.assertEqual(out["reason_code"],
+                                 "SEC_ACTUAL_BODY_LENGTH_MISMATCH")
+                self.assertEqual(out["status"],"BLOCKED")
+                self.assertEqual(out["response_body_bytes_read"],observed)
+                self.assertEqual(out["sec_index_document_bytes_expected"],p._SIZE)
+                self.assertEqual(out["response_read_cap_bytes"],p._SIZE+1)
+                self.assertIs(out["response_read_cap_reached"],capped)
+                self.assertIs(out["response_body_complete_transfer_verified"],False)
+                self.assertFalse(out["sec_transport_observed"])
+                self.assertEqual(out["http_requests_attempted"],1)
+                self.assertEqual(out["retries"],0)
+                self.assertFalse(out["original_html_saved"])
+                self.assertNotIn(ua,str(out))
+                self.assertNotIn("<html",str(out).lower())
+                self.assertNotIn("actual_sec_response_sha256",out)
+
     def test_contact_rejects_whitespace_invalid_or_control_chars(self):
         for s in (None,True,"", "bad","x@localhost",
                   "p238@mock-research-lab.org\nOther: header", "x@example.com"*12):

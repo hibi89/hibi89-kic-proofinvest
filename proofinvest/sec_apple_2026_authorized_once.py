@@ -93,7 +93,19 @@ def read_apple_2026_sec_original_once(
                 return _failure("SEC_CONTENT_TYPE_ENCODING_OR_SIZE_INVALID",attempted=attempted)
             raw = response.read(_SIZE + 1)
         if type(raw) is not bytes or len(raw) != _SIZE:
-            return _failure("SEC_ACTUAL_BODY_LENGTH_MISMATCH",attempted=attempted)
+            # Non-content diagnostic only. The one bounded read cannot prove
+            # whether the HTTP body ended, nor whether a partial read occurred.
+            # Never print or persist received HTML, headers, contact or hash.
+            out = _failure("SEC_ACTUAL_BODY_LENGTH_MISMATCH",
+                           attempted=attempted)
+            out["sec_index_document_bytes_expected"] = _SIZE
+            out["response_body_bytes_read"] = (
+                len(raw) if type(raw) is bytes else None)
+            out["response_read_cap_bytes"] = _SIZE + 1
+            out["response_read_cap_reached"] = (
+                type(raw) is bytes and len(raw) == _SIZE + 1)
+            out["response_body_complete_transfer_verified"] = False
+            return out
         replay = verify_operator_apple_2026_edgar_html(raw)
         if (replay.get("status") !=
                 "LOCAL_SEC_2026_HTML_6_GAAP_FACTS_MATCH_UNAUTHENTICATED"
