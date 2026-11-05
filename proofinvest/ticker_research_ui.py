@@ -1219,7 +1219,7 @@ def render_single_ticker_search(st) -> None:
                     if attempt == "INVALID":
                         st.warning("중복 조회 장부 오류: Massive 요청을 차단했습니다.")
                     elif attempt == "DUPLICATE":
-                        st.warning("동일 종목/공시 Massive 재조회 차단: 무료 할당량 보호.")
+                        st.warning("Massive 중복 조회 차단: 동일 종목·공시의 무료 API 할당량 보호.")
                     else:
                         outcome = fetch_massive_pair(
                             ticker=key, issuer_cik=local_receipt["cik"],
