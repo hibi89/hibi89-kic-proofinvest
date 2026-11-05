@@ -75,6 +75,40 @@ def render_real_issuer_ticker_lookup(st) -> None:
         "engine_c_complete": False,
         "full_abc_complete": False,
     })
+    if result["ticker"] == "NVDA":
+        # P222: independent audited AMD filing + press-release arithmetic
+        # crosscheck; intentionally separate from licensed/full Engine C.
+        from .amd_10k_peer_bridge import compare_nvda_amd_audited_10k_peer
+        peer = compare_nvda_amd_audited_10k_peer(ticker=result["ticker"])
+        if peer["status"] == "ONE_REAL_AUDITED_10K_PEER_CROSSCHECK_ONLY":
+            st.subheader("Engine C · AMD 공식 10-K 감사 재무 교차검산 (단일 동종기업)")
+            st.markdown(
+                f'[AMD 2025 10-K]({peer["amd_audited_10k_filing"]}) · '
+                f'[AMD 공식 연간 실적발표]({peer["amd_press_release"]})'
+            )
+            st.caption("AMD FY2025와 NVIDIA FY2026 결산일 차이 29일 · "
+                       "단일 비교기업이며 사업구성·이용권·완전한 Engine C는 미검증")
+            peer_left, peer_right = st.columns(2)
+            peer_left.metric("AMD 매출 증가율 (공식 10-K·발표 검산)",
+                             peer["amd_revenue_growth_pct"] + "%")
+            peer_right.metric("NVDA-AMD 연매출 성장률 관측 차이 (pp)",
+                              peer["observed_growth_gap_pp_not_sector_rank"])
+            st.metric("AMD FY2025 GAAP 순이익률 (%)",
+                      peer["amd_gaap_net_margin_2025_pct"])
+            st.download_button(
+                "AMD 10-K 교차검산 개인용 JSON (이용권 미인증)",
+                data=json.dumps(peer, ensure_ascii=False, sort_keys=True,
+                                separators=(",", ":"), allow_nan=False).encode("utf-8"),
+                file_name="kuodra-nvda-amd-audited-peer-UNVERIFIED.json",
+                mime="application/json",
+                key="p222_audited_peer_export",
+            )
+            st.warning("공식 자료 수치의 수동 교차검산일 뿐, AMD 10-K 원본 바이트·"
+                       "라이선스·동종기업 대표성·시장 데이터는 인증되지 않았습니다. "
+                       "Engine C 전체 완료 아님 · Guard HOLD.")
+        else:
+            st.warning("AMD 독립 10-K/실적발표 교차검산이 실패하여 "
+                       "동종기업 비교를 표시하지 않습니다.")
     # P219: independent model-data calculation only when the operator
     # explicitly supplies locally held market responses. No provider GET.
     from .real_issuer_local_market import render_real_issuer_local_market_panel

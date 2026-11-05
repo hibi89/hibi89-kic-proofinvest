@@ -119,6 +119,36 @@ def run(output: Path) -> dict:
                             "heading",
                             name="Engine A · 로컬 종목 주가 + 실제 NDX 종목코드 형식 검산",
                         )).to_be_visible(timeout=25000)
+                        # Independent P222 real audited AMD 10-K + issuer
+                        # press-release comparison must be visible and
+                        # downloadable in the same genuine ticker UI.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine C · AMD 공식 10-K 감사 재무 교차검산 (단일 동종기업)",
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as peer_event:
+                            page.get_by_role(
+                                "button",
+                                name="AMD 10-K 교차검산 개인용 JSON (이용권 미인증)",
+                                exact=True,
+                            ).click()
+                        peer_download = peer_event.value
+                        if peer_download.suggested_filename != (
+                                "kuodra-nvda-amd-audited-peer-UNVERIFIED.json"):
+                            raise AssertionError("P222_PEER_FILENAME_MISMATCH")
+                        peer_report = json.loads(
+                            Path(peer_download.path()).read_bytes())
+                        if (peer_report["status"] !=
+                                "ONE_REAL_AUDITED_10K_PEER_CROSSCHECK_ONLY"
+                                or peer_report["amd_filing_accession"] !=
+                                   "0000002488-26-000018"
+                                or peer_report["amd_two_independent_official_documents_reconciled"] is not True
+                                or peer_report["amd_gaap_net_margin_2025_pct"] != "12.51"
+                                or peer_report["observed_growth_gap_pp_not_sector_rank"] != "31.14"
+                                or peer_report["peer_rights_verified"] is not False
+                                or peer_report["engine_c_complete"] is not False
+                                or peer_report["guard_policy_preview"] != "HOLD"):
+                            raise AssertionError("P222_REAL_PEER_FILING_REPLAY_MISMATCH")
                         uploader = page.locator('input[type="file"]')
                         expect(uploader).to_have_count(2, timeout=25000)
                         uploader.nth(0).set_input_files({
@@ -193,6 +223,8 @@ def run(output: Path) -> dict:
                             "download_sha256": sha256(raw).hexdigest(),
                             "guard_preview": "HOLD",
                             "stock_ndx_issuer_bound": True,
+                            "amd_audited_10k_peer_download_verified": True,
+                            "amd_official_10k_and_press_crosschecked": True,
                             "market_rights_verified": False,
                             "sec_raw_bytes_verified": False,
                             "trade_executed": False,
