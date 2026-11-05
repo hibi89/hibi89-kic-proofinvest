@@ -20,7 +20,7 @@ from urllib.error import HTTPError, URLError
 
 from proofinvest.market_provider_massive import (
     _KEY, _SYMBOL, _https_get, _url, parse_massive_daily,
-    free_basic_safe_as_of, IndexDailyCalendarError,
+    free_basic_safe_as_of, IndexDailyCalendarError, audit_massive_ndx_calendar,
 )
 
 _APPROVAL = "REQUEST MASSIVE BASIC PERSONAL"
@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
                           "network_requests":0},sort_keys=True))
         return 2
     attempts = 0
+    ndx_body = None  # In-memory only; never persisted or shown to the user.
     stage = "index" if args.index_only else "stock"
     try:
         stock = None
@@ -125,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         index_url = _url(symbol="I:NDX", as_of=args.as_of,
                          api_key=key, index=True)
         attempts += 1
-        ndx = parse_massive_daily(_https_get(index_url), symbol="I:NDX",
+        ndx_body = _https_get(index_url)
+        ndx = parse_massive_daily(ndx_body, symbol="I:NDX",
                                   as_of=args.as_of, index=True)
         receipt = {
             "status":("NDX_DAILY_PARSED_ORIGIN_AND_RIGHTS_UNVERIFIED"
@@ -166,9 +168,13 @@ def main(argv: list[str] | None = None) -> int:
                 output["index_calendar_utc_weekday"] = exc.utc_weekday
                 output["index_calendar_utc_hour"] = exc.utc_hour
                 output["index_calendar_et_weekday"] = exc.eastern_weekday
+            if ndx_body is not None:
+                # Same single approved response, no second network request.
+                output.update(audit_massive_ndx_calendar(ndx_body, as_of=args.as_of))
         print(json.dumps(output,sort_keys=True))
         return 2
     finally:
+        ndx_body = None
         key = None
 
 

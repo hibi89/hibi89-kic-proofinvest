@@ -11,6 +11,7 @@ from unittest.mock import patch
 from proofinvest.market_provider_massive import (
     _https_get, _MAX_RESPONSE, _eastern_trading_date,
     analyze_massive_pair, fetch_massive_pair, free_basic_safe_as_of,
+    audit_massive_ndx_calendar,
     parse_massive_daily,
 )
 
@@ -190,6 +191,34 @@ class MassiveBasicAdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"BAR_AFTER_REQUESTED_CUTOFF"):
             parse_massive_daily(json.dumps(raw).encode(),
                 symbol="I:NDX",index=True,as_of="2026-01-08")
+
+    def test_ndx_source_calendar_audit_counts_instead_of_relabeling_weekend(self):
+        raw = json.loads(fixture("I:NDX", index=True))
+        # A Saturday ET midnight index bar inserted in place of Friday.
+        raw["results"][2]["t"] = int(datetime(
+            2026, 7, 4, 4, tzinfo=timezone.utc).timestamp() * 1000)
+        wire = json.dumps(raw, separators=(",", ":")).encode()
+        report = audit_massive_ndx_calendar(wire, as_of="2026-10-01")
+        self.assertEqual(report["index_calendar_audit"],
+                         "REDACTED_SOURCE_ANOMALY_SUMMARY")
+        self.assertEqual(report["index_rows"], 65)
+        self.assertEqual(report["index_weekend_rows"], 1)
+        self.assertEqual(report["index_candidate_weekday_rows"], 64)
+        self.assertEqual(report["index_invalid_rows"], 0)
+        self.assertFalse(report["index_source_accepted"])
+        self.assertNotIn("close_observations", report)
+        with self.assertRaisesRegex(ValueError, "NONTRADING_WEEKEND_BAR"):
+            parse_massive_daily(wire, symbol="I:NDX",
+                                as_of="2026-10-01", index=True)
+
+    def test_ndx_audit_refuses_fake_symbol_or_invalid_json(self):
+        for wire in (fixture("AAPL"), b"bad json",
+                     b'{"ticker":"I:NDX","status":"ERROR","results":[]}'):
+            report = audit_massive_ndx_calendar(wire, as_of="2026-10-01")
+            self.assertEqual(report["index_calendar_audit"], "UNAVAILABLE")
+            self.assertFalse(report["index_source_accepted"])
+            self.assertEqual(report["index_rows"], 0)
+            self.assertNotIn("index_source_body_sha256", report)
 
     def test_ndx_weekend_future_and_invalid_close_have_separate_codes(self):
         raw = json.loads(fixture("I:NDX", index=True))

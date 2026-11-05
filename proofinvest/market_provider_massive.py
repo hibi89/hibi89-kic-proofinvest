@@ -230,6 +230,88 @@ def parse_massive_daily(raw: bytes, *, symbol: str, as_of: str,
     }
 
 
+
+def audit_massive_ndx_calendar(raw: bytes, *, as_of: str) -> dict[str, Any]:
+    """Redacted source-data QA; never turn anomalous rows into Engine A data.
+
+    The official Custom Bars contract says that t is the aggregate-window
+    start in UTC milliseconds, and indices have no weekend daily sessions.
+    This audit reads an in-memory reply only; all outputs are counts/flags
+    or a one-way hash, never timestamps, prices, URL, API key or raw JSON.
+    An audit report is NOT a successful price series or a rights grant.
+    """
+    blocked = {
+        "index_calendar_audit": "UNAVAILABLE",
+        "index_source_accepted": False,
+        "index_rows": 0,
+        "index_candidate_weekday_rows": 0,
+        "index_weekend_rows": 0,
+        "index_future_rows": 0,
+        "index_invalid_rows": 0,
+        "index_duplicate_or_unsorted_rows": 0,
+    }
+    if type(raw) is not bytes or not 0 < len(raw) <= _MAX_RESPONSE:
+        return blocked
+    try:
+        end = _day(as_of)
+        obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs,
+                         parse_float=Decimal, parse_constant=_bad_constant)
+        if (type(obj) is not dict or obj.get("status") != "OK"
+                or obj.get("ticker") != "I:NDX" or "next_url" in obj):
+            return blocked
+        rows = obj.get("results")
+        if type(rows) is not list or not 31 <= len(rows) <= _MAX_ROWS:
+            return blocked
+        if ("resultsCount" in obj and
+                (type(obj["resultsCount"]) is not int or obj["resultsCount"] != len(rows))):
+            return blocked
+        if ("queryCount" in obj and
+                (type(obj["queryCount"]) is not int or obj["queryCount"] < len(rows))):
+            return blocked
+        out = dict(blocked)
+        out["index_calendar_audit"] = "REDACTED_SOURCE_ANOMALY_SUMMARY"
+        out["index_rows"] = len(rows)
+        out["index_source_body_sha256"] = sha256(raw).hexdigest()
+        previous = None
+        for row in rows:
+            if type(row) is not dict or type(row.get("t")) is not int:
+                out["index_invalid_rows"] += 1
+                continue
+            stamp = row["t"]
+            if not 946684800000 <= stamp < 4102444800000:
+                out["index_invalid_rows"] += 1
+                continue
+            try:
+                dt = datetime.fromtimestamp(stamp / 1000, tz=timezone.utc)
+                day = _eastern_trading_date(dt)
+                raw_close = row.get("c")
+                if type(raw_close) not in (int, Decimal, float):
+                    out["index_invalid_rows"] += 1
+                    continue
+                amount = Decimal(str(raw_close))
+                if (not amount.is_finite() or amount <= 0
+                        or amount >= Decimal("1e10")
+                        or dt.minute or dt.second or dt.microsecond
+                        or not (4 <= dt.hour <= 10 or 19 <= dt.hour <= 22)):
+                    out["index_invalid_rows"] += 1
+                    continue
+            except (TypeError, ValueError, InvalidOperation, OverflowError):
+                out["index_invalid_rows"] += 1
+                continue
+            if previous is not None and day <= previous:
+                out["index_duplicate_or_unsorted_rows"] += 1
+            previous = day
+            if day.weekday() >= 5:
+                out["index_weekend_rows"] += 1
+            elif day > end:
+                out["index_future_rows"] += 1
+            else:
+                out["index_candidate_weekday_rows"] += 1
+        return out
+    except (UnicodeError, ValueError, TypeError, RecursionError, OverflowError):
+        return blocked
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, msg, headers, newurl):
         raise ValueError("PROVIDER_REDIRECT_BLOCKED")

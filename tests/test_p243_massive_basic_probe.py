@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from urllib.error import HTTPError, URLError
+from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -256,6 +257,33 @@ class MassiveProbeCliTests(TestCase):
         self.assertEqual(out["retries"],0)
         self.assertEqual(out["index_calendar_et_weekday"],5)
         self.assertNotIn(KEY,json.dumps(out))
+
+    def test_index_only_one_get_with_weekend_bar_outputs_redacted_audit(self):
+        raw=json.loads(fixture("I:NDX",index=True))
+        raw["results"][2]["t"]=int(datetime(
+            2026,7,4,4,tzinfo=timezone.utc).timestamp()*1000)
+        wire=json.dumps(raw).encode()
+        calls=[]
+        def fake(url):
+            calls.append(url)
+            return wire
+        with patch.object(cli.sys.stdin, "isatty", return_value=True), (
+            patch.object(cli.sys.stdout,"isatty",return_value=True)), (
+            patch("builtins.input",return_value=cli._APPROVAL)), (
+            patch.object(cli.getpass,"getpass",return_value=KEY)), (
+            patch.object(cli,"_https_get",side_effect=fake)):
+            rc,receipt=self.capture(ARGS+["--index-only","--live"])
+        self.assertEqual(rc,2)
+        self.assertEqual(len(calls),1)
+        self.assertEqual(receipt["reason_code"],"PARSER_NONTRADING_WEEKEND_BAR")
+        self.assertEqual(receipt["network_requests"],1)
+        self.assertEqual(receipt["index_rows"],65)
+        self.assertEqual(receipt["index_weekend_rows"],1)
+        self.assertEqual(receipt["index_candidate_weekday_rows"],64)
+        self.assertFalse(receipt["index_source_accepted"])
+        self.assertNotIn(KEY,json.dumps(receipt))
+        self.assertNotIn("close_observations",receipt)
+        self.assertNotIn("price",receipt)
 
     def test_bad_date_blocks_before_approval(self):
         with patch.object(cli,"_https_get",side_effect=AssertionError("REQUEST")), (
