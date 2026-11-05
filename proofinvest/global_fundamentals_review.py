@@ -135,6 +135,27 @@ def build_marketless_global_review(*, ticker: str,
                     "authentication or a conclusive financial-risk finding.",
         }
 
+        # Descriptive threshold screening only; this does not infer fraud.
+        # Require exact source-linked numeric replay; never use float comparisons.
+        review_signals = []
+        for key, label in (
+            ("receivables_minus_revenue_growth_pp", "RECEIVABLES_GROWTH_GAP"),
+            ("inventory_minus_revenue_growth_pp", "INVENTORY_GROWTH_GAP"),
+        ):
+            gap = Decimal(engine_b[key])
+            if gap >= Decimal("10.00"):
+                review_signals.append({
+                    "code": label, "growth_gap_pp": engine_b[key],
+                    "threshold_pp": "10.00",
+                    "interpretation": "DESCRIPTIVE_REVIEW_CANDIDATE_NOT_FRAUD",
+                })
+        engine_b["screening_status"] = (
+            "REVIEW_CANDIDATES_PRESENT" if review_signals
+            else "NO_SINGLE_PERIOD_THRESHOLD_TRIGGER"
+        )
+        engine_b["screening_signals"] = review_signals
+        engine_b["screening_not_fraud_conclusion"] = True
+
         peers: list[dict[str, Any]] = []
         engine_c_status = "UNAVAILABLE_NO_SOURCE_BOUND_PEER_COHORT"
         if ticker == "NVDA":
@@ -283,6 +304,9 @@ def marketless_global_review_html(report: Any) -> bytes:
          b["receivables_minus_revenue_growth_pp"]),
         ("B 재고 성장률 차이 (pp)",
          b["inventory_minus_revenue_growth_pp"]),
+        ("B 검토 후보", ", ".join(
+            x["code"] + " (" + x["growth_gap_pp"] + "pp)"
+            for x in b["screening_signals"]) or "단일연도 임계값 미초과"),
         ("C 경쟁사", c["status"]),
         ("Guard", "HOLD · 미인증 근거 / 위험자료 부족"),
     ]

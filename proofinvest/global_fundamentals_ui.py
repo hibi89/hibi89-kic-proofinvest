@@ -40,6 +40,19 @@ def render_global_fundamentals(st) -> None:
         {"항목": "경쟁사 참고 (C)", "결과": report["engine_c"]["status"]},
         {"항목": "Guard", "결과": report["guard"]["decision"]},
     ])
+    st.subheader("Engine B · 회계 괴리 검토 후보 (부정 확정 아님)")
+    signals = report["engine_b"]["screening_signals"]
+    if signals:
+        st.table([{"항목": signal["code"],
+                   "매출 성장률 대비 격차 (pp)": signal["growth_gap_pp"],
+                   "검토 기준 (pp)": signal["threshold_pp"]}
+                  for signal in signals])
+        st.warning("매출 증가율보다 재고·매출채권 증가율이 크게 높다는 "
+                   "탐색용 표시입니다. 산업·사업부·연결범위·회계정책 확인 전 "
+                   "회계부정이나 투자 판단을 내릴 수 없습니다.")
+    else:
+        st.info("이 단일연도 탐색 임계값을 넘는 항목이 없습니다. "
+                "정상·안전한 투자라는 뜻은 아닙니다.")
     if report["engine_c"]["peers"]:
         st.table([{"기업": p["ticker"], "기간": p["fiscal_latest_end"],
                    "매출 증가율 (%)": p["revenue_growth_pct"],

@@ -52,6 +52,36 @@ class GlobalFundamentalsReviewTests(unittest.TestCase):
         self.assertNotIn(b"apikey", html.lower())
         self.assertNotIn(b"Time Series (Daily)", html)
 
+    def test_descriptive_review_candidates_not_fraud_or_guard_authorization(self):
+        nvda = review("NVDA")
+        dell = review("DELL")
+        self.assertTrue(verify_marketless_global_review(nvda))
+        self.assertTrue(verify_marketless_global_review(dell))
+        self.assertEqual([s["code"] for s in nvda["engine_b"]["screening_signals"]],
+                         ["INVENTORY_GROWTH_GAP"])
+        self.assertEqual([s["code"] for s in dell["engine_b"]["screening_signals"]],
+                         ["RECEIVABLES_GROWTH_GAP", "INVENTORY_GROWTH_GAP"])
+        self.assertEqual(nvda["engine_b"]["screening_status"],
+                         "REVIEW_CANDIDATES_PRESENT")
+        self.assertEqual(dell["engine_b"]["screening_status"],
+                         "REVIEW_CANDIDATES_PRESENT")
+        for report in (nvda, dell):
+            self.assertTrue(report["engine_b"]["screening_not_fraud_conclusion"])
+            self.assertFalse(report["engine_b"]["fraud_proven"])
+            self.assertEqual(report["guard"]["decision"], "HOLD")
+            self.assertFalse(report["external_sharing_allowed"])
+            self.assertFalse(report["full_abc_complete"])
+            self.assertIn(b"REVIEW_CANDIDATE",
+                          marketless_global_review_html(report))
+        forged = deepcopy(nvda)
+        forged["engine_b"]["screening_signals"].clear()
+        unsigned = deepcopy(forged)
+        unsigned.pop("integrity_sha256")
+        forged["integrity_sha256"] = sha256(json.dumps(
+            unsigned, sort_keys=True, ensure_ascii=False,
+            separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+        self.assertFalse(verify_marketless_global_review(forged))
+
     def test_dell_real_issuer_b_peer_unavailable(self):
         packet = review("DELL")
         self.assertTrue(verify_marketless_global_review(packet), packet)
