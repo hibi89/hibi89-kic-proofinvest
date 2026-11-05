@@ -149,6 +149,39 @@ def run(output: Path) -> dict:
                                 or peer_report["engine_c_complete"] is not False
                                 or peer_report["guard_policy_preview"] != "HOLD"):
                             raise AssertionError("P222_REAL_PEER_FILING_REPLAY_MISMATCH")
+                        # P223: independent second audited issuer (Intel)
+                        # and previously verified AMD join to genuine NVDA.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine C · NVIDIA / AMD / Intel 3개사 원문 비교 (제한)",
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as cohort_event:
+                            page.get_by_role(
+                                "button",
+                                name="NVDA·AMD·INTC 2개 동종기업 교차검산 JSON (제한)",
+                                exact=True,
+                            ).click()
+                        cohort_download = cohort_event.value
+                        if cohort_download.suggested_filename != (
+                                "kuodra-nvda-two-official-peers-UNVERIFIED.json"):
+                            raise AssertionError("P223_COHORT_DOWNLOAD_FILENAME_INVALID")
+                        cohort_report = json.loads(
+                            Path(cohort_download.path()).read_bytes())
+                        if (cohort_report["status"] !=
+                                "TWO_DISTINCT_AUDITED_PEER_REFERENCES_LIMITED"
+                                or cohort_report["peer_count"] != 2
+                                or [x["ticker"] for x in cohort_report["revenue_growth_observations_not_sector_rank"]]
+                                   != ["NVDA", "AMD", "INTC"]
+                                or cohort_report["intel_filing_accession"] !=
+                                   "0000050863-26-000011"
+                                or cohort_report["intel_2025_revenue_usdm"] != "52853"
+                                or cohort_report["intel_2025_gross_margin_pct"] != "34.77"
+                                or cohort_report["observed_nvda_minus_intc_growth_pp"] != "65.94"
+                                or cohort_report["peer_rights_verified"] is not False
+                                or cohort_report["representative_peers_verified"] is not False
+                                or cohort_report["engine_c_complete"] is not False
+                                or cohort_report["guard_policy_preview"] != "HOLD"):
+                            raise AssertionError("P223_TWO_PEER_AUDITED_FINANCIAL_REPLAY_FAILED")
                         uploader = page.locator('input[type="file"]')
                         expect(uploader).to_have_count(2, timeout=25000)
                         uploader.nth(0).set_input_files({
@@ -225,6 +258,8 @@ def run(output: Path) -> dict:
                             "stock_ndx_issuer_bound": True,
                             "amd_audited_10k_peer_download_verified": True,
                             "amd_official_10k_and_press_crosschecked": True,
+                            "two_distinct_audited_10k_peers_download_verified": True,
+                            "intel_official_10k_and_release_crosschecked": True,
                             "market_rights_verified": False,
                             "sec_raw_bytes_verified": False,
                             "trade_executed": False,

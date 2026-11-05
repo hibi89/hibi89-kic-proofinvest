@@ -109,6 +109,36 @@ def render_real_issuer_ticker_lookup(st) -> None:
         else:
             st.warning("AMD 독립 10-K/실적발표 교차검산이 실패하여 "
                        "동종기업 비교를 표시하지 않습니다.")
+    if result["ticker"] == "NVDA":
+        from .intel_amd_peer_cohort import review_two_official_10k_peers
+        cohort = review_two_official_10k_peers(ticker=result["ticker"])
+        if cohort["status"] == "TWO_DISTINCT_AUDITED_PEER_REFERENCES_LIMITED":
+            st.subheader("Engine C · NVIDIA / AMD / Intel 3개사 원문 비교 (제한)")
+            st.caption("AMD 및 Intel 2025 감사 10-K와 각각 독립 실적발표 자료 교차검산. "
+                       "NVDA 결산일과 각 29일 차이. Intel Altera 연결 제외 효과, "
+                       "기업별 사업구성 차이로 산업 대표성·동일 회계비교·예측 불가.")
+            st.dataframe([
+                {"기업": item["ticker"], "결산일": item["fy_latest"],
+                 "연매출 성장률 관측 (%)": item["revenue_growth_pct"]}
+                for item in cohort["revenue_growth_observations_not_sector_rank"]
+            ], hide_index=True, use_container_width=True)
+            st.markdown(
+                f'[Intel 감사 10-K]({cohort["intel_audited_10k_url"]}) · '
+                f'[Intel 독립 실적발표]({cohort["intel_separate_release_url"]})'
+            )
+            st.metric("Intel 2025 GAAP 매출총이익률 (%)",
+                      cohort["intel_2025_gross_margin_pct"])
+            st.download_button(
+                "NVDA·AMD·INTC 2개 동종기업 교차검산 JSON (제한)",
+                data=json.dumps(cohort, ensure_ascii=False, sort_keys=True,
+                                separators=(",", ":"), allow_nan=False).encode("utf-8"),
+                file_name="kuodra-nvda-two-official-peers-UNVERIFIED.json",
+                mime="application/json", key="p223_two_peer_cohort_export",
+            )
+            st.warning("2개사 10-K 공개 숫자의 별도 수동 대조일 뿐 외부 공급자 원본 "
+                       "바이트 SHA·재사용권·정확한 대표성·Engine C 완료 아님. Guard HOLD.")
+        else:
+            st.warning("두 동종기업의 공식 10-K 검산이 실패해 종합 비교를 표시하지 않습니다.")
     # P219: independent model-data calculation only when the operator
     # explicitly supplies locally held market responses. No provider GET.
     from .real_issuer_local_market import render_real_issuer_local_market_panel
