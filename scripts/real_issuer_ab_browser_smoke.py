@@ -295,7 +295,7 @@ def run(output: Path) -> dict:
                         ack.press("Space")
                         expect(ack).to_be_checked(timeout=20000)
                         uploader = page.locator('input[type="file"]')
-                        expect(uploader).to_have_count(2, timeout=25000)
+                        expect(uploader).to_have_count(3, timeout=25000)
                         uploader.nth(0).set_input_files({
                             "name": "synthetic-nvda.json",
                             "mimeType": "application/json",
@@ -497,6 +497,52 @@ def run(output: Path) -> dict:
                         if (b"Time Series (Daily)" in Path(hold_dl.path()).read_bytes()
                                 or b"4. close" in Path(hold_dl.path()).read_bytes()):
                             raise AssertionError("P231_PRIVATE_SOURCE_LEAK_IN_RECEIPT")
+                        # P232: a third, optional file widget is for the
+                        # previously downloaded P231 owner-only receipt.
+                        # Verify actual browser replay, then a forged rights
+                        # claim must fail without creating another audit row.
+                        from proofinvest.real_issuer_abc_receipt_replay import (
+                            verify_p231_local_receipt,
+                        )
+                        checked=verify_p231_local_receipt(
+                            abc_review=abc, receipt=hold, audit_db_path=hold_db)
+                        if (checked["status"]!="VERIFIED_LOCAL_RECEIPT_MATCH_ONLY"
+                                or not checked["receipt_matches_local_source"]
+                                or not checked["local_chain_valid"]
+                                or checked["market_rights_verified"] is not False):
+                            raise AssertionError("P232_LOCAL_READONLY_REPLAY_FAILED")
+                        uploader.nth(2).set_input_files({
+                            "name":"p231-owner-hold-receipt.json",
+                            "mimeType":"application/json",
+                            "buffer":Path(hold_dl.path()).read_bytes(),
+                        })
+                        page.get_by_role(
+                            "button",
+                            name="다운로드한 Guard HOLD 영수증과 로컬 SQLite 대조 (읽기 전용)",
+                            exact=True,
+                        ).click()
+                        expect(page.get_by_text(
+                            "A/B/C 영수증 ↔ 원본 검산자료 ↔ 로컬 SQLite 일치",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        forged=dict(hold)
+                        forged["market_rights_verified"]=True
+                        uploader.nth(2).set_input_files({
+                            "name":"forged-p231-rights.json",
+                            "mimeType":"application/json",
+                            "buffer":json.dumps(forged).encode("utf-8"),
+                        })
+                        page.get_by_role(
+                            "button",
+                            name="다운로드한 Guard HOLD 영수증과 로컬 SQLite 대조 (읽기 전용)",
+                            exact=True,
+                        ).click()
+                        expect(page.get_by_text(
+                            "영수증·원본 검산자료·SQLite 기록이 일치하지 않습니다.",
+                            exact=True,
+                        )).to_be_visible(timeout=25000)
+                        if not GuardAuditStore(hold_db).verify_chain():
+                            raise AssertionError("P232_VERIFY_MUTATED_AUDIT_CHAIN")
                         page.screenshot(
                             path=str(output / "p221-ab-review.png"),
                             full_page=False)
@@ -515,6 +561,7 @@ def run(output: Path) -> dict:
                             "intel_official_10k_and_release_crosschecked": True,
                             "single_abc_download_and_replay_verified": True,
                             "genuine_source_fact_brief_html_json_replayed": True,
+                            "p232_local_hold_receipt_browser_verified": True,
                             "real_llm_invoked": False,
                             "real_source_model_focus_default_off": True,
                             "market_rights_verified": False,
