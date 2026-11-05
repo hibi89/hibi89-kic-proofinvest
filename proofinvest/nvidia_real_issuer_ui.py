@@ -60,6 +60,44 @@ def render_nvidia_fy2026_real_issuer(st) -> None:
         "trade_executed": False,
         "external_network_requests_on_view": 0,
     })
+    # Strict human-initiated fact-check of a pasted local model draft.
+    # No model is called and no publisher text or user draft is sent externally.
+    from .nvidia_factual_draft import verify_nvidia_factual_draft
+    import json
+    st.subheader("발행사 실수치 기반 AI 초안 검산 (모델 실행 아님)")
+    st.caption(
+        "로컬에서 직접 작성한 구조화된 초안만 검산합니다. 예시 JSON은 "
+        "발행사 근거값을 보여주는 입력 형식이며 AI 생성 답변이 아닙니다. "
+        "원본·개인정보·모델 프롬프트를 외부로 전송하지 않습니다."
+    )
+    example = {
+        "schema": "kuodra.nvda-issuer-factual-draft.v1",
+        "ticker": "NVDA",
+        "source_sha256": e["issuer_source_sha256"],
+        "decision": "HUMAN_REVIEW_ONLY",
+        "claims": [
+            {"metric": "revenue_growth_pct", "value": m["revenue_growth_pct"]},
+            {"metric": "inventory_growth_minus_revenue_pp",
+             "value": m["inventory_growth_minus_revenue_pp"]},
+        ],
+    }
+    st.code(json.dumps(example, ensure_ascii=False, indent=2), language="json")
+    draft = st.text_area(
+        "검증할 로컬 모델 초안 JSON (원문/자유서술/투자 권고 차단)",
+        value="", max_chars=4096, height=120, key="p217_nvda_fact_draft",
+    )
+    if st.button(
+        "NVIDIA 초안 숫자·출처 일치 검증",
+        key="p217_nvda_fact_check", disabled=not bool(draft.strip()),
+    ):
+        verdict = verify_nvidia_factual_draft(draft.encode("utf-8"))
+        if verdict["status"] == "REAL_ISSUER_NUMERIC_FACTS_MATCH_FOR_HUMAN_REVIEW":
+            st.success("NVIDIA 발행사 근거 수치와 초안이 일치합니다 (인증/투자 승인 아님).")
+            st.json(verdict)
+        else:
+            st.warning("발행사 수치·기간·출처 또는 투자 권고 제한과 불일치: 표시 차단")
+            st.code(verdict["reason_code"], language="text")
+
     # P210: same-industry PUBLIC GAAP annual reference. This is a newly
     # disclosed first-party web-text transcription for AMD, NOT another
     # verified original-byte file or a licensed/true period-matched peer.
