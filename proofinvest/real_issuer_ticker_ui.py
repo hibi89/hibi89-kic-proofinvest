@@ -141,6 +141,40 @@ def render_real_issuer_ticker_lookup(st) -> None:
             )
             st.warning("2개사 10-K 공개 숫자의 별도 수동 대조일 뿐 외부 공급자 원본 "
                        "바이트 SHA·재사용권·정확한 대표성·Engine C 완료 아님. Guard HOLD.")
+            # P230: third new independent official Qualcomm 2025 10-K
+            # public-text reference, not a 3-peer licensed sector ranking.
+            from .qcom_2025_peer_reference import review_public_qualcomm_third_peer
+            qcom = review_public_qualcomm_third_peer(ticker=result["ticker"])
+            if qcom["status"] == "THIRD_QCOM_PUBLIC_AUDITED_10K_HUMAN_REFERENCE_ONLY":
+                st.subheader("Engine C · Qualcomm 세 번째 공개 감사 10-K 참고기업 (제한)")
+                st.caption(
+                    "QCOM FY2025 10-K의 감사 재무 수치를 Qualcomm FY2025 발표의 "
+                    "반올림 매출 총액·기간과만 교차대조. NVIDIA와 결산일 119일 차이, "
+                    "Qualcomm 통신 IP 라이선스 매출·모바일 중심 사업구조는 NVDA와 다름. "
+                    "SEC 원문 바이트 SHA, 자료 이용권, 같은 부문 비교·예측은 미검증."
+                )
+                third_left,third_right=st.columns(2)
+                third_left.metric("QCOM FY2025 GAAP 매출 증가율 (%)",
+                                  qcom["qcom_revenue_growth_pct"])
+                third_right.metric("QCOM FY2025 GAAP 영업이익률 (%)",
+                                   qcom["qcom_gaap_operating_margin_2025_pct"])
+                st.metric("QCOM FY2024 GAAP 영업이익률 (%)",
+                          qcom["qcom_gaap_operating_margin_2024_pct"])
+                st.markdown(
+                    f'[QCOM FY2025 10-K 공개 보고서]({qcom["qcom_audited_text_10k_url"]}) · '
+                    f'[Qualcomm FY2025 공식 발표]({qcom["qcom_issuer_newsroom_url"]})'
+                )
+                st.download_button(
+                    "Qualcomm 세 번째 10-K 제한 검산 JSON (개인용)",
+                    data=json.dumps(qcom,ensure_ascii=False,sort_keys=True,
+                                    separators=(",",":"),allow_nan=False).encode("utf-8"),
+                    file_name="kuodra-qcom-third-10k-reference-UNVERIFIED.json",
+                    mime="application/json",key="p230_qcom_third_peer_export",
+                    on_click="ignore",
+                )
+                st.warning("세 번째 독립 기업의 과거 수치 확인일 뿐 대표성·동기간·재배포권 미충족, Engine C 미완료 · Guard HOLD.")
+            else:
+                st.warning("QCOM 공식 감사 10-K 참고 출처 체인 검증 실패, 비교 수치 숨김.")
             # P227: independent issuer-10-K AMD Data Center business-segment
             # trend, separate from total-company growth and unlicensed full C.
             from .amd_datacenter_segment_bridge import review_amd_datacenter_segment

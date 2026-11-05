@@ -252,6 +252,36 @@ def run(output: Path) -> dict:
                                 or op_data["trade_executed"] is not False
                                 or op_data["guard_policy_preview"] != "HOLD"):
                             raise AssertionError("P228_REAL_OP_MARGIN_DOWNLOAD_REPLAY")
+                        # P230 real Chromium reads independent third
+                        # Qualcomm first-party 2025 annual history and exports.
+                        expect(page.get_by_role(
+                            "heading",
+                            name="Engine C · Qualcomm 세 번째 공개 감사 10-K 참고기업 (제한)",
+                        )).to_be_visible(timeout=25000)
+                        with page.expect_download(timeout=30000) as q_event:
+                            page.get_by_role(
+                                "button",
+                                name="Qualcomm 세 번째 10-K 제한 검산 JSON (개인용)",
+                                exact=True,
+                            ).click()
+                        q_dl=q_event.value
+                        if q_dl.suggested_filename!=(
+                                "kuodra-qcom-third-10k-reference-UNVERIFIED.json"):
+                            raise AssertionError("P230_QCOM_DOWNLOAD_FILENAME")
+                        q_data=json.loads(Path(q_dl.path()).read_bytes())
+                        from proofinvest.qcom_2025_peer_reference import (
+                            review_public_qualcomm_third_peer,
+                        )
+                        if (q_data!=review_public_qualcomm_third_peer()
+                                or q_data["status"]!="THIRD_QCOM_PUBLIC_AUDITED_10K_HUMAN_REFERENCE_ONLY"
+                                or q_data["qcom_revenue_growth_pct"]!="13.66"
+                                or q_data["qcom_gaap_operating_margin_2025_pct"]!="27.90"
+                                or q_data["nvda_qcom_fiscal_offset_days"]!=119
+                                or q_data["peer_rights_verified"] is not False
+                                or q_data["representative_peers_verified"] is not False
+                                or q_data["engine_c_complete"] is not False
+                                or q_data["trade_executed"] is not False):
+                            raise AssertionError("P230_QCOM_THIRD_PEER_SOURCE_REPLAY")
                         # Form-based atomic submit: checkbox and both local
                         # file widgets are buffered in the client until one
                         # deliberate click, preventing premature reruns.
