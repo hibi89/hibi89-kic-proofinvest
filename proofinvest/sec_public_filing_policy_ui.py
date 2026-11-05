@@ -19,7 +19,9 @@ def render_sec_public_filing_policy(st, reviewed_filing: dict) -> None:
         if x.get("status") != "OFFICIAL_PUBLIC_EDGAR_GENERAL_REUSE_POLICY_VERIFIED":
             st.warning("SEC 정책 일반 범위/기존 출처 참조 검증을 완료하지 못했습니다.")
             return
-        st.success(
+        # A general policy notice is NOT a successful verification of the
+        # currently selected issuer or document; avoid global success badges.
+        st.info(
             "SEC 공식 지침 확인: EDGAR 공개 공시자료의 일반적인 "
             "접근·복사·재사용·재배포는 허용됩니다."
         )
