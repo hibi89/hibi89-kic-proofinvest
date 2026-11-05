@@ -31,17 +31,13 @@ _NOT_OVER = "DOES_NOT_OUTPACE_REVENUE"
 _OLLAMA_FORMAT = {
     "type": "object",
     "properties": {
-        "inventory_signal": {"type": "string", "enum": [_OVER, _NOT_OVER]},
-        "receivables_signal": {"type": "string", "enum": [_OVER, _NOT_OVER]},
+        "signal": {"type": "string", "enum": [_OVER, _NOT_OVER]},
         "source_ref": {"type": "string", "enum": [_CITE]},
         "decision": {"type": "string", "enum": [_HUMAN]},
     },
-    "required": [
-        "inventory_signal", "receivables_signal", "source_ref", "decision",
-    ],
+    "required": ["signal", "source_ref", "decision"],
     "additionalProperties": False,
 }
-
 
 def _blocked(reason: str, local_calls: int = 0) -> dict[str, Any]:
     return {
@@ -108,52 +104,59 @@ def _checked_public_growth() -> dict[str, Any] | None:
         return None
 
 
-def verify_local_qwen_anomaly_response(raw: Any) -> dict[str, Any]:
-    """Guard against false positives, false negatives, free-text and tampering."""
+
+def verify_local_qwen_anomaly_response(raws: Any) -> dict[str, Any]:
+    """Replay TWO separate model responses against independently derived facts.
+
+    One multi-field LLM response previously disagreed with public math, so no
+    inference/safety claim is made from such a bundle. Each signal now has its
+    own independently validated generation, provenance label and output policy.
+    """
     checked = _checked_public_growth()
     if checked is None:
         return _blocked("PUBLIC_SOURCE_NUMERIC_REPLAY_NOT_AVAILABLE")
-    if type(raw) is not bytes or not 0 < len(raw) <= 8192:
-        return _blocked("INVALID_LOCAL_MODEL_RESPONSE", 1)
-    try:
-        env = _json_no_duplicate(raw)
-        if (type(env) is not dict or env.get("done") is not True
-                or env.get("model") != _MODEL
-                or type(env.get("eval_count")) is not int
-                or env["eval_count"] < 1
-                or type(env.get("response")) is not str
-                or not 0 < len(env["response"]) <= 512):
-            return _blocked("REAL_MODEL_GENERATION_NOT_ATTESTED", 1)
-        answer = _json_no_duplicate(env["response"].encode())
-        if (type(answer) is not dict
-                or set(answer) != {
-                    "inventory_signal", "receivables_signal",
-                    "source_ref", "decision",
-                }
-                or answer.get("source_ref") != _CITE
-                or answer.get("decision") != _HUMAN
-                or answer.get("inventory_signal") not in (_OVER, _NOT_OVER)
-                or answer.get("receivables_signal") not in (_OVER, _NOT_OVER)):
-            return _blocked("MODEL_SOURCE_OR_SCHEMA_OR_POLICY_INVALID", 1)
-        if any(answer[k] != val for k, val in checked["expected"].items()):
-            return _blocked("MODEL_SIGNALS_CONFLICT_WITH_PUBLIC_MATH", 1)
-        return {
-            **_blocked("HUMAN_ONLY_PUBLIC_ANOMALY_SCREEN", 1),
-            "status": "REAL_QWEN_TWO_PUBLIC_FINANCIAL_SIGNALS_MATCHED",
-            "actual_model_tokens_verified": True,
-            "two_opposing_independent_signals_verified": True,
-            "verified_signals": dict(checked["expected"]),
-            "growth_percentages_derived_locally": checked["growth"],
-            "evidence_id": _CITE,
-            "authored_interpretation": (
-                "재고 증가율은 매출 증가율보다 높지만 매출채권 증가율은 "
-                "매출 증가율보다 낮습니다. 2026년 공개 수치의 제한적인 "
-                "산술 검토 결과이며 회계부정·투자판단을 의미하지 않습니다."
-            ),
-        }
-    except (ValueError, TypeError, KeyError, UnicodeError,
-            OverflowError, RecursionError):
-        return _blocked("LOCAL_MODEL_SIGNAL_REPLAY_FAILED", 1)
+    if (type(raws) is not tuple or len(raws) != 2
+            or any(type(raw) is not bytes or not 0 < len(raw) <= 8192
+                   for raw in raws)):
+        return _blocked("EXACT_TWO_MODEL_REPLIES_REQUIRED", 2)
+    for i, metric in enumerate(("inventory", "receivables")):
+        try:
+            env = _json_no_duplicate(raws[i])
+            if (type(env) is not dict or env.get("done") is not True
+                    or env.get("model") != _MODEL
+                    or type(env.get("eval_count")) is not int
+                    or env["eval_count"] < 1
+                    or type(env.get("response")) is not str
+                    or not 0 < len(env["response"]) <= 512):
+                return _blocked("REAL_MODEL_GENERATION_NOT_ATTESTED", 2)
+            answer = _json_no_duplicate(env["response"].encode("utf-8"))
+            if (type(answer) is not dict
+                    or set(answer) != {"signal", "source_ref", "decision"}
+                    or answer.get("source_ref") != _CITE
+                    or answer.get("decision") != _HUMAN
+                    or answer.get("signal") not in (_OVER, _NOT_OVER)):
+                return _blocked("MODEL_SOURCE_OR_SCHEMA_OR_POLICY_INVALID", 2)
+            if answer["signal"] != checked["expected"][metric + "_signal"]:
+                return _blocked(
+                    "MODEL_" + metric.upper() +
+                    "_SIGNAL_CONFLICT_WITH_PUBLIC_MATH", 2)
+        except (ValueError, TypeError, KeyError, UnicodeError,
+                OverflowError, RecursionError):
+            return _blocked("LOCAL_MODEL_SIGNAL_REPLAY_FAILED", 2)
+    return {
+        **_blocked("HUMAN_ONLY_PUBLIC_ANOMALY_SCREEN", 2),
+        "status": "REAL_QWEN_TWO_PUBLIC_FINANCIAL_SIGNALS_MATCHED",
+        "actual_model_tokens_verified": True,
+        "two_opposing_independent_signals_verified": True,
+        "verified_signals": dict(checked["expected"]),
+        "growth_percentages_derived_locally": checked["growth"],
+        "evidence_id": _CITE,
+        "authored_interpretation": (
+            "재고 증가율은 매출 증가율보다 높지만 매출채권 증가율은 "
+            "매출 증가율보다 낮습니다. 2026년 공개 수치의 제한적인 "
+            "산술 검토 결과이며 회계부정·투자판단을 의미하지 않습니다."
+        ),
+    }
 
 
 def run_local_qwen_anomaly_screen(
@@ -161,7 +164,11 @@ def run_local_qwen_anomaly_screen(
     explicit_public_derived_consent: bool = False,
     port: int = 11435,
 ) -> dict[str, Any]:
-    """Single local HTTP POST only after two distinct operator approvals."""
+    """TWO bounded loopback calls, independently authenticated by schema.
+
+    Both human opt-ins cover exactly two public derived comparisons. No
+    model output is ever shown unless both responses match independent math.
+    """
     if (explicit_local_model_consent is not True
             or explicit_public_derived_consent is not True):
         return _blocked("TWO_INDEPENDENT_CONSENTS_REQUIRED")
@@ -171,34 +178,32 @@ def run_local_qwen_anomaly_screen(
     if checked is None:
         return _blocked("PUBLIC_DERIVED_FINANCIAL_FACTS_INVALID")
     vals = checked["growth"]
-    # Independent answer, ticker, source link/bytes, risk labels, Guard data,
-    # buyer identities, token and evidence hashes are NOT in the prompt.
-    prompt = (
-        "Classify two independent numerical comparisons of publicly "
-        "transcribed annual FY2026 US issuer financial growth rates (PERCENT). "
-        "Revenue year-on-year growth: " + vals["revenue"] + "%. "
-        "Inventory year-on-year growth: " + vals["inventory"] + "%. "
-        "Receivables year-on-year growth: " + vals["receivables"] + "%. "
-        "For EACH metric decide whether its percent value is STRICTLY "
-        "GREATER than revenue's percent value. "
-        "For inventory_signal use OUTPACES_REVENUE if greater, otherwise "
-        "DOES_NOT_OUTPACE_REVENUE. For receivables_signal independently "
-        "use the same two values. "
-        "Return ONLY a JSON object with inventory_signal, "
-        "receivables_signal, source_ref, decision. "
-        "source_ref is " + _CITE + ". "
-        "decision is HUMAN_REVIEW_ONLY. "
-        "Do not add prose, investment forecasts, or fraud conclusions."
-    )
-    request = json.dumps({
-        "model": _MODEL, "stream": False, "prompt": prompt,
-        "format": _OLLAMA_FORMAT,
-        "options": {"temperature": 0, "num_predict": 140},
-    }, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
-    if not 0 < len(request) <= 2048:
-        return _blocked("REQUEST_EXCEEDS_LOCAL_MODEL_BOUND")
-    try:
-        raw = _call_loopback(request, port=port)
-        return verify_local_qwen_anomaly_response(raw)
-    except (ValueError, TypeError, OSError, UnicodeError, RecursionError):
-        return _blocked("LOCAL_QWEN_PROTOCOL_OR_REPLAY_FAILED", 1)
+    raws: list[bytes] = []
+    for metric in ("inventory", "receivables"):
+        # Each model only sees the TWO growth rates for this one task.
+        # No answer, other signal, original numbers, raw file or issuer name.
+        prompt = (
+            "Compare exactly TWO public financial growth percentages. "
+            "Metric=" + metric.upper() + ". Its year-on-year growth is "
+            + vals[metric] + " percent. Revenue year-on-year growth is "
+            + vals["revenue"] + " percent. "
+            "Is the METRIC percentage strictly greater than the REVENUE "
+            "percentage? If YES, signal=OUTPACES_REVENUE. "
+            "If NO (less than OR equal), signal=DOES_NOT_OUTPACE_REVENUE. "
+            "Return ONLY a JSON object with signal, source_ref, decision. "
+            "source_ref=" + _CITE + ". decision=HUMAN_REVIEW_ONLY. "
+            "No free-text, advice, forecasts or fraud accusations."
+        )
+        request = json.dumps({
+            "model": _MODEL, "stream": False, "prompt": prompt,
+            "format": _OLLAMA_FORMAT,
+            "options": {"temperature": 0, "num_predict": 112},
+        }, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+        if not 0 < len(request) <= 2048:
+            return _blocked("REQUEST_EXCEEDS_LOCAL_MODEL_BOUND", len(raws))
+        try:
+            raws.append(_call_loopback(request, port=port))
+        except (ValueError, TypeError, OSError, UnicodeError, RecursionError):
+            return _blocked("LOCAL_QWEN_PROTOCOL_OR_REPLAY_FAILED",
+                            len(raws) + 1)
+    return verify_local_qwen_anomaly_response(tuple(raws))

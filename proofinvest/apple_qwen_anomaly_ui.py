@@ -9,7 +9,7 @@ def render_apple_public_anomaly_model(st) -> None:
     st.subheader("Qwen 실제 재무 이상징후 2종 교차검산 (선택)")
     st.caption(
         "FY2026 Apple 공개 공시 숫자에서 로컬 계산한 매출·재고·매출채권 "
-        "증가율 3개만 127.0.0.1:11435 로컬 모델에 전달하며, "
+        "증가율 3개만 127.0.0.1:11435 로컬 모델에 각각 두 번에 나눠 전달하며, "
         "모델의 서로 반대인 두 결과는 Decimal로 재검산합니다. "
         "원본·사용자 파일·API 키·주가·Nasdaq-100·경쟁기업 수치는 "
         "전송하지 않습니다. 로컬 서버의 프록시/원격 중계 여부는 "
@@ -20,7 +20,7 @@ def render_apple_public_anomaly_model(st) -> None:
         key="p234_local_model_consent", value=False,
     )
     allow_derived = st.checkbox(
-        "공개 수치 유래 증가율 3개 전송 및 2개 재무 신호 비교 동의",
+        "공개 수치 유래 증가율 비교 2회 로컬 모델 요청에 동의",
         key="p234_derived_public_consent", value=False,
     )
     if not st.button(
