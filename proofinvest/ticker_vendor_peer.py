@@ -93,6 +93,24 @@ def build_peer_comparison(
     if (peer_cik == target_cik or peer_ticker == target_ticker
             or peer_period_end != target_current_end):
         raise ValueError("VENDOR_PEER_PERIOD_OR_IDENTITY_DIFFERENT")
+    # Re-validate the two original provider replies at the final join boundary.
+    # Previously only their digests were reported: a direct caller could bind
+    # arbitrary peer ticker/CIK or accession metadata to unrelated raw bodies.
+    # This is local replay of the SAME bytes, never an additional HTTP request.
+    selected_ticker, selected_cik = choose_one_peer(
+        peer_mapping_raw, target_cik=target_cik,
+        target_ticker=target_ticker, industry=industry,
+    )
+    if (selected_ticker, selected_cik) != (peer_ticker, peer_cik):
+        raise ValueError("VENDOR_PEER_MAPPING_REPLAY_MISMATCH")
+    from .ticker_provider_sec_api import _day
+    parsed_filing, parsed_accession, parsed_end, _ = _filing(
+        peer_query_raw, ticker=peer_ticker, cik=peer_cik,
+        cutoff=_day(as_of),
+    )
+    if (parsed_filing, parsed_accession, parsed_end) != (
+            peer_filing_date, peer_accession, peer_period_end):
+        raise ValueError("VENDOR_PEER_FILING_REPLAY_MISMATCH")
     peer_cf = _facts_from_xbrl(
         peer_xbrl_raw, cik=peer_cik, accession=peer_accession,
         filed=peer_filing_date, fiscal_end=peer_period_end,

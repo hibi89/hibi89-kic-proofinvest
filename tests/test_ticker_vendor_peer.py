@@ -251,5 +251,70 @@ class P146PeerContractTests(unittest.TestCase):
                          [True])
 
 
+
+class P254PeerSourceReplayTests(unittest.TestCase):
+    """Direct Engine C join must replay mapping + filing bytes, not just hash."""
+
+    def _join(self, raw=None, **changes):
+        from proofinvest.ticker_vendor_peer import build_peer_comparison
+        original = raw if raw is not None else peer_responses()
+        inputs = {
+            "peer_ticker": "AAPL", "peer_cik": "0000320193",
+            "peer_accession": "0000320193-25-000020",
+            "peer_filing_date": "2025-10-15",
+            "peer_period_end": "2025-09-30",
+            "peer_mapping_raw": original[4], "peer_query_raw": original[5],
+            "peer_xbrl_raw": original[6], "industry": "Semiconductors",
+            "target_cik": "0001045810", "target_ticker": "NVDA",
+            "target_prior_revenue_usd": "100",
+            "target_current_revenue_usd": "200",
+            "target_prior_end": "2024-09-30",
+            "target_current_end": "2025-09-30", "as_of": "2026-02-01",
+        }
+        inputs.update(changes)
+        return build_peer_comparison(**inputs)
+
+    def test_original_peer_source_replay_preserves_descriptive_result(self):
+        with patch("urllib.request.urlopen",
+                   side_effect=AssertionError("UNAUTHORIZED_HTTP")):
+            result = self._join()
+        self.assertEqual(result["status"], "PEER_ONE_PERIOD_ALIGNED_UNVERIFIED")
+        self.assertEqual(result["peer_growth_pct"], "50.00")
+        self.assertEqual(result["growth_gap_to_one_peer_pp"], "50.00")
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["full_engine_c_ready"])
+
+    def test_final_join_refuses_unrelated_industry_mapping(self):
+        raw = peer_responses()
+        rows = json.loads(raw[4])
+        rows[0]["industry"] = "Other Industry"
+        raw[4] = json.dumps(rows).encode()
+        with self.assertRaises(ValueError):
+            self._join(raw)
+
+    def test_final_join_refuses_forged_peer_id_with_valid_raw_bodies(self):
+        with self.assertRaisesRegex(ValueError, "MAPPING_REPLAY_MISMATCH"):
+            self._join(peer_ticker="MSFT")
+        with self.assertRaisesRegex(ValueError, "MAPPING_REPLAY_MISMATCH"):
+            self._join(peer_cik="0000789019")
+
+    def test_final_join_refuses_filing_receipt_drift(self):
+        with self.assertRaisesRegex(ValueError, "FILING_REPLAY_MISMATCH"):
+            self._join(peer_filing_date="2025-10-16")
+        with self.assertRaisesRegex(ValueError, "FILING_REPLAY_MISMATCH"):
+            self._join(peer_accession="0000320193-25-000021")
+
+    def test_final_join_rechecks_actual_filing_body(self):
+        raw = peer_responses()
+        record = json.loads(raw[5])
+        record["filings"][0]["filedAt"] = "2025-10-16T10:00:00-04:00"
+        raw[5] = json.dumps(record).encode()
+        with self.assertRaisesRegex(ValueError, "FILING_REPLAY_MISMATCH"):
+            self._join(raw)
+
+    def test_final_join_rejects_future_filing_for_asof(self):
+        with self.assertRaises(ValueError):
+            self._join(as_of="2025-10-01")
+
 if __name__ == "__main__":
     unittest.main()
