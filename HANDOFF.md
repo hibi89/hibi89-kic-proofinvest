@@ -1,4 +1,6 @@
-# KIC KUODRA HANDOFF — P238 (2026-11-05 KST)
+# KIC KUODRA HANDOFF — P239 (2026-11-05 KST)
+
+**P239 실제 Windows SEC 요청 실패·재실행 금지(2026-11-05 KST):** 사용자가 소유자 승인·로컬 비공개 연락처 입력 후 SHA b0c4d18의 `python -m scripts.p238_authorized_apple_sec_once`를 실행함. JSON 응답: `status=BLOCKED`, `reason_code=SEC_ACTUAL_BODY_LENGTH_MISMATCH`, `http_requests_attempted=1`, `retries=0`, `sec_transport_observed=false`, `original_html_saved=false`, `guard_policy_preview=HOLD`. 실제 GET 1회가 일어났으므로 더 이상 "실제 SEC 요청 0회"라 말하지 말 것. 구현 검토 결과 HTTP 200, 정확한 SEC Apple 10-K URL, MIME/인코딩, 선언된 Content-Length(있을 경우) 조건을 통과한 뒤 받은 본문의 길이가 예상한 1,650,003바이트와 달랐음. SEC 공식 2026-11-03 filing index에서도 1,650,003바이트로 표시됨. 실제 수신 바이트 수·원문 내용은 출력/저장하지 않아 **원인 확인 불가**. 403/429 결과 아님. **이번 소유자 승인 단발성 요청은 사용 완료**, 동일 명령 재실행·새 SEC 요청 금지(별도 사전 승인 없는 한). P105 NVDA 이전 403 우회·재시도도 금지. 원본 바이트/SEC 소스 인증 실패, 시장/NDX/비교기업 라이선스 미확인. **76/100 그대로(+0pp), RELEASE HOLD**. 개인정보·사용자 실제 연락처는 이력에 포함하지 않음.
 
 1. 목표/확정 요구/기술: 미국 단일 주식→출처와 합법적 사용권이 확인된 SEC 원본/실제 주가/진짜 Nasdaq-100 NDX/대표 peer→독립 A/B/C, 로컬 AI 근거 설명, Guard HOLD, SQLite 감사. Python 3.11 + Streamlit. 자동매매 없음. 예선 2026-11-12 10:00 KST 공식 PDF 별도 사용자 승인 필요.
 2. 이번 기능: 소유자 전용 Apple FY2026 공식 SEC HTML 1회 HTTPS 조회 검증 경로(P238) 신설. 정확한 Apple accession/고정 URL에만 최대 1 GET, 실제 SEC 연락 가능한 이메일을 로컬 getpass로 받고 사용자가 READ SEC APPLE 2026 정확 문구로 승인한 뒤 실행. TLS 인증서/호스트 검사, 프록시 없음, 리디렉션 금지, 재시도 0, 원본 로컬 저장/업로드/출력 0, 실데이터/외부 모델/거래 없음. 기존 P237 DEI/US-GAAP 6개 사실과 파일 크기/형태/기간·통화 독립 확인. 모의 HTTP가 형식을 만족해도 SEC 전송 인증은 FALSE로 강제. NVDA P105 403 주소는 호출하지 않음.
