@@ -134,9 +134,15 @@ def parse_massive_daily(raw: bytes, *, symbol: str, as_of: str,
             raise ValueError("INVALID_BAR_TIME_OR_CLOSE")
         try:
             dt = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
-            # ET midnight daily bars lie in the early UTC hours; reject
-            # intraday or arbitrary future timestamps posing as a daily bar.
-            if not 4 <= dt.hour <= 10 or dt.minute != 0 or dt.second != 0:
+            # Daily stock bars are anchored to ET midnight (04/05 UTC).
+            # Indices can also be anchored at exchange-session close: the
+            # official I:NDX previous-day example uses 20:00 UTC. A rigid
+            # 04:00-10:00 UTC window incorrectly rejects these index bars.
+            # Only time-aligned *daily* source bars from the explicit 1/day
+            # aggregate endpoint are admitted, never raw intraday trades.
+            if (dt.minute != 0 or dt.second != 0 or dt.microsecond != 0
+                    or not (4 <= dt.hour <= 10
+                            or (index and 19 <= dt.hour <= 22))):
                 raise ValueError("NON_DAILY_BAR_TIMESTAMP")
             observed = dt.date()
             amount = Decimal(str(raw_close))

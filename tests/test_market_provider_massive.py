@@ -158,6 +158,38 @@ class MassiveBasicAdapterTests(unittest.TestCase):
         negative["c"] = -1
         verify(negative,"CLOSE_OUT_OF_BOUNDS")
 
+    def test_official_ndx_session_close_timestamp_is_valid_daily_index_bar(self):
+        # Massive official Indices previous-day example uses 20:00 UTC.
+        # It must not be rejected solely for not being ET-midnight anchored.
+        # Use a complete 2026 daily series at 20:00 UTC.
+        raw = json.loads(fixture("I:NDX", index=True))
+        for item in raw["results"]:
+            item["t"] += 15 * 3600000  # 05:00 -> 20:00 UTC
+        parsed = parse_massive_daily(json.dumps(raw).encode(),
+                                     symbol="I:NDX",as_of="2026-10-01",index=True)
+        self.assertEqual(parsed["point_count"],65)
+        self.assertEqual(parsed["first_date"],"2026-07-01")
+        self.assertEqual(parsed["last_date"],"2026-09-29")
+        self.assertFalse(parsed["source_authenticated"])
+        self.assertFalse(parsed["source_rights_verified"])
+
+    def test_intraday_or_utc_midnight_stamps_still_rejected_for_ndx(self):
+        raw=json.loads(fixture("I:NDX",index=True))
+        raw["results"][0]["t"] -= 5*3600000
+        with self.assertRaisesRegex(ValueError,"NON_DAILY_BAR_TIMESTAMP"):
+            parse_massive_daily(json.dumps(raw).encode(),
+                                 symbol="I:NDX",as_of="2026-10-01",index=True)
+        raw=json.loads(fixture("I:NDX",index=True))
+        raw["results"][0]["t"] += 8*3600000  # 13:00 UTC unsupported intraday-like anchor
+        with self.assertRaisesRegex(ValueError,"NON_DAILY_BAR_TIMESTAMP"):
+            parse_massive_daily(json.dumps(raw).encode(),
+                                 symbol="I:NDX",as_of="2026-10-01",index=True)
+        raw=json.loads(fixture("NVDA"))
+        raw["results"][0]["t"] += 15*3600000
+        with self.assertRaisesRegex(ValueError,"NON_DAILY_BAR_TIMESTAMP"):
+            parse_massive_daily(json.dumps(raw).encode(),
+                                 symbol="NVDA",as_of="2026-10-01")
+
     def test_duplicate_bar_calendar_and_nonfinite_close_are_blocked(self):
         raw=json.loads(fixture())
         raw["results"].append(raw["results"][-1])
