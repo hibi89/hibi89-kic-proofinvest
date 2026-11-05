@@ -86,6 +86,32 @@ class Local2026EdgarTests(unittest.TestCase):
             x=p.verify_operator_apple_2026_edgar_html(data)
             self.assertEqual(x["status"],"BLOCKED",x)
 
+    def test_rendered_sec_dei_date_display_formats_are_exactly_bounded(self):
+        base=synthetic()
+        for rendered in ("September 26, 2026", "Sep 26, 2026",
+                         "Sep. 26, 2026", "9/26/2026"):
+            # Replace only the DEI value, not the XBRL context duration.
+            raw=base.replace(
+                b'<ix:nonNumeric name="dei:DocumentPeriodEndDate">2026-09-26</ix:nonNumeric>',
+                ('<ix:nonNumeric name="dei:DocumentPeriodEndDate">'+rendered+
+                 '</ix:nonNumeric>').encode(),
+                1)
+            self.assertNotEqual(raw,base)
+            raw=raw[:p._SIZE] if len(raw) >= p._SIZE else raw+b" "*(p._SIZE-len(raw))
+            result=p.verify_operator_apple_2026_edgar_html(raw)
+            self.assertEqual(result["status"],
+                             "LOCAL_SEC_2026_HTML_6_GAAP_FACTS_MATCH_UNAUTHENTICATED",
+                             (rendered,result))
+        for wrong in ("September 25, 2026", "September 26, 2025",
+                      "2026-09-27", "not a date"):
+            b=base.replace(
+                b'<ix:nonNumeric name="dei:DocumentPeriodEndDate">2026-09-26</ix:nonNumeric>',
+                ('<ix:nonNumeric name="dei:DocumentPeriodEndDate">'+wrong+
+                 '</ix:nonNumeric>').encode(),1)
+            b=b[:p._SIZE] if len(b)>=p._SIZE else b+b" "*(p._SIZE-len(b))
+            self.assertEqual(p.verify_operator_apple_2026_edgar_html(b)["status"],
+                             "BLOCKED")
+
     def test_wrong_file_size_name_date_html_cannot_be_promoted(self):
         blob=synthetic()
         for content,options in (

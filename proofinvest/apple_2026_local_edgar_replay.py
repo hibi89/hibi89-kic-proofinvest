@@ -103,6 +103,20 @@ def _blocked(reason: str) -> dict[str, Any]:
     }
 
 
+def _canonical_period_end(value: Any) -> bool:
+    # Public SEC Inline-XBRL can render the underlying DEI date using
+    # ixt:datemonthdayyearen rather than ISO-8601 in HTML. Accept ONLY
+    # a small enumerated list of English spellings for this ONE filed date;
+    # never interpret an ambiguous free-form date or trust a client claim.
+    if type(value) is not str or len(value) > 64:
+        return False
+    return value.strip().replace("\u00a0", " ") in {
+        "2026-09-26", "September 26, 2026", "Sep 26, 2026",
+        "Sep. 26, 2026", "Sept 26, 2026", "Sept. 26, 2026",
+        "9/26/2026", "09/26/2026",
+    }
+
+
 def _money_millions(fact: dict, units: dict[str, list[str]]) -> Decimal | None:
     if units.get(fact.get("unit")) != ["iso4217:usd"]:
         return None
@@ -142,7 +156,9 @@ def verify_operator_apple_2026_edgar_html(
                 or actual_cik[0].strip().zfill(10) != _CIK
                 or meta.get("dei:documenttype") != ["10-K"]
                 or meta.get("dei:documentfiscalyearfocus") != ["2026"]
-                or meta.get("dei:documentperiodenddate") != [_PERIOD]):
+                or type(meta.get("dei:documentperiodenddate")) is not list
+                or len(meta["dei:documentperiodenddate"]) != 1
+                or not _canonical_period_end(meta["dei:documentperiodenddate"][0])):
             return _blocked("INLINE_DEI_CIK_FORM_FISCAL_IDENTITY_MISMATCH")
         if not parser.contexts or not parser.units or not parser.facts:
             return _blocked("STRUCTURED_INLINE_XBRL_CONTEXTS_OR_FACTS_MISSING")
