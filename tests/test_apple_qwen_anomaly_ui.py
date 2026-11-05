@@ -16,12 +16,15 @@ class P234NativeFinancialSignalUITests(unittest.TestCase):
             at = AppTest.from_file(str(app)).run(timeout=30)
             at.selectbox[0].set_value(mode).run(timeout=30)
             self.assertFalse(at.exception, [str(x.message) for x in at.exception])
-            self.assertTrue(any(x.key == "p234_local_model_consent"
-                                and not x.value for x in at.checkbox))
-            self.assertTrue(any(x.key == "p234_derived_public_consent"
-                                and not x.value for x in at.checkbox))
-            b = next(x for x in at.button if x.key == "p234_anomaly_model_run")
-            self.assertTrue(b.disabled)
+            # P233 known-good model UI remains, but failed P234 must
+            # not expose a callable production-facing control.
+            self.assertTrue(any(x.key == "p233_qwen_local_consent"
+                                for x in at.checkbox))
+            self.assertFalse(any(x.key in (
+                "p234_local_model_consent", "p234_derived_public_consent")
+                for x in at.checkbox))
+            self.assertFalse(any(x.key == "p234_anomaly_model_run"
+                                 for x in at.button))
             self.assertFalse(any("재고·매출채권 두 신호의 실제 모델 응답"
                                  in x.value for x in at.success))
             network.assert_not_called()

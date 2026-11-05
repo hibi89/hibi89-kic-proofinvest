@@ -69,6 +69,6 @@ def render_apple_fy2026_public_review(st) -> None:
     from .apple_qwen_public_ui import render_apple_public_qwen_check
     render_apple_public_qwen_check(st)
 
-    # P234 financial anomalies: two separate opt-ins, public derived rates only.
-    from .apple_qwen_anomaly_ui import render_apple_public_anomaly_model
-    render_apple_public_anomaly_model(st)
+    # P234 intentionally NOT exposed: real 0.5B/1.5B negative-control
+    # financial signal evaluation disagreed with independent Decimal math.
+    # Keep failed experimental code only for offline diagnostics. P233 works.
