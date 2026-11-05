@@ -230,3 +230,24 @@ def render_local_ticker_dashboard(st: Any, workflow: Any) -> None:
              "ai_agent_executed": False, "trade_executed": False})
     st.warning("로컬 업로드 데이터의 발행기관 진위·재배포 권리·시장 데이터 시점은 인증되지 않았습니다. "
                "수치는 설명용이며 매매·투자 승인 또는 자동 AI 실행이 아닙니다.")
+
+
+def analyze_local_ticker_dashboard(
+    *, ticker: str, as_of: str, sources: dict[str, bytes],
+    market_json: bytes | None = None, industry_json: bytes | None = None,
+) -> dict[str, Any]:
+    """Single-call local A/B/C dashboard backed by actual source-byte replay.
+
+    This is a user-facing orchestration entrypoint, not an authenticated
+    provider, investment recommendation, model agent or trading execution.
+    Never return the raw source bytes or a partial unverified report.
+    """
+    from .ticker_local_workflow import run_local_ticker_workflow
+
+    workflow = run_local_ticker_workflow(
+        ticker=ticker, as_of=as_of, sources=sources,
+        market_json=market_json, industry_json=industry_json,
+    )
+    if workflow.get("status") != "READY_FOR_HUMAN_REVIEW_UNVERIFIED":
+        return _blocked(workflow.get("reason_code", "WORKFLOW_BLOCKED"))
+    return summarize_local_ticker_dashboard(workflow)
