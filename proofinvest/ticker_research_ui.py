@@ -1054,6 +1054,27 @@ def render_single_ticker_search(st) -> None:
                        all(x is not None for x in (
                            ticker_map, submissions, companyfacts_local, original_local)))),
     )
+    # Massive Basic has free personal EOD stock and I:NDX index aggregates.
+    # It does not grant public judge-display, AI redistribution or commercial
+    # permissions. Never auto-use the owner's newly generated API key.
+    massive_enabled = all(os.environ.get(k) == "1" for k in (
+        "KUODRA_ENABLE_MASSIVE_PAIR",
+        "KUODRA_MASSIVE_PERSONAL_RESEARCH_APPROVED",
+    )) and bool(os.environ.get("MASSIVE_API_KEY"))
+    st.caption("Massive 무료 Stocks/Indices Basic: 실제 I:NDX 및 종목 일봉. "
+               "개인 연구 전용·이용권 미인증. 계정 생성만으로 조회를 승인하지 않습니다.")
+    massive_ack = st.checkbox(
+        "내 개인 연구용으로만 Massive 주가·I:NDX 최대 2회 조회에 개별 동의합니다",
+        value=False, key="kuodra_p243_massive_ack",
+    )
+    massive_clicked = st.button(
+        "Massive 무료 플랜 · 로컬 SEC 검산 후 주가+NDX 분석 (최대 2회)",
+        key="kuodra_p243_massive_run",
+        disabled=not (massive_enabled and massive_ack and valid
+                      and (operator_zip is not None or
+                           all(x is not None for x in (
+                               ticker_map, submissions, companyfacts_local, original_local)))),
+    )
     offline_pair_clicked = st.button(
         "로컬 SEC + 종목·실제 NDX A/B/C 통합 검토 파일 생성 (외부 요청 0회)",
         key="kuodra_p167_run",
@@ -1065,7 +1086,8 @@ def render_single_ticker_search(st) -> None:
                      ticker_map, submissions, companyfacts_local, original_local)))
         ),
     )
-    if source_plan_clicked or human_review_clicked or pair_clicked or offline_pair_clicked:
+    if (source_plan_clicked or human_review_clicked or pair_clicked
+            or massive_clicked or offline_pair_clicked):
         raw_local = None
         using_zip = operator_zip is not None
         if using_zip and any(x is not None for x in (
@@ -1174,6 +1196,62 @@ def render_single_ticker_search(st) -> None:
             # existing seven-stage independent local report replay passes.
             from .ticker_local_dashboard import render_local_ticker_dashboard
             render_local_ticker_dashboard(st, workflow)
+            if massive_clicked:
+                # The same seven-stage local SEC replay must have succeeded
+                # before any optional personal-use provider request.
+                guard = original_check.get("guard_preview")
+                if (type(guard) is not dict or guard.get("decision") != "HOLD"
+                        or revenue.get("status") != "REVENUE_CALCULATED_UNVERIFIED"):
+                    st.warning("원본/Guard 검산 미통과: Massive 외부 요청은 실행하지 않습니다.")
+                else:
+                    from hashlib import sha256
+                    from .premium_paid_attempts import register_premium_pair_attempt
+                    from .market_provider_massive import fetch_massive_pair
+                    # Isolate Massive session history from existing premium
+                    # Alpha Vantage ledger by namespacing its fingerprint.
+                    fp = _p154_pair_source_fingerprint(
+                        ticker=key, as_of=as_of, receipt=local_receipt,
+                        market_json=market_data, industry_json=industry_data,
+                    )
+                    fp = sha256(("massive-individual-v1:" + fp).encode()).hexdigest()
+                    attempt = register_premium_pair_attempt(
+                        getattr(st, "session_state", None), fp)
+                    if attempt == "INVALID":
+                        st.warning("중복 조회 장부 오류: Massive 요청을 차단했습니다.")
+                    elif attempt == "DUPLICATE":
+                        st.warning("동일 종목/공시 Massive 재조회 차단: 무료 할당량 보호.")
+                    else:
+                        outcome = fetch_massive_pair(
+                            ticker=key, issuer_cik=local_receipt["cik"],
+                            filing_date=revenue["filing_date"], as_of=as_of,
+                            api_key=os.environ.get("MASSIVE_API_KEY"),
+                            explicit_click=True, individual_research_approved=True,
+                        )
+                        st.subheader("Massive 실제 NDX + 주가 Engine A (개인·로컬)")
+                        if outcome["status"] == "ENGINE_A_MASSIVE_DESCRIPTIVE_UNVERIFIED":
+                            values = outcome["market_analysis"]
+                            st.metric("개인 로컬 Engine A 베타 (미인증)",
+                                      str(values.get("beta") or "산출 불가"))
+                            st.json({
+                                "ticker": key, "benchmark": "I:NDX",
+                                "matched_observation_count": outcome["matched_observation_count"],
+                                "matched_period_start": outcome["matched_period_start"],
+                                "matched_period_end": outcome["matched_period_end"],
+                                "stock_source_sha256": outcome["stock_response_sha256"],
+                                "index_source_sha256": outcome["index_response_sha256"],
+                                "network_requests": outcome["network_requests"],
+                                "source_authenticated": False,
+                                "source_rights_verified": False,
+                                "commercial_reuse_allowed": False,
+                                "external_display_allowed": False,
+                                "guard_executed": False, "trade_executed": False,
+                            })
+                            st.warning("무료 Individual은 상업/공개 심사영상/대회 제출 "
+                                       "재배포 권한이 아닙니다. 근거 수치는 로컬에만 표시.")
+                        else:
+                            st.warning("Massive 원본·기간·무료 플랜 권한 미충족. "
+                                       "자동 재시도 없이 조회를 중단했습니다.")
+                            st.code(outcome["reason_code"], language="text")
             if offline_pair_clicked:
                 # This is the FIRST packet generation path that needs no
                 # earlier approved Premium GET and no preexisting packet.
