@@ -30,6 +30,11 @@ def render_apple_fy2026_public_review(st) -> None:
     # independent of specific raw SEC file authentication and API permissions.
     from .sec_public_filing_policy_ui import render_sec_public_filing_policy
     render_sec_public_filing_policy(st, result)
+
+    # P237: only already-held local SEC HTML, operator opt-in;
+    # zero SEC GET and no source-authentication promotion.
+    from .apple_2026_local_edgar_ui import render_local_apple_sec_html_replay
+    render_local_apple_sec_html_replay(st)
     st.caption("연결재무제표 · USD 백만 · FY2026 2026-09-26 · FY2025 2025-09-27")
     rows = [
         {"지표": name, "FY2026 (USD 백만)": row["2026_usd_millions"],
