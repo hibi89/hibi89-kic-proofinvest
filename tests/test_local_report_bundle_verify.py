@@ -109,6 +109,19 @@ class ReportBundleVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"ZIP_SYMLINK_BLOCKED"):
             verify_local_report_bundle(symlink,sha256(target.read_bytes()).hexdigest())
 
+    def test_recomputed_digest_cannot_authorize_zip_prefix_or_trailer(self):
+        original = self.dest.read_bytes()
+        for modified in (b"PREFIX" + original, original + b"TRAILER"):
+            with self.subTest(length=len(modified)):
+                self.dest.write_bytes(modified)
+                with self.assertRaisesRegex(ValueError, "ZIP_NONCANONICAL_ENVELOPE"):
+                    verify_local_report_bundle(
+                        self.dest, sha256(modified).hexdigest())
+        self.dest.write_bytes(original)
+        self.assertEqual(
+            verify_local_report_bundle(self.dest, self.sha)["bundle_sha256"],
+            self.sha)
+
     def test_cli_success_and_fail_are_sanitized_and_read_only(self):
         cmd=[sys.executable,"-B","-m","proofinvest.local_report_bundle_verify",
              str(self.dest),"--expected-sha256",self.sha]
