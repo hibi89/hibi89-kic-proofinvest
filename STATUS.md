@@ -1,3 +1,11 @@
+> ## P270 — P270 · 2026-11-06 KST | Browser-ready local 3-5-stock + I:NDX market review; rights still unverified.
+> - New local-only 4-6 JSON uploader on Streamlit (3-5 US tickers and I:NDX), explicit click, controlled immutable local-source report, fixed CIK mapping, filing-date gate.
+> - Reuses P269 strict parse/Decimal regression; no vendor GET, no data disk cache, no external model, Guard HOLD, no public display. JSON proof download replays from original bytes on click; tampered report/source blocked.
+> - Implementation tradeoff: UI one-shot new cache per click instead of reusing process cache across users, eliminating cross-user data risk. Durable cache and network refresh remain vendor-rights gated.
+> - Synthetic tests and actual Chromium Playwright UI smoke added to mandatory CI; CI PENDING until tested for this new SHA. Baseline 76/100 +0pp; actual vendor originals/contest AI permission, integrated SEC Engine B, real operator run and Production still unmet.
+> - Authorized outreach only: Massive sales@massive.com licensing+coverage inquiry sent 2026-11-06 KST from connected Gmail; message id 1a1b0db4f812bb76. This does not grant data access or permit remote GET.
+> 
+>
 > ## P269 — 2026-11-06 KST · VERIFIED MULTI-STOCK SHARED I:NDX OFFLINE ENGINE A (76/100 +0pp)
 >
 > **Tested SHA:** \`db5bf3f3df9856c7a6f89ae4932507b2ed5d6c01\`; [Actions #42196016897](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42196016897) TERMINAL **5/5 mandatory SUCCESS**, 4 optional real Qwen SKIPPED. Python **2,166/2,166 PASS**, syntax **526/526 PASS**; actual Chromium Guard and existing multi-issuer B/C synthetic UI, Windows HTTP, SQLite, isolated Docker PASS. All vendor GETs zero; no original proprietary quotes or API keys transmitted or saved. First feature SHA \`a3535b17\` passed Python/Windows/Docker but old Chromium React-Aria scenario failed after Enter committed only filter text. Corrected exact option click at tested \`db5bf3f3\`. This docs-only finalization is not a new feature test.

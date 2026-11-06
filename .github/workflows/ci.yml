@@ -184,6 +184,8 @@ jobs:
         run: python -B -m scripts.owner_source_global_browser_smoke
       - name: P268 two independent owner original 10-K filings -> peer gap -> downloads
         run: python -B -m scripts.owner_peer_browser_smoke
+      - name: P270 Chromium 3 stock + true NDX-shaped offline Engine A upload and audit export
+        run: python -B -m scripts.market_panel_browser_smoke
       - name: P263 Chromium global issuer B/C -> Guard -> JSON/HTML (no market API)
         run: |
           python -B -m scripts.global_fundamentals_browser_smoke /tmp/kic-p263-global-browser

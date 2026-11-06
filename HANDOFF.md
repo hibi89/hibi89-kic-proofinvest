@@ -1,3 +1,16 @@
+# P270 HANDOFF — 2026-11-06 KST · OPERATOR-ONLY 3-5 STOCK TRUE-NDX OFFLINE UI
+
+1. Goal/requirements/stack: Finish KUODRA full product. Python 3.11, Streamlit localhost only, no preliminary PDF. Keep P269 source cache/Engine A and all B/C/Guard routes.
+2. Implemented/design: Human-submit gated Streamlit route; 4-6 bounded user JSON files, fixed ticker→CIK mapping and entered 10-K filing day; zero-network multi-company Decimal beta/returns; replay-verified private JSON export. Chose per-click local memory instead of session/persistent vendor cache due source rights/cross-session leakage.
+3. Tests: New synthetic unit tests and actual Playwright 4-file Chromium smoke included in mandatory workflow. Not yet verified at creation. Previous P269 tested code db5bf3f3 2166/2166 and 5/5 CI PASS; do not claim that run covers P270.
+4. State: Local UI integrated but only after new CI passes; real vendor origin, licensed I:NDX/AI/judge use, Engine B joined, persistent cache, automatic GET and Production pending; official 76/100 unchanged, RELEASE HOLD.
+5. Errors/recovery: P269 React-Aria Enter issue avoided by exact role option click. New CI failure must be inspected once and corrected at source. No live external data GET or payment.
+6. Repository: hibi89/hibi89-kic-proofinvest lead/kic; based on e5fb7b61d533194536874fa84763b2edb5baadc0; proofinvest/market_panel_review.py, proofinvest/market_panel_review_ui.py, streamlit_app.py, tests/test_market_panel_review.py, scripts/market_panel_browser_smoke.py, .github/workflows/ci.yml.
+7. Environment: KUODRA_ENABLE_LOCAL_SOURCE_UI=1 and localhost bind; python -m scripts.local_ui_launcher --enable-local-review; python -B -m scripts.verify_local --full. No Production URL.
+8. Original/security: In-memory only; uploaded bytes not sent to Massive/LLM/GitHub; max 256KiB each, no secret credentials. Git parent is rollback. Source hash is integrity not origin.
+9. Next steps: Run CI; if green, await written Massive consent rights+entitlement, separately request approval for limited real GET; tie issuer SEC B same fiscal window with A, inspect actual Chromium, then secure production with separate approval.
+10. Time/check: 2026-11-06 KST. Initial commit unverified; test SHA/final CI to be appended once observed. User authorized Massive license inquiry only; email sent to sales@massive.com; no rights granted.
+
 # P269 VERIFIED HANDOFF — 2026-11-06 KST · OFFLINE REAL-NDX-ID MULTI-ISSUER ENGINE A
 
 1. **Product goal / requirements / stack:** KUODRA full 100% product, 85% intermediate; three US stock candidates NVDA/AAPL/MSFT and actual Nasdaq-100 I:NDX, no QQQ. Python 3.11, current Streamlit/Guard/SEC B/C retained. No submission PDF work.

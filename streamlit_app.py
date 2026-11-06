@@ -24,6 +24,7 @@ _SOURCE_KR_LOCAL = "KUODRA · 한국 주식 시연 (로컬 전용)"
 _SOURCE_GLOBAL_BC = "KUODRA · 글로벌 발행사 B/C·Guard (나스닥 없이, 로컬)"
 _SOURCE_OWNER_US = "KUODRA · 미국 전 종목 원본 4개 → AI 도구/Guard (로컬)"
 _SOURCE_OWNER_PEER = "KUODRA · 2개 미국기업 원본 대조 Engine C (로컬)"
+_SOURCE_MARKET_PANEL = "KUODRA · 미국 3~5종목 + I:NDX Engine A (로컬)"
 _SOURCE_APPLE_2026_PUBLIC = "KUODRA · Apple FY2026 실제 공시 수치 검산 (원본 미인증)"
 _SOURCE_NVDA_IR_HISTORY = "KUODRA · NVIDIA 과거 IR 실수치 검산 (로컬 전용)"
 _SOURCE_NVDA_FY2026_REAL = "KUODRA · NVIDIA FY2026 공식 발행사 원문 검증 (제한)"
@@ -623,6 +624,7 @@ def render_app(st) -> None:
             available_sources.append(_SOURCE_GLOBAL_BC)
             available_sources.append(_SOURCE_OWNER_US)
             available_sources.append(_SOURCE_OWNER_PEER)
+            available_sources.append(_SOURCE_MARKET_PANEL)
             # Separate historical issuer-IR reference: never SEC or live market data.
             ir_ui_file = Path(__file__).resolve().parent / "proofinvest/issuer_ir_local_ui.py"
             ir_facts = Path(__file__).resolve().parent / "docs/evidence/nvda_fy2025_issuer_ir.json"
@@ -668,6 +670,10 @@ def render_app(st) -> None:
     if source == _SOURCE_OWNER_US:
         from proofinvest.owner_source_global_ui import render_owner_source_question
         render_owner_source_question(st)
+        return
+    if source == _SOURCE_MARKET_PANEL:
+        from proofinvest.market_panel_review_ui import render_market_panel_review
+        render_market_panel_review(st)
         return
     if source == _SOURCE_OWNER_PEER:
         from proofinvest.owner_peer_compare_ui import render_owner_peer_compare
