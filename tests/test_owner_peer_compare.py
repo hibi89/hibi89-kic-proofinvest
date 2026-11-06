@@ -127,23 +127,53 @@ class OwnerPeerComparisonTests(unittest.TestCase):
 
     def test_mismatched_vintages_disable_gap_not_claim_sector(self):
         primary,peer=paired_synthetic_sources()
-        # Replace the CIK/filing with a fully self-consistent synthetic
-        # different cut-off only in a mocked source-workflow result.
-        from proofinvest.owner_peer_compare import run_local_ticker_workflow
-        normal=run_local_ticker_workflow
-        def shift(**kwargs):
-            out=normal(**kwargs)
-            if kwargs["ticker"]=="AAPL" and out.get("revenue"):
-                out["revenue"]["current_end"]="2025-06-30"
-                out["revenue"]["prior_end"]="2024-06-30"
-            return out
-        with patch("proofinvest.owner_peer_compare.run_local_ticker_workflow",
-                   side_effect=shift):
-            result=run_pair()
+        # A truly self-consistent peer 10-K ending three months earlier:
+        # alter its own submissions, CompanyFacts annual periods and iXBRL
+        # contexts together, not a post-verification intermediate dict.
+        filings=json.loads(peer["submissions"])
+        filings["filings"]["recent"]["reportDate"][1]="2025-06-30"
+        peer["submissions"]=json.dumps(filings,sort_keys=True).encode()
+        facts=json.loads(peer["companyfacts"])
+        updates={
+            "2024-10-01":"2024-07-01",
+            "2025-09-30":"2025-06-30",
+            "2023-10-01":"2023-07-01",
+            "2024-09-30":"2024-06-30",
+        }
+        for record in facts["facts"]["us-gaap"].values():
+            for row in record["units"]["USD"]:
+                for field in ("start","end"):
+                    row[field]=updates.get(row[field],row[field])
+        peer["companyfacts"]=json.dumps(facts,sort_keys=True).encode()
+        original=peer["original_10k"]
+        for old,new in updates.items():
+            original=original.replace(old.encode(),new.encode())
+        peer["original_10k"]=original
+        result=run_pair(sources=primary,peer_sources=peer)
+        self.assertEqual(result["status"],
+                         "TWO_DISTINCT_OWNER_FILINGS_REPLAYED_UNVERIFIED",result)
         self.assertEqual(result["comparison_status"],
                          "UNAVAILABLE_FISCAL_PERIODS_NOT_ALIGNED",result)
         self.assertIsNone(result["growth_gap_primary_minus_peer_pp"])
         self.assertFalse(result["complete_engine_c"])
+        self.assertTrue(verify_owner_peer(result,ticker="NVDA",
+            peer_ticker="AAPL",as_of="2025-10-16",
+            sources=primary,peer_sources=peer))
+
+    def test_mutated_intermediate_growth_is_not_accepted_after_report_replay(self):
+        from proofinvest.owner_peer_compare import run_local_ticker_workflow
+        normal=run_local_ticker_workflow
+        def mutate(**kwargs):
+            result=normal(**kwargs)
+            if kwargs["ticker"]=="AAPL" and result.get("revenue"):
+                result["revenue"]["growth_pct"]="500.00"
+            return result
+        with patch("proofinvest.owner_peer_compare.run_local_ticker_workflow",
+                   side_effect=mutate):
+            result=run_pair()
+        self.assertEqual(result["status"],"BLOCKED")
+        self.assertEqual(result["reason_code"],
+                         "PAIR_SOURCE_OR_PERIOD_REPLAY_FAILED")
 
     def test_ui_gate_unmodified_by_peer_feature(self):
         with patch("proofinvest.owner_peer_compare.run_local_ticker_workflow",

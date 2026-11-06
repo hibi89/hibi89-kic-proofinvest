@@ -68,6 +68,14 @@ def _one(ticker:str,as_of:str,sources:dict[str,bytes])->tuple[dict,dict]:
         raise ValueError("ISSUER_REPORT_INDEPENDENT_REPLAY_FAILED")
     r=wf["receipt"]
     rev=wf["revenue"]
+    # Bind the revenue outcome to the *independently source-replayed*
+    # report, not merely the separately returned workflow stage object.
+    verified=wf["report"].get("verification")
+    if (type(verified) is not dict or any(
+            rev.get(key)!=verified.get(key)
+            for key in ("current_end","prior_end","growth_pct",
+                        "current_usd","prior_usd"))):
+        raise ValueError("REVENUE_NOT_BOUND_TO_VERIFIED_REPORT")
     if (r.get("ticker")!=ticker or rev.get("ticker")!=ticker
             or rev.get("issuer_cik")!=r.get("cik")
             or rev.get("accession")!=r.get("selected_10k_accession")
