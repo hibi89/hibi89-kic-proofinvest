@@ -1,0 +1,11 @@
+# P269 Massive offline multi-stock Engine A
+
+Design A (chosen): in-process six-slot, operator-only parsed-snapshot cache, no local file or API-key storage; exact overlap, duplicate, source-digest and as-of checks. Design B (deferred): durable SQLite with provider-specific license, expiry/deletion and encrypted local rights; requires separate permission before writing original market bars to disk. The chosen cache is not persistent across restarts and refresh takes an overlapping new 31+ trading-day snapshot, not a single-day delta API.
+
+Actual I:NDX symbol only, no QQQ. Existing Massive JSON daily parser and existing independent Decimal OLS Engine A are reused for NVDA/AAPL/MSFT plus optionally AMZN/GOOGL; NDX receipt shared, post-filing windows and distinct ticker/CIK validated; all results remain source-unverified, data-use-rights false and Guard HOLD. No automatic HTTP; 3 stocks+NDX would need 4 separately approved calls, 5 stocks+NDX would need 6 in two <=5/min batches if account and data rights permit. Request planner never performs those calls.
+
+Manual operator files only, with no raw file uploaded to GitHub: python -m scripts.p269_massive_panel_offline --as-of 2026-10-01 --ndx ndx.json --stock NVDA 0001045810 2026-07-31 nvda.json --stock AAPL 0000320193 2026-07-31 aapl.json --stock MSFT 0000789019 2026-07-31 msft.json. CLI reads existing files, prints redacted numerical calculations and SHA, performs zero network calls, writes no files.
+
+Provider comparison checked 2026-11-06: Alpha Vantage stock daily compact 100 points free 25/day, full history and genuine NDX INDEX_DATA premium; Massive Stocks Basic 2 years and Indices Basic 1+ year limited index tickers, both 5/min and personal-only. Published catalog I:NDX access still requires account proof and intended AI/contest rights. Updated Massive market-data terms 2026-11-03 limit personal-only use; no judge/public/commercial reuse right is inferred. FRED NASDAQ100 Nasdaq-copyright and AI restrictions remain blockers.
+
+Still NOT DONE: authenticated provider response; judge/AI/public display rights; durable cache; live incremental API GET and duplicate-call ledger; joined issuer B finance and stock-vs-revenue gap; live UI/browser/Production. OLS daily intercept is not CAPM alpha or a percentage of price bubble. Official acceptance 76/100 unchanged, RELEASE HOLD.
