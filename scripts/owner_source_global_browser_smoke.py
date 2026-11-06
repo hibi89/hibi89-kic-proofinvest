@@ -17,6 +17,7 @@ from urllib.request import urlopen
 
 from tests.test_ticker_local_report_replay import report_case
 from proofinvest.owner_source_global_agent import verify_owner_source_answer
+from proofinvest.owner_source_global_html import render_owner_source_html
 
 ROOT=Path(__file__).resolve().parents[1]
 PORT=8592
@@ -112,6 +113,22 @@ def main() -> None:
                                 report,ticker="NVDA",as_of="2025-10-16",
                                 question="NVDA 매출 성장률과 현금흐름 검증",sources=raw)):
                         raise AssertionError("OWNER_SOURCE_DOWNLOADED_REPLAY_FAILED")
+                    html_button=page.get_by_role(
+                        "button",name="검산된 전체 분석 HTML (로컬 인쇄용)",
+                        exact=True)
+                    expect(html_button).to_be_visible(timeout=15000)
+                    with page.expect_download(timeout=30000) as html_wait:
+                        html_button.click()
+                    html_dl=html_wait.value
+                    if html_dl.suggested_filename!=(
+                            "kuodra-owner-multi-HOLD-UNVERIFIED.html"):
+                        raise AssertionError("OWNER_HTML_NAME_MISMATCH")
+                    html_content=Path(html_dl.path()).read_bytes()
+                    if html_content!=render_owner_source_html(
+                            report,ticker="NVDA",as_of="2025-10-16",
+                            question="NVDA 매출 성장률과 현금흐름 검증",
+                            sources=raw):
+                        raise AssertionError("OWNER_HTML_INDEPENDENT_REPLAY_FAILED")
                     if errors:
                         raise AssertionError("OWNER_SOURCE_RUNTIME_ERROR")
                     print(json.dumps({
@@ -119,6 +136,7 @@ def main() -> None:
                         "browser_uploads":4,"file_bytes_stored_to_ci":False,
                         "issuer":"NVDA","replayed_report":True,
                         "question_to_seven_tools":True,
+                        "actual_html_download_replayed":True,
                         "two_intents_from_one_source_pipeline":True,
                         "guard":"HOLD","stock_api_gets":0,
                         "external_browser_requests_blocked":len(external),

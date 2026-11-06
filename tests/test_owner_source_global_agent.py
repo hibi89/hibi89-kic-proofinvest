@@ -12,6 +12,7 @@ from proofinvest.owner_source_global_agent import (
     verify_owner_source_answer,
 )
 from proofinvest.ticker_local_workflow import run_local_ticker_workflow
+from proofinvest.owner_source_global_html import render_owner_source_html
 from tests.test_ticker_local_report_replay import report_case
 from tests.test_ticker_market_industry_bridge import scenario
 
@@ -259,6 +260,32 @@ class OwnerSourceGlobalTests(unittest.TestCase):
         self.assertFalse(verify_owner_source_answer(
             r,ticker="NVDA",as_of="2026-02-01",question=q,sources=raw,
             market_json=market,industry_json=sector+b" "))
+
+
+    def test_multi_printable_html_replays_every_original_and_escapes(self):
+        _,raw=report_case()
+        q="NVDA 매출 성장률과 현금흐름 검산"
+        r=answer_owner_multi_question(
+            ticker="NVDA",as_of="2025-10-16",question=q,sources=raw)
+        html=render_owner_source_html(
+            r,ticker="NVDA",as_of="2025-10-16",question=q,sources=raw)
+        self.assertIn(b"<!doctype html>",html.lower())
+        self.assertNotIn(b"<script",html.lower())
+        self.assertNotIn(b"javascript:",html.lower())
+        self.assertEqual(html.count(b"<section>"),2)
+        self.assertIn(b"0001045810-25-000020",html)
+        self.assertNotIn(b"PRIVATE_BYTES",html)
+        self.assertLess(len(html),32768)
+        with self.assertRaises(ValueError):
+            render_owner_source_html(
+                r,ticker="NVDA",as_of="2025-10-16",question=q,
+                sources=dict(raw,original_10k=raw["original_10k"]+b" "))
+        forged=deepcopy(r)
+        forged["guard_policy_preview"]="APPROVE"
+        with self.assertRaises(ValueError):
+            render_owner_source_html(
+                forged,ticker="NVDA",as_of="2025-10-16",question=q,
+                sources=raw)
 
     def test_bad_user_input_fails_preflight(self):
         _,raw=report_case()

@@ -123,3 +123,15 @@ def render_owner_source_question(st)->None:
             data=output,file_name="kuodra-owner-ticker-UNVERIFIED.json",
             mime="application/json",key="owner_source_review_download",
             on_click="ignore")
+    from .owner_source_global_html import render_owner_source_html
+    try:
+        printable=render_owner_source_html(
+            result,ticker=ticker,as_of=as_of,question=question,
+            sources=files,market_json=market_raw,industry_json=industry_raw)
+    except (ValueError,TypeError,KeyError,OverflowError,RecursionError):
+        st.warning("독립 HTML 원본 재검산 실패 · 인쇄 보고서를 제공하지 않습니다.")
+        return
+    st.download_button(
+        "검산된 전체 분석 HTML (로컬 인쇄용)",data=printable,
+        file_name="kuodra-owner-multi-HOLD-UNVERIFIED.html",
+        mime="text/html",key="owner_source_review_html",on_click="ignore")
