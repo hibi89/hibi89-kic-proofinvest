@@ -1,3 +1,16 @@
+# P269 FOLLOW-UP — 2026-11-06 KST · CHROMIUM GUARD SELECT COMMIT FIX
+
+1. Goal: Keep local 3-5-stock I:NDX Engine A and restore mandatory Chromium regression.
+2. Change: One exact React-Aria combobox option click replaces Enter-key selection for the script-only citation scenario; no finance, rights, or UI route changes.
+3. Verification: Base feature Actions #42195572318 Python, Windows HTTP, Windows SQLite, Docker PASS; Chromium FAIL specifically old Guard scenario combobox. New corrected CI PENDING until finished.
+4. State: P269 offline code retained. Real Massive GET/NDX licensed contest rights, durable cache, production NOT DONE; official 76/100.
+5. Error and pivot: Exact browser value lacked suffix after Enter; direct role option click adopted from already working route. Do not repeat Enter strategy or rerun the unchanged SHA.
+6. Repo: hibi89/hibi89-kic-proofinvest lead/kic, parent a3535b17, modified scripts/guard_browser_smoke.py only plus required STATUS/HANDOFF.
+7. Runtime: Windows/Python scripts.verify_local --full and mandatory Chromium browser CI. No Production.
+8. Originals/secrets: No live external calls, vendor bytes, .env, API key or owner source upload. Git parent rollback preserved.
+9. Next: verify corrected CI; on success keep 76/100 until approved source, rights, real Engine A/B and production acceptance.
+10. As of 2026-11-06 KST, this follow-up records no proven corrected Chromium result until Actions finishes.
+
 # P269 HANDOFF — 2026-11-06 KST — 3-5 US ISSUERS / SHARED TRUE NDX LOCAL ENGINE A
 
 1. Objective/stack: KUODRA final 100%, intermediate 85%; Python 3.11, existing US Engine A/B/C/Guard preserved, no API calls, not PDF preparation.

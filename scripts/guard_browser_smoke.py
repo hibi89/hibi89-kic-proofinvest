@@ -365,12 +365,15 @@ def run(output: Path) -> dict:
 
                         scenario.click()
                         scenario.fill("스크립트에만 있는 인용")
-                        expect(page.get_by_role(
+                        # React-Aria re-mounts the filtered list after the prior
+                        # Streamlit rerun. Enter sometimes commits only search
+                        # TEXT (not selection); select the exact visible option.
+                        option = page.get_by_role(
                             "option", name="스크립트에만 있는 인용 → HOLD",
                             exact=True
-                        )).to_have_count(1, timeout=10000)
-                        scenario.press("ArrowDown")
-                        scenario.press("Enter")
+                        )
+                        expect(option).to_have_count(1, timeout=10000)
+                        option.click(timeout=10000)
                         expect(scenario).to_have_value(
                             "스크립트에만 있는 인용 → HOLD", timeout=15000
                         )
