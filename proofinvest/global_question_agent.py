@@ -44,7 +44,7 @@ _OTHER_TICKERS = re.compile(
 _TERMS = (
     ("GUARD", ("매수", "매도", "사도", "사야", "팔아", "추천", "투자해",
                "진입", "위험", "리스크", "부정", "buy", "sell", "fraud", "guard")),
-    ("MARKET", ("주가", "나스닥", "거품", "베타", "지수", "시세",
+    ("MARKET", ("주가", "시장", "나스닥", "거품", "베타", "지수", "시세",
                 "market", "price", "index", "beta", "valuation")),
     ("PEERS", ("경쟁사", "경쟁", "동종", "피어", "산업비교",
                "compare", "competitor", "peer", "sector")),

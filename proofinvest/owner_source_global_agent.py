@@ -162,7 +162,7 @@ def _execute(ticker: str, as_of: str, question: str,
     ]
     # Each step reuses the single seven-tool calculation/replay in memory.
     # The final answer is fully authored by deterministic verified code.
-    answer = "\\n\\n".join(step["finding"] for step in findings)
+    answer = "\n\n".join(step["finding"] for step in findings)
     # Serialize only bounded redacted results, never operator-supplied originals.
     record={
         "schema":_SCHEMA,"status":_STATUS,
