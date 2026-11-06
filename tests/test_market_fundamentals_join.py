@@ -69,13 +69,16 @@ class MarketFundamentalsJoinTests(unittest.TestCase):
         self.assertEqual(result["bc_issuer_count"],0)
         self.assertEqual(result["issuers"][0]["bc_status"],
                          "UNAVAILABLE_B_C_REVIEW_AFTER_MARKET_ASOF")
-        stale=case(bars=65,as_of="2026-11-05")
-        stale_result=self.join(stale)
-        self.assertTrue(verify_local_panel_fundamentals_join(
-            stale_result,*stale,as_of="2026-11-05"))
-        self.assertEqual(stale_result["bc_issuer_count"],0)
-        self.assertEqual(stale_result["issuers"][0]["bc_status"],
-                         "UNAVAILABLE_MARKET_END_BEFORE_B_C_REVIEW")
+        # P269 Engine A itself rejects data ending long before as-of.
+        # Do not manufacture a positive market packet to test B/C freshness.
+        market,sources,symbols,dates=old
+        stale_market=review_local_market_panel(
+            sources,symbols,dates,as_of="2026-11-05")
+        self.assertEqual(stale_market["status"],"BLOCKED")
+        stale_join=build_local_panel_fundamentals_join(
+            stale_market,sources,symbols,dates,as_of="2026-11-05")
+        self.assertEqual(stale_join["status"],"BLOCKED")
+        self.assertEqual(stale_join["guard_decision"],"HOLD")
 
     def test_modified_market_bytes_or_identifiers_or_hash_rejected(self):
         data=case()

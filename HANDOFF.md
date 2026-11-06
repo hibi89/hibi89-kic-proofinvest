@@ -1,3 +1,15 @@
+# P271 FIX — 2026-11-06 KST · KEEP STALE PRICE FAIL-CLOSED
+1. Goal: Same user click join source-replayed market A and pinned NVDA financial B/peer C, no licensed market claims.
+2. Implementation: Previous 3981b83e P271 join+UI maintained; correct only wrong new test expectation for stale market (existing Engine A returns BLOCKED); extend actual Chromium to 92-bar as-of 2026-11-05 and verify both JSON downloads + SHA-bound P271 replay.
+3. Verification: prior Python run 2174 total with 1 new-test FAIL (stale input), syntax 532 PASS; other Windows/Docker checks PASS; corrected code SHA mandatory CI PENDING.
+4. Product: B/C joined only with valid market availability, otherwise withheld; unlicensed/SEC identity/cross-engine causal rights still HOLD. Final 76/100 +0.
+5. Failure diagnosis: test assumed underlying market A accepts old Sept close for Nov as-of; A correctly rejected it. No change to A or original data.
+6. Repo: hibi89/hibi89-kic-proofinvest lead/kic, parent 3981b83e, paths tests/test_market_fundamentals_join.py scripts/market_panel_browser_smoke.py.
+7. Production: N/A, localhost only, launch python -m scripts.local_ui_launcher --enable-local-review.
+8. Source safety: no extra provider GET, no original upload, no paid changes, Git parent rollback.
+9. Next: terminal CI 5/5 exact SHA, if fail inspect logs once then focused correction; Massive written rights still pending.
+10. Updated 2026-11-06 KST, browser/test corrected pending certification.
+
 # P271 HANDOFF — 2026-11-06 KST · A/B/C SINGLE-CLICK LOCAL JOIN, TEST PENDING
 1. Goal/stack: KUODRA 100% target, Python 3.11 Streamlit localhost. Existing P270 multi-issuer A and first-party global B/C use unchanged engines.
 2. Change: new read-only bounded `proofinvest/market_fundamentals_join.py`, source/CIK/date/review-vintage validated NVDA B/C attachment to 3–5 ticker A; AAPL/MSFT/AMZN/GOOGL B/C unavailable, time-mismatched NVDA withheld. One-click Streamlit combined table + JSON, no model/network/cache.

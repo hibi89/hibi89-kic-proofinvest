@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from proofinvest.market_panel_review import verify_local_market_panel
+from proofinvest.market_fundamentals_join import verify_local_panel_fundamentals_join
 from tests.test_market_panel_offline import raw
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +25,7 @@ def main() -> None:
     from playwright.sync_api import expect, sync_playwright
 
     symbols = ["NVDA", "AAPL", "MSFT"]
-    sources = {ticker: raw(ticker) for ticker in ["I:NDX", *symbols]}
+    sources = {ticker: raw(ticker,count=92) for ticker in ["I:NDX", *symbols]}
     filings = {ticker: "2026-07-31" for ticker in symbols}
     with TemporaryDirectory(prefix="kuodra-p270-") as home:
         env = dict(os.environ, HOME=home, KUODRA_ENABLE_LOCAL_SOURCE_UI="1",
@@ -78,7 +79,7 @@ def main() -> None:
                     as_of_input = page.get_by_role(
                         "textbox", name="시장 데이터 기준일 (YYYY-MM-DD)")
                     expect(as_of_input).to_have_value("")
-                    as_of_input.fill("2026-10-01")
+                    as_of_input.fill("2026-11-05")
                     for ticker in symbols:
                         filed_input = page.get_by_role(
                             "textbox", name=ticker + " 원본 10-K 제출일 (YYYY-MM-DD)")
@@ -106,12 +107,33 @@ def main() -> None:
                         raise AssertionError("P270_JSON_FILENAME")
                     report = json.loads(Path(downloaded.path()).read_bytes())
                     if (not verify_local_market_panel(
-                            report,sources,symbols,filings,as_of="2026-10-01")
+                            report,sources,symbols,filings,as_of="2026-11-05")
                             or report["issuer_count"] != 3
                             or report["source_rights_verified"] is not False
                             or report["guard_decision"] != "HOLD"
                             or report["network_requests"] != 0):
                         raise AssertionError("P270_JSON_REPLAY")
+                    # P271: physical browser click and full source-byte replay
+                    # of the NEW combined A + historical NVDA B/C export.
+                    with page.expect_download(timeout=30000) as joined_event:
+                        page.get_by_role("button",
+                            name="로컬 A/B/C 근거 통합 JSON (미인증)",
+                            exact=True).click()
+                    joined_download = joined_event.value
+                    if joined_download.suggested_filename != (
+                            "KUODRA_LOCAL_MARKET_BC_JOIN_HOLD.json"):
+                        raise AssertionError("P271_JOINED_JSON_FILENAME")
+                    joined = json.loads(Path(joined_download.path()).read_bytes())
+                    if (not verify_local_panel_fundamentals_join(
+                            joined,report,sources,symbols,filings,
+                            as_of="2026-11-05")
+                            or joined["bc_issuer_count"] != 1
+                            or joined["issuers"][0]["ticker"] != "NVDA"
+                            or joined["issuers"][0]["engine_b"]["revenue_growth_pct"] != "65.47"
+                            or joined["source_rights_verified"] is not False
+                            or joined["guard_decision"] != "HOLD"
+                            or joined["market_api_requests"] != 0):
+                        raise AssertionError("P271_JOINED_JSON_REPLAY")
                     if violations or errors:
                         raise AssertionError("P270_UNEXPECTED_BROWSER_IO_OR_ERROR")
                     print(json.dumps({
@@ -119,6 +141,7 @@ def main() -> None:
                         "uploaded_synthetic_json": 4,
                         "index": "I:NDX", "issuer_count": 3,
                         "json_download_replayed": True,
+                        "joined_nvda_bc_replayed": True,
                         "guard": "HOLD", "external_hosts": 0,
                         "market_api_requests": 0, "rights_verified": False,
                         "production_verified": False}, sort_keys=True))

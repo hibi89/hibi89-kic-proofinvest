@@ -1,3 +1,7 @@
+> ## P271 CORRECTION — 2026-11-06 KST · ENGINE A STALE MARKET GATE PRESERVED
+>
+> Initial commit 3981b83e: Python 2174, 1 FAIL in newly added test that incorrectly expected a positive 65-bar Sept market packet for Nov 5 as-of. Existing Engine A correctly BLOCKS stale market before B/C; test changed to expect BLOCKED and Guard HOLD, no product weakening. First CI Windows native HTTP, Windows SQLite, isolated Docker SUCCESS; Chromium pending. Dedicated real Chromium P271 exact 92-bar Nov 5 upload and BOTH A and A/B/C JSON download/source replay now exercised. New exact-SHA CI pending; official final **76/100** (no licensed real source/rights earned), RELEASE HOLD.
+>
 > ## P271 PENDING — 2026-11-06 KST · 3–5 STOCK MARKET A + PINNED NVDA B/C SINGLE-CLICK JOIN
 >
 > Feature implementation awaiting exact-SHA GitHub Actions: `proofinvest/market_fundamentals_join.py`, focused tests, local Streamlit P270 mode. Joins source-replayed I:NDX/stock daily A to dated first-party NVDA historical B and manually referenced AMD/Intel C **only** when market as-of and final matched observation are on/after 2026-11-05 pinned B/C review; otherwise B/C withheld. Other stocks B/C UNAVAILABLE. No inference that user-typed 10-K filing date authenticates NVDA's distinct unaudited release. Cross-engine causal/filing-publication identity remains FALSE, Guard HOLD, no GET, no data persistence, public display forbidden. Official **76/100 (+0pp)** under externally gated acceptance rubric. No full A/B/C, rights, SEC original or Production promoted. Test/CI results pending.
