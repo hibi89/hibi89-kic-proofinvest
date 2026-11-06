@@ -74,7 +74,8 @@ def main() -> None:
                     page.get_by_role("textbox",name="검산할 미국 종목코드").fill("nvda")
                     page.get_by_role("textbox",name="기준일 (YYYY-MM-DD)").fill("2025-10-16")
                     page.get_by_role("textbox",name="검토할 질문").fill("NVDA 매출 성장률과 현금흐름 검증")
-                    page.get_by_role("checkbox",name="여러 분석 항목을 한 번에 조사 (질문에 2~4개 주제 필요)").check()
+                    page.locator('label[data-rac]').filter(
+                        has_text="여러 분석 항목을 한 번에 조사").click()
                     uploads=page.get_by_test_id("stFileUploader")
                     expect(uploads).to_have_count(6)
                     for i,key in enumerate(("ticker_map","submissions","companyfacts","original_10k")):
