@@ -110,7 +110,8 @@ def _explain(ticker: str, intent: str, work: dict) -> str:
 def _execute(ticker: str, as_of: str, question: str,
              sources: dict[str,bytes], market_json: bytes|None,
              industry_json: bytes|None, intent: str, *,
-             local_calls: int, protocol: bool) -> dict:
+             local_calls: int, protocol: bool,
+             plan: tuple[str, ...] | None = None) -> dict:
     work=run_local_ticker_workflow(
         ticker=ticker,as_of=as_of,sources=sources,
         market_json=market_json,industry_json=industry_json)
@@ -132,13 +133,46 @@ def _execute(ticker: str, as_of: str, question: str,
     pre=_preflight(ticker,as_of,question,sources,market_json,industry_json)
     if pre["status"]!="READY" or intent not in pre["candidate_intents"]:
         return _blocked("QUESTION_TOOL_BINDING_CHANGED",calls=local_calls)
+    # A multi-step plan cannot add tools the operator did not ask for,
+    # repeat a tool, or cause a second 7-stage replay/SEC transport.
+    requested = (intent,) if plan is None else plan
+    expected = (intent,) + tuple(
+        name for name in pre["candidate_intents"] if name != intent)
+    if (type(requested) is not tuple or
+            not 1 <= len(requested) <= 4 or
+            requested[0] != intent or
+            len(set(requested)) != len(requested) or
+            any(name not in pre["candidate_intents"] for name in requested)
+            or (plan is not None and
+                (len(pre["candidate_intents"]) < 2 or requested != expected))
+            or (plan is None and len(requested) != 1)):
+        return _blocked("UNAUTHORIZED_MULTI_TOOL_PLAN",calls=local_calls)
+    source_digest = work["report"]["report_sha256"]
+    findings = [
+        {
+            "step": index + 1, "tool": name,
+            "finding": _explain(ticker,name,work),
+            "evidence_report_sha256": source_digest,
+            "guard": work["report"]["guard_policy_preview"],
+            "issuer": ticker,
+            "filing_accession": work["receipt"]["selected_10k_accession"],
+            "is_verified_source_origin": False,
+        }
+        for index,name in enumerate(requested)
+    ]
+    # Each step reuses the single seven-tool calculation/replay in memory.
+    # The final answer is fully authored by deterministic verified code.
+    answer = "\\n\\n".join(step["finding"] for step in findings)
     # Serialize only bounded redacted results, never operator-supplied originals.
     record={
         "schema":_SCHEMA,"status":_STATUS,
         "ticker":ticker,"as_of":as_of,"intent":intent,
         "allowed_tools":pre["candidate_intents"],
         "question_sha256":sha256(question.encode("utf-8")).hexdigest(),
-        "answer":_explain(ticker,intent,work),
+        "review_mode":"MULTI_EVIDENCE_PLAN" if plan is not None else "SINGLE_EVIDENCE",
+        "analysis_count":len(findings),
+        "analysis_findings":findings,
+        "answer":answer,
         "cik":work["receipt"]["cik"],
         "filing_accession":work["receipt"]["selected_10k_accession"],
         "filing_date":work["receipt"]["selected_10k_filing_date"],
@@ -200,6 +234,50 @@ def answer_owner_source_question(
         return _blocked("LOCAL_WORKFLOW_EXECUTION_BLOCKED",calls=calls)
 
 
+
+def answer_owner_multi_question(
+    *,ticker: Any, as_of: Any, question: Any, sources: Any,
+    market_json: Any=None,industry_json: Any=None,
+    use_local_model: bool=False,consent_local_model: bool=False,
+    consent_question_text: bool=False,
+) -> dict:
+    """Actual one-run multi-intent issuer research, 2–4 bounded tools.
+
+    The optional local model selects a FIRST permitted tool; all remaining
+    explicitly requested tools run once from the same validated filing.
+    """
+    pre=_preflight(ticker,as_of,question,sources,market_json,industry_json)
+    if pre.get("status")!="READY":
+        return pre
+    intents=pre["candidate_intents"]
+    if not 2<=len(intents)<=4:
+        return _blocked("MULTI_REQUIRES_2_TO_4_EXPLICIT_TOPICS")
+    if type(use_local_model) is not bool:
+        return _blocked("INVALID_LOCAL_MODEL_SWITCH")
+    first=pre["default_intent"]
+    calls=0
+    protocol=False
+    if use_local_model:
+        if consent_local_model is not True or consent_question_text is not True:
+            return _blocked("TWO_EXPLICIT_LOCAL_MODEL_CONSENTS_REQUIRED")
+        try:
+            selected=_optional_model_plan(question,ticker,intents)
+            first=selected["selected_intent"]
+            calls=selected["local_model_calls"]
+            protocol=selected["model_protocol_verified"]
+        except (ValueError,TypeError,KeyError,OSError,UnicodeError):
+            return _blocked("LOCAL_MODEL_NOT_VERIFIED",calls=1)
+    if first not in intents:
+        return _blocked("MODEL_SELECTED_UNLISTED_TOOL",calls=calls)
+    plan=(first,) + tuple(name for name in intents if name!=first)
+    try:
+        return _execute(ticker,as_of,question,sources,market_json,industry_json,
+                        first,local_calls=calls,protocol=protocol,plan=plan)
+    except (ValueError,TypeError,KeyError,AttributeError,RecursionError,
+            OverflowError,UnicodeError):
+        return _blocked("LOCAL_MULTI_TOOL_EXECUTION_BLOCKED",calls=calls)
+
+
 def verify_owner_source_answer(
     packet: Any, *, ticker: Any, as_of: Any, question: Any,
     sources: Any, market_json: Any=None,industry_json: Any=None,
@@ -221,10 +299,25 @@ def verify_owner_source_answer(
              packet["model_protocol_verified"] is not True)):
         return False
     try:
+        mode=packet.get("review_mode")
+        if mode=="SINGLE_EVIDENCE":
+            plan=None
+            if packet.get("analysis_count")!=1:
+                return False
+        elif mode=="MULTI_EVIDENCE_PLAN":
+            if not 2<=len(pre["candidate_intents"])<=4:
+                return False
+            plan=(packet["intent"],)+tuple(
+                name for name in pre["candidate_intents"]
+                if name!=packet["intent"])
+            if packet.get("analysis_count")!=len(plan):
+                return False
+        else:
+            return False
         rebuilt=_execute(ticker,as_of,question,sources,market_json,industry_json,
                          packet["intent"],
                          local_calls=packet["local_model_calls"],
-                         protocol=packet["model_protocol_verified"])
+                         protocol=packet["model_protocol_verified"],plan=plan)
         return rebuilt==packet
     except (TypeError,ValueError,KeyError,RecursionError,OverflowError):
         return False

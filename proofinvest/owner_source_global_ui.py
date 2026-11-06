@@ -4,7 +4,8 @@ import json
 from .kuodra_local_workspace_ui import local_workspace_enabled
 from .ticker_sec_financial_bridge import _KEYS, _LIMITS
 from .owner_source_global_agent import (
-    answer_owner_source_question,verify_owner_source_answer,
+    answer_owner_source_question,answer_owner_multi_question,
+    verify_owner_source_answer,
 )
 
 def _upload(upload,limit:int,required:bool=True):
@@ -34,6 +35,11 @@ def render_owner_source_question(st)->None:
                             max_chars=10,key="owner_source_date")
         question=st.text_input("검토할 질문",value="이 기업의 매출 성장률을 검산해줘",
                                 max_chars=180,key="owner_source_question")
+        multi=st.checkbox(
+            "여러 분석 항목을 한 번에 조사 (질문에 2~4개 주제 필요)",
+            value=False,key="owner_source_multi")
+        st.caption("다중 조사는 원본 4개를 7단계로 한 번만 검산하고, "
+                   "각 분석 항목을 독립적으로 근거 연결해 보여줍니다.")
         uploads={}
         labels={
             "ticker_map":"SEC 상장 종목-기업식별자 대응표 JSON",
@@ -73,7 +79,8 @@ def render_owner_source_question(st)->None:
     # Normalize the user-entered US ticker once; original filenames and
     # source CIK / selected annual accession are still independently checked.
     ticker=ticker.strip().upper()
-    result=answer_owner_source_question(
+    runner=(answer_owner_multi_question if multi else answer_owner_source_question)
+    result=runner(
         ticker=ticker,as_of=as_of,question=question,sources=files,
         market_json=market_raw,industry_json=industry_raw,
         use_local_model=with_model,consent_local_model=c1,
@@ -87,6 +94,13 @@ def render_owner_source_question(st)->None:
         return
     st.success("7단계 업로드 원본 검산 완료 · Guard "+result["guard_policy_preview"])
     st.info(result["answer"])
+    if result["review_mode"]=="MULTI_EVIDENCE_PLAN":
+        st.subheader("연속 분석: 검증된 원본 1세트 · 다중 근거")
+        st.table([{
+            "순서":item["step"],"도구":item["tool"],
+            "연구 결과":item["finding"],
+            "Guard":item["guard"],
+        } for item in result["analysis_findings"]])
     st.table([{"항목":"기업", "결과":result["ticker"]},
               {"항목":"접수번호", "결과":result["filing_accession"]},
               {"항목":"Engine A", "결과":result["engine_a_status"]},
@@ -97,6 +111,8 @@ def render_owner_source_question(st)->None:
              "filing_date":result["filing_date"],
              "sources":result["source_urls"],
              "tool_trace":result["tool_trace"],
+             "analysis_count":result["analysis_count"],
+             "research_plan":result["analysis_findings"],
              "source_authenticated":False,
              "external_sharing_allowed":False,
              "trades":0})

@@ -72,7 +72,8 @@ def main() -> None:
                     # is normalized to upper-case and revalidated against map.
                     page.get_by_role("textbox",name="검산할 미국 종목코드").fill("nvda")
                     page.get_by_role("textbox",name="기준일 (YYYY-MM-DD)").fill("2025-10-16")
-                    page.get_by_role("textbox",name="검토할 질문").fill("NVDA 매출 성장률 검증")
+                    page.get_by_role("textbox",name="검토할 질문").fill("NVDA 매출 성장률과 현금흐름 검증")
+                    page.get_by_role("checkbox",name="여러 분석 항목을 한 번에 조사 (질문에 2~4개 주제 필요)").check()
                     uploads=page.get_by_test_id("stFileUploader")
                     expect(uploads).to_have_count(6)
                     for i,key in enumerate(("ticker_map","submissions","companyfacts","original_10k")):
@@ -100,12 +101,16 @@ def main() -> None:
                     if (report.get("ticker")!="NVDA" or
                             report.get("status")!="LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW" or
                             report.get("executed_financial_tools")!=7 or
+                            report.get("review_mode")!="MULTI_EVIDENCE_PLAN" or
+                            report.get("analysis_count")!=2 or
+                            [x["tool"] for x in report.get("analysis_findings",[])]
+                                !=["CASHFLOW","REVENUE"] or
                             report.get("guard_policy_preview")!="HOLD" or
                             report.get("source_rights_verified") is not False or
                             report.get("trade_executed") is not False or
                             not verify_owner_source_answer(
                                 report,ticker="NVDA",as_of="2025-10-16",
-                                question="NVDA 매출 성장률 검증",sources=raw)):
+                                question="NVDA 매출 성장률과 현금흐름 검증",sources=raw)):
                         raise AssertionError("OWNER_SOURCE_DOWNLOADED_REPLAY_FAILED")
                     if errors:
                         raise AssertionError("OWNER_SOURCE_RUNTIME_ERROR")
@@ -114,6 +119,7 @@ def main() -> None:
                         "browser_uploads":4,"file_bytes_stored_to_ci":False,
                         "issuer":"NVDA","replayed_report":True,
                         "question_to_seven_tools":True,
+                        "two_intents_from_one_source_pipeline":True,
                         "guard":"HOLD","stock_api_gets":0,
                         "external_browser_requests_blocked":len(external),
                         "publisher_authenticated":False,

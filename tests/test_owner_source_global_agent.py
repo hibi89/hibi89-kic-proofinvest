@@ -8,8 +8,10 @@ import unittest
 from unittest.mock import patch
 
 from proofinvest.owner_source_global_agent import (
-    answer_owner_source_question, verify_owner_source_answer,
+    answer_owner_source_question, answer_owner_multi_question,
+    verify_owner_source_answer,
 )
+from proofinvest.ticker_local_workflow import run_local_ticker_workflow
 from tests.test_ticker_local_report_replay import report_case
 from tests.test_ticker_market_industry_bridge import scenario
 
@@ -163,6 +165,100 @@ class OwnerSourceGlobalTests(unittest.TestCase):
                 self.assertFalse(verify_owner_source_answer(
                     forged,ticker="NVDA",as_of="2025-10-16",
                     question=q,sources=raw))
+
+
+    def test_multi_topic_executes_single_source_pipeline_and_two_findings(self):
+        _,raw=report_case()
+        q="NVDA 매출 성장률과 현금흐름을 함께 검증"
+        with patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                   wraps=run_local_ticker_workflow) as pipeline:
+            result=answer_owner_multi_question(
+                ticker="NVDA",as_of="2025-10-16",question=q,sources=raw)
+            self.assertEqual(pipeline.call_count,1)
+        self.assertEqual(result["status"],
+                         "LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW",result)
+        self.assertEqual(result["review_mode"],"MULTI_EVIDENCE_PLAN")
+        self.assertEqual(result["analysis_count"],2)
+        self.assertEqual(result["intent"],"CASHFLOW")
+        self.assertEqual([i["tool"] for i in result["analysis_findings"]],
+                         ["CASHFLOW","REVENUE"])
+        self.assertEqual(result["executed_financial_tools"],7)
+        self.assertEqual(len(result["tool_trace"]),7)
+        self.assertIn("100.00%",result["answer"])
+        self.assertIn("UNAVAILABLE",result["answer"])
+        self.assertEqual(result["answer"].count("Guard HOLD"),2)
+        self.assertTrue(verify_owner_source_answer(
+            result,ticker="NVDA",as_of="2025-10-16",
+            question=q,sources=raw))
+        for field,value in (
+            ("analysis_count",3),("review_mode","SINGLE_EVIDENCE"),
+            ("analysis_findings",[]),("answer","매수하세요"),
+            ("source_rights_verified",True),
+        ):
+            with self.subTest(field=field):
+                forged=deepcopy(result)
+                forged[field]=value
+                self.assertFalse(verify_owner_source_answer(
+                    forged,ticker="NVDA",as_of="2025-10-16",
+                    question=q,sources=raw))
+
+    def test_multi_topic_block_single_topic_and_more_than_four(self):
+        _,raw=report_case()
+        for q in (
+            "NVDA 매출 성장률 검증",
+            "NVDA 매수 위험 주가 재고 현금흐름 매출 성장률 원문 비교",
+        ):
+            with self.subTest(q=q):
+                with patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                           side_effect=AssertionError("PIPELINE_MUST_NOT_RUN")) as pipeline:
+                    result=answer_owner_multi_question(
+                        ticker="NVDA",as_of="2025-10-16",question=q,sources=raw)
+                    self.assertEqual(result["status"],"BLOCKED",result)
+                    pipeline.assert_not_called()
+
+    def test_multi_local_model_first_tool_changes_order_without_bypassing_guard(self):
+        _,raw=report_case()
+        q="NVDA 재고와 현금흐름 및 매출 성장률을 조사"
+        with patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                   return_value={"selected_intent":"REVENUE",
+                                 "local_model_calls":1,
+                                 "model_protocol_verified":True}) as model:
+            r=answer_owner_multi_question(
+                ticker="NVDA",as_of="2025-10-16",question=q,sources=raw,
+                use_local_model=True,consent_local_model=True,
+                consent_question_text=True)
+        model.assert_called_once()
+        self.assertEqual(r["status"],
+                         "LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW",r)
+        self.assertEqual(r["intent"],"REVENUE")
+        self.assertEqual([x["tool"] for x in r["analysis_findings"]],
+                         ["REVENUE","WORKING_CAPITAL","CASHFLOW"])
+        self.assertEqual(r["analysis_count"],3)
+        self.assertEqual(r["executed_financial_tools"],7)
+        self.assertTrue(verify_owner_source_answer(
+            r,ticker="NVDA",as_of="2025-10-16",question=q,sources=raw))
+        self.assertFalse(r["ai_agent_executed"])
+        self.assertFalse(r["trade_executed"])
+
+    def test_multi_source_bytes_and_receipt_hash_bound_all_steps(self):
+        _,raw,m,c=scenario()
+        q="NVDA 시장과 경쟁사 매출 성장률을 검토"
+        market=json.dumps(m).encode()
+        sector=json.dumps(c).encode()
+        r=answer_owner_multi_question(
+            ticker="NVDA",as_of="2026-02-01",question=q,sources=raw,
+            market_json=market,industry_json=sector)
+        self.assertEqual(r["status"],"LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW",r)
+        self.assertEqual(r["analysis_count"],3)
+        self.assertTrue(verify_owner_source_answer(
+            r,ticker="NVDA",as_of="2026-02-01",question=q,sources=raw,
+            market_json=market,industry_json=sector))
+        self.assertFalse(verify_owner_source_answer(
+            r,ticker="NVDA",as_of="2026-02-01",question=q,sources=raw,
+            market_json=market+b" ",industry_json=sector))
+        self.assertFalse(verify_owner_source_answer(
+            r,ticker="NVDA",as_of="2026-02-01",question=q,sources=raw,
+            market_json=market,industry_json=sector+b" "))
 
     def test_bad_user_input_fails_preflight(self):
         _,raw=report_case()
