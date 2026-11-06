@@ -1,3 +1,12 @@
+## KUODRA — 미국 기업 2곳의 보유 공시 원본 직접 비교 (P268)
+
+**로컬 실행**: `python -m scripts.local_ui_launcher --enable-local-review` → `http://127.0.0.1:18651` → **KUODRA · 2개 미국기업 원본 대조 Engine C (로컬)**. 미국 종목 티커 2개와 기준일을 입력하고, 각 기업에 대해 SEC 형식 **ticker-map / submissions / companyfacts / 10-K HTML** 4개씩 총 8개 파일을 직접 올린다.
+
+**실제 동작:** 각 10-K를 기존 7단계로 독립 검산하여 두 기업의 CIK·접수번호·연도별 매출과 원문 산술 정합성을 비교한다. 두 기업 CIK/제출번호/CompanyFacts가 중복되면 차단. 최근·직전 결산일 차이 최대 45일까지만 `대상 성장률 - 비교 성장률`을 계산하고, 그 이상은 `UNAVAILABLE`로 표시한다. 원본 SHA-256·내부 보고서 SHA·Guard HOLD/REJECT·비교 한계와 인쇄 HTML/파생 JSON을 제공한다. 다운로드 결과는 파일 원본을 재검산하지 못하면 차단한다.
+
+**중요:** 입력이 SEC 형식이어도 발행처가 인증되거나 이용권·동종기업 적합성이 검증되는 것은 아니다. 이 서비스는 로컬 검토용이며 주가/지수 API·외부 모델 호출·거래는 없다. 테스트에서 등장하는 NVDA/AAPL 수치는 **합성**으로 실적을 나타내지 않는다. 기능은 [초기 CI #42190346419](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42190346419)에서 실제 Chromium/Windows/Docker를 통과했고, [보강 CI #42190692287](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42190692287)은 추가 원본 연결·결산일 회귀를 포함한다. Public Production/최종 제품 완료 아님.
+
+---
 ## KUODRA — 전체 미국 종목 원본 기반 다중 분석 (로컬 연구용, P267)
 
 **현재 사용 가능한 실행 경로:** 설치된 Python/프로젝트 의존성 환경에서 `python -m scripts.local_ui_launcher --enable-local-review` 실행 → 표시되는 `http://127.0.0.1:18651` 접속 → 자료 유형에서 **KUODRA · 미국 전 종목 원본 4개 → AI 도구/Guard (로컬)** 선택. 공용 접속 서비스는 아니다.
