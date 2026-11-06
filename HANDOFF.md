@@ -1,3 +1,15 @@
+# P271 HANDOFF — 2026-11-06 KST · A/B/C SINGLE-CLICK LOCAL JOIN, TEST PENDING
+1. Goal/stack: KUODRA 100% target, Python 3.11 Streamlit localhost. Existing P270 multi-issuer A and first-party global B/C use unchanged engines.
+2. Change: new read-only bounded `proofinvest/market_fundamentals_join.py`, source/CIK/date/review-vintage validated NVDA B/C attachment to 3–5 ticker A; AAPL/MSFT/AMZN/GOOGL B/C unavailable, time-mismatched NVDA withheld. One-click Streamlit combined table + JSON, no model/network/cache.
+3. Tests: `python -B -m unittest tests.test_market_fundamentals_join -v`, `python -B -m scripts.verify_local --full`; CI exact SHA PENDING. Do not claim PASS before run.
+4. State: functional commit pending CI and real browser; official 76/100, release HOLD, real authentic vendor stock+I:NDX and rights not met.
+5. Risks/causes: Market dates user-entered; first-party NVDA B is an unaudited release not the same operator-declared 10-K. Review cutoff 2026-11-05 and market last aligned day must both meet pinned review; no causal alignment claim. No prior SEC blocked GET retries.
+6. Repo/branch: hibi89/hibi89-kic-proofinvest lead/kic; parent 3bb30b7fbad7e2f17c001c9097fd5a8ef42f318b; new proofinvest/market_fundamentals_join.py, tests/test_market_fundamentals_join.py, proofinvest/market_panel_review_ui.py.
+7. Runtime: local only `python -m scripts.local_ui_launcher --enable-local-review`; no Production or Vercel release.
+8. Original/backup/security: existing Git parent rollback; original market JSON only ephemeral operator upload; no secrets, source file, or raw vendor data committed or uploaded.
+9. Next: run exact new SHA 5 mandatory CI jobs plus real Chromium combined JSON click, correct only actual failures; await Massive written permission and explicit approval before any live GET/account changes/production.
+10. Updated 2026-11-06 KST, reviewed current branch before write; implementation status pending, no new final points assumed.
+
 # P270 VERIFIED HANDOFF — 2026-11-06 KST · 3–5 EQUITIES + I:NDX LOCAL UI AND GUARDED JSON
 1. Product goal/stack: KUODRA full Engine A/B/C global US verification, 100% final target, 85% interim; Python 3.11 Streamlit local only, original B/C/Guard preserved.
 2. Completed code/design: human-triggered local P270 Streamlit 3–5 US stocks and I:NDX JSON input, fixed CIK map, required explicit per-issuer filing dates and analysis as-of, bounded 256KiB upload, existing P269 Decimal regression reused, replay-verified JSON private export and Guard HOLD. One-shot local memory avoids unlicensed durable caching/cross-user leakage.

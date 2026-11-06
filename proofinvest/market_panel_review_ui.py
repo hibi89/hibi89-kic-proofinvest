@@ -115,6 +115,45 @@ def render_market_panel_review(st) -> None:
     })
     data = (json.dumps(report, ensure_ascii=False, sort_keys=True,
                        separators=(",", ":"), allow_nan=False) + "\n").encode()
+    # P271: Same user action joins only date-eligible pinned NVDA B/C.
+    # No additional HTTP, disk persistence, financial inference, or rights.
+    from .market_fundamentals_join import (
+        build_local_panel_fundamentals_join,
+        verify_local_panel_fundamentals_join,
+    )
+    joined = build_local_panel_fundamentals_join(
+        report, sources, symbols, filings, as_of=as_of)
+    if not verify_local_panel_fundamentals_join(
+            joined, report, sources, symbols, filings, as_of=as_of):
+        st.warning("재무·경쟁사 통합 근거 검증 실패: 통합 보고서를 차단했습니다.")
+    else:
+        st.subheader("시장 A + 과거 발행사 B/경쟁사 C 근거 (로컬)")
+        st.warning(
+            "NVDA 외 종목 B/C는 원본 검증 전 UNAVAILABLE. "
+            "시장 A와 과거 재무 B·비교 C는 시계열 인과관계가 검증된 "
+            "결합 분석이 아니며 SEC 동일성·원본 권리·공개 시연권 미확인. "
+            "투자판정 불가 · Guard HOLD.")
+        st.dataframe([
+            {"종목": item["ticker"],
+             "시장 A": "운영자 업로드 미인증",
+             "재무 B": (item["engine_b"]["revenue_growth_pct"] + "% 매출성장"
+                       if item["engine_b"] is not None else "UNAVAILABLE"),
+             "경쟁사 C": (item["engine_c"]["status"]
+                         if item["engine_c"] is not None else "UNAVAILABLE"),
+             "연결 상태": item["bc_status"], "Guard": "HOLD"}
+            for item in joined["issuers"]],
+            use_container_width=True, hide_index=True)
+        st.caption("B/C 근거 검토일 2026-11-05; 그보다 이전 시장 기준일·"
+                   "최종 거래일은 B/C를 사용할 수 없습니다.")
+        joined_data = (json.dumps(
+            joined, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False) + "\n").encode()
+        st.download_button(
+            "로컬 A/B/C 근거 통합 JSON (미인증)",
+            data=joined_data,
+            file_name="KUODRA_LOCAL_MARKET_BC_JOIN_HOLD.json",
+            mime="application/json", on_click="ignore",
+            key="p271_joined_evidence_export")
     st.download_button(
         "로컬 Engine A 근거 JSON (미인증)",
         data=data, file_name="KUODRA_LOCAL_NDX_3_TO_5_UNVERIFIED.json",
