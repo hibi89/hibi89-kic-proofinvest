@@ -44,8 +44,8 @@ def review_local_market_panel(
     mapping is not proof that uploaded price bars originated from a vendor.
     """
     if (type(symbols) is not list or not 3 <= len(symbols) <= 5
-            or len(set(symbols)) != len(symbols)
             or any(type(s) is not str or s not in _ALLOWED for s in symbols)
+            or len(set(symbols)) != len(symbols)
             or type(filing_dates) is not dict
             or set(filing_dates) != set(symbols)
             or any(type(d) is not str for d in filing_dates.values())

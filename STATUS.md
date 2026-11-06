@@ -1,3 +1,9 @@
+> ## P270 HARDENING — 2026-11-06 KST · BLANK HISTORICAL DATES / MALFORMED INPUT FAIL CLOSED
+>
+> Initial P270 SHA 2e57466aa28a8ae8d81a5e911a90fef074ad3ece: [GitHub Actions #42219562554](https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42219562554) terminal **5/5 mandatory SUCCESS**: Python **2170/2170 PASS, syntax 530/530 PASS**, actual Chromium 4-file NDX/3-stock upload and guarded JSON export/replay PASS, existing Chromium routes PASS, Windows HTTP/SQLite PASS, isolated nonroot Docker PASS. This verified initial UI route, but it auto-filled example dates in the form.
+>
+> Hardening: remove default as-of and 10-K filing dates so users must consciously enter real operator dates rather than inadvertently treat synthetic 2026-07-31 as an actual filing. Chromium now asserts empty inputs then fills dates explicitly. An unhashable/malformed Python list of tickers must produce BLOCKED instead of uncaught TypeError. Added focused boundary tests. **New SHA CI PENDING** at creation; original successful run is NOT evidence for hardening code. Official score remains **76/100** (rights and real-data gates unresolved); no vendor GET or data sharing.
+>
 > ## P270 — P270 · 2026-11-06 KST | Browser-ready local 3-5-stock + I:NDX market review; rights still unverified.
 > - New local-only 4-6 JSON uploader on Streamlit (3-5 US tickers and I:NDX), explicit click, controlled immutable local-source report, fixed CIK mapping, filing-date gate.
 > - Reuses P269 strict parse/Decimal regression; no vendor GET, no data disk cache, no external model, Guard HOLD, no public display. JSON proof download replays from original bytes on click; tampered report/source blocked.

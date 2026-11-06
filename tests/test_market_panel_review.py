@@ -76,6 +76,15 @@ class LocalMarketReviewTests(unittest.TestCase):
         self.assertEqual(review_local_market_panel(
             sources,symbols,{**dates,"AAPL":"wrong"},
             as_of="2026-10-01")["status"],"BLOCKED")
+        self.assertEqual(review_local_market_panel(
+            sources,symbols,{**dates,"AAPL":""},
+            as_of="2026-10-01")["status"],"BLOCKED")
+        self.assertEqual(review_local_market_panel(
+            sources,symbols,dates,
+            as_of="")["status"],"BLOCKED")
+        self.assertEqual(review_local_market_panel(
+            sources,[["NVDA"],"AAPL","MSFT"],dates,
+            as_of="2026-10-01")["status"],"BLOCKED")
 
 
 if __name__=="__main__":

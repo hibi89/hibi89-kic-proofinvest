@@ -75,6 +75,15 @@ def main() -> None:
                         ).to_be_visible(timeout=25000)
                     uploads = page.get_by_test_id("stFileUploader")
                     expect(uploads).to_have_count(4)
+                    as_of_input = page.get_by_role(
+                        "textbox", name="시장 데이터 기준일 (YYYY-MM-DD)")
+                    expect(as_of_input).to_have_value("")
+                    as_of_input.fill("2026-10-01")
+                    for ticker in symbols:
+                        filed_input = page.get_by_role(
+                            "textbox", name=ticker + " 원본 10-K 제출일 (YYYY-MM-DD)")
+                        expect(filed_input).to_have_value("")
+                        filed_input.fill("2026-07-31")
                     for index, ticker in enumerate(["I:NDX", *symbols]):
                         uploads.nth(index).locator('input[type="file"]').set_input_files({
                             "name": ticker.replace(":", "_") + ".json",

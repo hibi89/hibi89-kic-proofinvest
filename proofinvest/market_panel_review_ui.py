@@ -44,7 +44,7 @@ def render_market_panel_review(st) -> None:
         symbols = list(_TICKERS[:size])
         as_of = st.text_input(
             "시장 데이터 기준일 (YYYY-MM-DD)",
-            value="2026-10-01", max_chars=10, key="p270_market_asof")
+            value="", placeholder="YYYY-MM-DD", max_chars=10, key="p270_market_asof")
         ndx = st.file_uploader(
             "실제 Nasdaq-100 지수 I:NDX JSON (QQQ 불가)",
             type=["json"], key="p270_upload_ndx")
@@ -56,7 +56,7 @@ def render_market_panel_review(st) -> None:
                 key="p270_upload_" + ticker)
             filings[ticker] = st.text_input(
                 ticker + " 원본 10-K 제출일 (YYYY-MM-DD)",
-                value="2026-07-31", max_chars=10,
+                value="", placeholder="YYYY-MM-DD", max_chars=10,
                 key="p270_filing_" + ticker)
         submitted = st.form_submit_button(
             "로컬 3~5종목 Engine A 계산 → Guard HOLD")

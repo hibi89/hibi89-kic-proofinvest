@@ -1,3 +1,15 @@
+# P270 HARDENING HANDOFF — 2026-11-06 KST · NO FALSE EXAMPLE FILING DATES
+1. Objective: Operator 3–5-stock genuine I:NDX-format local Engine A preview while guarding against accidental synthetic filing-date defaults.
+2. Change: Blank as-of/10-K filing-date form controls and explicit human entry; malformed non-string ticker lists return BLOCKED; Chromium checks blank then fills synthetic fixture dates.
+3. Tests: Initial functional SHA 2e57466a Actions #42219562554 5/5 SUCCESS; Python 2170/2170 PASS, syntax 530/530 PASS, browser actual 4 JSON uploads+JSON download replay, Windows HTTP/SQLite and isolated Docker PASS. This hardening SHA pending new CI.
+4. Product state: Functional local preview validated at preceding SHA, hardening unverified; real provider rights/issuer original provenance, actual B-price alignment, data retention, Production and official submission NOT DONE. Official 76/100, RELEASE HOLD.
+5. No-repeat: Incorrect default 2026-07-31 may look like an actual source filing date; removed. Malformed unhashable symbol list avoided through strict type checking before set(). No prior SEC/FRED GET retries.
+6. Branch: hibi89/hibi89-kic-proofinvest lead/kic; parent 2e57466a; paths proofinvest/market_panel_review_ui.py, proofinvest/market_panel_review.py, tests/test_market_panel_review.py, scripts/market_panel_browser_smoke.py, STATUS.md, HANDOFF.md.
+7. Runtime: operator local 127.0.0.1 with KUODRA_ENABLE_LOCAL_SOURCE_UI=1. No Production URL. python -B -m scripts.verify_local --full.
+8. Backup/security: Git parent rollback. Sources and secrets not committed; no external API, payment, AI provider or persistent local market-data cache.
+9. Next: verify new five mandatory CI jobs; obtain Massive response; separate explicit owner+rights approval required for actual vendor GET, as well as Production.
+10. Updated 2026-11-06 KST; latest verified tests from initial 2e57466a only until hardening CI completes.
+
 # P270 HANDOFF — 2026-11-06 KST · OPERATOR-ONLY 3-5 STOCK TRUE-NDX OFFLINE UI
 
 1. Goal/requirements/stack: Finish KUODRA full product. Python 3.11, Streamlit localhost only, no preliminary PDF. Keep P269 source cache/Engine A and all B/C/Guard routes.
