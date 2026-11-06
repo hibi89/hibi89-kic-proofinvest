@@ -1,3 +1,10 @@
+## 2026-11-06 KST — Owner priority: final-product-only work and stop rule
+
+- During owner absence, work only on tasks demonstrably necessary for KUODRA's final 100% product and its verified end-to-end user flow. Prioritize integration of existing Engine A/B/C, Guard, source/date alignment, actual usability, and acceptance tests that remove a concrete blocker.
+- Do not manufacture work to fill time or chase a percentage. Avoid cosmetic polish, redundant CI runs, unnecessary documentation/commits, speculative expansion, and maintenance without an identified final-product defect.
+- Before each task, identify its final-product acceptance criterion and evidence of necessity. If no actionable necessary work remains, or a task is blocked by data rights, owner approval, or unavailable external inputs, STOP and report the blocker and needed decision; do not silently substitute unrelated work.
+- Preserve existing working code and data. No unauthorized live API GET, paid purchase, source transfer, security/permission change, or Production deployment. Only claim verified progress; update STATUS.md/HANDOFF.md for substantive completed work, not idle checks.
+
 > **2026-10-28 해총 최종 공통 개발·검증 지시 / 소유자 최신 결정:** [전 프로젝트 공식 운영 정본](https://github.com/hibi89/hackathon-command-center-2026/blob/main/docs/DEV_ACCELERATION_AND_VERIFICATION_20261028.md). **활성 슬롯=KIC(+DL), PayPal, UGREEN, LA 총 4개**, 일반 구현·검증은 GPT-6 **Instant**, 최초 설계/복잡한 고위험 문제·해총 독립 감독만 높은 추론. 기능 목표→구현+집중 테스트→실패 수정→기능 단위 커밋→필요 통합 CI→최소 문서. GitHub 파일별 호출·HEAD 반복·STATUS/HANDOFF 중복·동일 CI 반복 금지. 사용자 로컬 전용 검증은 안전한 한 명령 스크립트/로컬 Codex에 맡기고 **실제 실행 SHA/PASS·FAIL·SKIP**로 보고. `TO_HAECHONG.md` 재작성은 큰 개선이 있을 때만. 기존 설계·비공개 정보·외부 승인·보안·복구/대회 게이트 보존.
 >
 > **KIC 총괄:** 이 슬롯에는 Disclosure Lightning이 포함되며 별도 다섯 번째 활성 개발로 취급하지 않는다. DL 브랜치 SHA `ae7c326d16c7a0c5a4e9d97af1c63d7739a5f838`의 CI 412개 중 2개 FAIL·Windows 의존성/테스트 실패는 DL 총괄이 우선 해결한다. 검증되지 않은 DL 변경을 KIC lead에 무단 병합하지 않는다. 2026-11-12 10:00 KST 예선 PDF 승인/제출 게이트는 별도 유지.
