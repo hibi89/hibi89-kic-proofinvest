@@ -108,7 +108,12 @@ class P134TransferTests(unittest.TestCase):
     def test_symlink_blocked(self):
         original = self.path.with_name("source.zip")
         self.path.replace(original)
-        self.path.symlink_to(original)
+                try:
+            self.path.symlink_to(original)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege unavailable")
+            raise
         code, r = self.cli()
         self.assertEqual((code, r["reason_code"]), (2, "WRONG_ZIP_NAME_OR_SYMLINK"))
 

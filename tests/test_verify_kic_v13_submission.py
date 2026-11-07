@@ -103,7 +103,12 @@ class V13PreflightTests(unittest.TestCase):
     def test_symlink_blocks(self):
         other = self.path.with_name("source.pdf")
         self.path.replace(other)
-        self.path.symlink_to(other)
+                try:
+            self.path.symlink_to(other)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege unavailable")
+            raise
         code, result = self.run_cli()
         self.assertEqual((code, result["reason_code"]), (2, "WRONG_PDF_FILENAME_OR_SYMLINK"))
 

@@ -69,7 +69,12 @@ class UploadGateTests(unittest.TestCase):
     def test_symlink(self):
         actual = self.file.with_name("actual.pdf")
         self.file.replace(actual)
-        self.file.symlink_to(actual)
+                try:
+            self.file.symlink_to(actual)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege unavailable")
+            raise
         code, result = self.check()
         self.assertEqual((code, result["reason_code"]), (2, "FILE_LINK_OR_NOT_REGULAR"))
 

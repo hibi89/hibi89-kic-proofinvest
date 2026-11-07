@@ -278,7 +278,7 @@ class OperatorHtmlReportTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(body["html_report_status"], "written")
         self.assertTrue(body["audit_written"])
-        self.assertIn("KUODRA", target.read_text())
+        self.assertIn("KUODRA", target.read_text(encoding="utf-8"))
         original = target.read_bytes()
         status, body = self._cli(report_html=target)
         self.assertEqual(status, 2)
