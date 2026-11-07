@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import copy
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+from kic_test_support import run_captured
 
 from proofinvest import judge_replay, manual_case_demo
 
@@ -69,9 +70,9 @@ class OfflineJudgeReplayTests(unittest.TestCase):
     def test_cli_json_and_text_outputs_are_separate_and_private_free(self):
         for fmt in ([], ["--json"]):
             with self.subTest(fmt=fmt):
-                p = subprocess.run(
+                p = run_captured(
                     [sys.executable, "-m", "proofinvest.judge_replay", *fmt],
-                    capture_output=True, text=True, check=True,
+                    check=True,
                 )
                 self.assertNotIn("KIC_ProofInvest_FROZEN_CANDIDATE", p.stdout)
                 self.assertNotIn("secret", p.stdout.lower())

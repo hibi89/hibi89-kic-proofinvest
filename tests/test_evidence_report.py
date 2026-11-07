@@ -4,12 +4,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+from kic_test_support import run_captured
 
 from proofinvest.evidence_report import (
     build_synthetic_evidence_report, render_report, main,
@@ -117,9 +118,9 @@ class OfflineEvidenceReportTests(unittest.TestCase):
     def test_real_cli_json_and_markdown_are_offline_and_reproducible(self):
         for fmt in ("json", "markdown"):
             with self.subTest(fmt=fmt):
-                output = subprocess.run(
+                output = run_captured(
                     [sys.executable, "-m", "proofinvest.evidence_report", "--format", fmt],
-                    capture_output=True, text=True, timeout=20, check=False,
+                    timeout=20, check=False,
                 )
                 self.assertEqual(output.returncode, 0, output.stderr)
                 self.assertFalse(output.stderr)

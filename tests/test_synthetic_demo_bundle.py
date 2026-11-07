@@ -1,12 +1,13 @@
 """Offline recovery archive: deterministic, strictly allowlisted and restorable."""
 import io
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+
+from kic_test_support import run_captured
 
 from scripts import synthetic_demo_bundle as bundle
 
@@ -72,9 +73,9 @@ class SyntheticRecoveryBundleTests(unittest.TestCase):
         target = self.root / "fresh"
         bundle.extract_verified(self.archive, target)
         self.assertTrue((target / "proofinvest" / "snapshot_store.py").is_file())
-        p = subprocess.run(
+        p = run_captured(
             [sys.executable, "-m", "proofinvest", "--claim-revenue-growth-pct", "20"],
-            cwd=target, capture_output=True, text=True, check=True,
+            cwd=target, check=True,
         )
         report = json.loads(p.stdout)
         self.assertEqual(report["source_kind"], "SYNTHETIC_FIXTURE")
@@ -94,9 +95,9 @@ class SyntheticRecoveryBundleTests(unittest.TestCase):
             "assert at.selectbox[0].options == ['합성 데이터 시연']\n"
             "assert 'SYNTHETIC_FIXTURE' in at.warning[0].value\n"
         )
-        process = subprocess.run(
+        process = run_captured(
             [sys.executable, "-c", code],
-            cwd=target, capture_output=True, text=True, check=False, timeout=40,
+            cwd=target, check=False, timeout=40,
         )
         self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
 

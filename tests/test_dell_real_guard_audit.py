@@ -1,6 +1,7 @@
 """P208 real Dell financial observation -> no-approval Guard -> SQLite audit."""
 from __future__ import annotations
 
+from contextlib import closing
 import json
 import sqlite3
 import subprocess
@@ -67,7 +68,7 @@ class P208ActualGuardAuditTests(unittest.TestCase):
             source_receipt=tampered,acknowledge_local_persistence=True,
         )
         self.assertEqual(bad["status"],"BLOCKED")
-        with sqlite3.connect(self.path) as con:
+        with closing(sqlite3.connect(self.path)) as con, con:
             self.assertEqual(con.execute("SELECT COUNT(*) FROM guard_run_registry").fetchone()[0],1)
             con.execute("UPDATE guard_audit_events SET payload_json='{}'")
         self.assertFalse(GuardAuditStore(self.path).verify_chain())

@@ -1,6 +1,7 @@
 """P211 original-backed NVIDIA -> strictly consented no-network Guard SQLite review."""
 from __future__ import annotations
 
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -71,7 +72,7 @@ class P211NvidiaAuditTests(unittest.TestCase):
             acknowledge_local_persistence=True, source_receipt=fake,
         )
         self.assertEqual(bad["status"], "BLOCKED")
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT COUNT(*) FROM guard_run_registry").fetchone()[0], 1)
             db.execute("UPDATE guard_audit_events SET payload_json='{}'")

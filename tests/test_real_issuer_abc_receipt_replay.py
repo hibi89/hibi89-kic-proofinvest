@@ -1,4 +1,5 @@
 """P232: independently replay downloaded partial A/B/C Guard receipts read-only."""
+from contextlib import closing
 from copy import deepcopy
 from datetime import date, timedelta
 from hashlib import sha256
@@ -108,7 +109,7 @@ class LocalP231ReceiptReplayTests(unittest.TestCase):
         absent = self.db.with_name("never-create.sqlite")
         self.assertEqual(self.replay(path=absent)["status"], "BLOCKED")
         self.assertFalse(absent.exists())
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             db.execute("UPDATE guard_audit_events SET payload_json='{}'")
         invalid = self.replay()
         self.assertEqual(invalid["status"], "BLOCKED")

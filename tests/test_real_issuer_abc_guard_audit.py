@@ -1,6 +1,7 @@
 """P231: a genuinely replayed A/B/C source packet→real Guard HOLD→SQLite."""
 from __future__ import annotations
 
+from contextlib import closing
 from copy import deepcopy
 from datetime import date, timedelta
 from hashlib import sha256
@@ -83,7 +84,7 @@ class ABCGuardHoldSQLiteTests(unittest.TestCase):
             self.assertFalse(report[key],key)
         self.assertFalse(result["trade_executed"])
         self.assertEqual(result["network_requests"],0)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             stored=db.execute("SELECT payload_json FROM guard_audit_events").fetchone()[0]
         self.assertNotIn("Time Series (Daily)",stored)
         self.assertNotIn("4. close",stored)
