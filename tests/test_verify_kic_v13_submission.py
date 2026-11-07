@@ -103,7 +103,7 @@ class V13PreflightTests(unittest.TestCase):
     def test_symlink_blocks(self):
         other = self.path.with_name("source.pdf")
         self.path.replace(other)
-                try:
+        try:
             self.path.symlink_to(other)
         except OSError as exc:
             if getattr(exc, "winerror", None) == 1314:
