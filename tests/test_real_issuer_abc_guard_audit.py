@@ -109,7 +109,7 @@ class ABCGuardHoldSQLiteTests(unittest.TestCase):
         self.assertFalse(first["report"]["audit"]["replayed"])
         self.assertTrue(second["report"]["audit"]["replayed"])
         self.assertFalse(third["report"]["audit"]["replayed"])
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             self.assertEqual(db.execute(
                 "SELECT COUNT(*) FROM guard_audit_events").fetchone()[0],2)
         self.assertTrue(GuardAuditStore(self.path).verify_chain())
@@ -136,7 +136,7 @@ class ABCGuardHoldSQLiteTests(unittest.TestCase):
             abc_review=joined(),audit_db_path=self.path,
             acknowledge_local_persistence=True)
         self.assertTrue(first["audit_chain_valid"])
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("UPDATE guard_audit_events SET payload_json='{}'")
         self.assertFalse(GuardAuditStore(self.path).verify_chain())
         denied=run_source_bound_abc_hold_audit(
