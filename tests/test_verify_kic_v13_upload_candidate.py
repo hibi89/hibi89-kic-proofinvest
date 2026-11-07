@@ -69,7 +69,7 @@ class UploadGateTests(unittest.TestCase):
     def test_symlink(self):
         actual = self.file.with_name("actual.pdf")
         self.file.replace(actual)
-                try:
+        try:
             self.file.symlink_to(actual)
         except OSError as exc:
             if getattr(exc, "winerror", None) == 1314:
