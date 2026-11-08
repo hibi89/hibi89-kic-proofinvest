@@ -1,0 +1,19 @@
+# P283 — KIC KUODRA V18 exact content correction and private 10-page preliminary candidate (2026-11-09 KST)
+
+## Decision and verified change
+DAKER official contest requires one submitted PDF based on the supplied template with summary, problem, service, AI Agent, data, MVP and expected effect, 10 pages maximum; KIC provisional due 2026-11-12 10:00 KST. Official organizer: https://daker.ai/public/hackathons/kic-ai-agent-competition
+Rechecked V17 editable original and V17 10-page PDF content. Found actual representation defect: slide 10 caption claimed public/open code, but hibi89/hibi89-kic-proofinvest is a **private GitHub repository**. Also slide 5 dated optional local-Qwen status missed P280/P281's actual, consented **uploaded 4-file full local replay BEFORE Qwen tool selection**. Slide 10 private submission draft contained self-referential 'official submission incomplete' text that would be inaccurate after submission. Chose strict four-text-shape correction, not a new design or unverified release claim. V15 Library source and V17 conversation original both preserved.
+
+## New V18 artifacts in THIS conversation only (not GitHub or Library)
+- `KIC_KUODRA_V18_SUBMISSION_ACCURACY_PRIVATE_REVIEW_NOT_SUBMITTED.pptx`: **123805 bytes**, SHA256 **0624d695a8223dbbccce987ae8dd36f57d3bf1443feea963d52d12c1c4185534**.
+- `KIC_KUODRA_V18_SUBMISSION_ACCURACY_PRIVATE_REVIEW_NOT_SUBMITTED.pdf`: **586496 bytes**, SHA256 **bd8c2ba8d4c039fe47e60707fc1f0a3a47c499221ba22945d02441fb51efd429**.
+- `KIC_KUODRA_V18_PRIVATE_SUBMISSION_REVIEW_PACK_NOT_SUBMITTED.zip`: **504188 bytes**, SHA256 **fa9aa82f8b48d34b61d35b7925e94b7807ea707d8115d40231edcee673f98580**. ZIP holds the exact PDF, PPTX, plus `KIC_V18_SUBMISSION_REVIEW_LOCAL_QA.json` and passed byte-for-byte/testzip integrity.
+- V17 original PPTX SHA256 **1958e62f87df5e7a246c73494d10295edce7b2ee25513df06c6ac099dd552b40** unchanged, V15 Library source untouched.
+
+## Review scope
+Derived via editable PPTX then LibreOffice PDF; **10 landscape PDF pages**, 7 mandatory content headings present, **6 embedded PDF link annotations**, all essential latest CI/SEC/index/limitations text extracted; exactly four targeted PPTX text shapes updated (page 5 two, page 10 two), every other paragraph and table cell checked identical to V17. Changed pages 5 and 10 visually rendered and inspected; no obvious clipping. A first QA assertion falsely matched '공개 코드' inside '비공개 코드'; corrected the QA to check whole line; second extraction discrepancy was PDF-added whitespace, corrected by normalizing PDF text. Final QA PASS; these were test-assumption failures, not file conversion failures. No design promises beyond inspected pages.
+
+## Preserve gates
+The V18 document is a **private REVIEW candidate, not submitted**. The 'official submission incomplete' phrase was removed from *reader-facing PDF* because status is managed outside the submission, **not** because DAKER submission occurred. The organizer's team leader must upload it to the submission tab, click `제출 완료`, and confirm `최종`; this was NOT performed. User approval/valid authentication remain necessary for final platform action. The deadline is November 12 at 10:00 KST; ELO 12:00 Nov 12 to 10:00 Nov 19 requires own participation.
+
+Feature SHA remains **1f89ef7671f158307fbca35e78c621de54264fa1**; full offline CI https://github.com/hibi89/hibi89-kic-proofinvest/actions/runs/42521769506 6/6 mandatory PASS (Ubuntu 2188/2188, Windows 2187 pass+1 skip, syntax 532, browser, SQLite, HTTP, isolated container). NO code, CI, deployment, SEC raw source, market/NDX rights, payment or security settings changed. SEC first-party 4 objects not acquired/authenticated; actual Nasdaq100 price+AI/display rights absent; full authentic A/B/C, Production and formal DAKER upload unverified. Product **76/100, RELEASE HOLD**, submission candidate preparation separate. No vendor URL retry or access workaround.
