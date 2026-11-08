@@ -100,6 +100,37 @@ class MassiveBasicAdapterTests(unittest.TestCase):
         self.assertFalse(result["full_a_b_c_ready"])
         self.assertEqual(result["network_requests"], 0)
 
+    def test_known_ticker_cik_swap_fails_closed_in_direct_engine(self):
+        stock, ndx = receipts()
+        for wrong_cik in ("0000320193", "0000789019", "0001018724"):
+            with self.subTest(wrong_cik=wrong_cik):
+                result = analyze_massive_pair(
+                    stock=stock, ndx=ndx, ticker="NVDA",
+                    issuer_cik=wrong_cik, filing_date="2026-07-31",
+                    as_of="2026-10-01")
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertEqual(result["network_requests"], 0)
+                self.assertIsNone(result["market_analysis"])
+                self.assertFalse(result["source_authenticated"])
+                self.assertFalse(result["trade_executed"])
+
+    def test_known_ticker_cik_swap_never_spends_provider_requests(self):
+        requests = []
+        with patch.dict(os.environ, GATES, clear=True):
+            result = fetch_massive_pair(
+                ticker="NVDA", issuer_cik="0000320193",
+                filing_date="2026-07-31", as_of="2026-10-01",
+                api_key=KEY, explicit_click=True,
+                individual_research_approved=True,
+                stock_transport=lambda _: requests.append("stock"),
+                index_transport=lambda _: requests.append("index"))
+        self.assertEqual(requests, [])
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["network_requests"], 0)
+        self.assertEqual(result["reason_code"],
+                         "PRE_NETWORK_IDENTITY_DATE_OR_KEY_INVALID")
+        self.assertFalse(result["source_rights_verified"])
+
     def test_historical_lookahead_and_insufficient_postfiling_still_block(self):
         s,m=receipts()
         for filing in ("2026-08-20", "2026-09-01"):
