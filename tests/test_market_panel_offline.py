@@ -87,6 +87,21 @@ class PanelTests(unittest.TestCase):
         bad[1]["filing_date"]="2026-09-01"
         self.assertEqual(panel.analyze(companies=bad,
                          as_of="2026-10-01")["status"],"BLOCKED")
+    def test_distinct_but_swapped_ciks_are_rejected_before_market_math(self):
+        # Valid-length, distinct SEC CIKs can still describe the wrong issuers.
+        # The direct CLI reaches LocalMassivePanel without the UI CIK map.
+        panel = self.cache()
+        companies = self.companies()
+        companies[1]["issuer_cik"], companies[2]["issuer_cik"] = (
+            companies[2]["issuer_cik"], companies[1]["issuer_cik"])
+        with self.assertRaisesRegex(ValueError, "ISSUER_CIK_TICKER_MISMATCH"):
+            panel.analyze(companies=companies, as_of="2026-10-01")
+        # A rejected identity must not poison the still-valid in-memory panel.
+        valid = panel.analyze(companies=self.companies(), as_of="2026-10-01")
+        self.assertEqual(valid["status"], "MULTI_ISSUER_ENGINE_A_DESCRIPTIVE_UNVERIFIED")
+        self.assertEqual(valid["guard_decision"], "HOLD")
+        self.assertFalse(valid["source_rights_verified"])
+
     def test_missing_new_asof_and_clear(self):
         panel=self.cache()
         self.assertEqual(panel.analyze(companies=self.companies(),
