@@ -27,7 +27,7 @@ def submissions():
             "0001045810-25-000030", "0001045810-25-000020",
             "0001045810-24-000010", "0001045810-25-000040"],
         "filingDate": [
-            "2025-10-31", "2025-10-15", "2024-10-15", "2025-10-16"],
+            "2025-10-31", "2025-10-15", "2024-10-15", "2025-10-17"],
         "reportDate": [
             "2025-09-30", "2025-09-30", "2024-09-30", "2025-09-30"],
         "primaryDocument": ["q.htm", "annual2025.htm", "annual2024.htm", "amend.htm"],
@@ -58,6 +58,48 @@ class SingleTickerIntakeTests(TestCase):
                          "https://www.sec.gov/Archives/edgar/data/1045810/"
                          "000104581025000020/annual2025.htm")
         self.assertFalse(r["latest_10k"]["point_in_time_verified"])
+
+    def test_same_fiscal_10k_amendment_prevents_stale_original_selection(self):
+        # 2025-10-16 is before the 10-K/A; the initial filing remains valid.
+        before = intake.build_ticker_source_plan(
+            ticker="NVDA", ticker_map=mapping(),
+            submissions=submissions(), as_of="2025-10-16")
+        self.assertEqual(before["status"], "10k_source_plan_unverified")
+        self.assertEqual(before["latest_10k"]["accession"],
+                         "0001045810-25-000020")
+        # Once a same-fiscal-period amendment is visible, this four-source
+        # pipeline must not silently review only the older 10-K.
+        with patch("urllib.request.urlopen",
+                   side_effect=AssertionError("NO_EXTERNAL_SEC_GET")) as net:
+            after = intake.build_ticker_source_plan(
+                ticker="NVDA", ticker_map=mapping(),
+                submissions=submissions(), as_of="2025-10-17")
+        net.assert_not_called()
+        self.assertEqual(after["status"], "unavailable")
+        self.assertEqual(after["reason_code"], "10K_AMENDMENT_REVIEW_REQUIRED")
+        self.assertNotIn("latest_10k", after)
+        self.assertFalse(after["source_authenticated"])
+        self.assertFalse(after["full_a_b_c_ready"])
+        self.assertEqual(after["network_requests"], 0)
+
+    def test_older_fiscal_amendment_is_not_mistaken_for_latest_10k(self):
+        data = json.loads(submissions())
+        data["filings"]["recent"]["reportDate"][3] = "2024-09-30"
+        result = intake.build_ticker_source_plan(
+            ticker="NVDA", ticker_map=mapping(),
+            submissions=json.dumps(data).encode(), as_of="2025-10-17")
+        self.assertEqual(result["status"], "10k_source_plan_unverified")
+        self.assertEqual(result["latest_10k"]["accession"],
+                         "0001045810-25-000020")
+
+    def test_amendment_without_report_date_requires_manual_review(self):
+        data = json.loads(submissions())
+        data["filings"]["recent"]["reportDate"][3] = ""
+        result = intake.build_ticker_source_plan(
+            ticker="NVDA", ticker_map=mapping(),
+            submissions=json.dumps(data).encode(), as_of="2025-10-17")
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["reason_code"], "10K_AMENDMENT_REVIEW_REQUIRED")
 
     def test_historical_as_of_selects_prior_10k(self):
         r = intake.build_ticker_source_plan(ticker="NVDA", ticker_map=mapping(),
