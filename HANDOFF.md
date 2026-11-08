@@ -1,3 +1,15 @@
+# P286 VERIFIED HANDOFF — 2026-11-09 KST · V19.1 submission document fact correction
+1. Goal: V19 Korean-first KIC 10-page preliminary PDF factual validation, editable PPTX retained; product unchanged.
+2. New candidate: V19 page 6/10 falsely said GitHub private; repo REST reports public. New separate V19.1 PDF/PPTX fixes labels and links public lead/kic; Apple FY2025 claim illustration now links Apple's actual FY2025/FY2024 financial release on pages 3/9. V19 original and V15 Library unchanged.
+3. Checks: 10 editable slides, 10 landscape PDF pages, seven mandatory headings, 8 PDF web links, no text outside page. Pages 3/6/9/10 rendered visually. V19.1 PDF SHA256 5523cb797e7d64165318a7896bdcab20a03127ac4b0ca0e2bf3929e606239e20, 303278 B; PPTX SHA256 827463b1b3347de663f19c1ea4f7912a4d24e772826c2b80cbbed9ed715db014, 104967 B; review ZIP SHA256 02d60bccd972c306073545c0297681de351183001db2f93942047a3195309696, 957046 B, CRC PASS.
+4. Product 76/100 RELEASE HOLD; functional SHA 1f89ef7671f158307fbca35e78c621de54264fa1, prior mandatory CI 6/6 SUCCESS, optional real Qwen skipped. DAKER official NOT SUBMITTED; user approval/leader action remains.
+5. Problem: V19 privacy label was false; valid Apple growth calculation not linked directly. Both corrected without exaggerating SEC authentication, rights or KIC real integration. Previously blocked SEC GET not retried.
+6. Repo hibi89/hibi89-kic-proofinvest lead/kic, previous head 35a10ed3c9b25892ef8028934a93b3941decc0c1; this is docs-only successor [skip ci]. See docs/KIC_PRELIM_V19_1_FACTCHECK_QA_20261109.md.
+7. Vercel/Production none. Local PPTX -> LibreOffice PDF QA only.
+8. Security: new candidate bytes exist in conversation-generated outputs only, NOT GitHub/Library; old Library V19 ZIP unchanged. No raw SEC, secrets, identifying PDF/PPTX or credentials uploaded to public GitHub.
+9. Next: review V19.1 PDF, obtain user release approval; DAKER leader upload PDF, click 제출 완료, verify 최종 by Nov12 10:00 KST. Separate opt-in Library backup of V19.1 if asked. Genuine SEC four originals, market/NDX rights, real A/B/C and public production remain finalist gates.
+10. Checked 2026-11-09 KST. Visual/format and public-source checks verified; official DAKER operation and real-product data integration unverified.
+
 # P285 — 2026-11-09 KST CHAT-TRANSITION HANDOFF (V19 LIBRARY BACKUP CONFIRMED)
 1. Goal/requirements/tech: KIC KUODRA evidence-verified US issuer research Agent, no investment execution; P284 KIC-centered Korean 10-page proposal and source/ABC/Guard, Python3.11 Streamlit/SQLite.
 2. Completed/decision: V19 design+KIC utilization map already verified. Since user is switching chats, new starter file docs/KIC_NEXT_CHAT_START_20261109.md created rather than editing/retesting product. Original V15/V18 untouched; V19 asset backup now actually uploaded to Library and confirmed.
