@@ -22,16 +22,28 @@ def mapping():
 
 def submissions():
     return json.dumps({"cik": 1045810, "filings": {"recent": {
-        "form": ["10-Q", "10-K", "10-K", "10-K/A"],
+        "form": ["10-Q", "10-K", "10-K"],
         "accessionNumber": [
             "0001045810-25-000030", "0001045810-25-000020",
-            "0001045810-24-000010", "0001045810-25-000040"],
+            "0001045810-24-000010"],
         "filingDate": [
-            "2025-10-31", "2025-10-15", "2024-10-15", "2025-10-17"],
+            "2025-10-31", "2025-10-15", "2024-10-15"],
         "reportDate": [
-            "2025-09-30", "2025-09-30", "2024-09-30", "2025-09-30"],
-        "primaryDocument": ["q.htm", "annual2025.htm", "annual2024.htm", "amend.htm"],
+            "2025-09-30", "2025-09-30", "2024-09-30"],
+        "primaryDocument": ["q.htm", "annual2025.htm", "annual2024.htm"],
     }}}).encode()
+
+
+def amended_submissions():
+    """Explicit post-10-K amendment test case, not a baseline valid filing."""
+    obj = json.loads(submissions())
+    recent = obj["filings"]["recent"]
+    recent["form"].append("10-K/A")
+    recent["accessionNumber"].append("0001045810-25-000040")
+    recent["filingDate"].append("2025-10-17")
+    recent["reportDate"].append("2025-09-30")
+    recent["primaryDocument"].append("amend.htm")
+    return json.dumps(obj).encode()
 
 
 class SingleTickerIntakeTests(TestCase):
@@ -63,7 +75,7 @@ class SingleTickerIntakeTests(TestCase):
         # 2025-10-16 is before the 10-K/A; the initial filing remains valid.
         before = intake.build_ticker_source_plan(
             ticker="NVDA", ticker_map=mapping(),
-            submissions=submissions(), as_of="2025-10-16")
+            submissions=amended_submissions(), as_of="2025-10-16")
         self.assertEqual(before["status"], "10k_source_plan_unverified")
         self.assertEqual(before["latest_10k"]["accession"],
                          "0001045810-25-000020")
@@ -73,7 +85,7 @@ class SingleTickerIntakeTests(TestCase):
                    side_effect=AssertionError("NO_EXTERNAL_SEC_GET")) as net:
             after = intake.build_ticker_source_plan(
                 ticker="NVDA", ticker_map=mapping(),
-                submissions=submissions(), as_of="2025-10-17")
+                submissions=amended_submissions(), as_of="2025-10-17")
         net.assert_not_called()
         self.assertEqual(after["status"], "unavailable")
         self.assertEqual(after["reason_code"], "10K_AMENDMENT_REVIEW_REQUIRED")
@@ -83,7 +95,7 @@ class SingleTickerIntakeTests(TestCase):
         self.assertEqual(after["network_requests"], 0)
 
     def test_older_fiscal_amendment_is_not_mistaken_for_latest_10k(self):
-        data = json.loads(submissions())
+        data = json.loads(amended_submissions())
         data["filings"]["recent"]["reportDate"][3] = "2024-09-30"
         result = intake.build_ticker_source_plan(
             ticker="NVDA", ticker_map=mapping(),
@@ -93,7 +105,7 @@ class SingleTickerIntakeTests(TestCase):
                          "0001045810-25-000020")
 
     def test_amendment_without_report_date_requires_manual_review(self):
-        data = json.loads(submissions())
+        data = json.loads(amended_submissions())
         data["filings"]["recent"]["reportDate"][3] = ""
         result = intake.build_ticker_source_plan(
             ticker="NVDA", ticker_map=mapping(),
