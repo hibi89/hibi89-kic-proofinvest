@@ -213,6 +213,33 @@ def _execute(ticker: str, as_of: str, question: str,
     return record
 
 
+def _model_source_identity_ready(ticker: str, as_of: str,
+                                 sources: dict[str, bytes]) -> bool:
+    """Prevent a local Qwen call for a wrong issuer or superseded 10-K.
+
+    Fast bounded source/CIK/filing preflight, only for opted-in local model.
+    This validates caller-file consistency, NOT SEC publisher authentication,
+    original iXBRL facts, source license or the seven-step financial report.
+    """
+    from .ticker_local_sources import prepare_local_ticker_sources
+
+    receipt = prepare_local_ticker_sources(
+        ticker=ticker, as_of=as_of, sources=sources,
+    )
+    return (
+        type(receipt) is dict
+        and receipt.get("schema") == "kuodra.local-sec-source-receipt.v1"
+        and receipt.get("status") == "local_four_sources_unverified"
+        and receipt.get("cik") is not None
+        and receipt.get("selected_10k_accession") is not None
+        and receipt.get("source_authenticated") is False
+        and receipt.get("source_rights_verified") is False
+        and receipt.get("network_requests") == 0
+        and receipt.get("live_sec_http_called") is False
+        and receipt.get("external_ai_called") is False
+    )
+
+
 def answer_owner_source_question(
     *,ticker: Any, as_of: Any, question: Any, sources: Any,
     market_json: Any=None,industry_json: Any=None,
@@ -230,6 +257,10 @@ def answer_owner_source_question(
     if use_local_model:
         if consent_local_model is not True or consent_question_text is not True:
             return _blocked("TWO_EXPLICIT_LOCAL_MODEL_CONSENTS_REQUIRED")
+        # File/CIK/filing mismatch must fail BEFORE sharing even the question
+        # with the explicitly opted-in localhost model planner.
+        if not _model_source_identity_ready(ticker, as_of, sources):
+            return _blocked("LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
         try:
             selected=_optional_model_plan(question,ticker,pre["candidate_intents"])
             intent=selected["selected_intent"]
@@ -271,6 +302,10 @@ def answer_owner_multi_question(
     if use_local_model:
         if consent_local_model is not True or consent_question_text is not True:
             return _blocked("TWO_EXPLICIT_LOCAL_MODEL_CONSENTS_REQUIRED")
+        # File/CIK/filing mismatch must fail BEFORE sharing even the question
+        # with the explicitly opted-in localhost model planner.
+        if not _model_source_identity_ready(ticker, as_of, sources):
+            return _blocked("LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
         try:
             selected=_optional_model_plan(question,ticker,intents)
             first=selected["selected_intent"]

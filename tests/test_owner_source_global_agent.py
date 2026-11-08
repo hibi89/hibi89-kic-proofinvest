@@ -203,6 +203,77 @@ class OwnerSourceGlobalTests(unittest.TestCase):
         self.assertEqual(out["local_model_calls"],1)
         self.assertFalse(out["ai_agent_executed"])
 
+    def test_invalid_filing_never_calls_optional_local_model_or_financial_tools(self):
+        _, raw = report_case()
+        from tests.test_ticker_research_intake import amended_submissions
+        bad_facts = json.loads(raw["companyfacts"])
+        bad_facts["cik"] = 320193
+        cases = (
+            ("COMPANYFACTS_ISSUER_MISMATCH",
+             dict(raw, companyfacts=json.dumps(bad_facts).encode()), "2025-10-16"),
+            ("NEWER_10K_AMENDMENT",
+             dict(raw, submissions=amended_submissions()), "2025-10-17"),
+            ("MISSING_10K",
+             dict(raw, submissions=b'{"cik":1045810,"filings":{"recent":{}}}'),
+             "2025-10-16"),
+        )
+        with (
+            patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                  side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model,
+            patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                  side_effect=AssertionError("NO_FINANCIAL_TOOLS")) as workflow,
+            patch("urllib.request.urlopen",
+                  side_effect=AssertionError("NO_HTTP")) as http,
+        ):
+            for label, sources, cutoff in cases:
+                for multi in (False, True):
+                    question = ("NVDA 매출 성장률과 현금흐름 검토" if multi
+                                else "NVDA 매출 성장률 검산")
+                    runner = (answer_owner_multi_question if multi
+                              else answer_owner_source_question)
+                    with self.subTest(reason=label, multi=multi):
+                        result = runner(
+                            ticker="NVDA", as_of=cutoff, question=question,
+                            sources=sources, use_local_model=True,
+                            consent_local_model=True, consent_question_text=True,
+                        )
+                        self.assertEqual(result["status"], "BLOCKED")
+                        self.assertEqual(
+                            result["reason_code"],
+                            "LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
+                        self.assertEqual(result["local_model_calls"], 0)
+                        self.assertEqual(result["executed_financial_tools"], 0)
+                        self.assertEqual(result["network_requests"], 0)
+            model.assert_not_called()
+            workflow.assert_not_called()
+            http.assert_not_called()
+
+    def test_local_model_source_gate_rejects_forged_trust_upgrade(self):
+        _, raw = report_case()
+        from proofinvest import owner_source_global_agent as agent
+        with (
+            patch("proofinvest.ticker_local_sources.prepare_local_ticker_sources",
+                  return_value={
+                      "schema": "kuodra.local-sec-source-receipt.v1",
+                      "status": "local_four_sources_unverified",
+                      "cik": "0001045810",
+                      "selected_10k_accession": "0001045810-25-000020",
+                      "source_authenticated": True,
+                      "source_rights_verified": False,
+                      "network_requests": 0,
+                      "live_sec_http_called": False,
+                      "external_ai_called": False,
+                  }),
+            patch.object(agent, "_optional_model_plan",
+                         side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model,
+        ):
+            result = run(
+                sources=raw, use_local_model=True,
+                consent_local_model=True, consent_question_text=True)
+        self.assertEqual(result["reason_code"],
+                         "LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
+        model.assert_not_called()
+
     def test_tampered_report_or_rights_cannot_replay(self):
         _,raw=report_case()
         q="NVDA 매출 성장률 검증"
