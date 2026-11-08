@@ -27,6 +27,14 @@ _KEY = re.compile(r"[A-Za-z0-9_\-]{8,128}\Z", re.ASCII)
 _SHA = re.compile(r"[a-f0-9]{64}\Z", re.ASCII)
 _MAX_RESPONSE = 262144
 _MAX_ROWS = 160
+# Fixed identities of the five native market-panel issuers. Other ticker
+# identities still require independent SEC-source binding; this map does not
+# authenticate any source or grant provider data rights.
+_KNOWN_TICKER_CIK = {
+    "NVDA": "0001045810", "AAPL": "0000320193",
+    "MSFT": "0000789019", "AMZN": "0001018724",
+    "GOOGL": "0001652044",
+}
 _PLANS = ("KUODRA_ENABLE_MASSIVE_PAIR", "KUODRA_MASSIVE_PERSONAL_RESEARCH_APPROVED")
 _QUANT = Decimal("0.00000001")
 
@@ -371,7 +379,9 @@ def analyze_massive_pair(*, stock: dict, ndx: dict, ticker: str,
         from .market_pair_engine_a import _CIK, _TICKER
         if (type(ticker) is not str or _TICKER.fullmatch(ticker) is None
                 or type(issuer_cik) is not str or _CIK.fullmatch(issuer_cik) is None
-                or issuer_cik == "0000000000"):
+                or issuer_cik == "0000000000"
+                or (ticker in _KNOWN_TICKER_CIK
+                    and issuer_cik != _KNOWN_TICKER_CIK[ticker])):
             raise ValueError("ISSUER_INVALID")
         filing, cutoff = _day(filing_date), _day(as_of)
         if filing >= cutoff:
@@ -451,7 +461,10 @@ def fetch_massive_pair(*, ticker: str, issuer_cik: str, filing_date: str,
         if (type(ticker) is not str or _SYMBOL.fullmatch(ticker) is None
                 or type(issuer_cik) is not str
                 or re.fullmatch(r"[0-9]{10}", issuer_cik) is None
-                or issuer_cik == "0000000000" or _day(filing_date) >= _day(as_of)
+                or issuer_cik == "0000000000"
+                or (ticker in _KNOWN_TICKER_CIK
+                    and issuer_cik != _KNOWN_TICKER_CIK[ticker])
+                or _day(filing_date) >= _day(as_of)
                 or _day(as_of) > _day(free_basic_safe_as_of())
                 or type(api_key) is not str or _KEY.fullmatch(api_key) is None):
             return _blocked("PRE_NETWORK_IDENTITY_DATE_OR_KEY_INVALID")
