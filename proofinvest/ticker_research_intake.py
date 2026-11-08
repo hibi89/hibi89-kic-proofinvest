@@ -122,8 +122,10 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
     if len(set(sizes)) != 1 or sizes[0] > MAX_FILINGS:
         _bad("SUBMISSIONS_ARRAY_LENGTH_MISMATCH")
     eligible = []
+    amendments = []
     for i in range(sizes[0]):
-        if recent["form"][i] != "10-K":
+        form = recent["form"][i]
+        if form not in ("10-K", "10-K/A"):
             continue
         filing = _date(recent["filingDate"][i])
         if filing > cutoff:
@@ -141,6 +143,9 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
         report = recent["reportDate"][i]
         if report and _date(report) > filing:
             _bad("REPORT_DATE_AFTER_FILING")
+        if form == "10-K/A":
+            amendments.append((filing, report or None))
+            continue
         eligible.append((filing, accession, filename, report or None))
     if not eligible:
         _bad("NO_10K_BEFORE_AS_OF_IN_RECENT_WINDOW")
@@ -148,6 +153,15 @@ def select_sec_10k(raw: bytes, *, cik: str, as_of: str) -> dict:
     if len(eligible) > 1 and eligible[0][:2] == eligible[1][:2]:
         _bad("DUPLICATE_10K_IDENTITY")
     filing, accession, filename, report = eligible[0]
+    # A subsequently filed same-year amendment may change the financial
+    # facts or evidence. This four-source workflow holds the original rather
+    # than silently treating an earlier 10-K as the newest reviewed evidence.
+    # Unknown report dates are ambiguous and also require human review.
+    if any(amended_date >= filing and (
+            amendment_report is None or report is None
+            or amendment_report == report)
+            for amended_date, amendment_report in amendments):
+        _bad("10K_AMENDMENT_REVIEW_REQUIRED")
     original = (f"{SEC_ARCHIVE}/{int(issuer)}/"
                 f"{accession.replace('-', '')}/{filename}")
     return {"form": "10-K", "accession": accession, "filing_date": filing.isoformat(),
