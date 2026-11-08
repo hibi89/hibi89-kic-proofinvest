@@ -109,10 +109,12 @@ class OwnerSourceGlobalTests(unittest.TestCase):
             "$PLTR 매출 성장률을 검증해줘",
             "NVDA $BRK.B 매출 성장률을 검증해줘",
         )
-        with patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
-                   side_effect=AssertionError("SOURCE_TOOLS_MUST_NOT_RUN")) as pipeline, (
-             patch("proofinvest.owner_source_global_agent._optional_model_plan",
-                   side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model):
+        with (
+            patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                  side_effect=AssertionError("SOURCE_TOOLS_MUST_NOT_RUN")) as pipeline,
+            patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                  side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model,
+        ):
             for question in conflicting:
                 with self.subTest(question=question):
                     r = run(question, sources=raw, use_local_model=True,
