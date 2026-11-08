@@ -71,6 +71,26 @@ class LocalTickerWorkflowTests(unittest.TestCase):
                          "SOURCE_IDENTITY_OR_FILING_UNAVAILABLE")
         self.assertEqual(wrong_ticker["tool_calls_executed"], 1)
 
+    def test_newer_same_fiscal_10k_amendment_blocks_before_financial_tools(self):
+        _, originals = report_case()
+        from tests.test_ticker_research_intake import amended_submissions
+        changed = dict(originals, submissions=amended_submissions())
+        with patch("proofinvest.ticker_sec_financial_bridge.inspect_collected_annual_revenue",
+                   side_effect=AssertionError("NO_FINANCIAL_MATH_ON_STALE_10K")) as math:
+            result = run_local_ticker_workflow(
+                ticker="NVDA", as_of="2025-10-17", sources=changed)
+        math.assert_not_called()
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["reason_code"], "SOURCE_IDENTITY_OR_FILING_UNAVAILABLE")
+        self.assertEqual(result["tool_calls_executed"], 1)
+        self.assertEqual(result["tool_trace"][0]["tool"],
+                         "prepare_local_ticker_sources")
+        self.assertIsNone(result["report"])
+        self.assertIsNone(result["revenue"])
+        self.assertFalse(result["guard_executed"])
+        self.assertFalse(result["trade_executed"])
+        self.assertEqual(result["network_requests"], 0)
+
     def test_bounded_pipeline_optional_market_industry_inputs_and_no_license(self):
         _, raw, m, c = scenario()
         result = run_local_ticker_workflow(
