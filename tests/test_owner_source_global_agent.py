@@ -100,6 +100,60 @@ class OwnerSourceGlobalTests(unittest.TestCase):
                     r=run(sources=bad)
                     self.assertEqual(r["status"],"BLOCKED")
 
+    def test_conflicting_issuer_question_blocks_before_seven_tools_or_model(self):
+        _, raw = report_case()
+        conflicting = (
+            "AMZN 매출 성장률을 검증해줘",
+            "GOOGL 매출 성장률을 검증해줘",
+            "NVDA와 META 현금흐름을 비교해줘",
+            "$PLTR 매출 성장률을 검증해줘",
+            "NVDA $BRK.B 매출 성장률을 검증해줘",
+        )
+        with patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                   side_effect=AssertionError("SOURCE_TOOLS_MUST_NOT_RUN")) as pipeline, (
+             patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                   side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model):
+            for question in conflicting:
+                with self.subTest(question=question):
+                    r = run(question, sources=raw, use_local_model=True,
+                            consent_local_model=True,
+                            consent_question_text=True)
+                    self.assertEqual(r["status"], "BLOCKED")
+                    self.assertEqual(r["reason_code"],
+                                     "CONFLICTING_TICKER_IN_QUESTION")
+                    self.assertEqual(r["executed_financial_tools"], 0)
+                    self.assertEqual(r["local_model_calls"], 0)
+                    self.assertEqual(r["network_requests"], 0)
+            pipeline.assert_not_called()
+            model.assert_not_called()
+
+    def test_matching_explicit_ticker_and_benchmark_do_not_block(self):
+        _, raw = report_case()
+        for question in ("$NVDA 매출 성장률 검증",
+                         "NVDA 매출 성장률 검증",
+                         "NVDA 시장 지수 I:NDX 출처 검토"):
+            with self.subTest(question=question):
+                outcome = run(question, sources=raw)
+                self.assertEqual(
+                    outcome["status"],
+                    "LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW", outcome)
+                self.assertEqual(outcome["ticker"], "NVDA")
+                self.assertEqual(outcome["guard_policy_preview"], "HOLD")
+
+    def test_multi_question_rejects_other_issuer_before_tools(self):
+        _, raw = report_case()
+        with patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                   side_effect=AssertionError("NO_SOURCE_REPLAY")) as pipeline:
+            r = answer_owner_multi_question(
+                ticker="NVDA", as_of="2025-10-16",
+                question="AMZN 매출 성장률과 현금흐름을 검토해줘",
+                sources=raw)
+            self.assertEqual(r["status"], "BLOCKED")
+            self.assertEqual(r["reason_code"],
+                             "CONFLICTING_TICKER_IN_QUESTION")
+            self.assertEqual(r["executed_financial_tools"], 0)
+            pipeline.assert_not_called()
+
     def test_uploaded_market_and_industry_remain_unlicensed(self):
         _,raw,m,c=scenario()
         mb=json.dumps(m).encode()
