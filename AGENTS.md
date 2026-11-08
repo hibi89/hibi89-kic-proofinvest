@@ -1,3 +1,9 @@
+## 2026-11-09 KST — Minimize owner intervention and batch unavoidable actions
+
+- During active development, independently complete source review, safe coding, focused/full CI, GitHub commits, and verified handoff without asking the owner to operate local tools merely to view a test result. GitHub Actions run collection and exact-SHA job logs are accessible via connected GitHub REST; prefer them before owner-local verification.
+- Defer and combine unavoidable owner-only local steps, source/access approvals, paid/provider rights decisions, and official DAKER actions into one concise final action batch whenever they do not block the current step. Ask immediately only for an input/approval without which the next necessary step cannot proceed. Existing separate explicit approvals for live network GET, payments, sensitive source transfer, permissions and public release remain mandatory.
+- No manufactured completion percent: independently validated code defects fixed by CI do not resolve missing licensed market/SEC originals or real public E2E; remain RELEASE HOLD until measured.
+
 ## 2026-11-06 KST — Owner priority: final-product-only work and stop rule
 
 - During owner absence, work only on tasks demonstrably necessary for KUODRA's final 100% product and its verified end-to-end user flow. Prioritize integration of existing Engine A/B/C, Guard, source/date alignment, actual usability, and acceptance tests that remove a concrete blocker.
