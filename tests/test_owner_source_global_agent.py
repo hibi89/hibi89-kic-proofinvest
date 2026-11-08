@@ -274,6 +274,84 @@ class OwnerSourceGlobalTests(unittest.TestCase):
                          "LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
         model.assert_not_called()
 
+    def test_original_ixbrl_must_replay_before_local_model_for_both_modes(self):
+        _, raw = report_case()
+        original = raw["original_10k"]
+        self.assertIn(b"</body>", original)
+        foreign_dei = original.replace(
+            b"</body>",
+            b'<ix:nonNumeric name="dei:EntityCentralIndexKey">0000320193'
+            b'</ix:nonNumeric><ix:nonNumeric name="dei:DocumentType">'
+            b'10-K</ix:nonNumeric></body>',
+        )
+        cases = (
+            ("BROKEN_HTML", dict(raw, original_10k=b"not 10-K HTML")),
+            ("CONFLICTING_DEI", dict(raw, original_10k=foreign_dei)),
+        )
+        for label, sources in cases:
+            for multi in (False, True):
+                question = ("NVDA 매출 성장률과 현금흐름 검토" if multi
+                            else "NVDA 매출 성장률 검산")
+                runner = (answer_owner_multi_question if multi
+                          else answer_owner_source_question)
+                with (
+                    patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                          side_effect=AssertionError("MODEL_MUST_NOT_RUN")) as model,
+                    patch("urllib.request.urlopen",
+                          side_effect=AssertionError("EXTERNAL_HTTP_FORBIDDEN")) as http,
+                ):
+                    with self.subTest(case=label, multi=multi):
+                        result = runner(
+                            ticker="NVDA", as_of="2025-10-16",
+                            question=question, sources=sources,
+                            use_local_model=True,
+                            consent_local_model=True,
+                            consent_question_text=True)
+                        self.assertEqual(result["status"], "BLOCKED")
+                        self.assertEqual(
+                            result["reason_code"],
+                            "LOCAL_MODEL_ORIGINAL_REPLAY_NOT_VERIFIED")
+                        self.assertEqual(result["local_model_calls"], 0)
+                        self.assertEqual(result["executed_financial_tools"], 0)
+                        self.assertEqual(result["network_requests"], 0)
+                        model.assert_not_called()
+                        http.assert_not_called()
+
+    def test_local_model_reuses_same_seven_stage_run_after_full_replay(self):
+        _, raw = report_case()
+        for multi in (False, True):
+            question = ("NVDA 매출 성장률과 현금흐름 검토" if multi
+                        else "NVDA 매출 성장률 검산")
+            runner = (answer_owner_multi_question if multi
+                      else answer_owner_source_question)
+            with (
+                patch("proofinvest.owner_source_global_agent.run_local_ticker_workflow",
+                      wraps=run_local_ticker_workflow) as pipeline,
+                patch("proofinvest.owner_source_global_agent._optional_model_plan",
+                      return_value={
+                          "selected_intent": "REVENUE",
+                          "local_model_calls": 1,
+                          "model_protocol_verified": True,
+                      }) as model,
+            ):
+                result = runner(
+                    ticker="NVDA", as_of="2025-10-16",
+                    question=question, sources=raw,
+                    use_local_model=True, consent_local_model=True,
+                    consent_question_text=True)
+            with self.subTest(multi=multi):
+                self.assertEqual(result["status"],
+                                 "LOCAL_OWNER_FILE_BACKED_QUESTION_HUMAN_REVIEW",
+                                 result)
+                self.assertEqual(result["guard_policy_preview"], "HOLD")
+                self.assertEqual(result["executed_financial_tools"], 7)
+                self.assertEqual(result["local_model_calls"], 1)
+                pipeline.assert_called_once()
+                model.assert_called_once()
+                self.assertTrue(verify_owner_source_answer(
+                    result, ticker="NVDA", as_of="2025-10-16",
+                    question=question, sources=raw))
+
     def test_tampered_report_or_rights_cannot_replay(self):
         _,raw=report_case()
         q="NVDA 매출 성장률 검증"

@@ -118,14 +118,55 @@ def _explain(ticker: str, intent: str, work: dict) -> str:
             " · 사람 검토 필요 · 투자권고 불가 · 사용자 원본은 SEC 발행처 인증 아님.")
 
 
+def _prevalidate_model_workflow(
+    ticker: str, as_of: str, sources: dict[str, bytes],
+    market_json: bytes | None, industry_json: bytes | None,
+) -> dict | None:
+    """Complete seven-stage local replay BEFORE a consented model request.
+
+    The original must have a matching iXBRL context and a HOLD preview;
+    a safe but conflicting REJECT report is not eligible for model planning.
+    Reuse this in-memory workflow after planning instead of running 7 tools
+    twice. Independent byte/semantic replay is repeated after the model
+    selects a tool to detect inputs that changed during the model call.
+    """
+    work = run_local_ticker_workflow(
+        ticker=ticker, as_of=as_of, sources=sources,
+        market_json=market_json, industry_json=industry_json,
+    )
+    if (work.get("status") != "READY_FOR_HUMAN_REVIEW_UNVERIFIED"
+            or work.get("tool_calls_executed") != 7
+            or work.get("network_requests") != 0
+            or work.get("source_authenticated") is not False
+            or work.get("source_rights_verified") is not False
+            or work.get("trade_executed") is not False
+            or type(work.get("original")) is not dict
+            or work["original"].get("status") !=
+               "ORIGINAL_CONTEXT_MATCH_UNVERIFIED"
+            or type(work.get("report")) is not dict
+            or work["report"].get("guard_policy_preview") != "HOLD"):
+        return None
+    checked = verify_local_report(
+        work["report"], sources=sources,
+        market_json=market_json, industry_json=industry_json)
+    if (checked.get("status") != "PASS"
+            or checked.get("report_semantics_recomputed") is not True
+            or checked.get("source_rights_verified") is not False
+            or checked.get("network_requests") != 0):
+        return None
+    return work
+
+
 def _execute(ticker: str, as_of: str, question: str,
              sources: dict[str,bytes], market_json: bytes|None,
              industry_json: bytes|None, intent: str, *,
              local_calls: int, protocol: bool,
-             plan: tuple[str, ...] | None = None) -> dict:
-    work=run_local_ticker_workflow(
-        ticker=ticker,as_of=as_of,sources=sources,
-        market_json=market_json,industry_json=industry_json)
+             plan: tuple[str, ...] | None = None,
+             prevalidated_work: dict | None = None) -> dict:
+    work = (prevalidated_work if prevalidated_work is not None else
+            run_local_ticker_workflow(
+                ticker=ticker, as_of=as_of, sources=sources,
+                market_json=market_json, industry_json=industry_json))
     if (work.get("status")!="READY_FOR_HUMAN_REVIEW_UNVERIFIED"
             or work.get("tool_calls_executed")!=7
             or work.get("source_authenticated") is not False
@@ -262,6 +303,14 @@ def answer_owner_source_question(
         if not _model_source_identity_ready(ticker, as_of, sources):
             return _blocked("LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
         try:
+            prevalidated_work = _prevalidate_model_workflow(
+                ticker, as_of, sources, market_json, industry_json)
+        except (ValueError, TypeError, KeyError, AttributeError,
+                RecursionError, OverflowError, UnicodeError):
+            prevalidated_work = None
+        if prevalidated_work is None:
+            return _blocked("LOCAL_MODEL_ORIGINAL_REPLAY_NOT_VERIFIED")
+        try:
             selected=_optional_model_plan(question,ticker,pre["candidate_intents"])
             intent=selected["selected_intent"]
             calls=selected["local_model_calls"]
@@ -270,7 +319,8 @@ def answer_owner_source_question(
             return _blocked("LOCAL_MODEL_NOT_VERIFIED",calls=1)
     try:
         return _execute(ticker,as_of,question,sources,market_json,industry_json,
-                        intent,local_calls=calls,protocol=protocol)
+                        intent,local_calls=calls,protocol=protocol,
+                        prevalidated_work=prevalidated_work if use_local_model else None)
     except (ValueError,TypeError,KeyError,AttributeError,RecursionError,
             OverflowError,UnicodeError):
         return _blocked("LOCAL_WORKFLOW_EXECUTION_BLOCKED",calls=calls)
@@ -307,6 +357,14 @@ def answer_owner_multi_question(
         if not _model_source_identity_ready(ticker, as_of, sources):
             return _blocked("LOCAL_MODEL_SOURCE_IDENTITY_NOT_VERIFIED")
         try:
+            prevalidated_work = _prevalidate_model_workflow(
+                ticker, as_of, sources, market_json, industry_json)
+        except (ValueError, TypeError, KeyError, AttributeError,
+                RecursionError, OverflowError, UnicodeError):
+            prevalidated_work = None
+        if prevalidated_work is None:
+            return _blocked("LOCAL_MODEL_ORIGINAL_REPLAY_NOT_VERIFIED")
+        try:
             selected=_optional_model_plan(question,ticker,intents)
             first=selected["selected_intent"]
             calls=selected["local_model_calls"]
@@ -318,7 +376,8 @@ def answer_owner_multi_question(
     plan=(first,) + tuple(name for name in intents if name!=first)
     try:
         return _execute(ticker,as_of,question,sources,market_json,industry_json,
-                        first,local_calls=calls,protocol=protocol,plan=plan)
+                        first,local_calls=calls,protocol=protocol,plan=plan,
+                        prevalidated_work=prevalidated_work if use_local_model else None)
     except (ValueError,TypeError,KeyError,AttributeError,RecursionError,
             OverflowError,UnicodeError):
         return _blocked("LOCAL_MULTI_TOOL_EXECUTION_BLOCKED",calls=calls)
