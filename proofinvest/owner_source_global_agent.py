@@ -76,7 +76,7 @@ def _preflight(ticker: Any, as_of: Any, question: Any,
         question, flags=re.I,
     ))
     names.update(re.findall(
-        r"(?<![A-Za-z0-9])\\$([A-Z0-9]{1,8}(?:[.-][A-Z0-9]{1,3})?)(?![A-Za-z0-9])",
+        r"(?<![A-Za-z0-9])\$([A-Z0-9]{1,8}(?:[.-][A-Z0-9]{1,3})?)(?![A-Za-z0-9])",
         question, flags=re.I,
     ))
     if any(name.upper() != ticker for name in names):
