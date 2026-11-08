@@ -66,9 +66,20 @@ def _preflight(ticker: Any, as_of: Any, question: Any,
         return _blocked("QUESTION_NOT_RESEARCH_INTENT")
     # A primary source identity is supplied separately from the question.
     # Do not silently reassign the issuer from arbitrary question text.
-    names=set(re.findall(r"(?<![A-Za-z0-9])(?:NVDA|DELL|AAPL|MSFT|TSLA|AMD|INTC|QCOM)(?![A-Za-z0-9])",
-                         question, flags=re.I))
-    if any(name.upper()!=ticker for name in names):
+    # Bare names are only a conservative known-ticker screen. For any
+    # other US ticker, an explicit $CASHTAG is unambiguously issuer intent.
+    # Do not reinterpret price benchmarks/ordinary financial vocabulary as
+    # another issuer, and do not trust question text over the source CIK.
+    names = set(re.findall(
+        r"(?<![A-Za-z0-9])(?:NVDA|DELL|AAPL|MSFT|TSLA|AMD|INTC|QCOM|"
+        r"AMZN|GOOGL|GOOG|META|NFLX|PLTR)(?![A-Za-z0-9])",
+        question, flags=re.I,
+    ))
+    names.update(re.findall(
+        r"(?<![A-Za-z0-9])\\$([A-Z0-9]{1,8}(?:[.-][A-Z0-9]{1,3})?)(?![A-Za-z0-9])",
+        question, flags=re.I,
+    ))
+    if any(name.upper() != ticker for name in names):
         return _blocked("CONFLICTING_TICKER_IN_QUESTION")
     return {"status":"READY","candidate_intents":terms,"default_intent":terms[0]}
 
