@@ -10,6 +10,13 @@ from typing import Any
 from .market_provider_massive import parse_massive_daily, analyze_massive_pair
 
 _ALLOWED = frozenset({"NVDA", "AAPL", "MSFT", "AMZN", "GOOGL"})
+# The core and direct CLI must not attribute price evidence to another issuer.
+# These are identifiers, not proof that an uploaded price series is authentic.
+_ISSUER_CIK = {
+    "NVDA": "0001045810", "AAPL": "0000320193",
+    "MSFT": "0000789019", "AMZN": "0001018724",
+    "GOOGL": "0001652044",
+}
 _NDX = "I:NDX"
 
 def _day(value: str) -> date:
@@ -116,6 +123,11 @@ class LocalMassivePanel:
         ciks = [x["issuer_cik"] for x in companies]
         if len(set(symbols)) != len(symbols) or len(set(ciks)) != len(ciks):
             raise ValueError("DUPLICATE_COMPANY_IDENTITY")
+        # Unlike the Streamlit adapter, the public core/CLI accepts caller CIKs.
+        # Reject even unique but swapped issuer IDs before source analysis.
+        if any(company["issuer_cik"] != _ISSUER_CIK[company["ticker"]]
+               for company in companies):
+            raise ValueError("ISSUER_CIK_TICKER_MISMATCH")
         plan = self.refresh_plan(symbols=symbols, as_of=as_of)
         if plan["manual_import_needed"]:
             return self._blocked("MISSING_OR_STALE_DAILY_SOURCE",
