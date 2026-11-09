@@ -129,7 +129,7 @@ class IssuerTimeMLTest(TestCase):
             for day in range(62, 90):
                 at = (datetime(2025, 1, 1, tzinfo=timezone.utc) +
                       timedelta(days=day)).strftime("%Y-%m-%dT%H:%M:%SZ")
-                tail.append(f"issuer{issuer},target,{at},{at},999,usd\\n")
+                tail.append(f"issuer{issuer},target,{at},{at},999,usd\n")
         expanded_data = normalize_local_csv(raw + "".join(tail).encode(),
             dataset_id="fixture", source_id="synthetic", access_level="PUBLIC")
         kwargs = dict(target_metric="target", feature_metrics=("feature",),
