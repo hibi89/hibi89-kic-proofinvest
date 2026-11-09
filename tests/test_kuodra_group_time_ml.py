@@ -87,6 +87,47 @@ class IssuerTimeMLTest(TestCase):
         self.assertEqual(actual,baseline)
         self.assertEqual(actual["guard"],"HOLD")
 
+    def test_unrelated_companies_without_target_cannot_change_issuer_holdout(self):
+        base=evaluate_issuer_time_holdout(data(),target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        extra=''.join(
+            f"noiseIssuer{j},unrelatedSignal,2025-01-01T00:00:00Z,2025-01-01T00:00:00Z,7,count\\n"
+            for j in range(35)).replace("\\n","\n").encode()
+        combined=normalize_local_csv(rows()+extra,dataset_id="fixture",
+            source_id="synthetic",access_level="PUBLIC")
+        actual=evaluate_issuer_time_holdout(combined,target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(base["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(actual,base)
+        self.assertEqual(actual["issuer_count"],10)
+
+    def test_target_only_issuers_without_features_cannot_shift_holdout(self):
+        base=evaluate_issuer_time_holdout(data(),target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        extras=[]
+        for issuer in range(18):
+            for day in range(62):
+                at=(datetime(2025,1,1,tzinfo=timezone.utc)+
+                    timedelta(days=day)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                extras.append(f"untrainedIssuer{issuer},target,{at},{at},123,usd\n")
+        combined=normalize_local_csv(rows()+''.join(extras).encode(),
+            dataset_id="fixture",source_id="synthetic",access_level="PUBLIC")
+        actual=evaluate_issuer_time_holdout(combined,target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(actual,base)
+
+    def test_noise_companies_do_not_satisfy_minimum_trainable_issuer_count(self):
+        extra=''.join(
+            f"fillerIssuer{i},noise,2025-01-01T00:00:00Z,2025-01-01T00:00:00Z,3,count\n"
+            for i in range(20)).encode()
+        combined=normalize_local_csv(rows(issuers=7)+extra,
+            dataset_id="fixture",source_id="synthetic",access_level="PUBLIC")
+        result=evaluate_issuer_time_holdout(combined,target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(result["status"],"NO_TRAIN")
+        self.assertEqual(result["reason"],"INSUFFICIENT_DISTINCT_ISSUERS")
+        self.assertEqual(result["guard"],"HOLD")
+
     def test_future_dates_cannot_shift_historical_holdout_boundary(self):
         # Historical evaluation must be invariant to later rows in the
         # same file; a global 75-percentile split would look ahead.

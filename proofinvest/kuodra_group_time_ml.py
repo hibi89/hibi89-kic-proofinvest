@@ -175,23 +175,9 @@ def evaluate_issuer_time_holdout(
             raise ValueError("GROUP_ML_DUPLICATE_RECORD")
         cells[r["metric_id"]] = (released, value)
 
-    if len(rows_by_entity) < 8:
-        return _hold("INSUFFICIENT_DISTINCT_ISSUERS")
-    # Split on target observation dates, not timestamps contributed solely
-    # by unrelated metrics. A daily macro update must not move a quarterly
-    # target's holdout boundary or change its NEXT_OBSERVATION label.
-    unique_times = sorted({t for panel in rows_by_entity.values()
-                           for t, cells in panel.items() if target_metric in cells})
-    if len(unique_times) < 48:
-        return _hold("INSUFFICIENT_DISTINCT_TIMES")
-    cut_at = unique_times[int(len(unique_times)*0.75)]
-    cutoff_boundary = _instant(cut_at)
-    # Deterministic issuer partitions avoid exposure of raw tenant identifiers.
-    entities = sorted(rows_by_entity, key=lambda s: sha256(s.encode("utf-8")).hexdigest())
-    hold_n = max(2, len(entities) // 4)
-    unseen = set(entities[-hold_n:])
-    training_entities = set(entities[:-hold_n])
-
+    # Build point-in-time usable target/feature pairs before selecting the
+    # held-out issuer universe. Rows from companies lacking usable labels or
+    # features must not alter who is in the training vs unseen-issuer groups.
     samples: list[tuple] = []
     for entity, panel in rows_by_entity.items():
         ordered = sorted(t for t, cells in panel.items() if target_metric in cells)
@@ -216,6 +202,28 @@ def evaluate_issuer_time_holdout(
                     horizon_days = (_instant(future_t) - observed).total_seconds() / 86400.0
                     samples.append((observed, label[0], entity, features,
                                     label[1], horizon_days))
+
+    active_issuers = {s[2] for s in samples}
+    if len(active_issuers) < 8:
+        return _hold("INSUFFICIENT_DISTINCT_ISSUERS")
+    # Use only the target timeline of eligible issuers; unrelated source
+    # entities may still have perfectly valid lineage but no usable samples.
+    unique_times = sorted({
+        t for issuer in active_issuers
+        for t, cells in rows_by_entity[issuer].items()
+        if target_metric in cells
+    })
+    if len(unique_times) < 48:
+        return _hold("INSUFFICIENT_DISTINCT_TIMES")
+    cut_at = unique_times[int(len(unique_times)*0.75)]
+    cutoff_boundary = _instant(cut_at)
+    # Deterministic partitions use only eligible issuer IDs, not the
+    # count of unrelated company rows; hashes never prove external identity.
+    entities = sorted(active_issuers,
+                      key=lambda issuer: sha256(issuer.encode("utf-8")).hexdigest())
+    hold_n = max(2, len(entities) // 4)
+    unseen = set(entities[-hold_n:])
+    training_entities = set(entities[:-hold_n])
 
     train = [s for s in samples if s[2] in training_entities
              and s[0] < cutoff_boundary and s[1] < cutoff_boundary]
