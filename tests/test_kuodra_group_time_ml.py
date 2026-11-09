@@ -116,6 +116,30 @@ class IssuerTimeMLTest(TestCase):
             feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
         self.assertEqual(actual,base)
 
+    def test_target_only_tail_without_usable_samples_cannot_shift_time_split(self):
+        # Missing last-day features make all later target-only rows unusable
+        # as prediction origins. Appending them must not alter an old result.
+        raw = b"".join(
+            line for line in rows().splitlines(keepends=True)
+            if b",feature,2025-03-03T00:00:00Z," not in line)
+        baseline_data = normalize_local_csv(raw, dataset_id="fixture",
+            source_id="synthetic", access_level="PUBLIC")
+        tail = []
+        for issuer in range(10):
+            for day in range(62, 90):
+                at = (datetime(2025, 1, 1, tzinfo=timezone.utc) +
+                      timedelta(days=day)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                tail.append(f"issuer{issuer},target,{at},{at},999,usd\\n")
+        expanded_data = normalize_local_csv(raw + "".join(tail).encode(),
+            dataset_id="fixture", source_id="synthetic", access_level="PUBLIC")
+        kwargs = dict(target_metric="target", feature_metrics=("feature",),
+                      as_of="2026-01-01T00:00:00Z")
+        baseline = evaluate_issuer_time_holdout(baseline_data, **kwargs)
+        self.assertEqual(baseline["status"],
+                         "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(evaluate_issuer_time_holdout(expanded_data, **kwargs),
+                         baseline)
+
     def test_noise_companies_do_not_satisfy_minimum_trainable_issuer_count(self):
         extra=''.join(
             f"fillerIssuer{i},noise,2025-01-01T00:00:00Z,2025-01-01T00:00:00Z,3,count\n"

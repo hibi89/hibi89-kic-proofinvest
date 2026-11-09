@@ -206,17 +206,14 @@ def evaluate_issuer_time_holdout(
     active_issuers = {s[2] for s in samples}
     if len(active_issuers) < 8:
         return _hold("INSUFFICIENT_DISTINCT_ISSUERS")
-    # Use only the target timeline of eligible issuers; unrelated source
-    # entities may still have perfectly valid lineage but no usable samples.
-    unique_times = sorted({
-        t for issuer in active_issuers
-        for t, cells in rows_by_entity[issuer].items()
-        if target_metric in cells
-    })
+    # Only prediction origins with valid feature + later released label pairs
+    # can determine the temporal boundary. Extra target-only tail rows on
+    # otherwise eligible issuers must not shift the split or erase a valid
+    # measurement when they add no usable training/evaluation sample.
+    unique_times = sorted({sample[0] for sample in samples})
     if len(unique_times) < 48:
         return _hold("INSUFFICIENT_DISTINCT_TIMES")
-    cut_at = unique_times[int(len(unique_times)*0.75)]
-    cutoff_boundary = _instant(cut_at)
+    cutoff_boundary = unique_times[int(len(unique_times)*0.75)]
     # Deterministic partitions use only eligible issuer IDs, not the
     # count of unrelated company rows; hashes never prove external identity.
     entities = sorted(active_issuers,
