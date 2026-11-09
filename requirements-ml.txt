@@ -1,0 +1,5 @@
+# Optional, local-only KUODRA synthetic ML evaluation dependency.
+# Not installed by the existing KIC standard-library/Streamlit CI.
+# python -m pip install -r requirements-ml.txt
+# python -B -m unittest tests.test_kuodra_unified_core tests.test_kuodra_time_ml -v
+scikit-learn>=1.5,<1.9
