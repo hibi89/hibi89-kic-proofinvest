@@ -99,6 +99,35 @@ class IdentityMappingApprovalTests(unittest.TestCase):
             with self.subTest(params=params),self.assertRaises(ValueError):
                 self.approve(**params)
         self.assertFalse(self.vault._local_identity_approvals)
+    def test_released_public_source_revokes_ticket_even_if_identically_reimported(self):
+        ticket=self.approve()["one_use_token"]
+        self.vault.release(OWNER,dataset_id="publicTest")
+        self.assertFalse(self.vault._local_identity_approvals)
+        self.vault.ingest_csv(OWNER,raw=_csv(_table_rows(metric="factor")),
+                              dataset_id="publicTest",source_id="source1",
+                              access_level="PUBLIC")
+        with self.assertRaises(PermissionError):
+            self.consume(ticket)
+
+    def test_released_private_source_revokes_ticket_even_if_identically_reimported(self):
+        ticket=self.approve()["one_use_token"]
+        self.vault.release(OWNER,dataset_id="privateTest")
+        self.assertFalse(self.vault._local_identity_approvals)
+        self.vault.ingest_csv(OWNER,raw=_csv(_table_rows(metric="outcome")),
+                              dataset_id="privateTest",source_id="source2",
+                              access_level="PRIVATE")
+        with self.assertRaises(PermissionError):
+            self.consume(ticket)
+
+    def test_unrelated_release_does_not_revoke_other_pending_ticket(self):
+        self.vault.ingest_csv(OWNER,raw=_csv(_table_rows(metric="factor")),
+                              dataset_id="unrelatedPublic",source_id="unrelatedSource",
+                              access_level="PUBLIC")
+        ticket=self.approve()["one_use_token"]
+        self.vault.release(OWNER,dataset_id="unrelatedPublic")
+        self.assertEqual(len(self.vault._local_identity_approvals),1)
+        self.assertTrue(self.consume(ticket)[1]["single_use_consumed"])
+
     def test_offline_socket_denied_during_approval_and_use(self):
         with patch.object(socket.socket,"connect",
                           side_effect=AssertionError("NO_NETWORK")) as connect:

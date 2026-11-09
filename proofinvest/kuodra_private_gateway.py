@@ -184,6 +184,12 @@ class OwnerLocalGateway:
                 "network_requests": 0}
 
     def release(self, principal: VerifiedPrincipal, *, dataset_id: str) -> None:
+        """Delete a source and revoke every pending identity grant that references it."""
         self._check(principal, write=True, dataset_id=dataset_id)
+        # Source lifecycle is part of approval scope. A byte-identical later
+        # re-import must never revive authorization issued to the old dataset.
+        for token, approval in tuple(self._local_identity_approvals.items()):
+            if dataset_id in (approval["public"], approval["private"]):
+                del self._local_identity_approvals[token]
         del self._datasets[dataset_id]
         del self._allowed_roles[dataset_id]
