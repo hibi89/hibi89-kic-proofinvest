@@ -151,6 +151,15 @@ def run(output: Path) -> dict:
                         assert not any(Path(home).rglob("*.sqlite")), "P314_PASSIVE_SQLITE"
                         receipts = []
 
+                        def grant_audit_consent():
+                            # Streamlit 1.66 uses a React-Aria input covered by
+                            # its clickable <label>. Clicking the hidden input
+                            # itself fails Chromium pointer-event hit testing.
+                            # Use the user-visible checkbox label, NEVER force,
+                            # JS setChecked or bypassing the UI state.
+                            page.get_by_test_id("stCheckbox").locator("label").click()
+                            expect(consent).to_be_checked(timeout=10000)
+
                         def execute_and_verify(mode, decision, screenshot=None):
                             expect(run_button).to_be_enabled(timeout=10000)
                             run_button.click()
@@ -170,7 +179,7 @@ def run(output: Path) -> dict:
                             receipts.append(record)
                             return record
 
-                        consent.check()
+                        grant_audit_consent()
                         expect(run_button).to_be_enabled(timeout=10000)
                         execute_and_verify("SEC_ML", "HOLD", "p314-agent-hold.png")
 
@@ -179,7 +188,7 @@ def run(output: Path) -> dict:
                                          exact=True).click()
                         expect(consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
-                        consent.check()
+                        grant_audit_consent()
                         execute_and_verify("SEC_ML", "REJECT", "p314-agent-reject.png")
 
                         # An unsafe operator intent must never be runnable,
@@ -207,7 +216,7 @@ def run(output: Path) -> dict:
                         expect(question).to_have_value("SEC 공시 원문 수치를 검토해줘")
                         expect(consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
-                        consent.check()
+                        grant_audit_consent()
                         execute_and_verify("SEC_ONLY", "REJECT")
 
                         if js_errors or outgoing or external_websockets:
