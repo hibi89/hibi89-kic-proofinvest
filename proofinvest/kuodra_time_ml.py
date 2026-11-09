@@ -61,7 +61,11 @@ def evaluate_lagged_regression(dataset: dict[str, Any], *, target_metric: str,
             label=by_time[next_t].get(target_metric)
             if label is None or _instant(label["available_at"])>cutoff:
                 continue
-            samples.append((t,label["available_at"],features,float(Decimal(label["value"]))))
+            # NEXT_OBSERVATION is not a constant calendar interval. Keep
+            # its exact gap for the same pre-fit quality gate as group ML.
+            days=(_instant(next_t)-_instant(t)).total_seconds()/86400.0
+            samples.append((t,label["available_at"],features,
+                            float(Decimal(label["value"])),days))
     if len(samples)<48:
         return _withheld(dataset,"INSUFFICIENT_POINT_IN_TIME_SAMPLES")
     hold_start=int(len(samples)*0.75)
@@ -72,6 +76,10 @@ def evaluate_lagged_regression(dataset: dict[str, Any], *, target_metric: str,
     train=[s for s in samples[:hold_start] if _instant(s[1])<hold_time]
     if len(train)<30 or len(holdout)<10:
         return _withheld(dataset,"INSUFFICIENT_EMBARGOED_TRAIN_OR_HOLDOUT")
+    gaps=[sample[4] for sample in train+holdout]
+    low,high=min(gaps),max(gaps)
+    if (low<=0 or high>366 or high>low*1.15+1e-9):
+        return _withheld(dataset,"INCONSISTENT_NEXT_OBSERVATION_HORIZON")
     try:
         from sklearn.dummy import DummyRegressor
         from sklearn.linear_model import Ridge
@@ -114,6 +122,10 @@ def evaluate_lagged_regression(dataset: dict[str, Any], *, target_metric: str,
             "source_sha256":dataset["source_sha256"], "single_entity_only":True,
             "feature_metrics":list(feature_metrics),"target_metric":target_metric,
             "target_horizon":"NEXT_OBSERVATION", "decision_as_of":as_of,
+            "horizon_uniformity_policy":"INTERVAL_MAX_DIV_MIN_AT_MOST_1_15",
+            "observed_horizon_min_days":round(low,6),
+            "observed_horizon_max_days":round(high,6),
+            "horizon_check_scope":"TRAIN_AND_HOLDOUT_INTERVALS_DATA_QUALITY_ONLY",
             "split":"CHRONOLOGICAL_WITH_RELEASE_EMBARGO", "cv_folds":3,
             "cv_mae":cv_mae,"selected_by_cv":best,
             "train_n":len(train),"holdout_n":len(holdout),

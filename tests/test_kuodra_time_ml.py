@@ -8,11 +8,17 @@ from proofinvest.kuodra_unified_core import normalize_local_csv
 from proofinvest.kuodra_time_ml import evaluate_lagged_regression
 
 
-def dataset(*, future_features=False, multi_issuer=False):
+def dataset(*, future_features=False, multi_issuer=False, cadence="daily"):
     f=StringIO(newline="");w=csv.writer(f,lineterminator="\n")
     w.writerow(("entity_id","metric_id","observation_at","available_at","value","unit"))
     for i in range(100):
-        day=datetime(2025,1,1,tzinfo=timezone.utc)+timedelta(days=i)
+        elapsed=(i if cadence=="daily" else i+2*(i//4)
+                 if cadence=="mixed" else 30*i+(i%2)
+                 if cadence=="month" else 370*i
+                 if cadence=="yearly" else None)
+        if elapsed is None:
+            raise ValueError("SYNTHETIC_CADENCE_INVALID")
+        day=datetime(2025,1,1,tzinfo=timezone.utc)+timedelta(days=elapsed)
         timestamp=day.strftime("%Y-%m-%dT%H:%M:%SZ")
         future=(day+timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
         for entity in (("issuerA","issuerB") if multi_issuer else ("issuerA",)):
@@ -33,6 +39,34 @@ class MLAdapterTest(unittest.TestCase):
         self.assertIsNone(result["calibrated_probability"])
         self.assertEqual(result["guard"],"HOLD")
         self.assertFalse(result["production_ready"])
+
+    def test_mixed_interval_single_issuer_next_observation_denied(self):
+        r=evaluate_lagged_regression(dataset(cadence="mixed"),
+            target_metric="nextRevenue",feature_metrics=("indicator",),
+            as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"NO_TRAIN")
+        self.assertEqual(r["reason"],"INCONSISTENT_NEXT_OBSERVATION_HORIZON")
+        self.assertEqual(r["guard"],"HOLD")
+        self.assertNotIn("holdout_selected_mae",r)
+
+    @unittest.skipUnless(importlib.util.find_spec("sklearn"),"sklearn optional")
+    def test_month_like_horizon_allowed_but_only_exploratory(self):
+        r=evaluate_lagged_regression(dataset(cadence="month"),
+            target_metric="nextRevenue",feature_metrics=("indicator",),
+            as_of="2035-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"EXPLORATORY_HOLDOUT_MEASURED")
+        self.assertEqual(r["observed_horizon_min_days"],29.0)
+        self.assertEqual(r["observed_horizon_max_days"],31.0)
+        self.assertFalse(r["production_ready"])
+        self.assertEqual(r["guard"],"HOLD")
+
+    def test_above_one_year_interval_denied_before_model_fit(self):
+        r=evaluate_lagged_regression(dataset(cadence="yearly"),
+            target_metric="nextRevenue",feature_metrics=("indicator",),
+            as_of="2200-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"NO_TRAIN")
+        self.assertEqual(r["reason"],"INCONSISTENT_NEXT_OBSERVATION_HORIZON")
+        self.assertNotIn("cv_mae",r)
 
     def test_future_only_feature_blocks_training(self):
         result=evaluate_lagged_regression(dataset(future_features=True),target_metric="nextRevenue",
