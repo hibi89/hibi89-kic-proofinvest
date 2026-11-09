@@ -176,6 +176,21 @@ jobs:
         run: |
           python -m pip install -r requirements-ui.txt playwright
           python -m playwright install --with-deps chromium
+      - name: P314 actual Chromium KUODRA Agent question and SEC/ML Guard modes
+        run: |
+          python -B -m scripts.local_agent_browser_smoke /tmp/kic-p314-agent
+          python -c 'import json; p=json.load(open("/tmp/kic-p314-agent/p314-local-agent-browser-receipt.json")); assert p["status"]=="PASS" and p["actual_chromium"] and p["synthetic_only"] and p["source_modes"]==["SEC_ML","SEC_ML","ML_ONLY","SEC_ONLY"] and [r["decision"] for r in p["results"]]==["HOLD","REJECT","HOLD","REJECT"] and all(len(r["receipt_sha256"])==64 and len(r["download_sha256"])==64 for r in p["results"]) and p["downloads_checksum_replayed"] and p["ephemeral_audit_cleanup_verified"] and p["unsafe_trade_intent_blocked"] and p["consent_reset_on_claim"] and p["consent_reset_on_question"] and p["consent_reset_on_source"] and p["external_host_attempts"]==p["external_websocket_attempts"]==p["browser_runtime_errors"]==p["live_sec_requests"]==p["external_llm_requests"]==0 and p["real_publisher_authenticated"] is False and p["rights_verified"] is False and p["institution_iam_verified"] is False and p["production_verified"] is False and p["trade_executed"] is False'
+      - name: Archive P314 synthetic Agent Chromium evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuodra-p314-local-agent-chromium
+          path: |
+            /tmp/kic-p314-agent/p314-agent-hold.png
+            /tmp/kic-p314-agent/p314-agent-reject.png
+            /tmp/kic-p314-agent/p314-agent-ml-only.png
+            /tmp/kic-p314-agent/p314-local-agent-browser-receipt.json
+          if-no-files-found: error
+          retention-days: 14
       - name: P213 real NVIDIA Guard consent -> Chromium ZIP download -> offline replay
         run: |
           python -B -m scripts.nvidia_audit_download_browser_smoke /tmp/kic-p213-nvda-browser
