@@ -1,0 +1,20 @@
+# P302 — Offline SEC Guard + restricted ML co-review (2026-11-09 KST)
+
+## Product blocker removed
+Before P302 the original local SEC Guard report (deterministic source checks, SQLite audit, HOLD/REJECT) and the P298-P301 private-owner group/time ML report were separately reviewable; no shared report policy checked both receipts/audit evidence. P302 adds a pure **co-review**, deliberately NOT a source/issuer join. No claim that a SEC CIK and ML entity_id are the same issuer. This separation is essential until an approved issuer-map/publisher vintage contract exists.
+
+## Implementation
+- New `proofinvest/kuodra_sec_ml_review_bridge.py`: `build_local_sec_ml_review(sec_report, ml_packet)` validates the existing `proofinvest.local-sec-guard-report.v1` contract: offline mode, audited chain and human review integrity flags, mandatory four 64-hex source hashes, original text-span validation type, strict unauthenticated/risk/trade/API flags, restricted SEC Guard HOLD/REJECT. SEC numeric conflict cannot be downgraded from REJECT.
+- Verifies existing KUODRA `kuodra.local-restricted-review.v1` receipt SHA-256 and access restrictions, PRIVATE or PUBLIC+PRIVATE evidence zones, source hash/row-count types, group-time model status. Builds only an allowlisted, owner-local aggregate receipt with `cross_source_entity_link=NOT_ESTABLISHED_DO_NOT_JOIN_OR_COMPARE_ISSUERS`. Never embeds raw SEC text, issuer identifiers, ML feature names, arbitrary model reason strings, or original source filenames. Applies SEC REJECT precedence; no APPROVE or trade grant.
+- `render_local_sec_ml_review_html()` rejects receipt changes, escapes all dynamic text and uses CSP default-src 'none'. No network, public endpoint, persistence, LLM, market GET, original file alteration or programmatic execution of financial trades. SHA receipts are tamper-detection, not signatures, authentic issuer mapping, or enterprise authorization.
+
+## Verification
+- Local Linux Python 3.13.5: `cd /mnt/data/kic_patch && python -m unittest discover -s tests -p 'test_kuodra*.py' -q`: **103 executed, 102 PASS, 0 failures/errors, 1 SKIP** (previous P301: 88 tests; 15 P302 test methods).
+- Existing real KUODRA `build_owner_group_review` on generated synthetic local input passes adapter validation; tests cover SEC HOLD/REJECT precedence, invalid audit flags, tampered ML receipt, source digest failure, cross-owner/zone restrictions inherited from existing modules, no source-ID leak, HTML tamper, malicious metric and mocked network. `python -m compileall -q proofinvest tests`: PASS.
+- **1 SKIP**: new full-original-SEC source test, which calls `review_local_sec_with_guard` using the repository's existing `tests/test_local_sec_guard_report.py` synthetic fixture and validates HOLD/REJECT + ML report end-to-end. It is SKIPPED in the focused local harness because full SEC modules were not mounted; it must be executed in the FULL GitHub repository on Python 3.11/Windows. Do not count it as PASS.
+- Exact local Git blob SHA verified by GitHub fetch: source `5220dd24d1f4ecba3736fab326b83da655d27fce`; tests `4eed1fe71e0c2158d6a54b9b1c1c34e1ea15f2fa`. Remote source bytes now match local, including final newline.
+
+## Risk and acceptance
+- No KIC confidential records, source authentication, Nasdaq100/SEC publisher-rights proof, OS-level no-egress sandbox, real host IAM, actual issuer-map link, calibrated financial model, verified 3.11 full suite, live service or DAKER upload. Combined output remains offline RESTRICTED and Guard HOLD/REJECT, cannot be published as private fact.
+- Engineering estimate **57/100 (+1 from 56)**: SEC/Guard integration 17/20, canonical 9/15, public 4/10, private 7/15, ML 12/20, privacy 3/10, review 5/5, real deployment 0/5. It is not an audited completion rate. RELEASE HOLD.
+- Original SEC A/B/C, Guard audit, ML modules, proof data, private original PDF/PPTX preserved. 10-page preliminary PDF final edit scheduled Nov 11, official DAKER deadline Nov 12 10:00 KST. No official submission yet.
