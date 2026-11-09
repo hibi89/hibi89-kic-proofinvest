@@ -89,7 +89,11 @@ def main() -> None:
                     submit.click()
                     expect(page.get_by_text("7단계 업로드 원본 검산 완료 · Guard HOLD",exact=True)
                            ).to_be_visible(timeout=30000)
-                    expect(page.get_by_text("100.00%",exact=False)
+                    # The same percentage appears in the info alert,
+                    # summary and JSON preview. Pin the actual result alert
+                    # rather than Playwright's ambiguous page-wide text query.
+                    expect(page.get_by_test_id("stAlertContentInfo").get_by_text(
+                        "100.00%", exact=False).first
                            ).to_be_visible(timeout=15000)
                     download_button=page.get_by_role("button",name="개인 로컬 검토용 파생 보고서 JSON",exact=True)
                     expect(download_button).to_be_visible(timeout=15000)
