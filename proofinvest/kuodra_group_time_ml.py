@@ -170,7 +170,7 @@ def evaluate_issuer_time_holdout(
         # the time boundary. Future-only rows are not an as-of snapshot.
         if observed > cutoff or released > cutoff:
             continue
-        cells = rows_by_entity[r["entity_id"]][r["observation_at"]
+        cells = rows_by_entity[r["entity_id"]][r["observation_at"]]
         if r["metric_id"] in cells:
             raise ValueError("GROUP_ML_DUPLICATE_RECORD")
         cells[r["metric_id"]] = (released, value)
