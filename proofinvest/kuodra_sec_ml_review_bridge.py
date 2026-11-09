@@ -182,6 +182,30 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
                 or model_mae < 0 or dummy_mae < 0
                 or model_mae > 1e15 or dummy_mae > 1e15):
             raise ValueError("BRIDGE_ML_MEASURED_EVIDENCE_MISSING")
+        cv = analysis.get("cv_mae")
+        if (type(cv) is not dict
+                or set(cv) != {"dummy_mean", "ridge_scaled", "time_only_ridge"}
+                or any(type(loss) not in (int, float)
+                       or not math.isfinite(loss) or loss < 0 or loss > 1e15
+                       for loss in cv.values())
+                or analysis["selected_by_cv"] != min(
+                    ("dummy_mean", "ridge_scaled"),
+                    key=lambda name: (cv[name], name != "dummy_mean"))):
+            raise ValueError("BRIDGE_ML_CV_SELECTION_INCONSISTENT")
+        # MAE-based improvement cannot exceed 100%. A zero baseline has
+        # undefined percentage improvement. Compare meaningful-scale
+        # reported scores with rounding tolerance (losses show 6 decimals).
+        improvement = summary["holdout_improvement_pct"]
+        if ((dummy_mae == 0 and improvement is not None)
+                or (dummy_mae > 0 and improvement is None)
+                or (improvement is not None and improvement > 100.001)):
+            raise ValueError("BRIDGE_ML_HOLDOUT_LIFT_INCONSISTENT")
+        if dummy_mae > 1e-5 and improvement is not None:
+            expected_lift = 100 * (dummy_mae - model_mae) / dummy_mae
+            tolerance = max(0.05, 1e-4 / dummy_mae
+                            * (1 + model_mae / dummy_mae))
+            if abs(improvement - expected_lift) > tolerance:
+                raise ValueError("BRIDGE_ML_HOLDOUT_LIFT_INCONSISTENT")
         summary["selected_by_cv"] = analysis["selected_by_cv"]
         summary["holdout_mae"] = model_mae
         summary["holdout_dummy_mae"] = dummy_mae

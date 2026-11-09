@@ -58,7 +58,8 @@ def ml(scope="PRIVATE", status="NO_TRAIN"):
     if status=="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED":
         data["analysis"].update({"train_n":60,"holdout_n":16,
             "selected_by_cv":"ridge_scaled","holdout_mae":1.5,
-            "holdout_dummy_mae":2.0,"holdout_improvement_pct":25.0})
+            "holdout_dummy_mae":2.0,"holdout_improvement_pct":25.0,
+            "cv_mae":{"dummy_mean":2.2,"ridge_scaled":1.6,"time_only_ridge":2.0}})
     if scope=="LOCAL_HYBRID":
         data["evidence"].insert(0,{"raw_source_sha256":"f"*64,"row_count":43,
                                   "access_level":"PUBLIC","publisher_authenticated":False,
@@ -286,6 +287,37 @@ class SecMLBridgeTest(unittest.TestCase):
         self.assertEqual(result["holdout_dummy_mae"],2.0)
         self.assertEqual(report["decision"],"HOLD")
         self.assertFalse(report["independent_finance_validation"])
+
+    def test_measured_model_selection_must_match_forward_cv_after_rehash(self):
+        for tamper in (
+            {"cv_mae":{"dummy_mean":0.2,"ridge_scaled":1.6,"time_only_ridge":2.0}},
+            {"cv_mae":{"dummy_mean":2.2,"ridge_scaled":-1,"time_only_ridge":2.0}},
+            {"cv_mae":{"dummy_mean":2.2,"ridge_scaled":1.6}},
+        ):
+            with self.subTest(tamper=tamper):
+                forged=ml(status="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+                forged["analysis"].update(tamper)
+                forged["receipt_sha256"]=sha256(_canonical({
+                    k:v for k,v in forged.items() if k!="receipt_sha256"})).hexdigest()
+                with self.assertRaisesRegex(ValueError,
+                        "BRIDGE_ML_CV_SELECTION_INCONSISTENT"):
+                    build_local_sec_ml_review(sec(),forged)
+
+    def test_measured_holdout_improvement_must_match_reported_losses(self):
+        for tamper in (
+            {"holdout_improvement_pct":99.0},
+            {"holdout_improvement_pct":101.0},
+            {"holdout_improvement_pct":None},
+            {"holdout_dummy_mae":0.0},
+        ):
+            with self.subTest(tamper=tamper):
+                forged=ml(status="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+                forged["analysis"].update(tamper)
+                forged["receipt_sha256"]=sha256(_canonical({
+                    k:v for k,v in forged.items() if k!="receipt_sha256"})).hexdigest()
+                with self.assertRaisesRegex(ValueError,
+                        "BRIDGE_ML_HOLDOUT_LIFT_INCONSISTENT"):
+                    build_local_sec_ml_review(sec(),forged)
 
     def test_mock_socket_no_network_calls(self):
         with patch.object(socket.socket,"connect",side_effect=AssertionError("NETWORK")) as connect:
