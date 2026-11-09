@@ -51,6 +51,66 @@ def _cv_mae(train: list[tuple], makers: dict, *, folds: int = 3):
     return {name: round(sum(scores[name]) / len(scores[name]), 6) for name in scores}
 
 
+
+def _holdout_stability(test: list[tuple], prediction, baseline_prediction) -> dict[str, Any]:
+    """Holdout-only descriptive diagnostics; NEVER select/tune on these values.
+
+    No issuer IDs, timestamps, source names, row values or predictions exported.
+    Split by distinct holdout timestamps, not individual issuer row order.
+    """
+    if len(test) != len(prediction) or len(test) != len(baseline_prediction):
+        raise ValueError("GROUP_ML_STABILITY_LENGTH_INVALID")
+    errors = [abs(float(row[4]) - float(p)) for row, p in zip(test, prediction)]
+    dummy_errors = [abs(float(row[4]) - float(p)) for row, p in zip(test, baseline_prediction)]
+    if any(not math.isfinite(e) for e in errors + dummy_errors):
+        raise ValueError("GROUP_ML_STABILITY_NONFINITE")
+    issuers = sorted({row[2] for row in test})
+    model_wins = baseline_wins = ties = 0
+    for issuer in issuers:
+        indices = [i for i, row in enumerate(test) if row[2] == issuer]
+        model_mean = sum(errors[i] for i in indices) / len(indices)
+        dummy_mean = sum(dummy_errors[i] for i in indices) / len(indices)
+        if model_mean < dummy_mean - 1e-9:
+            model_wins += 1
+        elif dummy_mean < model_mean - 1e-9:
+            baseline_wins += 1
+        else:
+            ties += 1
+    times = sorted({row[0] for row in test})
+    result = {
+        "scope": "HOLDOUT_DIAGNOSTIC_NOT_MODEL_SELECTION",
+        "holdout_issuer_count": len(issuers),
+        "model_better_issuer_count": model_wins,
+        "dummy_better_issuer_count": baseline_wins,
+        "tied_issuer_count": ties,
+        "distinct_holdout_times": len(times),
+        "earlier_holdout_mae": None,
+        "later_holdout_mae": None,
+        "later_over_earlier_mae_ratio": None,
+        "late_error_warning": "INSUFFICIENT_HOLDOUT_SUBPERIODS",
+        "stability_certified": False,
+    }
+    if len(times) >= 4:
+        midpoint = times[len(times) // 2]
+        early = [errors[i] for i, row in enumerate(test) if row[0] < midpoint]
+        later = [errors[i] for i, row in enumerate(test) if row[0] >= midpoint]
+        if early and later:
+            early_mae = sum(early) / len(early)
+            late_mae = sum(later) / len(later)
+            ratio = None if early_mae < 1e-12 else late_mae / early_mae
+            result.update({
+                "earlier_holdout_mae": round(early_mae, 6),
+                "later_holdout_mae": round(late_mae, 6),
+                "later_over_earlier_mae_ratio": None if ratio is None else round(ratio, 4),
+                "late_error_warning": (
+                    "ZERO_EARLY_ERROR_RATIO_UNDEFINED" if ratio is None else
+                    "ELEVATED_LATE_ERROR" if ratio >= 2.0 and late_mae > early_mae + 1e-9
+                    else "NO_LATE_ERROR_DOUBLING_OBSERVED"
+                ),
+            })
+    return result
+
+
 def evaluate_issuer_time_holdout(
     dataset: dict[str, Any], *, target_metric: str,
     feature_metrics: tuple[str, ...], as_of: str,
@@ -169,9 +229,12 @@ def evaluate_issuer_time_holdout(
     y_test = [s[4] for s in test]
     chosen = factories[winner]().fit(x_train, y_train)
     baseline = factories["dummy_mean"]().fit(x_train, y_train)
-    selected_mae = float(mean_absolute_error(y_test, chosen.predict(x_test)))
-    dummy_mae = float(mean_absolute_error(y_test, baseline.predict(x_test)))
+    selected_predictions = chosen.predict(x_test)
+    dummy_predictions = baseline.predict(x_test)
+    selected_mae = float(mean_absolute_error(y_test, selected_predictions))
+    dummy_mae = float(mean_absolute_error(y_test, dummy_predictions))
     improvement = None if dummy_mae == 0 else round(100 * (dummy_mae-selected_mae) / dummy_mae, 3)
+    stability = _holdout_stability(test, selected_predictions, dummy_predictions)
     return {"schema": "kuodra.ml.issuer-time-holdout.v1",
             "status": "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED", "guard": "HOLD",
             "split": "DISJOINT_ISSUER_LATER_TIME_WITH_RELEASE_EMBARGO",
@@ -182,6 +245,8 @@ def evaluate_issuer_time_holdout(
             "holdout_mae": round(selected_mae, 6),
             "holdout_dummy_mae": round(dummy_mae, 6),
             "holdout_improvement_pct": improvement,
+            "holdout_beats_dummy": selected_mae < dummy_mae,
+            "holdout_stability": stability,
             "target_horizon": "NEXT_OBSERVATION",
             "calibrated_probability": None, "finance_validity_verified": False,
             "statistical_significance": "NOT_ESTABLISHED",
