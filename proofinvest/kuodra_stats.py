@@ -68,9 +68,15 @@ def cross_section_fdr(dataset: dict[str, Any], *, metrics: tuple[str, ...],
             raise ValueError("STATS_NONFINITE_INPUT")
         cross_section.setdefault(row["entity_id"], {})[row["metric_id"]] = value
 
+    # Preserve the entire predeclared testing family, counting pairs that
+    # cannot be tested as p=1.0 rather than silently dropping hypotheses.
+    family_size = len(metrics) * (len(metrics) - 1) // 2
+    family_pvalues = [1.0] * family_size
     pairs = []
+    pair_index = -1
     for i, a in enumerate(metrics):
         for b in metrics[i+1:]:
+            pair_index += 1
             xys = [(v[a], v[b]) for v in cross_section.values() if a in v and b in v]
             if len(xys) < min_pairs:
                 continue
@@ -89,13 +95,17 @@ def cross_section_fdr(dataset: dict[str, Any], *, metrics: tuple[str, ...],
                     continue
             if not math.isfinite(float(r)) or not math.isfinite(float(p)):
                 continue
+            family_pvalues[pair_index] = float(p)
             pairs.append({"metric_a": a, "metric_b": b,
                           "pearson_r": round(float(r), 6),
-                          "paired_n": len(xys), "p_unadjusted": float(p)})
+                          "paired_n": len(xys), "p_unadjusted": float(p),
+                          "family_index": pair_index})
     if not pairs:
         return _withheld(dataset,"INSUFFICIENT_INDEPENDENT_CROSS_SECTION",as_of)
-    adjusted = _bh_fdr([item["p_unadjusted"] for item in pairs])
-    for item, q in zip(pairs, adjusted):
+    adjusted = _bh_fdr(family_pvalues)
+    for item in pairs:
+        q = adjusted[item.pop("family_index")]
+
         item["q_bh_fdr"] = round(q, 8)
         item["exploratory_fdr_below_0_05"] = q < 0.05
         item["predictive_claim"] = False
@@ -108,7 +118,8 @@ def cross_section_fdr(dataset: dict[str, Any], *, metrics: tuple[str, ...],
             "source_sha256":dataset["source_sha256"], "as_of":as_of,
             "observation_at":observation_at, "eligible_entities":len(cross_section),
             "multiple_testing_method":"BENJAMINI_HOCHBERG",
-            "pairs_evaluated":len(pairs), "hypotheses_planned":len(metrics)*(len(metrics)-1)//2,
+            "pairs_evaluated":len(pairs), "hypotheses_planned":family_size,
+            "fdr_denominator":"ALL_PREDECLARED_PAIRS_UNTESTABLE_AS_P_ONE",
             "independence_assumption":"UNVERIFIED_ONE_DATE_DISTINCT_ISSUERS",
             "insights":pairs[:max_results], "model_trained":False,
             "guard":"HOLD", "network_requests":0}
