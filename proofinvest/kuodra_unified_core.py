@@ -115,7 +115,8 @@ def observed_relationships(dataset: dict, *, metrics: tuple[str, ...],
     cutoff = _instant(as_of)
     if (type(dataset) is not dict or dataset.get("schema") != "kuodra.canonical.long.v1"
             or dataset.get("access_level") not in ("PUBLIC", "PRIVATE")
-            or type(metrics) is not tuple or not 2 <= len(metrics) <= 12            or len(set(metrics)) != len(metrics)
+            or type(metrics) is not tuple or not 2 <= len(metrics) <= 12
+            or len(set(metrics)) != len(metrics)
             or any(not _id(m) for m in metrics)
             or type(max_results) is not int or not 1 <= max_results <= 3
             or type(min_pairs) is not int or min_pairs < 12):
