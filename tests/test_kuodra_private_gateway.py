@@ -126,3 +126,30 @@ class PrivateGatewayTest(TestCase):
             observation_at="2026-01-20T00:00:00Z",as_of="2026-06-01T00:00:00Z")
         self.assertEqual(result["status"],"INSUFFICIENT_EVIDENCE")
         self.assertEqual(result["guard"],"HOLD")
+
+class SQLiteGatewayEndToEnd(TestCase):
+    def test_synthetic_private_sqlite_to_fdr_with_no_export(self):
+        import sqlite3
+        c=sqlite3.connect(":memory:")
+        c.execute("CREATE TABLE records(entity_id TEXT,metric_id TEXT,observation_at TEXT,available_at TEXT,value TEXT,unit TEXT)")
+        for idx in range(50):
+            for metric, val in (("x",idx+1),("y",(idx+1)*7)):
+                c.execute("INSERT INTO records VALUES(?,?,?,?,?,?)",(
+                    f"issuer{idx}",metric,"2026-01-01T00:00:00Z","2026-01-01T00:00:00Z",str(val),"count"))
+        raw_db=c.serialize(); c.close()
+        vault=OwnerLocalGateway("fund1")
+        receipt=vault.ingest_sqlite(OWNER,raw_db=raw_db,table="records",dataset_id="sql1",
+                                    source_id="fixture",access_level="PRIVATE")
+        self.assertEqual(receipt["rows"],100)
+        report=vault.statistical(ANALYST,dataset_id="sql1",metrics=("x","y"),
+            observation_at="2026-01-01T00:00:00Z",as_of="2026-02-01T00:00:00Z")
+        self.assertEqual(report["status"],"EXPLORATORY_INDEPENDENCE_UNVERIFIED")
+        self.assertEqual(report["eligible_entities"],50)
+        self.assertEqual(report["guard"],"HOLD")
+        self.assertFalse(vault.export_to_public(OWNER,dataset_id="sql1")["data_disclosed"])
+
+    def test_sqlite_table_name_injection_denied(self):
+        with self.assertRaisesRegex(ValueError,"SQLITE_INPUT_OR_SCOPE_DENIED"):
+            from proofinvest.kuodra_unified_core import normalize_local_sqlite
+            normalize_local_sqlite(b"fake",table='records"; DROP TABLE',dataset_id="p",
+                source_id="fixture",access_level="PRIVATE",consent=True)
