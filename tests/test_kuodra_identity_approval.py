@@ -35,9 +35,10 @@ class IdentityMappingApprovalTests(unittest.TestCase):
         return approve_local_identity_mapping(
             self.vault,principal,**dict(self.params,**kwargs))
     def consume(self,token,principal=ANALYST,**kwargs):
-        return consume_local_identity_mapping(self.vault,principal,**dict(
-            token=token,public_dataset_id="publicTest",
-            private_dataset_id="privateTest",as_of=AS_OF,**kwargs))
+        opts=dict(token=token,public_dataset_id="publicTest",
+                  private_dataset_id="privateTest",as_of=AS_OF)
+        opts.update(kwargs)
+        return consume_local_identity_mapping(self.vault,principal,**opts)
     def test_approved_source_scoped_token_one_use_no_raw_names(self):
         before=json.dumps(self.vault._datasets,sort_keys=True)
         t=self.approve()

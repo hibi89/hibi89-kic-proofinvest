@@ -175,7 +175,7 @@ def run(output: Path) -> dict:
                             # itself fails Chromium pointer-event hit testing.
                             # Use the user-visible checkbox label, NEVER force,
                             # JS setChecked or bypassing the UI state.
-                            page.get_by_test_id("stCheckbox").locator("label").click()
+                            page.get_by_test_id("stCheckbox").first.locator("label").click()
                             expect(consent).to_be_checked(timeout=10000)
 
                         def choose_option(picker, desired):
