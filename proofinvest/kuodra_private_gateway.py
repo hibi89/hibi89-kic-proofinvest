@@ -79,6 +79,24 @@ class OwnerLocalGateway:
         self._register(dataset_id, data, allowed_roles)
         return self._receipt(data)
 
+    def ingest_mapped_wide_csv(
+            self, principal: VerifiedPrincipal, *, raw: bytes,
+            dataset_id: str, source_id: str, access_level: str,
+            metric_columns: dict[str, tuple[str, str]],
+            allowed_roles: tuple[str, ...] = ("analyst",)) -> dict[str, Any]:
+        """Owner-approved wide columns; retain original and mapping digests."""
+        self._check(principal, write=True)
+        self._check_roles(allowed_roles)
+        if dataset_id in self._datasets:
+            raise ValueError("GATEWAY_DATASET_ALREADY_REGISTERED")
+        from .kuodra_wide_adapter import normalize_mapped_wide_csv
+        data = normalize_mapped_wide_csv(
+            raw, dataset_id=dataset_id, source_id=source_id,
+            access_level=access_level, metric_columns=metric_columns,
+            consent=access_level == "PRIVATE")
+        self._register(dataset_id, data, allowed_roles)
+        return self._receipt(data)
+
     def ingest_sqlite(self, principal: VerifiedPrincipal, *, raw_db: bytes,
                       table: str, dataset_id: str, source_id: str,
                       access_level: str,
