@@ -22,6 +22,7 @@ def sec(decision="HOLD", numeric="calculated_unverified"):
         "mode": "OFFLINE_USER_SUPPLIED_UNAUTHENTICATED",
         "issuer": {"cik": "SENSITIVE_ISSUER_0000000001"},
         "source": {
+            "source_index_kind": "PINNED_HISTORY",
             "submissions_sha256": "a"*64,
             "history_page_sha256": "b"*64,
             "companyfacts_sha256": "c"*64,
@@ -72,6 +73,28 @@ class SecMLBridgeTest(unittest.TestCase):
         self.assertFalse(report["trade_authorized"])
         self.assertEqual(report["ml"]["summary"]["status"],"NO_TRAIN")
         self.assertEqual(len(report["sec"]["source_hashes"]),4)
+
+    def test_recent_three_source_mode_is_accepted_without_history(self):
+        source = sec()
+        source["source"]["source_index_kind"] = "RECENT"
+        source["source"]["history_page_sha256"] = None
+        report = build_local_sec_ml_review(source, ml())
+        self.assertEqual(set(report["sec"]["source_hashes"]), {
+            "submissions_sha256", "companyfacts_sha256",
+            "archived_original_sha256"})
+        self.assertEqual(report["decision"], "HOLD")
+
+    def test_recent_mode_rejects_claimed_history_hash(self):
+        source = sec()
+        source["source"]["source_index_kind"] = "RECENT"
+        with self.assertRaisesRegex(ValueError, "BRIDGE_SEC_EVIDENCE_INVALID"):
+            build_local_sec_ml_review(source, ml())
+
+    def test_pinned_history_mode_requires_fourth_sha(self):
+        source = sec()
+        source["source"]["history_page_sha256"] = None
+        with self.assertRaisesRegex(ValueError, "BRIDGE_SEC_EVIDENCE_INVALID"):
+            build_local_sec_ml_review(source, ml())
 
     def test_sec_conflict_reject_never_overridden_by_ml(self):
         report=build_local_sec_ml_review(sec("REJECT","conflict"),

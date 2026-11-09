@@ -72,7 +72,13 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
             or sec_guard.get("decision") not in ("HOLD", "REJECT")
             or sec_guard.get("source_authenticated") is not False
             or verification.get("status") not in _SEC_STATES
-            or not all(_sha(source.get(key)) for key in _SHA_KEYS)
+            or source.get("source_index_kind") not in ("RECENT", "PINNED_HISTORY")
+            or not all(_sha(source.get(key)) for key in _SHA_KEYS
+                       if key != "history_page_sha256")
+            or (source["source_index_kind"] == "RECENT"
+                and source.get("history_page_sha256") is not None)
+            or (source["source_index_kind"] == "PINNED_HISTORY"
+                and not _sha(source.get("history_page_sha256")))
             or type(source.get("exact_raw_byte_span_verified")) is not bool):
         raise ValueError("BRIDGE_SEC_EVIDENCE_INVALID")
     # A source-numeric conflict cannot be laundered as a HOLD via a forged
@@ -129,7 +135,9 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
         "scope": "RESTRICTED_LOCAL_ONLY",
         "sec": {"numeric_status": verification["status"],
                 "decision": sec_guard["decision"],
-                "source_hashes": {key: source[key] for key in _SHA_KEYS},
+                "source_hashes": {key: source[key] for key in _SHA_KEYS
+                                  if key != "history_page_sha256"
+                                  or source["source_index_kind"] == "PINNED_HISTORY"},
                 "exact_raw_byte_span_verified": source["exact_raw_byte_span_verified"],
                 "offline_audit_chain_verified": True},
         "ml": {"scope": ml_packet["scope"], "summary": summary,

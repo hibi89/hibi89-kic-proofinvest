@@ -1,0 +1,5 @@
+# Optional KUODRA backend test-only packages; no cloud API credentials.
+# Existing production and standard-library runtime requirements are unchanged.
+-r requirements-ml.txt
+python-docx>=1.1,<2.0
+PyMuPDF>=1.24,<1.28

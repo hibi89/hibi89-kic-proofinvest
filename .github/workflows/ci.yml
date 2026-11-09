@@ -9,14 +9,14 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install offline Streamlit UI test dependencies (no API keys)
-        run: python -m pip install -r requirements-ui.txt
+      - name: Install offline UI and KUODRA ML/document test dependencies (no API keys)
+        run: python -m pip install -r requirements-ui.txt -r requirements-kuodra-test.txt
       - name: Guard SEC Decimal integration and judge receipt (offline, no credentials)
         run: |
           mkdir -p /tmp/kic-guard-evidence
@@ -342,7 +342,7 @@ jobs:
   windows-full-offline-regression:
     name: Windows full offline regression (Python 3.11)
     runs-on: windows-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -350,8 +350,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install local UI and offline test dependencies (no API credentials)
-        run: python -m pip install -r requirements-ui.txt
+      - name: Install offline UI and KUODRA ML/document test dependencies (no API credentials)
+        run: python -m pip install -r requirements-ui.txt -r requirements-kuodra-test.txt
       - name: Run complete Windows offline regression and syntax verification
         run: python -B -m scripts.verify_local --full
 
