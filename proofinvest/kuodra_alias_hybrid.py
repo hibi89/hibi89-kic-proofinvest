@@ -13,18 +13,18 @@ import re
 from typing import Any
 
 from .kuodra_hybrid import analyze_local_hybrid
+from .kuodra_group_time_ml import evaluate_owner_local_hybrid_group
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
 from .kuodra_unified_core import _id, _instant
 
 _SHA = re.compile(r'[0-9a-f]{64}\Z', re.ASCII)
 
 
-def analyze_owner_alias_hybrid(
+def _prepare_owner_alias_view(
         vault: OwnerLocalGateway, principal: VerifiedPrincipal, *,
         public_dataset_id: str, private_dataset_id: str,
         public_sha256: str, private_sha256: str,
-        aliases: dict[str, str], as_of: str,
-        metrics: tuple[str, ...], observation_at: str) -> dict[str, Any]:
+        aliases: dict[str, str], as_of: str) -> tuple[OwnerLocalGateway, str]:
     """Reconcile explicitly mapped local entities, never silently join names.
 
     All public/private row-level identifiers remain only inside temporary
@@ -41,7 +41,6 @@ def analyze_owner_alias_hybrid(
             or len(set(aliases.values())) != len(aliases)):
         raise ValueError('ALIAS_MAPPING_CONTRACT_INVALID')
     _instant(as_of)
-    _instant(observation_at)
     # Owner authority is required even for local fictional aliases. A caller
     # supplied host-authenticated boolean is not an actual IAM verification.
     vault._check(principal, write=True)
@@ -85,6 +84,22 @@ def analyze_owner_alias_hybrid(
     temporary = OwnerLocalGateway(principal.owner_id)
     temporary._register(public_dataset_id, public, ('analyst',))
     temporary._register(private_dataset_id, private, ('analyst',))
+    return temporary, digest
+
+
+def analyze_owner_alias_hybrid(
+        vault: OwnerLocalGateway, principal: VerifiedPrincipal, *,
+        public_dataset_id: str, private_dataset_id: str,
+        public_sha256: str, private_sha256: str,
+        aliases: dict[str, str], as_of: str,
+        metrics: tuple[str, ...], observation_at: str) -> dict[str, Any]:
+    """Owner-scoped, explicitly mapped private cross-sectional exploration."""
+    _instant(observation_at)
+    temporary, digest = _prepare_owner_alias_view(
+        vault, principal, public_dataset_id=public_dataset_id,
+        private_dataset_id=private_dataset_id,
+        public_sha256=public_sha256, private_sha256=private_sha256,
+        aliases=aliases, as_of=as_of)
     result = analyze_local_hybrid(temporary, principal,
         public_dataset_id=public_dataset_id,
         private_dataset_id=private_dataset_id,
@@ -105,4 +120,51 @@ def analyze_owner_alias_hybrid(
         'host_iam_verified': False, 'host_egress_verified': False,
         'source_rights_verified': False, 'network_requests': 0,
         'data_rows_disclosed': False, 'trade_authorized': False,
+    }
+
+
+
+def analyze_owner_alias_group_ml(
+        vault: OwnerLocalGateway, principal: VerifiedPrincipal, *,
+        public_dataset_id: str, private_dataset_id: str,
+        public_sha256: str, private_sha256: str,
+        aliases: dict[str, str], as_of: str,
+        target_metric: str, feature_metrics: tuple[str, ...]) -> dict[str, Any]:
+    """Owner-declared cross-source names -> existing issuer/time holdout ML.
+
+    This is exploratory only. Reuses the exact existing future-label embargo,
+    disjoint issuer split, out-of-time CV/Dummy benchmark and HOLD policy.
+    Aliases are not source authentication, external data rights, or a
+    permission to publish model-derived conclusions.
+    """
+    temporary, digest = _prepare_owner_alias_view(
+        vault, principal, public_dataset_id=public_dataset_id,
+        private_dataset_id=private_dataset_id,
+        public_sha256=public_sha256, private_sha256=private_sha256,
+        aliases=aliases, as_of=as_of)
+    result = evaluate_owner_local_hybrid_group(
+        temporary, principal,
+        public_dataset_id=public_dataset_id,
+        private_dataset_id=private_dataset_id,
+        target_metric=target_metric,
+        feature_metrics=feature_metrics, as_of=as_of)
+    if (result.get('guard') != 'HOLD' or result.get('public_export_allowed') is not False
+            or result.get('access_level') != 'PRIVATE'
+            or result.get('data_rows_disclosed') is not False
+            or type(result.get('analysis')) is not dict
+            or result['analysis'].get('production_ready') is not False
+            or result['analysis'].get('calibrated_probability') is not None):
+        raise ValueError('ALIAS_GROUP_ML_NOT_RESTRICTED')
+    return {
+        'schema': 'kuodra.local-operator-alias-group-time.v1',
+        'status': 'OWNER_LOCAL_EXPLORATION_ONLY', 'decision': 'HOLD',
+        'mapping_attestation': 'OWNER_ASSERTED_NOT_SOURCE_VERIFIED',
+        'cross_source_entity_link_verified': False,
+        'alias_count': len(aliases), 'mapping_sha256': digest,
+        'source_hashes': {'public': public_sha256, 'private': private_sha256},
+        'analysis': result['analysis'], 'public_export_allowed': False,
+        'external_llm_allowed': False, 'host_iam_verified': False,
+        'host_egress_verified': False, 'source_rights_verified': False,
+        'network_requests': 0, 'data_rows_disclosed': False,
+        'trade_authorized': False,
     }
