@@ -46,8 +46,13 @@ def _cv_mae(train: list[tuple], makers: dict, *, folds: int = 3):
         xv = [r[3] for r in right]
         yv = [r[4] for r in right]
         for name, factory in makers.items():
-            fit = factory().fit(xtr, ytr)
-            scores[name].append(float(mean_absolute_error(yv, fit.predict(xv))))
+            # Time-only negative control uses the same release-purged folds.
+            left_x = ([[r[0].timestamp() / 86400.0] for r in left]
+                      if name == "time_only_ridge" else xtr)
+            right_x = ([[r[0].timestamp() / 86400.0] for r in right]
+                       if name == "time_only_ridge" else xv)
+            fit = factory().fit(left_x, ytr)
+            scores[name].append(float(mean_absolute_error(yv, fit.predict(right_x))))
     return {name: round(sum(scores[name]) / len(scores[name]), 6) for name in scores}
 
 
@@ -218,11 +223,14 @@ def evaluate_issuer_time_holdout(
     except ImportError:
         return _hold("SKLEARN_OPTIONAL_DEPENDENCY_MISSING")
     factories = {"dummy_mean": lambda: DummyRegressor(strategy="mean"),
-                 "ridge_scaled": lambda: make_pipeline(StandardScaler(), Ridge(alpha=1.0))}
+                 "ridge_scaled": lambda: make_pipeline(StandardScaler(), Ridge(alpha=1.0)),
+                 "time_only_ridge": lambda: make_pipeline(StandardScaler(), Ridge(alpha=1.0))}
     cv = _cv_mae(train, factories)
     if cv is None:
         return _hold("INSUFFICIENT_RELEASE_PURGED_FORWARD_CV")
-    winner = min(cv, key=lambda name: (cv[name], name != "dummy_mean"))
+    # Time-only is a negative control, never an unannounced selected model.
+    winner = min(("dummy_mean", "ridge_scaled"),
+                 key=lambda name: (cv[name], name != "dummy_mean"))
     x_train = [s[3] for s in train]
     y_train = [s[4] for s in train]
     x_test = [s[3] for s in test]
@@ -231,9 +239,21 @@ def evaluate_issuer_time_holdout(
     baseline = factories["dummy_mean"]().fit(x_train, y_train)
     selected_predictions = chosen.predict(x_test)
     dummy_predictions = baseline.predict(x_test)
+    time_only = factories["time_only_ridge"]().fit(
+        [[r[0].timestamp() / 86400.0] for r in train], y_train)
+    time_predictions = time_only.predict(
+        [[r[0].timestamp() / 86400.0] for r in test])
     selected_mae = float(mean_absolute_error(y_test, selected_predictions))
     dummy_mae = float(mean_absolute_error(y_test, dummy_predictions))
+    time_mae = float(mean_absolute_error(y_test, time_predictions))
+    if not all(math.isfinite(v) for v in (selected_mae, dummy_mae, time_mae)):
+        raise ValueError("GROUP_ML_NONFINITE_HOLDOUT_METRIC")
     improvement = None if dummy_mae == 0 else round(100 * (dummy_mae-selected_mae) / dummy_mae, 3)
+    incremental = None if time_mae == 0 else round(100 * (time_mae-selected_mae) / time_mae, 3)
+    warning = ("FEATURE_MODEL_NOT_SELECTED" if winner == "dummy_mean" else
+               "TIME_ONLY_BASELINE_AS_GOOD_OR_BETTER"
+               if selected_mae >= time_mae - 1e-9 else
+               "FEATURE_INCREMENTAL_HOLDOUT_OBSERVED_NOT_VALIDATED")
     stability = _holdout_stability(test, selected_predictions, dummy_predictions)
     return {"schema": "kuodra.ml.issuer-time-holdout.v1",
             "status": "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED", "guard": "HOLD",
@@ -244,6 +264,10 @@ def evaluate_issuer_time_holdout(
             "holdout_n": len(test), "cv_mae": cv, "selected_by_cv": winner,
             "holdout_mae": round(selected_mae, 6),
             "holdout_dummy_mae": round(dummy_mae, 6),
+            "cv_time_only_mae": cv["time_only_ridge"],
+            "holdout_time_only_mae": round(time_mae, 6),
+            "incremental_vs_time_only_pct": incremental,
+            "time_trend_warning": warning,
             "holdout_improvement_pct": improvement,
             "holdout_beats_dummy": selected_mae < dummy_mae,
             "holdout_stability": stability,

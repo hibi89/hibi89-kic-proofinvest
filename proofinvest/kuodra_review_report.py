@@ -70,6 +70,8 @@ def build_owner_group_review(vault: OwnerLocalGateway, principal: VerifiedPrinci
               "issuer_count", "train_issuer_count", "holdout_issuer_count",
               "train_n", "holdout_n", "cv_mae", "selected_by_cv",
               "holdout_mae", "holdout_dummy_mae", "holdout_improvement_pct",
+              "cv_time_only_mae", "holdout_time_only_mae",
+              "incremental_vs_time_only_pct", "time_trend_warning",
               "holdout_beats_dummy", "holdout_stability",
               "statistical_significance", "target_horizon")
     summary = {key: result[key] for key in wanted if key in result}

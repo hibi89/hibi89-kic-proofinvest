@@ -1,5 +1,6 @@
 """Issuer/time heldout synthetic backend acceptance and negative controls."""
 import csv
+import math
 from datetime import datetime, timedelta, timezone
 from io import StringIO
 import socket
@@ -84,6 +85,31 @@ class IssuerTimeMLTest(TestCase):
         self.assertGreater(r["holdout_stability"]["later_over_earlier_mae_ratio"],2)
         self.assertFalse(r["production_ready"])
         self.assertEqual(r["guard"],"HOLD")
+
+    def test_time_only_negative_control_is_purged_and_visible(self):
+        r=evaluate_issuer_time_holdout(data(),target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(r["cv_time_only_mae"],r["cv_mae"]["time_only_ridge"])
+        self.assertTrue(math.isfinite(r["holdout_time_only_mae"]))
+        self.assertGreaterEqual(r["holdout_time_only_mae"],0)
+        self.assertIn(r["selected_by_cv"],("dummy_mean","ridge_scaled"))
+        self.assertIn(r["time_trend_warning"],(
+            "FEATURE_MODEL_NOT_SELECTED","TIME_ONLY_BASELINE_AS_GOOD_OR_BETTER",
+            "FEATURE_INCREMENTAL_HOLDOUT_OBSERVED_NOT_VALIDATED"))
+        if (r["selected_by_cv"]=="ridge_scaled"
+                and r["holdout_mae"]>=r["holdout_time_only_mae"]-1e-9):
+            self.assertEqual(r["time_trend_warning"],
+                             "TIME_ONLY_BASELINE_AS_GOOD_OR_BETTER")
+        self.assertFalse(r["production_ready"])
+        self.assertEqual(r["guard"],"HOLD")
+
+    def test_time_baseline_cannot_bypass_feature_release_embargo(self):
+        r=evaluate_issuer_time_holdout(data(future_features=True),
+            target_metric="target",feature_metrics=("feature",),
+            as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"NO_TRAIN")
+        self.assertNotIn("holdout_time_only_mae",r)
 
     def test_future_feature_never_trains(self):
         r=evaluate_issuer_time_holdout(data(future_features=True),target_metric="target",

@@ -30,6 +30,8 @@ class RestrictedReviewTest(TestCase):
         self.assertFalse(r["data_rows_disclosed"])
         self.assertFalse(r["host_egress_verified"])
         self.assertEqual(len(r["evidence"]),1)
+        self.assertIn("time_trend_warning",r["analysis"])
+        self.assertIn("holdout_time_only_mae",r["analysis"])
         for sensitive in ("secretDataset", "privateFile", "issuer0", "ownerA"):
             self.assertNotIn(sensitive,str(r))
 

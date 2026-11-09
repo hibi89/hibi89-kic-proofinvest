@@ -127,6 +127,17 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
                "train_n": _nonnegative_count(analysis.get("train_n", 0)),
                "holdout_n": _nonnegative_count(analysis.get("holdout_n", 0)),
                "holdout_improvement_pct": _safe_metric(analysis.get("holdout_improvement_pct"))}
+    if "time_trend_warning" in analysis:
+        warning = analysis["time_trend_warning"]
+        if warning not in (
+                "FEATURE_MODEL_NOT_SELECTED",
+                "TIME_ONLY_BASELINE_AS_GOOD_OR_BETTER",
+                "FEATURE_INCREMENTAL_HOLDOUT_OBSERVED_NOT_VALIDATED"):
+            raise ValueError("BRIDGE_UNSAFE_TIME_TREND_DIAGNOSTIC")
+        summary["time_trend_warning"] = warning
+        summary["holdout_time_only_mae"] = _safe_metric(analysis.get("holdout_time_only_mae"))
+        summary["incremental_vs_time_only_pct"] = _safe_metric(
+            analysis.get("incremental_vs_time_only_pct"))
     # All output keys are hand-authored. Raw SEC/ML nested strings, names,
     # issuer ids and model features do not cross this allowlisted boundary.
     packet = {
