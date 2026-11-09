@@ -20,13 +20,21 @@ UNVERIFIED=VerifiedPrincipal("anon","fundA",("analyst",),False)
 
 
 def rows(*, issuers=10, dates=62, zone="PUBLIC", future_features=False,
-         late_labels=False, duplicate_target=False, random_labels=False, late_drift=False):
+         late_labels=False, duplicate_target=False, random_labels=False,
+         late_drift=False, cadence="daily"):
     output=StringIO(newline="")
     w=csv.writer(output,lineterminator="\n")
     w.writerow(("entity_id", "metric_id", "observation_at", "available_at", "value", "unit"))
     for j in range(issuers):
         for i in range(dates):
-            t=datetime(2025,1,1,tzinfo=timezone.utc)+timedelta(days=i)
+            # Monthly calendar drift (29/31 days) is materially different
+            # from a mixed 1/3-day unknown prediction horizon.
+            elapsed = (i if cadence=="daily" else
+                       30*i+(i%2) if cadence=="month" else
+                       i+2*(i//4) if cadence=="mixed" else None)
+            if elapsed is None:
+                raise ValueError("SYNTHETIC_CADENCE_INVALID")
+            t=datetime(2025,1,1,tzinfo=timezone.utc)+timedelta(days=elapsed)
             obs=t.strftime("%Y-%m-%dT%H:%M:%SZ")
             feature_release=(t+timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ") if future_features else obs
             target_release=(t+timedelta(days=80)).strftime("%Y-%m-%dT%H:%M:%SZ") if late_labels else obs
@@ -85,6 +93,32 @@ class IssuerTimeMLTest(TestCase):
         self.assertGreater(r["holdout_stability"]["later_over_earlier_mae_ratio"],2)
         self.assertFalse(r["production_ready"])
         self.assertEqual(r["guard"],"HOLD")
+
+    def test_large_next_observation_interval_mismatch_blocks_training(self):
+        # A row-to-row next-label is not a comparable horizon when some
+        # issuers/times jump three days and others one day.
+        r=evaluate_issuer_time_holdout(data(cadence="mixed"),
+            target_metric="target",feature_metrics=("feature",),
+            as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"NO_TRAIN")
+        self.assertEqual(r["reason"],"INCONSISTENT_NEXT_OBSERVATION_HORIZON")
+        self.assertEqual(r["guard"],"HOLD")
+        self.assertNotIn("holdout_mae",r)
+        self.assertNotIn("horizon_uniformity_policy",r)
+        self.assertFalse(r["production_ready"])
+
+    def test_month_like_calendar_variation_is_accepted_but_not_validated(self):
+        r=evaluate_issuer_time_holdout(data(cadence="month"),
+            target_metric="target",feature_metrics=("feature",),
+            as_of="2035-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(r["horizon_uniformity_policy"],
+                         "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15")
+        self.assertEqual(r["observed_horizon_min_days"],29.0)
+        self.assertEqual(r["observed_horizon_max_days"],31.0)
+        self.assertEqual(r["guard"],"HOLD")
+        self.assertFalse(r["finance_validity_verified"])
+        self.assertFalse(r["production_ready"])
 
     def test_time_only_negative_control_is_purged_and_visible(self):
         r=evaluate_issuer_time_holdout(data(),target_metric="target",

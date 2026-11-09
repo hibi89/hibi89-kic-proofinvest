@@ -138,6 +138,25 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
         summary["holdout_time_only_mae"] = _safe_metric(analysis.get("holdout_time_only_mae"))
         summary["incremental_vs_time_only_pct"] = _safe_metric(
             analysis.get("incremental_vs_time_only_pct"))
+    # Do not promote unvalidated forecast horizons as equivalent. Only a
+    # bounded descriptive interval envelope may cross this evidence bridge.
+    if any(key in analysis for key in (
+            "horizon_uniformity_policy", "observed_horizon_min_days",
+            "observed_horizon_max_days", "horizon_check_scope")):
+        if (analysis.get("status") != "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED"
+                or analysis.get("horizon_uniformity_policy") !=
+                    "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15"
+                or analysis.get("horizon_check_scope") !=
+                    "TRAIN_AND_HOLDOUT_INTERVALS_DATA_QUALITY_ONLY"):
+            raise ValueError("BRIDGE_UNSAFE_TARGET_HORIZON")
+        low = _safe_metric(analysis.get("observed_horizon_min_days"))
+        high = _safe_metric(analysis.get("observed_horizon_max_days"))
+        if (low is None or high is None or low <= 0 or high < low
+                or high > 366 or high > 1.15 * low + 1e-5):
+            raise ValueError("BRIDGE_UNSAFE_TARGET_HORIZON")
+        summary["horizon_uniformity_policy"] = "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15"
+        summary["observed_horizon_min_days"] = low
+        summary["observed_horizon_max_days"] = high
     # All output keys are hand-authored. Raw SEC/ML nested strings, names,
     # issuer ids and model features do not cross this allowlisted boundary.
     packet = {

@@ -178,6 +178,10 @@ class SecMLBridgeTest(unittest.TestCase):
         self.assertEqual(combined["decision"],"HOLD")
         self.assertIn("time_trend_warning",combined["ml"]["summary"])
         self.assertIn("holdout_time_only_mae",combined["ml"]["summary"])
+        self.assertEqual(combined["ml"]["summary"]["observed_horizon_min_days"],1.0)
+        self.assertEqual(combined["ml"]["summary"]["observed_horizon_max_days"],1.0)
+        self.assertEqual(combined["ml"]["summary"]["horizon_uniformity_policy"],
+                         "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15")
         self.assertNotIn("actualSecret",str(combined))
 
     @unittest.skipUnless(importlib.util.find_spec("proofinvest.local_sec_guard_report"),
@@ -220,6 +224,19 @@ class SecMLBridgeTest(unittest.TestCase):
         invalid["receipt_sha256"]=sha256(_canonical({k:v for k,v in invalid.items()
                                                      if k!="receipt_sha256"})).hexdigest()
         with self.assertRaisesRegex(ValueError,"BRIDGE_UNSAFE_TIME_TREND_DIAGNOSTIC"):
+            build_local_sec_ml_review(sec(),invalid)
+
+    def test_forged_forecast_horizon_rejected_even_with_new_receipt(self):
+        invalid=ml(status="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        invalid["analysis"].update({
+            "horizon_uniformity_policy":"INTERVAL_MAX_DIV_MIN_AT_MOST_1_15",
+            "observed_horizon_min_days":1.0,
+            "observed_horizon_max_days":365.0,
+            "horizon_check_scope":"TRAIN_AND_HOLDOUT_INTERVALS_DATA_QUALITY_ONLY",
+        })
+        invalid["receipt_sha256"]=sha256(_canonical({k:v for k,v in invalid.items()
+                                                     if k!="receipt_sha256"})).hexdigest()
+        with self.assertRaisesRegex(ValueError,"BRIDGE_UNSAFE_TARGET_HORIZON"):
             build_local_sec_ml_review(sec(),invalid)
 
     def test_mock_socket_no_network_calls(self):

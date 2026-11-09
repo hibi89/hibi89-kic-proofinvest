@@ -200,7 +200,13 @@ def evaluate_issuer_time_holdout(
             else:
                 label = panel[future_t].get(target_metric)
                 if label is not None and label[0] <= cutoff:
-                    samples.append((observed, label[0], entity, features, label[1]))
+                    # The same "next observation" may be one day for one
+                    # issuer and several weeks for another. Track the
+                    # actual prediction horizon for both partitions before
+                    # any model fitting; never compare incompatible targets.
+                    horizon_days = (_instant(future_t) - observed).total_seconds() / 86400.0
+                    samples.append((observed, label[0], entity, features,
+                                    label[1], horizon_days))
 
     train = [s for s in samples if s[2] in training_entities
              and s[0] < cutoff_boundary and s[1] < cutoff_boundary]
@@ -213,6 +219,16 @@ def evaluate_issuer_time_holdout(
         raise ValueError("GROUP_ML_ISSUER_OVERLAP")
     if max(s[1] for s in train) >= min(s[0] for s in test):
         raise ValueError("GROUP_ML_TEMPORAL_LEAKAGE")
+    # A prediction for the next row is NOT a fixed forecast interval.
+    # Validate all eval intervals as a pure data-quality check. This does
+    # not pick a model or a horizon using holdout outcomes and cannot
+    # grant predictive validity or source identity.
+    horizon_gaps = [s[5] for s in train + test]
+    horizon_min, horizon_max = min(horizon_gaps), max(horizon_gaps)
+    if (not math.isfinite(horizon_min) or not math.isfinite(horizon_max)
+            or horizon_min <= 0 or horizon_max > 366
+            or horizon_max > horizon_min * 1.15 + 1e-9):
+        return _hold("INCONSISTENT_NEXT_OBSERVATION_HORIZON")
 
     try:
         from sklearn.dummy import DummyRegressor
@@ -272,6 +288,10 @@ def evaluate_issuer_time_holdout(
             "holdout_beats_dummy": selected_mae < dummy_mae,
             "holdout_stability": stability,
             "target_horizon": "NEXT_OBSERVATION",
+            "horizon_uniformity_policy": "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15",
+            "observed_horizon_min_days": round(horizon_min, 6),
+            "observed_horizon_max_days": round(horizon_max, 6),
+            "horizon_check_scope": "TRAIN_AND_HOLDOUT_INTERVALS_DATA_QUALITY_ONLY",
             "calibrated_probability": None, "finance_validity_verified": False,
             "statistical_significance": "NOT_ESTABLISHED",
             "causal_claim": False, "production_ready": False, "network_requests": 0}

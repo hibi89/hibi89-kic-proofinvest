@@ -32,6 +32,10 @@ class RestrictedReviewTest(TestCase):
         self.assertEqual(len(r["evidence"]),1)
         self.assertIn("time_trend_warning",r["analysis"])
         self.assertIn("holdout_time_only_mae",r["analysis"])
+        self.assertEqual(r["analysis"]["observed_horizon_min_days"],1.0)
+        self.assertEqual(r["analysis"]["observed_horizon_max_days"],1.0)
+        self.assertEqual(r["analysis"]["horizon_uniformity_policy"],
+                         "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15")
         for sensitive in ("secretDataset", "privateFile", "issuer0", "ownerA"):
             self.assertNotIn(sensitive,str(r))
 

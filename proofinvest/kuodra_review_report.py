@@ -73,7 +73,9 @@ def build_owner_group_review(vault: OwnerLocalGateway, principal: VerifiedPrinci
               "cv_time_only_mae", "holdout_time_only_mae",
               "incremental_vs_time_only_pct", "time_trend_warning",
               "holdout_beats_dummy", "holdout_stability",
-              "statistical_significance", "target_horizon")
+              "statistical_significance", "target_horizon",
+              "horizon_uniformity_policy", "observed_horizon_min_days",
+              "observed_horizon_max_days", "horizon_check_scope")
     summary = {key: result[key] for key in wanted if key in result}
     packet = {
         "schema": "kuodra.local-restricted-review.v1",
