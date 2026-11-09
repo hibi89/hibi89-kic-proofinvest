@@ -165,7 +165,12 @@ def evaluate_issuer_time_holdout(
             raise ValueError("GROUP_ML_VALUE_INVALID") from exc
         if not math.isfinite(value):
             raise ValueError("GROUP_ML_VALUE_INVALID")
-        cells = rows_by_entity[r["entity_id"]][r["observation_at"]]
+        # Retain full-row integrity checks, but never let an observation
+        # unavailable at the review instant change issuer partitions or
+        # the time boundary. Future-only rows are not an as-of snapshot.
+        if observed > cutoff or released > cutoff:
+            continue
+        cells = rows_by_entity[r["entity_id"]][r["observation_at"]
         if r["metric_id"] in cells:
             raise ValueError("GROUP_ML_DUPLICATE_RECORD")
         cells[r["metric_id"]] = (released, value)

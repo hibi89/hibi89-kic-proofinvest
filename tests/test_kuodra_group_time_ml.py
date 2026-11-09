@@ -69,6 +69,40 @@ class IssuerTimeMLTest(TestCase):
         self.assertEqual(result["guard"],"HOLD")
         self.assertNotIn("issuer0",str(result))
 
+    def test_future_dates_cannot_shift_historical_holdout_boundary(self):
+        # Historical evaluation must be invariant to later rows in the
+        # same file; a global 75-percentile split would look ahead.
+        params=dict(target_metric="target",feature_metrics=("feature",),
+                    as_of="2025-02-22T00:00:00Z")
+        historical=evaluate_issuer_time_holdout(data(dates=53),**params)
+        full_file=evaluate_issuer_time_holdout(data(dates=62),**params)
+        self.assertEqual(historical["status"],
+                         "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(full_file,historical)
+
+    def test_future_only_and_unreleased_issuer_do_not_change_asof_result(self):
+        params=dict(target_metric="target",feature_metrics=("feature",),
+                    as_of="2025-02-22T00:00:00Z")
+        baseline=evaluate_issuer_time_holdout(data(dates=53),**params)
+        additions=(
+            "issuerFuture,feature,2027-01-01T00:00:00Z,2027-01-01T00:00:00Z,3,count\n"
+            "issuerFuture,target,2027-01-01T00:00:00Z,2027-01-01T00:00:00Z,4,usd\n"
+            "issuerEmbargo,feature,2025-02-19T00:00:00Z,2027-01-01T00:00:00Z,3,count\n"
+            "issuerEmbargo,target,2025-02-19T00:00:00Z,2027-01-01T00:00:00Z,4,usd\n"
+        ).encode("utf-8")
+        expanded=normalize_local_csv(rows(dates=53)+additions,
+            dataset_id="fixture",source_id="synthetic",access_level="PUBLIC")
+        self.assertEqual(evaluate_issuer_time_holdout(expanded,**params),baseline)
+
+    def test_short_asof_history_must_not_borrow_future_dates_for_split(self):
+        result=evaluate_issuer_time_holdout(data(),
+            target_metric="target",feature_metrics=("feature",),
+            as_of="2025-02-10T00:00:00Z")
+        self.assertEqual(result["status"],"NO_TRAIN")
+        self.assertEqual(result["reason"],"INSUFFICIENT_DISTINCT_TIMES")
+        self.assertEqual(result["guard"],"HOLD")
+        self.assertNotIn("holdout_mae",result)
+
     def test_group_time_holdout_stability_summary_no_raw_identifiers(self):
         r=evaluate_issuer_time_holdout(data(),target_metric="target",
             feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
