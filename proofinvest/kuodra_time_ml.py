@@ -47,7 +47,10 @@ def evaluate_lagged_regression(dataset: dict[str, Any], *, target_metric: str,
         if r["metric_id"] in timestamp_rows:
             raise ValueError("ML_DUPLICATE_TIMESERIES")
         timestamp_rows[r["metric_id"]]=r
-    times=sorted(by_time)
+    # Only the target's own dated observations establish forecasting periods.
+    # Independent, unrelated high-frequency metrics must not silently split
+    # NEXT_OBSERVATION labels or shift the chronological holdout.
+    times=sorted(t for t, cells in by_time.items() if target_metric in cells)
     samples=[]
     for index,t in enumerate(times[:-1]):
         next_t=times[index+1]

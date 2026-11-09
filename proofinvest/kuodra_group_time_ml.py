@@ -177,7 +177,11 @@ def evaluate_issuer_time_holdout(
 
     if len(rows_by_entity) < 8:
         return _hold("INSUFFICIENT_DISTINCT_ISSUERS")
-    unique_times = sorted({t for panel in rows_by_entity.values() for t in panel})
+    # Split on target observation dates, not timestamps contributed solely
+    # by unrelated metrics. A daily macro update must not move a quarterly
+    # target's holdout boundary or change its NEXT_OBSERVATION label.
+    unique_times = sorted({t for panel in rows_by_entity.values()
+                           for t, cells in panel.items() if target_metric in cells})
     if len(unique_times) < 48:
         return _hold("INSUFFICIENT_DISTINCT_TIMES")
     cut_at = unique_times[int(len(unique_times)*0.75)]
@@ -190,7 +194,7 @@ def evaluate_issuer_time_holdout(
 
     samples: list[tuple] = []
     for entity, panel in rows_by_entity.items():
-        ordered = sorted(panel)
+        ordered = sorted(t for t, cells in panel.items() if target_metric in cells)
         for i in range(len(ordered)-1):
             t, future_t = ordered[i], ordered[i+1]
             observed = _instant(t)

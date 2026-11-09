@@ -70,6 +70,23 @@ class IssuerTimeMLTest(TestCase):
         self.assertEqual(result["guard"],"HOLD")
         self.assertNotIn("issuer0",str(result))
 
+    def test_unrelated_intraday_metric_cannot_shift_target_time_split(self):
+        baseline=evaluate_issuer_time_holdout(data(), target_metric="target",
+            feature_metrics=("feature",), as_of="2026-01-01T00:00:00Z")
+        extras=[]
+        for issuer in range(10):
+            for day in range(61):
+                moment=(datetime(2025,1,1,tzinfo=timezone.utc)
+                        + timedelta(days=day,hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                extras.append(f"issuer{issuer},intradayNoise,{moment},{moment},1,count\n")
+        source=normalize_local_csv(rows()+''.join(extras).encode(),
+            dataset_id="fixture",source_id="synthetic",access_level="PUBLIC")
+        actual=evaluate_issuer_time_holdout(source,target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(baseline["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(actual,baseline)
+        self.assertEqual(actual["guard"],"HOLD")
+
     def test_future_dates_cannot_shift_historical_holdout_boundary(self):
         # Historical evaluation must be invariant to later rows in the
         # same file; a global 75-percentile split would look ahead.

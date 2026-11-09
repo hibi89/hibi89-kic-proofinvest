@@ -8,7 +8,8 @@ from proofinvest.kuodra_unified_core import normalize_local_csv
 from proofinvest.kuodra_time_ml import evaluate_lagged_regression
 
 
-def dataset(*, future_features=False, multi_issuer=False, cadence="daily"):
+def dataset(*, future_features=False, multi_issuer=False, cadence="daily",
+            unrelated_intraday=False):
     f=StringIO(newline="");w=csv.writer(f,lineterminator="\n")
     w.writerow(("entity_id","metric_id","observation_at","available_at","value","unit"))
     for i in range(100):
@@ -24,6 +25,9 @@ def dataset(*, future_features=False, multi_issuer=False, cadence="daily"):
         for entity in (("issuerA","issuerB") if multi_issuer else ("issuerA",)):
             w.writerow((entity,"indicator",timestamp,future if future_features else timestamp,str(i),"count"))
             w.writerow((entity,"nextRevenue",timestamp,timestamp,str(i*3+5),"usd"))
+            if unrelated_intraday and i<99:
+                midday=(day+timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                w.writerow((entity,"unrelatedSignal",midday,midday,"1","count"))
     return normalize_local_csv(f.getvalue().encode(),dataset_id="mlSynthetic",source_id="fixture",
         access_level="PRIVATE",consent=True)
 
@@ -39,6 +43,19 @@ class MLAdapterTest(unittest.TestCase):
         self.assertIsNone(result["calibrated_probability"])
         self.assertEqual(result["guard"],"HOLD")
         self.assertFalse(result["production_ready"])
+
+    @unittest.skipUnless(importlib.util.find_spec("sklearn"),"sklearn optional")
+    def test_unrelated_intraday_metric_does_not_change_target_predictions(self):
+        options=dict(target_metric="nextRevenue",feature_metrics=("indicator",),
+                     as_of="2026-01-01T00:00:00Z")
+        original=evaluate_lagged_regression(dataset(),**options)
+        with_noise=evaluate_lagged_regression(dataset(unrelated_intraday=True),**options)
+        self.assertEqual(original["status"],"EXPLORATORY_HOLDOUT_MEASURED")
+        self.assertNotEqual(original["source_sha256"],with_noise["source_sha256"])
+        for key in original:
+            if key != "source_sha256":
+                self.assertEqual(with_noise[key],original[key],key)
+        self.assertEqual(with_noise["guard"],"HOLD")
 
     def test_mixed_interval_single_issuer_next_observation_denied(self):
         r=evaluate_lagged_regression(dataset(cadence="mixed"),
