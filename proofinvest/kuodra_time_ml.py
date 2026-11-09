@@ -50,7 +50,14 @@ def evaluate_lagged_regression(dataset: dict[str, Any], *, target_metric: str,
     # Only the target's own dated observations establish forecasting periods.
     # Independent, unrelated high-frequency metrics must not silently split
     # NEXT_OBSERVATION labels or shift the chronological holdout.
-    times=sorted(t for t, cells in by_time.items() if target_metric in cells)
+    # An unreleased target row is not part of the operator's historical
+    # as-of target calendar. It must not replace the next *known* target or
+    # erase otherwise trainable samples merely because a later revision
+    # arrived in the same source snapshot.
+    times=sorted(t for t, cells in by_time.items()
+                 if target_metric in cells
+                 and _instant(t) <= cutoff
+                 and _instant(cells[target_metric]["available_at"]) <= cutoff)
     samples=[]
     for index,t in enumerate(times[:-1]):
         next_t=times[index+1]

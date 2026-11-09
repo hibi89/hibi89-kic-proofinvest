@@ -9,7 +9,7 @@ from proofinvest.kuodra_time_ml import evaluate_lagged_regression
 
 
 def dataset(*, future_features=False, multi_issuer=False, cadence="daily",
-            unrelated_intraday=False):
+            unrelated_intraday=False, unreleased_midday_targets=False):
     f=StringIO(newline="");w=csv.writer(f,lineterminator="\n")
     w.writerow(("entity_id","metric_id","observation_at","available_at","value","unit"))
     for i in range(100):
@@ -28,6 +28,12 @@ def dataset(*, future_features=False, multi_issuer=False, cadence="daily",
             if unrelated_intraday and i<99:
                 midday=(day+timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
                 w.writerow((entity,"unrelatedSignal",midday,midday,"1","count"))
+            if unreleased_midday_targets and 20 <= i < 80:
+                # A fictional future-released target dated between normal
+                # observations is invisible at the 2026 review cut-off.
+                midday=(day+timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                w.writerow((entity,"nextRevenue",midday,
+                            "2027-01-01T00:00:00Z",str(i*3+6),"usd"))
     return normalize_local_csv(f.getvalue().encode(),dataset_id="mlSynthetic",source_id="fixture",
         access_level="PRIVATE",consent=True)
 
@@ -56,6 +62,26 @@ class MLAdapterTest(unittest.TestCase):
             if key != "source_sha256":
                 self.assertEqual(with_noise[key],original[key],key)
         self.assertEqual(with_noise["guard"],"HOLD")
+
+    @unittest.skipUnless(importlib.util.find_spec("sklearn"),"sklearn optional")
+    def test_unreleased_target_observations_cannot_erase_asof_train_samples(self):
+        # The historical review must ignore a later-released value dated
+        # between 60 otherwise valid daily target observations. Previously
+        # these target rows broke the NEXT_OBSERVATION calendar and returned
+        # NO_TRAIN despite adding no information available at this as-of.
+        options=dict(target_metric="nextRevenue",feature_metrics=("indicator",),
+                     as_of="2026-01-01T00:00:00Z")
+        baseline=evaluate_lagged_regression(dataset(),**options)
+        expanded=evaluate_lagged_regression(
+            dataset(unreleased_midday_targets=True),**options)
+        self.assertEqual(baseline["status"],"EXPLORATORY_HOLDOUT_MEASURED")
+        self.assertEqual(expanded["status"],"EXPLORATORY_HOLDOUT_MEASURED")
+        self.assertNotEqual(baseline["source_sha256"],expanded["source_sha256"])
+        for key in baseline:
+            if key!="source_sha256":
+                self.assertEqual(expanded[key],baseline[key],key)
+        self.assertEqual(expanded["guard"],"HOLD")
+        self.assertIsNone(expanded["calibrated_probability"])
 
     def test_mixed_interval_single_issuer_next_observation_denied(self):
         r=evaluate_lagged_regression(dataset(cadence="mixed"),
