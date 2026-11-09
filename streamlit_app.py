@@ -16,6 +16,7 @@ _SOURCE_SEC_CURATED = "Apple SEC 10-K 수동 발췌 — 오프라인 검산 (202
 _SOURCE_SEC_LIVE = "SEC 공식 CompanyConcept 조회 — 명시적 1회 실행"
 _SOURCE_DL_ARCHIVE = "DL 공시 원문 근거 추적 — 합성 오프라인"
 _SOURCE_INTENT_ROUTER = "질문별 로컬 도구 선택 — 규칙 기반 시연"
+_SOURCE_LOCAL_AGENT = "KUODRA · Agent 질문 → SEC/ML/Guard (합성 검증)"
 _SOURCE_SEC_GUARD = "SEC→Guard 감사 연결 — 합성 오프라인"
 _SOURCE_SEC_WEB_GUARD = "KUODRA · Apple SEC 웹텍스트 수동검산 → Guard (오프라인)"
 _SOURCE_LOCAL_WORKSPACE = "KUODRA · 로컬 원본 분석 (명시적 활성화)"
@@ -601,6 +602,9 @@ def render_app(st) -> None:
     router_file = Path(__file__).resolve().parent / "proofinvest/intent_router_ui.py"
     if router_file.is_file():
         available_sources.append(_SOURCE_INTENT_ROUTER)
+    agent_ui_file = Path(__file__).resolve().parent / "proofinvest/kuodra_local_agent_ui.py"
+    if agent_ui_file.is_file():
+        available_sources.append(_SOURCE_LOCAL_AGENT)
     sec_guard_ui = Path(__file__).resolve().parent / "proofinvest/local_sec_guard_ui.py"
     if sec_guard_ui.is_file():
         available_sources.append(_SOURCE_SEC_GUARD)
@@ -702,6 +706,10 @@ def render_app(st) -> None:
     if source == _SOURCE_INTENT_ROUTER:
         from proofinvest.intent_router_ui import render_router
         render_router(st)
+        return
+    if source == _SOURCE_LOCAL_AGENT:
+        from proofinvest.kuodra_local_agent_ui import render_fictional_agent_ui
+        render_fictional_agent_ui(st)
         return
     if source == _SOURCE_DL_ARCHIVE:
         _render_dl_archive_case(st)
