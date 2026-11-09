@@ -1,0 +1,66 @@
+# KUODRA Unified Investment Intelligence — FINAL 100% PRODUCT SCOPE (Owner decision 2026-11-09 KST)
+
+## A. Decision and scope precedence
+The owner redefined KUODRA's final product as **a privacy-bound unified financial intelligence system**, not only an SEC fact-checker. External lawfully acquired market/SEC/index/macro data and user-authorized institution-private research/financial/position data will be converted to one **logical standard schema**, then processed by a **shared AutoML and multivariate statistical engine**, with deterministic source verification + A/B/C + Guard + source-backed evidence report. This scope SUPERSEDES the older product-completion 76/100 denominator and the older Oct 27 policy that selected ML reuse must wait until finalist; it does **not** bypass the original May/Nov preliminary filing freeze, data rights, private code permissions, payment, data transfer or deployment gates. No actual KIC endorsement/integration, trade recommendation, or forecast success claim.
+
+The new denominator is a release-accepted, independently tested solution capable of BOTH (i) rights-compliant public market/financial analysis and (ii) synthetic and approved real institution-private analysis without unauthorized data egress, using the SAME deterministic feature/ML core. **New progress snapshot: 35/100 (estimated engineering rubric; not 35% of a certified deployed system).** The previous 76/100 applies ONLY to the older SEC verification-centered product definition.
+
+## B. User value and constrained scope
+1. Public mode: user selects issuer/analysis horizon and approved market universe; legally usable SEC/stock/index including true Nasdaq-100, peer, macro and industry observations are source-authenticated, point-in-time aligned, normalized and analyzed.
+2. Private mode: operator imports authorized private CSV/SQLite-read-only query/approved PDF/DOCX after local document extraction and per-dataset controls; source bytes stay only on an owner/institution-controlled host, not in public web demo, cloud AI or public repo. No public network fetch receives private raw fields, prompts, dataset names or derivatives without separate explicit grant.
+3. Hybrid mode: externally obtained **public data** is ingested separately into the private boundary, then owner-approved local joins operate on a permission-filtered copy. External providers are never queried with internal contents or investment positions. Public and private outputs must be access-scoped; synthetic-only public judge demo.
+4. Core output: up to three relevant, predeclared/controlled, evidenced candidate insights; observed association vs test-held-out predictive finding clearly distinguished, with sample period, source/date/availability, confounders/selection warnings, missingness, effect estimates/CI where justified, multiple-testing corrections, baseline comparison, guard status and human decision. Not a causal or investment-performance guarantee.
+
+## C. Proposed logical canonical schema (not yet fully implemented)
+Mandatory long-form measurement fields:
+- dataset_id; entity_id (issuer/portfolio/security/group namespace); metric_id; observation_at; available_at; value; unit; source_id; access_level; evidence_sha256.
+- When relevant add fiscal_start/fiscal_end, currency, revision_vintage, source_type, issuer/peer/sector, permitted_purpose, dataset_owner, sensitivity, access_control_ref, group_id, target_label, target_horizon and unit conversion provenance.
+- Original raw materials, OCR/extraction source spans and append-only evidence metadata remain separate from features. Do not push private raw text, filename or secrets into public logs, model error messages or generic telemetry.
+- CSV/SQLite tables, market JSON and document-extracted measurements map into this schema with strict schema versions, timestamp UTC/as-of conventions, explicit nulls, no silent forward fill/zero imputation, no implied currency or ticker conversions, no cross-owner joins without authorization.
+- Financial labels use release-available-at timestamps, time group and company identifiers to stop training on later revisions. An opaque source hash identifies bytes but is NOT publisher authentication or redistribution permission.
+
+## D. Core runtime choice (two designs compared)
+| Criterion | A: deploy whole AI_AutoML_Analyst FastAPI alongside KIC | B: copy/adapt only validated sklearn preprocessing, model-selection, fold-local CV/holdout/insight rendering within existing KIC Python (SELECTED) |
+|---|---|---|
+| Initial integration | Quicker generic model UI, new service orchestration | Explicit adapter/data contracts first |
+| Resource/cost | Extra process, storage, ports, heavier dependency surface | Single Python/local CPU process; bounded workloads, no new paid API |
+| Security/maintenance | More transport and potential private-data leak paths | Narrow no-network calls, local ACL and deterministic replay easier |
+| Financial validity | Existing random/group/time options still need point-in-time finance safeguards | Require known releases, issuer/group/time splits and no leakage at adapter boundary |
+Only selected module families from existing owned repo hibi89/AI_AutoML_Analyst branch feature/kmong-v1 may be reviewed and adapted after permission/license and dependency checks; do not wholesale-copy FastAPI/runtime, delete older code, or claim KIC integration before tests. Files inspected: backend/app/services/standard_engine.py (chronological timestamp/group CV, true holdout, Dummy baseline), model_selector.py, preprocessor.py, trainer.py, evaluator.py, ml_feasibility.py. Generic ML training exists there; current KIC proofinvest/ml_explainability.py **only explains supplied evaluation data** (docstring explicitly NO model training).
+
+## E. Security/data flow and fail-closed acceptance gates
+- Two trust zones: egress-enabled public-source collector with strict domain/rate/rights policy; egress-denied operator-owned analysis service for private/hybrid data. No raw private data leaves the trusted host by default. Localhost-only Streamlit is not itself proof of egress prevention, authentication, model endpoint safety or multi-user ACL.
+- Private ingestion: explicit user consent and read-only document access, input allowlists/size limits/sandboxed parser, malicious CSV/SQL/PDF text/embedded instructions treated as untrusted, no macro/code execution, SQL read-only whitelist, no secret/PII on GitHub. Dataset access permissions enforced before loading and retrieval, including derived features and export. Encryption-at-rest and audit retention are deployment-dependent and must be tested/approved, not assumed.
+- External-only mode may call authorized public vendors, never attach private values or sensitive query terms. No unapproved model provider, telemetry, browser extension or automatic upload. Test with network-deny logs/egress interception and error/failure injections before using even synthetic sensitive-like private test data.
+- Guard prevents generated conclusions from overriding audited facts; unauthorized or insufficient evidence yields HOLD / UNVERIFIED / NO_TRAIN. Human remains final investment decision maker. Unverified Nasdaq100 rights and SEC publisher originals do not become authentic because input was typed or CSV-loaded.
+
+## F. ML/stats acceptance — testable insight not a marketing probability
+- Before exploration, choose target, prediction horizon, eligible sample size and variable selection policy. Descriptive correlations: cross-sectional/rolling/lagged with appropriate group/time joins, sample counts, missingness and outlier checks; correct for multiple comparisons (e.g. FDR) and show associations, not causation.
+- Predictive mode: Dummy/simple linear or statistical baseline; fold-local preprocessing, pure walk-forward/holdout and time/group/issuer release lag; no future data, no target or duplicate-label leakage. Compare regression MAE/RMSE or classifier precision/recall/ROC-AUC as appropriate. If probabilities are requested, require observed labels, disjoint sufficient test samples, probability calibration/reliability and Brier score; do not show high probability from a correlation coefficient or training score.
+- Negative controls: randomized/shuffled labels, introduced future-only feature, duplicated issuer samples and missing release-time records should fail or visibly degrade. Unsupported inputs yield NO_TRAIN or INSUFFICIENT_EVIDENCE. ML cannot override raw-source identity/Guard outcome.
+- Compare public synthetic fixture and private synthetic fixture run through the same ML adapter and metadata contract, with separate owner ACL; verify result provenance but not expose private contents in exports.
+
+## G. Definition of Done: weighted 100 points (2026-11-09 estimated snapshot)
+| Product acceptance dimension | Max | Recognized | Basis |
+|---|---:|---:|---|
+| Deterministic issuer SEC/financial A/B/C + Guard and replay | 20 | 16 | Real off-line source-bounded code and previous CI, full legal first-party real data missing |
+| Canonical schema / CSV + SQL + document extraction normalization | 15 | 4 | Market CSV normalization and partial source/period bridges, no general canonical schema |
+| Licensed public market/SEC/index/macro ingestion | 10 | 4 | Provider adapters and local provenance, real right-cleared NDX/SEC end-to-end not proved |
+| Institution-private document/table ingestion and analytics | 15 | 2 | Existing local SEC-shaped upload, not general private documents/SQL/ACL |
+| Integrated multivariate stats + AutoML, leak-safe measured holdout insight | 20 | 4 | Mature generic AutoML in separate repo; not integrated with KIC data, no verified financial lift |
+| Proven no-egress private operation and role-scoped security | 10 | 2 | localhost/opt-in patterns exist; no tested internal document egress/ACL enforcement |
+| One integrated source-linked insight UI and export | 5 | 3 | Existing offline evidence reports, no combined stats + private dashboard |
+| Real end-to-end/production/owner acceptance | 5 | 0 | No real hybrid case, licensed real E2E or authenticated production |
+| **NEW PRODUCT TOTAL** | **100** | **35** | **Rebaseline, not measured new integration progress** |
+
+Points are engineering-estimate recognition of existing source and previous exact-SHA CI, not recent runtime verification of new functionality. Scores rise only after tests demonstrate an acceptance requirement. Existing 76/100 historic score is NOT comparable or additive.
+
+## H. Next implementation order and decision checkpoints
+1. Keep 2026-11-12 10:00 KST DAKER PDF filing critical; current 10-page KUODRA_KIC_FINAL_SUBMISSION.pdf exists as conversation artifact but predates unified-ML+private analytical pivot. **Update PDF claims and fully QA before owner-approved official upload**. No unauthorized official submission. If time is scarce, prioritize accurate provisional finalist-roadmap disclosure rather than claiming already-built functions.
+2. Engineering phase: freeze canonical schema and minimal synthetic example for market CSV, company financial rows, synthetic private CSV/SQLite tables, private text extraction. First write validators/tests (period/units/release rights/access and no exfil), then a small shared feature assembler.
+3. Selective AutoML adapter (minimal sklearn deps) over same schema; add statistical correlation/multiple-comparison diagnostics, financial leakage controls, Dummy/walk-forward evaluation, model calibration only with enough independent observations, guarded insight JSON. Test on synthetic data, baseline and adversarial future leakage.
+4. Add owner-local private ingest/read-only SQL/doc parser, strict zones and egress-deny/role ACL negative tests; public fetch gateway stays physically/logically separate. Synthetic end-to-end public/private/hybrid; no real KIC private documents needed.
+5. Connect source-backed reporting and Streamlit UI, then verified legal public data and actual localhost model opt-in. Only after permitted real sources, source licensing, security, judge access, documented reproducibility and production browser/API verification can completion approach 100%. Any private actual KIC source transfer/storage/real deployment needs new explicit owner/organization authorization.
+
+## I. Verified evidence and project status
+KIC hibi89/hibi89-kic-proofinvest lead/kic, latest doc baseline 1f40dd78ac26845922b81e530a6b851bed3b2508, functional tested SHA 1f89ef7671f158307fbca35e78c621de54264fa1, past GitHub Actions 42521769506 mandatory 6/6 SUCCESS, Ubuntu 2188/2188 Python PASS, Windows 2187 PASS/1 SKIP, optional Qwen tests skipped. Existing KIC proofinvest/local_market_csv_bridge.py only normalizes strict known CSV and says origin UNVERIFIED; proofinvest/kuodra_local_workspace.py local SEC upload without general confidential doc analysis; proofinvest/ml_explainability.py NO training. Generic AutoML code in hibi89/AI_AutoML_Analyst@feature/kmong-v1 HEAD 4b7da83e037badab545ff14d03e7fe8cd049b52a, documented Linux full 273 PASS / 3 SKIP at Actions 40548766131, but KIC integration is zero. Neither product received new code/test run for this decision. Vercel/Production N/A. DAKER official status NOT SUBMITTED; next user-only task PDF upload/제출 완료/최종 by 2026-11-12 10:00 KST after reviewing revised scope.
