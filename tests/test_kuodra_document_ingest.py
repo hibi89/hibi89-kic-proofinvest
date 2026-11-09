@@ -117,6 +117,7 @@ class DocumentLocalTest(unittest.TestCase):
         from io import StringIO
         import csv
         from proofinvest.kuodra_hybrid import analyze_local_hybrid
+        from proofinvest.kuodra_alias_hybrid import _prepare_owner_alias_view
         private_rows=tuple(
             f"issuer{i}|outcome|2026-01-01T00:00:00Z|2026-01-01T00:00:00Z|{3*i+7}|usd"
             for i in range(45))
@@ -131,7 +132,14 @@ class DocumentLocalTest(unittest.TestCase):
                         "2026-01-01T00:00:00Z",str(i+1),"count"))
         vault.ingest_csv(OWNER,raw=f.getvalue().encode(),dataset_id="publicData",
                          source_id="synthetic",access_level="PUBLIC")
-        ans=analyze_local_hybrid(vault,ANALYST,public_dataset_id="publicData",
+        view,_=_prepare_owner_alias_view(
+            vault,OWNER,public_dataset_id="publicData",private_dataset_id="privateDoc",
+            public_sha256=vault._datasets["publicData"]["source_sha256"],
+            private_sha256=vault._datasets["privateDoc"]["source_sha256"],
+            aliases={r["entity_id"]:r["entity_id"]
+                     for r in vault._datasets["publicData"]["records"]},
+            as_of="2026-02-01T00:00:00Z")
+        ans=analyze_local_hybrid(view,ANALYST,public_dataset_id="publicData",
             private_dataset_id="privateDoc",as_of="2026-02-01T00:00:00Z",
             mode="cross_section",metrics=("public.factor","private.outcome"),
             observation_at="2026-01-01T00:00:00Z")

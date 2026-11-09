@@ -25,6 +25,7 @@ from typing import Any
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
 from .kuodra_document_ingest import ingest_document_locally
 from .kuodra_hybrid import analyze_local_hybrid
+from .kuodra_alias_hybrid import _prepare_owner_alias_view
 from .kuodra_review_report import build_owner_group_review, render_restricted_review_html
 
 _HEADER = ("entity_id", "metric_id", "observation_at", "available_at", "value", "unit")
@@ -112,8 +113,16 @@ def run_synthetic_demo() -> tuple[dict[str, Any], str]:
     vault.ingest_sqlite(_OWNER, raw_db=private_db, table="measurements",
                         dataset_id="fictionalPrivate", source_id="fictionalSQLite",
                         access_level="PRIVATE")
+    first_view, _ = _prepare_owner_alias_view(
+        vault, _OWNER, public_dataset_id="fictionalPublic",
+        private_dataset_id="fictionalPrivate",
+        public_sha256=vault._datasets["fictionalPublic"]["source_sha256"],
+        private_sha256=vault._datasets["fictionalPrivate"]["source_sha256"],
+        aliases={r["entity_id"]: r["entity_id"]
+                 for r in vault._datasets["fictionalPublic"]["records"]},
+        as_of=_AS_OF)
     restricted = build_owner_group_review(
-        vault, _ANALYST, private_dataset_id="fictionalPrivate",
+        first_view, _ANALYST, private_dataset_id="fictionalPrivate",
         public_dataset_id="fictionalPublic", target_metric="private.outcome",
         feature_metrics=("public.factor",), as_of=_AS_OF)
     if (restricted["decision"] != "HOLD"
@@ -135,8 +144,16 @@ def run_synthetic_demo() -> tuple[dict[str, Any], str]:
     ingest_document_locally(vault, _OWNER, raw=doc_raw, format="DOCX",
                             dataset_id="fictionalDocPrivate",
                             source_id="fictionalDocx", access_level="PRIVATE")
+    doc_view, _ = _prepare_owner_alias_view(
+        vault, _OWNER, public_dataset_id="fictionalDocPublic",
+        private_dataset_id="fictionalDocPrivate",
+        public_sha256=vault._datasets["fictionalDocPublic"]["source_sha256"],
+        private_sha256=vault._datasets["fictionalDocPrivate"]["source_sha256"],
+        aliases={r["entity_id"]: r["entity_id"]
+                 for r in vault._datasets["fictionalDocPublic"]["records"]},
+        as_of="2026-02-01T00:00:00Z")
     doc_analysis = analyze_local_hybrid(
-        vault, _ANALYST, public_dataset_id="fictionalDocPublic",
+        doc_view, _ANALYST, public_dataset_id="fictionalDocPublic",
         private_dataset_id="fictionalDocPrivate", mode="cross_section",
         as_of="2026-02-01T00:00:00Z", observation_at=_AS_OF,
         metrics=("public.publicSignal", "private.internalSignal"))

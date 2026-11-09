@@ -23,6 +23,12 @@ _SHA = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _LIMIT = 5000
 
 
+def _approved_snapshot_digest(dataset: dict[str, Any]) -> str:
+    """Pin the full owner-reconciled local view; not publisher authentication."""
+    return sha256(json.dumps(dataset, ensure_ascii=True, sort_keys=True,
+                separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+
+
 def _validated_local_rows(dataset: dict[str, Any], *, kind: str,
                           as_of: str) -> list[dict[str, Any]]:
     """Revalidate stored records, do not rely on mutable dictionary labels."""
@@ -91,6 +97,16 @@ def _build_joined(vault: OwnerLocalGateway, principal: VerifiedPrincipal, *,
     # leaking which id exists or which access right is missing.
     vault._check(principal, dataset_id=public_dataset_id)
     vault._check(principal, dataset_id=private_dataset_id)
+    # A matching entity_id across two independent source systems is NOT an
+    # issuer identity proof. Only the exact owner-mapped, source-pinned,
+    # as-of-bound ephemeral view may be joined, even by legacy direct APIs.
+    scope = vault._approved_hybrid_scope
+    if (type(scope) is not tuple or len(scope) != 5
+            or scope[:3] != (public_dataset_id, private_dataset_id, as_of)):
+        raise PermissionError("HYBRID_OWNER_MAPPING_REQUIRED")
+    if (scope[3] != _approved_snapshot_digest(vault._datasets[public_dataset_id])
+            or scope[4] != _approved_snapshot_digest(vault._datasets[private_dataset_id])):
+        raise ValueError("HYBRID_APPROVED_SNAPSHOT_CHANGED")
     public = deepcopy(vault._datasets[public_dataset_id])
     private = deepcopy(vault._datasets[private_dataset_id])
     pub_rows = _validated_local_rows(public, kind="PUBLIC", as_of=as_of)

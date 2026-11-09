@@ -8,6 +8,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from proofinvest.kuodra_unified_core import normalize_local_csv
+from proofinvest.kuodra_alias_hybrid import _prepare_owner_alias_view
 from proofinvest.kuodra_group_time_ml import (
     evaluate_issuer_time_holdout, evaluate_owner_local_group,
     evaluate_owner_local_hybrid_group)
@@ -235,7 +236,14 @@ class IssuerTimeMLTest(TestCase):
             access_level="PUBLIC")
         v.ingest_csv(OWNER,raw=rows(zone="PRIVATE"),dataset_id="privateA",source_id="fakePrivate",
             access_level="PRIVATE")
-        r=evaluate_owner_local_hybrid_group(v,ANALYST,public_dataset_id="publicA",
+        approved,_=_prepare_owner_alias_view(
+            v,OWNER,public_dataset_id="publicA",private_dataset_id="privateA",
+            public_sha256=v._datasets["publicA"]["source_sha256"],
+            private_sha256=v._datasets["privateA"]["source_sha256"],
+            aliases={r["entity_id"]:r["entity_id"]
+                     for r in v._datasets["publicA"]["records"]},
+            as_of="2026-01-01T00:00:00Z")
+        r=evaluate_owner_local_hybrid_group(approved,ANALYST,public_dataset_id="publicA",
             private_dataset_id="privateA",target_metric="private.target",
             feature_metrics=("public.feature",),as_of="2026-01-01T00:00:00Z")
         self.assertEqual(r["analysis"]["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")

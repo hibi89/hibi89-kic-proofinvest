@@ -12,7 +12,7 @@ import json
 import re
 from typing import Any
 
-from .kuodra_hybrid import analyze_local_hybrid
+from .kuodra_hybrid import analyze_local_hybrid, _approved_snapshot_digest
 from .kuodra_group_time_ml import evaluate_owner_local_hybrid_group
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
 from .kuodra_unified_core import _id, _instant
@@ -84,6 +84,10 @@ def _prepare_owner_alias_view(
     temporary = OwnerLocalGateway(principal.owner_id)
     temporary._register(public_dataset_id, public, ('analyst',))
     temporary._register(private_dataset_id, private, ('analyst',))
+    temporary._approved_hybrid_scope = (
+        public_dataset_id, private_dataset_id, as_of,
+        _approved_snapshot_digest(temporary._datasets[public_dataset_id]),
+        _approved_snapshot_digest(temporary._datasets[private_dataset_id]))
     return temporary, digest
 
 

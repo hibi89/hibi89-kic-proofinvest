@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from proofinvest.kuodra_hybrid import analyze_local_hybrid
+from proofinvest.kuodra_alias_hybrid import _prepare_owner_alias_view
 from proofinvest.kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
 
 OWNER = VerifiedPrincipal("owner1", "fund1", ("owner",), True)
@@ -45,7 +46,14 @@ def gateway(*, count=1, days=80, offset=0, late=0):
     g.ingest_csv(OWNER, raw=csv_rows(issuer_count=count, days=days, private=True),
                  dataset_id="privateA", source_id="internalFixture",
                  access_level="PRIVATE")
-    return g
+    approved, _ = _prepare_owner_alias_view(
+        g, OWNER, public_dataset_id="publicA", private_dataset_id="privateA",
+        public_sha256=g._datasets["publicA"]["source_sha256"],
+        private_sha256=g._datasets["privateA"]["source_sha256"],
+        aliases={r["entity_id"]:r["entity_id"]
+                 for r in g._datasets["publicA"]["records"]},
+        as_of="2026-01-01T00:00:00Z")
+    return approved
 
 
 def analyze(g, principal=ANALYST, **kwargs):
@@ -77,6 +85,28 @@ class HybridTest(unittest.TestCase):
         self.assertEqual(r["analysis"]["guard"],"HOLD")
         self.assertFalse(r["analysis"]["production_ready"])
 
+    def test_raw_equal_issuer_ids_cannot_join_without_owner_mapping(self):
+        original=OwnerLocalGateway("fund1")
+        original.ingest_csv(OWNER,raw=csv_rows(issuer_count=10),
+            dataset_id="publicA",source_id="publicFixture",access_level="PUBLIC")
+        original.ingest_csv(OWNER,raw=csv_rows(issuer_count=10,private=True),
+            dataset_id="privateA",source_id="internalFixture",access_level="PRIVATE")
+        with self.assertRaisesRegex(PermissionError,"HYBRID_OWNER_MAPPING_REQUIRED"):
+            analyze(original,mode="predictive",target_metric="private.outcome",
+                    feature_metrics=("public.factor",))
+
+    def test_approved_view_bound_to_asof_and_snapshot(self):
+        view=gateway(count=10)
+        with self.assertRaisesRegex(PermissionError,"HYBRID_OWNER_MAPPING_REQUIRED"):
+            analyze_local_hybrid(view,ANALYST,public_dataset_id="publicA",
+                private_dataset_id="privateA",as_of="2027-01-01T00:00:00Z",
+                mode="predictive",target_metric="private.outcome",
+                feature_metrics=("public.factor",))
+        view._datasets["publicA"]["records"][0]["value"]="1234"
+        with self.assertRaisesRegex(ValueError,"HYBRID_APPROVED_SNAPSHOT_CHANGED"):
+            analyze(view,mode="predictive",target_metric="private.outcome",
+                    feature_metrics=("public.factor",))
+
     def test_unauthorized_reads_denied_before_join(self):
         g=gateway()
         for principal in (VIEWER,OUTSIDER,UNVERIFIED):
@@ -87,14 +117,14 @@ class HybridTest(unittest.TestCase):
     def test_wrong_public_private_labels_rejected(self):
         g=gateway()
         g._datasets["publicA"]["access_level"]="PRIVATE"
-        with self.assertRaisesRegex(ValueError,"HYBRID_INPUT_LINEAGE_INVALID"):
+        with self.assertRaisesRegex(ValueError,"HYBRID_APPROVED_SNAPSHOT_CHANGED"):
             analyze(g,mode="predictive",target_metric="private.outcome",
                     feature_metrics=("public.factor",))
 
     def test_source_lineage_tampering_rejected(self):
         g=gateway()
         g._datasets["privateA"]["records"][0]["source_id"]="other"
-        with self.assertRaisesRegex(ValueError,"HYBRID_INPUT_ROW_INVALID"):
+        with self.assertRaisesRegex(ValueError,"HYBRID_APPROVED_SNAPSHOT_CHANGED"):
             analyze(g,mode="predictive",target_metric="private.outcome",
                     feature_metrics=("public.factor",))
 

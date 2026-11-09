@@ -3,6 +3,7 @@ import socket
 from unittest import TestCase
 from unittest.mock import patch
 from proofinvest.kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
+from proofinvest.kuodra_alias_hybrid import _prepare_owner_alias_view
 from proofinvest.kuodra_review_report import (
     build_owner_group_review, render_restricted_review_html)
 from test_kuodra_group_time_ml import rows
@@ -40,7 +41,15 @@ class RestrictedReviewTest(TestCase):
             self.assertNotIn(sensitive,str(r))
 
     def test_hybrid_report_both_sources_and_no_public_export(self):
-        r=build_owner_group_review(self.vault,ANALYST,private_dataset_id="secretDataset",
+        view,_=_prepare_owner_alias_view(
+            self.vault,OWNER,public_dataset_id="externalDataset",
+            private_dataset_id="secretDataset",
+            public_sha256=self.vault._datasets["externalDataset"]["source_sha256"],
+            private_sha256=self.vault._datasets["secretDataset"]["source_sha256"],
+            aliases={r["entity_id"]:r["entity_id"]
+                     for r in self.vault._datasets["externalDataset"]["records"]},
+            as_of="2026-01-01T00:00:00Z")
+        r=build_owner_group_review(view,ANALYST,private_dataset_id="secretDataset",
             public_dataset_id="externalDataset",target_metric="private.target",
             feature_metrics=("public.feature",),as_of="2026-01-01T00:00:00Z")
         self.assertEqual(r["scope"],"LOCAL_HYBRID")

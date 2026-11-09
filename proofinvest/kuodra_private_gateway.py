@@ -51,6 +51,8 @@ class OwnerLocalGateway:
         self._datasets: dict[str, dict[str, Any]] = {}
         self._allowed_roles: dict[str, frozenset[str]] = {}
         self._local_identity_approvals: dict[str, dict[str, Any]] = {}
+        # Set only on the fresh, owner-reconciled ephemeral alias view.
+        self._approved_hybrid_scope: tuple[str, str, str, str, str] | None = None
 
     def _check(self, principal: VerifiedPrincipal, *, write: bool = False,
                dataset_id: str | None = None) -> None:
@@ -191,5 +193,8 @@ class OwnerLocalGateway:
         for token, approval in tuple(self._local_identity_approvals.items()):
             if dataset_id in (approval["public"], approval["private"]):
                 del self._local_identity_approvals[token]
+        if (self._approved_hybrid_scope is not None
+                and dataset_id in self._approved_hybrid_scope[:2]):
+            self._approved_hybrid_scope = None
         del self._datasets[dataset_id]
         del self._allowed_roles[dataset_id]
