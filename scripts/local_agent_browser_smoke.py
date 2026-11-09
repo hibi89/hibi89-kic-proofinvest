@@ -71,6 +71,16 @@ def _verify_download(download, *, mode: str, decision: str) -> dict:
     if (type(digest) is not str or len(digest) != 64
             or sha256(_canonical(packet)).hexdigest() != digest):
         raise AssertionError("P314_DOWNLOADED_RECEIPT_CHECKSUM_INVALID")
+    # For the ML-selected paths the system must actually measure a
+    # group/time holdout. A quietly missing sklearn dependency cannot
+    # be called a successful Agent demonstration.
+    if mode == "SEC_ML" and (packet.get("review", {}).get("ml", {})
+            .get("summary", {}).get("status") !=
+            "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED"):
+        raise AssertionError("P314_ML_NOT_MEASURED_IN_COMBINED_MODE")
+    if mode == "ML_ONLY" and (packet.get("review", {}).get("analysis", {})
+            .get("status") != "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED"):
+        raise AssertionError("P314_ML_NOT_MEASURED_IN_ML_MODE")
     if any(secret in payload for secret in (
             b"fakePrivate", b"fakePublic", b"syntheticInstitution",
             b"syntheticOwner", b"fictitiousIssuer",
@@ -90,7 +100,7 @@ def _verify_download(download, *, mode: str, decision: str) -> dict:
 
 
 def run(output: Path) -> dict:
-    from playwright.sync_api import expect, sync_playwright
+    from playwright.sync_api import expect, sync_playwright, TimeoutError as PlaywrightTimeoutError
 
     output.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix="kic-p314-agent-browser-") as home:
@@ -160,6 +170,33 @@ def run(output: Path) -> dict:
                             page.get_by_test_id("stCheckbox").locator("label").click()
                             expect(consent).to_be_checked(timeout=10000)
 
+                        def choose_option(picker, desired):
+                            # Streamlit 1.66 can unmount the option after the
+                            # first click during a rerun. Use actual user input
+                            # (open -> optionally type search -> click), as
+                            # already proven in guard_browser_smoke.py.
+                            option = page.get_by_role(
+                                "option", name=desired, exact=True)
+                            for attempt in range(2):
+                                picker.click()
+                                try:
+                                    try:
+                                        option.wait_for(
+                                            state="visible", timeout=2000)
+                                    except PlaywrightTimeoutError:
+                                        picker.fill(desired)
+                                        option.wait_for(
+                                            state="visible", timeout=5000)
+                                    option.click(timeout=6000)
+                                    expect(picker).to_have_value(
+                                        desired, timeout=8000)
+                                    return
+                                except (PlaywrightTimeoutError, AssertionError):
+                                    if attempt:
+                                        raise
+                            raise AssertionError(
+                                "P314_SOURCE_PICKER_DID_NOT_COMMIT")
+
                         def execute_and_verify(mode, decision, screenshot=None):
                             expect(run_button).to_be_enabled(timeout=10000)
                             run_button.click()
@@ -183,9 +220,7 @@ def run(output: Path) -> dict:
                         expect(run_button).to_be_enabled(timeout=10000)
                         execute_and_verify("SEC_ML", "HOLD", "p314-agent-hold.png")
 
-                        claim.click()
-                        page.get_by_role("option", name="충돌 주장 (REJECT)",
-                                         exact=True).click()
+                        choose_option(claim, "충돌 주장 (REJECT)")
                         expect(consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
                         grant_audit_consent()
@@ -202,17 +237,13 @@ def run(output: Path) -> dict:
 
                         # Source change MUST choose its own matching question
                         # and disable stale audit consent.
-                        source.click()
-                        page.get_by_role("option", name="공개/비공개 ML만",
-                                         exact=True).click()
+                        choose_option(source, "공개/비공개 ML만")
                         expect(question).to_have_value("공개/비공개 다변수 ML 결과를 검토해줘")
                         expect(consent).to_be_disabled()
                         execute_and_verify("ML_ONLY", "HOLD",
                                            "p314-agent-ml-only.png")
 
-                        source.click()
-                        page.get_by_role("option", name="가상 공시만",
-                                         exact=True).click()
+                        choose_option(source, "가상 공시만")
                         expect(question).to_have_value("SEC 공시 원문 수치를 검토해줘")
                         expect(consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
