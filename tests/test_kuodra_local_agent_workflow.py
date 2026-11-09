@@ -24,6 +24,7 @@ from proofinvest.guard_audit import GuardAuditStore
 
 OWNER = VerifiedPrincipal("fictionalOwner", "fictionalFund", ("owner",), True)
 ANALYST = VerifiedPrincipal("fictionalAnalyst", "fictionalFund", ("analyst",), True)
+SECOND_ANALYST = VerifiedPrincipal("secondAnalyst", "fictionalFund", ("analyst",), True)
 OUTSIDER = VerifiedPrincipal("otherAnalyst", "otherFund", ("analyst",), True)
 QUESTION = "SEC 공시와 다변수 ML을 검토해줘"
 
@@ -110,6 +111,7 @@ class LocalQuestionToolWorkflowTests(unittest.TestCase):
             private_sha256=private["source_sha256"],
             aliases={r["entity_id"]: r["entity_id"] for r in public["records"]},
             as_of="2026-01-01T00:00:00Z",
+            delegate_subject=ANALYST.subject,
             acknowledge_unverified_issuer_identity=True)
         self.ml_options.update(public_dataset_id="fictionalPublic",
             target_metric="private.target",feature_metrics=("public.factor",))
@@ -126,6 +128,38 @@ class LocalQuestionToolWorkflowTests(unittest.TestCase):
         replay=self.call(identity_approval_token=ticket["one_use_token"])
         self.assertEqual(replay["status"],"BLOCKED")
         self.assertFalse(self.sec_options["audit_db_path"].exists())
+
+    def test_same_owner_wrong_analyst_cannot_execute_approved_join(self):
+        pub=_csv(_table_rows(metric="factor"))
+        self.vault.ingest_csv(OWNER,raw=pub,dataset_id="fictionalPublic",
+            source_id="separate",access_level="PUBLIC")
+        public=self.vault._datasets["fictionalPublic"]
+        private=self.vault._datasets["secretPrivate"]
+        ticket=approve_local_identity_mapping(
+            self.vault, OWNER, public_dataset_id="fictionalPublic",
+            private_dataset_id="secretPrivate",
+            public_sha256=public["source_sha256"],
+            private_sha256=private["source_sha256"],
+            aliases={r["entity_id"]: r["entity_id"] for r in public["records"]},
+            as_of="2026-01-01T00:00:00Z",
+            delegate_subject=ANALYST.subject,
+            acknowledge_unverified_issuer_identity=True)
+        self.ml_options.update(public_dataset_id="fictionalPublic",
+            target_metric="private.target", feature_metrics=("public.factor",))
+        with patch("proofinvest.kuodra_local_agent_workflow.build_owner_group_review",
+                   side_effect=AssertionError("WRONG_OPERATOR_ML_CALLED")) as ml:
+            with patch("proofinvest.kuodra_local_agent_workflow.review_local_sec_with_guard",
+                       side_effect=AssertionError("WRONG_OPERATOR_SEC_CALLED")) as sec:
+                denied=self.call(principal=SECOND_ANALYST,
+                                 identity_approval_token=ticket["one_use_token"])
+        self.assertEqual(denied["status"], "BLOCKED")
+        self.assertFalse(self.db.exists())
+        ml.assert_not_called()
+        sec.assert_not_called()
+        self.assertEqual(len(self.vault._local_identity_approvals), 1)
+        allowed=self.call(identity_approval_token=ticket["one_use_token"])
+        self.assertEqual(allowed["status"], "LOCAL_HUMAN_REVIEW_REQUIRED")
+        self.assertEqual(allowed["decision"], "HOLD")
 
     def test_joint_real_tools_hold_audit_and_redacted_report(self):
         originals = {k: sha256(v).hexdigest() for k, v in self.sec_bytes.items()}

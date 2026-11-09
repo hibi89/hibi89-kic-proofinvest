@@ -27,7 +27,7 @@ def approve_local_identity_mapping(
     public_dataset_id: str, private_dataset_id: str,
     public_sha256: str, private_sha256: str,
     aliases: dict[str, str], as_of: str,
-    acknowledge_unverified_issuer_identity: bool,
+    delegate_subject: str, acknowledge_unverified_issuer_identity: bool,
 ) -> dict[str, Any]:
     """Owner acknowledges exact, ephemeral source IDs and mapping before ML."""
     if type(vault) is not OwnerLocalGateway or type(principal) is not VerifiedPrincipal:
@@ -38,6 +38,8 @@ def approve_local_identity_mapping(
     if type(as_of) is not str:
         raise ValueError("IDENTITY_SCOPE_INVALID")
     _instant(as_of)
+    if not _id(delegate_subject):
+        raise ValueError("IDENTITY_DELEGATE_INVALID")
     # The pre-existing alias path ensures owner role, source SHA, zone,
     # unique mapping and existence of every mapped issuer.
     _, digest = _prepare_owner_alias_view(
@@ -50,7 +52,8 @@ def approve_local_identity_mapping(
         raise ValueError("IDENTITY_PENDING_LIMIT")
     token = secrets.token_hex(24)
     vault._local_identity_approvals[token] = {
-        "owner": principal, "public": public_dataset_id,
+        "owner": principal, "delegate_subject": delegate_subject,
+        "public": public_dataset_id,
         "private": private_dataset_id, "as_of": as_of,
         "public_sha": public_sha256, "private_sha": private_sha256,
         "mapping": dict(aliases), "mapping_sha": digest,
@@ -82,7 +85,8 @@ def consume_local_identity_mapping(
     approval = vault._local_identity_approvals.get(token)
     if (approval is None or approval["public"] != public_dataset_id
             or approval["private"] != private_dataset_id
-            or approval["as_of"] != as_of):
+            or approval["as_of"] != as_of
+            or approval["delegate_subject"] != principal.subject):
         raise PermissionError("IDENTITY_APPROVAL_SCOPE_MISMATCH")
     if (_snapshot_digest(vault, public_dataset_id) != approval["public_snapshot"]
             or _snapshot_digest(vault, private_dataset_id) != approval["private_snapshot"]):

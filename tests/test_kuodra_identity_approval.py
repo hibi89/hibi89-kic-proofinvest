@@ -12,6 +12,7 @@ from proofinvest.kuodra_synthetic_demo import _csv, _table_rows
 
 OWNER=VerifiedPrincipal("ownerTest","fundTest",("owner",),True)
 ANALYST=VerifiedPrincipal("analystTest","fundTest",("analyst",),True)
+SECOND_ANALYST=VerifiedPrincipal("otherAnalyst","fundTest",("analyst",),True)
 WRONG=VerifiedPrincipal("another","anotherFund",("analyst",),True)
 AS_OF="2026-01-01T00:00:00Z"
 
@@ -30,7 +31,8 @@ class IdentityMappingApprovalTests(unittest.TestCase):
             private_sha256=sha256(private).hexdigest(),
             aliases={r["entity_id"]:r["entity_id"]
                      for r in self.vault._datasets["publicTest"]["records"]},
-            as_of=AS_OF,acknowledge_unverified_issuer_identity=True)
+            as_of=AS_OF,delegate_subject=ANALYST.subject,
+            acknowledge_unverified_issuer_identity=True)
     def approve(self,principal=OWNER,**kwargs):
         return approve_local_identity_mapping(
             self.vault,principal,**dict(self.params,**kwargs))
@@ -72,6 +74,19 @@ class IdentityMappingApprovalTests(unittest.TestCase):
                 private_dataset_id="privateTest",as_of=AS_OF)
         self.assertEqual(len(self.vault._local_identity_approvals),1)
         self.assertTrue(self.consume(t)[1]["single_use_consumed"])
+    def test_same_owner_analyst_cannot_use_token_approved_for_other_subject(self):
+        t=self.approve()["one_use_token"]
+        with self.assertRaisesRegex(PermissionError,"IDENTITY_APPROVAL_SCOPE_MISMATCH"):
+            self.consume(t,principal=SECOND_ANALYST)
+        self.assertEqual(len(self.vault._local_identity_approvals),1)
+        self.assertTrue(self.consume(t)[1]["single_use_consumed"])
+
+    def test_invalid_delegate_rejected_before_token_creation(self):
+        for subject in ("", "other analyst", None):
+            with self.subTest(subject=subject),self.assertRaises(ValueError):
+                self.approve(delegate_subject=subject)
+        self.assertFalse(self.vault._local_identity_approvals)
+
     def test_tampered_records_invalidate_approval_even_if_raw_sha_same(self):
         t=self.approve()["one_use_token"]
         self.vault._datasets["publicTest"]["records"][0]["value"]="123456"

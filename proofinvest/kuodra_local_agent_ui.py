@@ -90,6 +90,7 @@ def run_fictional_agent_ui_case(
                 public_sha256=pub["source_sha256"],
                 private_sha256=priv["source_sha256"],
                 aliases=aliases, as_of="2026-01-01T00:00:00Z",
+                delegate_subject=principal.subject,
                 acknowledge_unverified_issuer_identity=True)
             arguments["identity_approval_token"] = approval["one_use_token"]
             arguments.update(
