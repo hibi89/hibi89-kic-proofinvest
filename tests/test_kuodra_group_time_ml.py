@@ -19,7 +19,7 @@ UNVERIFIED=VerifiedPrincipal("anon","fundA",("analyst",),False)
 
 
 def rows(*, issuers=10, dates=62, zone="PUBLIC", future_features=False,
-         late_labels=False, duplicate_target=False, random_labels=False):
+         late_labels=False, duplicate_target=False, random_labels=False, late_drift=False):
     output=StringIO(newline="")
     w=csv.writer(output,lineterminator="\n")
     w.writerow(("entity_id", "metric_id", "observation_at", "available_at", "value", "unit"))
@@ -31,6 +31,8 @@ def rows(*, issuers=10, dates=62, zone="PUBLIC", future_features=False,
             target_release=(t+timedelta(days=80)).strftime("%Y-%m-%dT%H:%M:%SZ") if late_labels else obs
             x=i+j*0.4
             y=(j*33+i*27)%97 if random_labels else (i*3 + j*2 + 4)
+            if late_drift and i>=54:
+                y += 10000
             w.writerow((f"issuer{j}","feature",obs,feature_release,str(round(x,3)),"count"))
             w.writerow((f"issuer{j}","target",obs,target_release,str(y),"usd"))
             if duplicate_target and j == 0 and i == 0:
@@ -57,6 +59,31 @@ class IssuerTimeMLTest(TestCase):
         self.assertIsNone(result["calibrated_probability"])
         self.assertEqual(result["guard"],"HOLD")
         self.assertNotIn("issuer0",str(result))
+
+    def test_group_time_holdout_stability_summary_no_raw_identifiers(self):
+        r=evaluate_issuer_time_holdout(data(),target_metric="target",
+            feature_metrics=("feature",),as_of="2026-01-01T00:00:00Z")
+        d=r["holdout_stability"]
+        self.assertEqual(d["holdout_issuer_count"],r["holdout_issuer_count"])
+        self.assertEqual(d["model_better_issuer_count"]+
+                         d["dummy_better_issuer_count"]+d["tied_issuer_count"],
+                         r["holdout_issuer_count"])
+        self.assertGreaterEqual(d["distinct_holdout_times"],4)
+        self.assertFalse(d["stability_certified"])
+        self.assertNotIn("issuer0",str(d))
+        self.assertNotIn("fixture",str(d))
+        self.assertEqual(r["guard"],"HOLD")
+
+    def test_late_regime_shift_is_explicitly_flagged(self):
+        r=evaluate_issuer_time_holdout(data(late_drift=True),
+            target_metric="target",feature_metrics=("feature",),
+            as_of="2026-01-01T00:00:00Z")
+        self.assertEqual(r["status"],"EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.assertEqual(r["holdout_stability"]["late_error_warning"],
+                         "ELEVATED_LATE_ERROR")
+        self.assertGreater(r["holdout_stability"]["later_over_earlier_mae_ratio"],2)
+        self.assertFalse(r["production_ready"])
+        self.assertEqual(r["guard"],"HOLD")
 
     def test_future_feature_never_trains(self):
         r=evaluate_issuer_time_holdout(data(future_features=True),target_metric="target",
