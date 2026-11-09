@@ -115,8 +115,7 @@ def observed_relationships(dataset: dict, *, metrics: tuple[str, ...],
     cutoff = _instant(as_of)
     if (type(dataset) is not dict or dataset.get("schema") != "kuodra.canonical.long.v1"
             or dataset.get("access_level") not in ("PUBLIC", "PRIVATE")
-            or type(metrics) is not tuple or not 2 <= len(metrics) <= 12
-            or len(set(metrics)) != len(metrics)
+            or type(metrics) is not tuple or not 2 <= len(metrics) <= 12            or len(set(metrics)) != len(metrics)
             or any(not _id(m) for m in metrics)
             or type(max_results) is not int or not 1 <= max_results <= 3
             or type(min_pairs) is not int or min_pairs < 12):
@@ -169,3 +168,61 @@ def observed_relationships(dataset: dict, *, metrics: tuple[str, ...],
             "multiple_testing_status": "NOT_ADJUSTED_NO_SIGNIFICANCE_CLAIM",
             "insights": found[:max_results], "model_trained": False,
             "guard": "HOLD", "network_requests": 0}
+
+
+def normalize_local_sqlite(raw_db: bytes, *, table: str, dataset_id: str,
+                           source_id: str, access_level: str,
+                           consent: bool = False) -> dict[str, Any]:
+    """Read a bounded SQLite *byte copy* in memory, no caller SQL or disk I/O.
+
+    This is NOT a secure parser for hostile DB files. A sandboxed worker and
+    institution ACL are needed for actual confidential document ingestion.
+    """
+    import sqlite3
+    if (type(raw_db) is not bytes or not 100 < len(raw_db) <= 2_000_000
+            or not raw_db.startswith(b"SQLite format 3\x00")
+            or not _id(table) or table.startswith("sqlite_")
+            or access_level not in ("PUBLIC", "PRIVATE")
+            or type(consent) is not bool
+            or (access_level == "PRIVATE" and not consent)):
+        raise ValueError("SQLITE_INPUT_OR_SCOPE_DENIED")
+    connection = sqlite3.connect(":memory:")
+    try:
+        connection.deserialize(raw_db)
+        connection.execute("PRAGMA trusted_schema=OFF")
+        connection.execute("PRAGMA query_only=ON")
+        meta=connection.execute(
+            "SELECT type,sql FROM sqlite_master WHERE name=?",(table,)
+        ).fetchone()
+        if (meta is None or meta[0] != "table"
+                or type(meta[1]) is not str
+                or "VIRTUAL TABLE" in meta[1].upper()):
+            raise ValueError("SQLITE_PLAIN_TABLE_REQUIRED")
+        cols=[r[1] for r in connection.execute(f'PRAGMA table_info("{table}")')]
+        if tuple(cols) != HEADER:
+            raise ValueError("SQLITE_CANONICAL_COLUMNS_REQUIRED")
+        query="SELECT " + ",".join('"'+c+'"' for c in HEADER)+f' FROM "{table}" LIMIT {_MAX_ROWS+1}'
+        values=connection.execute(query).fetchall()
+        if not values or len(values)>_MAX_ROWS:
+            raise ValueError("SQLITE_ROW_LIMIT_OR_EMPTY")
+        f=StringIO(newline="")
+        writer=csv.writer(f,lineterminator="\n")
+        writer.writerow(HEADER)
+        for row in values:
+            if any(type(cell) is not str for cell in row):
+                raise ValueError("SQLITE_TEXT_COLUMNS_REQUIRED")
+            writer.writerow(row)
+        normalized=normalize_local_csv(f.getvalue().encode("utf-8"),
+            dataset_id=dataset_id,source_id=source_id,
+            access_level=access_level,consent=consent)
+        source_hash=sha256(raw_db).hexdigest()
+        normalized["normalized_csv_sha256"]=normalized["source_sha256"]
+        normalized["source_sha256"]=source_hash
+        normalized["source_type"]="SQLITE_IN_MEMORY_READ_ONLY"
+        for row in normalized["records"]:
+            row["evidence_sha256"]=source_hash
+        return normalized
+    except (sqlite3.DatabaseError, UnicodeError, AttributeError) as exc:
+        raise ValueError("SQLITE_MALFORMED_OR_UNSUPPORTED") from exc
+    finally:
+        connection.close()
