@@ -23,6 +23,7 @@ from .kuodra_local_agent_workflow import (
     plan_local_question, run_owner_local_question, render_local_question_html,
 )
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
+from .kuodra_identity_approval import approve_local_identity_mapping
 from .kuodra_review_report import _canonical
 from .kuodra_synthetic_demo import _csv, _table_rows
 
@@ -39,7 +40,7 @@ _EXAMPLES = {
 _CASES = {"일치 주장 (HOLD)": "100.00", "충돌 주장 (REJECT)": "300.00"}
 
 
-def _fictional_vault() -> tuple[OwnerLocalGateway, VerifiedPrincipal]:
+def _fictional_vault() -> tuple[OwnerLocalGateway, VerifiedPrincipal, VerifiedPrincipal]:
     """Build a fresh in-memory fictional owner-scoped PUBLIC/PRIVATE pair."""
     owner = VerifiedPrincipal("syntheticOwner", "syntheticInstitution", ("owner",), True)
     analyst = VerifiedPrincipal("syntheticAnalyst", "syntheticInstitution",
@@ -51,12 +52,13 @@ def _fictional_vault() -> tuple[OwnerLocalGateway, VerifiedPrincipal]:
                      source_id="syntheticSourceA", access_level="PUBLIC")
     vault.ingest_csv(owner, raw=private, dataset_id="fakePrivate",
                      source_id="syntheticSourceB", access_level="PRIVATE")
-    return vault, analyst
+    return vault, owner, analyst
 
 
 def run_fictional_agent_ui_case(
     *, question: str, mode: str, claim: str,
     consent_ephemeral_audit: bool,
+    consent_fictional_identity_mapping: bool = False,
 ) -> dict[str, Any]:
     """Actual local engine invocation with a discarded, ephemeral audit.
 
@@ -65,17 +67,31 @@ def run_fictional_agent_ui_case(
     Returning only a restricted JSON packet allows safe page rerenders.
     """
     if (mode not in _EXAMPLES or claim not in _CASES.values()
-            or type(consent_ephemeral_audit) is not bool):
+            or type(consent_ephemeral_audit) is not bool
+            or type(consent_fictional_identity_mapping) is not bool):
         raise ValueError("SYNTHETIC_UI_SELECTION_INVALID")
     plan = plan_local_question(question)
     if plan["status"] != "READY" or plan["mode"] != mode:
         raise ValueError("QUESTION_AND_SELECTED_SOURCES_MUST_MATCH")
     if mode != "ML_ONLY" and not consent_ephemeral_audit:
         raise ValueError("EXPLICIT_EPHEMERAL_SQLITE_CONSENT_REQUIRED")
+    if mode in ("ML_ONLY", "SEC_ML") and not consent_fictional_identity_mapping:
+        raise ValueError("FICTIONAL_IDENTITY_MAPPING_EXPLICIT_ACK_REQUIRED")
     with TemporaryDirectory(prefix="kuodra-fictional-agent-screen-") as tmp:
-        vault, principal = _fictional_vault()
+        vault, owner, principal = _fictional_vault()
         arguments = {"vault": vault, "principal": principal}
         if mode in ("ML_ONLY", "SEC_ML"):
+            pub = vault._datasets["fakePublic"]
+            priv = vault._datasets["fakePrivate"]
+            aliases = {r["entity_id"]: r["entity_id"] for r in pub["records"]}
+            approval = approve_local_identity_mapping(
+                vault, owner,
+                public_dataset_id="fakePublic", private_dataset_id="fakePrivate",
+                public_sha256=pub["source_sha256"],
+                private_sha256=priv["source_sha256"],
+                aliases=aliases, as_of="2026-01-01T00:00:00Z",
+                acknowledge_unverified_issuer_identity=True)
+            arguments["identity_approval_token"] = approval["one_use_token"]
             arguments.update(
                 private_dataset_id="fakePrivate", public_dataset_id="fakePublic",
                 target_metric="private.outcome", feature_metrics=("public.factor",),
@@ -122,6 +138,15 @@ def run_fictional_agent_ui_case(
         if mode == "SEC_ML" and result.get("cross_source_entity_link") != (
                 "NOT_ESTABLISHED_DO_NOT_JOIN_OR_COMPARE_ISSUERS"):
             raise ValueError("SYNTHETIC_UI_ISSUER_LINK_POLICY_INVALID")
+        mapping = result.get("local_public_private_identity_review")
+        if mode in ("ML_ONLY", "SEC_ML"):
+            if (type(mapping) is not dict
+                    or mapping.get("single_use_consumed") is not True
+                    or mapping.get("cross_source_identity_verified") is not False
+                    or vault._local_identity_approvals):
+                raise ValueError("SYNTHETIC_IDENTITY_MAPPING_NOT_CONSUMED")
+        elif mapping is not None:
+            raise ValueError("UNSELECTED_IDENTITY_MAPPING_RESULT")
         html = render_local_question_html(result)
         if "<script" in html.lower() or "default-src 'none'" not in html:
             raise ValueError("SYNTHETIC_UI_HTML_INERTNESS_INVALID")
@@ -133,6 +158,8 @@ def run_fictional_agent_ui_case(
             "decision": result["decision"], "tool_calls": result["tool_calls"],
             "trace": result["trace"],
             "review": result["review"],
+            "local_public_private_identity_review":
+                result["local_public_private_identity_review"],
             "agent_receipt_sha256": result["receipt_sha256"],
             "audit_chain_verified_ephemeral": audited,
             "audit_retained": False,
@@ -160,6 +187,7 @@ def render_fictional_agent_ui(st) -> None:
     def reset_audit_consent() -> None:
         # Consent is tied to one exact source/question/claim selection.
         st.session_state["kuodra_agent_audit_consent"] = False
+        st.session_state["kuodra_agent_identity_consent"] = False
 
     def source_changed() -> None:
         reset_audit_consent()
@@ -190,6 +218,10 @@ def render_fictional_agent_ui(st) -> None:
         value=False, key="kuodra_agent_audit_consent",
         disabled=mode == "ML_ONLY",
     )
+    identity_consent = st.checkbox(
+        "가상 공개·비공개 기업 연결은 출처 인증이 아님을 확인하고 승인",
+        value=False, key="kuodra_agent_identity_consent",
+        disabled=mode == "SEC_ONLY")
     plan = plan_local_question(question)
     if plan["status"] == "READY" and plan["mode"] == mode:
         st.json({"selected_tools": list(plan["selected_tools"]),
@@ -200,14 +232,17 @@ def render_fictional_agent_ui(st) -> None:
         st.warning("질문의 SEC/ML 요청과 선택한 자료가 일치해야 합니다. "
                    "지원하지 않는 실행·주문 요청은 차단됩니다.")
     allowed = (plan["status"] == "READY" and plan["mode"] == mode
-               and (mode == "ML_ONLY" or consent is True))
+               and (mode == "ML_ONLY" or consent is True)
+               and (mode == "SEC_ONLY" or identity_consent is True))
     if not st.button("선택한 Agent 검토 실행", key="kuodra_agent_execute",
                      disabled=not allowed):
         return
     try:
         receipt = run_fictional_agent_ui_case(
             question=question, mode=mode, claim=_CASES[claim_label],
-            consent_ephemeral_audit=consent if mode != "ML_ONLY" else False)
+            consent_ephemeral_audit=consent if mode != "ML_ONLY" else False,
+            consent_fictional_identity_mapping=(
+                identity_consent if mode != "SEC_ONLY" else False))
     except RuntimeError:
         st.error("감사 결과 불명: 실행을 재시도하지 말고 로컬 상태를 확인하십시오.")
         return

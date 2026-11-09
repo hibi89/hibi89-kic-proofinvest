@@ -24,10 +24,12 @@ class FictionalAgentUIWorkflowTests(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
-    def execute(self, question, mode, claim="100.00", consent=True):
+    def execute(self, question, mode, claim="100.00", consent=True,
+                identity=True):
         return run_fictional_agent_ui_case(
             question=question, mode=mode, claim=claim,
-            consent_ephemeral_audit=consent)
+            consent_ephemeral_audit=consent,
+            consent_fictional_identity_mapping=identity)
 
     def test_synthetic_combined_real_engines_hold_reject_and_redaction(self):
         question = "SEC 공시와 다변수 ML을 함께 검토해줘"
@@ -50,6 +52,16 @@ class FictionalAgentUIWorkflowTests(unittest.TestCase):
                                   "syntheticOwner", "fictitiousIssuer"):
                     self.assertNotIn(sensitive, json.dumps(report))
         self.assertFalse((self.home / "audit.sqlite").exists())
+
+    def test_ml_only_identity_approval_mandatory(self):
+        with self.assertRaisesRegex(ValueError,
+                                    "FICTIONAL_IDENTITY_MAPPING_EXPLICIT_ACK"):
+            self.execute("다변수 ML 검토", "ML_ONLY",
+                         consent=False, identity=False)
+        r=self.execute("다변수 ML 검토", "ML_ONLY",
+                       consent=False, identity=True)
+        self.assertTrue(r["local_public_private_identity_review"]
+                        ["single_use_consumed"])
 
     def test_ml_only_is_readonly_and_never_promotes_source(self):
         out = self.execute("공개 비공개 다변수 ML 검토", "ML_ONLY",
@@ -97,6 +109,7 @@ class FictionalAgentUIWorkflowTests(unittest.TestCase):
         self.assertFalse(any(m.label == "Guard" for m in at.metric))
         self.assertTrue(at.button(key="kuodra_agent_execute").disabled)
         at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
+        at.checkbox(key="kuodra_agent_identity_consent").set_value(True).run(timeout=20)
         self.assertFalse(at.button(key="kuodra_agent_execute").disabled)
         at.button(key="kuodra_agent_execute").click().run(timeout=35)
         self.assertFalse(at.exception, [str(x.message) for x in at.exception])
@@ -109,10 +122,12 @@ class FictionalAgentUIWorkflowTests(unittest.TestCase):
         at = AppTest.from_file(str(APP)).run(timeout=20)
         at.selectbox[0].set_value(MODE).run(timeout=20)
         at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
+        at.checkbox(key="kuodra_agent_identity_consent").set_value(True).run(timeout=20)
         self.assertFalse(at.button(key="kuodra_agent_execute").disabled)
         at.selectbox(key="kuodra_agent_claim").set_value(
             "충돌 주장 (REJECT)").run(timeout=20)
         self.assertFalse(at.checkbox(key="kuodra_agent_audit_consent").value)
+        self.assertFalse(at.checkbox(key="kuodra_agent_identity_consent").value)
         self.assertTrue(at.button(key="kuodra_agent_execute").disabled)
         at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
         at.selectbox(key="kuodra_agent_sources").set_value(

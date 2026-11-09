@@ -152,6 +152,8 @@ def run(output: Path) -> dict:
                             "button", name="선택한 Agent 검토 실행", exact=True)
                         consent = page.get_by_role(
                             "checkbox", name="임시 SQLite 감사 생성·검증·즉시 삭제에 동의 (SEC 선택 시 필수)")
+                        identity_consent = page.get_by_role(
+                            "checkbox", name="가상 공개·비공개 기업 연결은 출처 인증이 아님을 확인하고 승인")
                         claim = page.get_by_role("combobox", name="가상 매출 주장")
                         source = page.get_by_role("combobox", name="가상 자료 선택")
                         question = page.get_by_role("textbox", name="분석 요청 (SEC/공시, ML/다변수 중 명시)")
@@ -160,6 +162,12 @@ def run(output: Path) -> dict:
                                ).to_have_count(0)
                         assert not any(Path(home).rglob("*.sqlite")), "P314_PASSIVE_SQLITE"
                         receipts = []
+
+                        def grant_identity_consent():
+                            # Click actual label; the input is covered by
+                            # Streamlit 1.66 React-Aria pointer handling.
+                            page.get_by_test_id("stCheckbox").nth(1).locator("label").click()
+                            expect(identity_consent).to_be_checked(timeout=10000)
 
                         def grant_audit_consent():
                             # Streamlit 1.66 uses a React-Aria input covered by
@@ -217,13 +225,17 @@ def run(output: Path) -> dict:
                             return record
 
                         grant_audit_consent()
+                        expect(run_button).to_be_disabled()
+                        grant_identity_consent()
                         expect(run_button).to_be_enabled(timeout=10000)
                         execute_and_verify("SEC_ML", "HOLD", "p314-agent-hold.png")
 
                         choose_option(claim, "충돌 주장 (REJECT)")
                         expect(consent).not_to_be_checked(timeout=10000)
+                        expect(identity_consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
                         grant_audit_consent()
+                        grant_identity_consent()
                         execute_and_verify("SEC_ML", "REJECT", "p314-agent-reject.png")
 
                         # An unsafe operator intent must never be runnable,
@@ -240,11 +252,14 @@ def run(output: Path) -> dict:
                         choose_option(source, "공개/비공개 ML만")
                         expect(question).to_have_value("공개/비공개 다변수 ML 결과를 검토해줘")
                         expect(consent).to_be_disabled()
+                        expect(run_button).to_be_disabled()
+                        grant_identity_consent()
                         execute_and_verify("ML_ONLY", "HOLD",
                                            "p314-agent-ml-only.png")
 
                         choose_option(source, "가상 공시만")
                         expect(question).to_have_value("SEC 공시 원문 수치를 검토해줘")
+                        expect(identity_consent).to_be_disabled()
                         expect(consent).not_to_be_checked(timeout=10000)
                         expect(run_button).to_be_disabled()
                         grant_audit_consent()

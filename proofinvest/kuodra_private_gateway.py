@@ -50,6 +50,7 @@ class OwnerLocalGateway:
         self._owner = owner_id
         self._datasets: dict[str, dict[str, Any]] = {}
         self._allowed_roles: dict[str, frozenset[str]] = {}
+        self._local_identity_approvals: dict[str, dict[str, Any]] = {}
 
     def _check(self, principal: VerifiedPrincipal, *, write: bool = False,
                dataset_id: str | None = None) -> None:

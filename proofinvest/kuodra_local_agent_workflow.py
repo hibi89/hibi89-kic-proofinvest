@@ -18,6 +18,7 @@ from disclosure_lightning.core import MAX_JSON_BYTES
 from disclosure_lightning.originals import MAX_FILING_BYTES
 
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
+from .kuodra_identity_approval import consume_local_identity_mapping
 from .kuodra_review_report import _canonical, build_owner_group_review
 from .kuodra_sec_ml_review_bridge import build_local_sec_ml_review
 from .local_sec_guard_report import (
@@ -168,6 +169,7 @@ def run_owner_local_question(
     sec_bytes: dict[str, bytes] | None = None,
     sec_options: dict[str, Any] | None = None,
     consent_local_sec_audit: bool = False,
+    identity_approval_token: str | None = None,
 ) -> dict[str, Any]:
     """Execute a maximum of two existing core tool calls under local policy.
 
@@ -194,6 +196,13 @@ def run_owner_local_question(
             vault._check(principal, dataset_id=private_dataset_id)
             if public_dataset_id is not None:
                 vault._check(principal, dataset_id=public_dataset_id)
+        # Even equal entity IDs from two sources require an owner-approved
+        # one-use issuer mapping before the shared ML engine may join them.
+        if wants_ml and public_dataset_id is not None:
+            if type(identity_approval_token) is not str:
+                return _blocked("LOCAL_HYBRID_IDENTITY_APPROVAL_REQUIRED")
+        elif identity_approval_token is not None:
+            return _blocked("IDENTITY_TOKEN_FOR_UNSELECTED_JOIN_DENIED")
         if wants_sec:
             if consent_local_sec_audit is not True:
                 return _blocked("EXPLICIT_LOCAL_SEC_AUDIT_CONSENT_REQUIRED")
@@ -204,9 +213,16 @@ def run_owner_local_question(
         # All access checks, source pin preflights and consent gates precede
         # the first tool; ML evaluation is read-only and happens before audit.
         ml_packet = None
+        identity_review = None
+        ml_vault = vault
+        if wants_ml and public_dataset_id is not None:
+            ml_vault, identity_review = consume_local_identity_mapping(
+                vault, principal, token=identity_approval_token,
+                public_dataset_id=public_dataset_id,
+                private_dataset_id=private_dataset_id, as_of=ml_as_of)
         if wants_ml:
             ml_packet = build_owner_group_review(
-                vault, principal, private_dataset_id=private_dataset_id,
+                ml_vault, principal, private_dataset_id=private_dataset_id,
                 public_dataset_id=public_dataset_id,
                 target_metric=target_metric, feature_metrics=feature_metrics,
                 as_of=ml_as_of)
@@ -253,6 +269,8 @@ def run_owner_local_question(
                    "SEC_GUARD_AUDIT", "HUMAN_REVIEW"]),
         "audit_written": wants_sec,
         "audit_persistence_consented": wants_sec and consent_local_sec_audit,
+        "local_public_private_identity_review": identity_review,
+        "public_private_identity_independently_verified": False,
         "cross_source_entity_link": (
             "NOT_ESTABLISHED_DO_NOT_JOIN_OR_COMPARE_ISSUERS"
             if mode == "SEC_ML" else "NOT_APPLICABLE"),

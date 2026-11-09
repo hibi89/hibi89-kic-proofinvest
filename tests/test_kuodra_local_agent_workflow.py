@@ -18,6 +18,7 @@ from proofinvest.kuodra_local_agent_workflow import (
     plan_local_question, render_local_question_html, run_owner_local_question,
 )
 from proofinvest.kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
+from proofinvest.kuodra_identity_approval import approve_local_identity_mapping
 from proofinvest.kuodra_synthetic_demo import _csv, _table_rows
 from proofinvest.guard_audit import GuardAuditStore
 
@@ -84,6 +85,47 @@ class LocalQuestionToolWorkflowTests(unittest.TestCase):
         self.assertEqual(plan_local_question("공시 검토하고 매수 주문")["status"], "BLOCKED")
         self.assertEqual(plan_local_question("https://attacker.example SEC")["status"], "BLOCKED")
         self.assertFalse(self.db.exists())
+
+    def test_missing_hybrid_owner_approval_fails_before_ml_or_sqlite(self):
+        public=_csv(_table_rows(metric="factor"))
+        self.vault.ingest_csv(OWNER,raw=public,dataset_id="fictionalPublic",
+            source_id="separate",access_level="PUBLIC")
+        self.ml_options.update(public_dataset_id="fictionalPublic",
+            target_metric="private.target",feature_metrics=("public.factor",))
+        result=self.call()
+        self.assertEqual(result["reason_code"],
+                         "LOCAL_HYBRID_IDENTITY_APPROVAL_REQUIRED")
+        self.assertFalse(self.db.exists())
+
+    def test_hybrid_owner_approval_consumed_once_and_replay_blocked(self):
+        pub=_csv(_table_rows(metric="factor"))
+        self.vault.ingest_csv(OWNER,raw=pub,dataset_id="fictionalPublic",
+            source_id="separate",access_level="PUBLIC")
+        public=self.vault._datasets["fictionalPublic"]
+        private=self.vault._datasets["secretPrivate"]
+        ticket=approve_local_identity_mapping(
+            self.vault, OWNER, public_dataset_id="fictionalPublic",
+            private_dataset_id="secretPrivate",
+            public_sha256=public["source_sha256"],
+            private_sha256=private["source_sha256"],
+            aliases={r["entity_id"]: r["entity_id"] for r in public["records"]},
+            as_of="2026-01-01T00:00:00Z",
+            acknowledge_unverified_issuer_identity=True)
+        self.ml_options.update(public_dataset_id="fictionalPublic",
+            target_metric="private.target",feature_metrics=("public.factor",))
+        result=self.call(identity_approval_token=ticket["one_use_token"])
+        self.assertEqual(result["decision"],"HOLD")
+        self.assertEqual(result["status"],"LOCAL_HUMAN_REVIEW_REQUIRED")
+        self.assertTrue(result["local_public_private_identity_review"]
+                        ["single_use_consumed"])
+        self.assertFalse(result["local_public_private_identity_review"]
+                         ["cross_source_identity_verified"])
+        self.assertEqual(result["review"]["ml"]["summary"]["status"],
+                         "EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+        self.sec_options["audit_db_path"]=Path(self.temp.name)/"audit2.sqlite"
+        replay=self.call(identity_approval_token=ticket["one_use_token"])
+        self.assertEqual(replay["status"],"BLOCKED")
+        self.assertFalse(self.sec_options["audit_db_path"].exists())
 
     def test_joint_real_tools_hold_audit_and_redacted_report(self):
         originals = {k: sha256(v).hexdigest() for k, v in self.sec_bytes.items()}
