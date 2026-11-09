@@ -187,6 +187,15 @@ class LocalQuestionToolWorkflowTests(unittest.TestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertFalse(self.db.exists())
 
+    def test_post_audit_failure_never_misreports_no_sqlite_write(self):
+        with patch("proofinvest.kuodra_local_agent_workflow.build_local_sec_ml_review",
+                   side_effect=ValueError("synthetic bridge failure")):
+            with self.assertRaisesRegex(
+                    RuntimeError, "LOCAL_SEC_AUDIT_OUTCOME_UNKNOWN_INSPECT_LOCAL_DB"):
+                self.call()
+        self.assertTrue(self.db.exists())
+        self.assertTrue(GuardAuditStore(self.db).verify_chain())
+
     def test_html_receipt_and_no_active_content(self):
         result = self.call()
         html = render_local_question_html(result)

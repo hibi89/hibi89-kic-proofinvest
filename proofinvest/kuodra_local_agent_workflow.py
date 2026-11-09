@@ -182,6 +182,7 @@ def run_owner_local_question(
             or type(principal) is not VerifiedPrincipal
             or type(consent_local_sec_audit) is not bool):
         return _blocked("LOCAL_ACCESS_OR_CONSENT_INVALID")
+    audit_attempted = False
     try:
         vault._check(principal)
         mode = plan["mode"]
@@ -214,6 +215,9 @@ def run_owner_local_question(
                 raise ValueError("LOCAL_AGENT_ML_POLICY_INVALID")
         sec_report = None
         if wants_sec:
+            # The SEC function may persist SQLite before an exception.
+            # Never return audit_written=False once this call has started.
+            audit_attempted = True
             sec_report = review_local_sec_with_guard(
                 **sec_bytes, **sec_options)
             sec_small = _safe_sec_review(sec_report)
@@ -224,9 +228,13 @@ def run_owner_local_question(
             restricted, decision = ml_packet, "HOLD"
         else:
             restricted, decision = sec_small, sec_small["decision"]
-    except (PermissionError, ValueError, TypeError, KeyError, OSError):
-        # Fail closed; do not leak exact private dataset existence/identifiers.
-        # A consented SEC audit may already exist if downstream audit fails.
+    except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
+        # An audit may have been persisted even if the SEC or bridge step
+        # then failed. Never claim a failed audit attempt wrote nothing.
+        if audit_attempted:
+            raise RuntimeError(
+                "LOCAL_SEC_AUDIT_OUTCOME_UNKNOWN_INSPECT_LOCAL_DB") from exc
+        # Pre-audit failures are side-effect-free and safely redacted.
         return _blocked("LOCAL_SOURCE_ACCESS_OR_TOOL_REVIEW_FAILED")
 
     tools = list(plan["selected_tools"])
