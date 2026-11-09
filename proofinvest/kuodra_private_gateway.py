@@ -111,6 +111,24 @@ class OwnerLocalGateway:
         self._register(dataset_id, data, allowed_roles)
         return self._receipt(data)
 
+    def ingest_mapped_wide_sqlite(
+            self, principal: VerifiedPrincipal, *, raw_db: bytes, table: str,
+            dataset_id: str, source_id: str, access_level: str,
+            metric_columns: dict[str, tuple[str, str]],
+            allowed_roles: tuple[str, ...] = ("analyst",)) -> dict[str, Any]:
+        """Read approved local SQLite wide columns, with owner/role gate."""
+        self._check(principal, write=True)
+        self._check_roles(allowed_roles)
+        if dataset_id in self._datasets:
+            raise ValueError("GATEWAY_DATASET_ALREADY_REGISTERED")
+        from .kuodra_wide_sqlite_adapter import normalize_mapped_wide_sqlite
+        data = normalize_mapped_wide_sqlite(
+            raw_db, table=table, dataset_id=dataset_id,
+            source_id=source_id, access_level=access_level,
+            metric_columns=metric_columns, consent=access_level == "PRIVATE")
+        self._register(dataset_id, data, allowed_roles)
+        return self._receipt(data)
+
     @staticmethod
     def _check_roles(roles: tuple[str, ...]) -> None:
         if (type(roles) is not tuple or not roles or len(roles) > 8
