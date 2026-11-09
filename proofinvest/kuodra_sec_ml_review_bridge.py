@@ -157,6 +157,34 @@ def build_local_sec_ml_review(sec_report: dict[str, Any], ml_packet: dict[str, A
         summary["horizon_uniformity_policy"] = "INTERVAL_MAX_DIV_MIN_AT_MOST_1_15"
         summary["observed_horizon_min_days"] = low
         summary["observed_horizon_max_days"] = high
+    # A self-hashed local report is not an external signature. Its analysis
+    # state must also agree with the evidence: NO_TRAIN may not contain model
+    # performance, and a measured result needs real train/holdout samples
+    # and bounded nonnegative losses. Fail closed before rendering a claim.
+    if analysis["status"] == "NO_TRAIN":
+        if (summary["train_n"] != 0 or summary["holdout_n"] != 0
+                or summary["holdout_improvement_pct"] is not None
+                or any(k in analysis for k in (
+                    "selected_by_cv", "cv_mae", "cv_folds", "holdout_mae",
+                    "holdout_dummy_mae", "holdout_stability",
+                    "holdout_beats_dummy", "time_trend_warning",
+                    "cv_time_only_mae", "holdout_time_only_mae",
+                    "incremental_vs_time_only_pct"))):
+            raise ValueError("BRIDGE_ML_STATUS_METRICS_INCONSISTENT")
+    else:
+        model_mae = analysis.get("holdout_mae")
+        dummy_mae = analysis.get("holdout_dummy_mae")
+        if (summary["train_n"] < 50 or summary["holdout_n"] < 12
+                or analysis.get("selected_by_cv") not in ("dummy_mean", "ridge_scaled")
+                or type(model_mae) not in (int, float)
+                or type(dummy_mae) not in (int, float)
+                or not math.isfinite(model_mae) or not math.isfinite(dummy_mae)
+                or model_mae < 0 or dummy_mae < 0
+                or model_mae > 1e15 or dummy_mae > 1e15):
+            raise ValueError("BRIDGE_ML_MEASURED_EVIDENCE_MISSING")
+        summary["selected_by_cv"] = analysis["selected_by_cv"]
+        summary["holdout_mae"] = model_mae
+        summary["holdout_dummy_mae"] = dummy_mae
     # All output keys are hand-authored. Raw SEC/ML nested strings, names,
     # issuer ids and model features do not cross this allowlisted boundary.
     packet = {

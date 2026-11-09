@@ -55,6 +55,10 @@ def ml(scope="PRIVATE", status="NO_TRAIN"):
                        "access_level":"PRIVATE","publisher_authenticated":False,
                        "source_rights_verified":False}],
           "secret_canary":"MY_PRIVATE_SECRET_DO_NOT_EXPORT"}
+    if status=="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED":
+        data["analysis"].update({"train_n":60,"holdout_n":16,
+            "selected_by_cv":"ridge_scaled","holdout_mae":1.5,
+            "holdout_dummy_mae":2.0,"holdout_improvement_pct":25.0})
     if scope=="LOCAL_HYBRID":
         data["evidence"].insert(0,{"raw_source_sha256":"f"*64,"row_count":43,
                                   "access_level":"PUBLIC","publisher_authenticated":False,
@@ -238,6 +242,50 @@ class SecMLBridgeTest(unittest.TestCase):
                                                      if k!="receipt_sha256"})).hexdigest()
         with self.assertRaisesRegex(ValueError,"BRIDGE_UNSAFE_TARGET_HORIZON"):
             build_local_sec_ml_review(sec(),invalid)
+
+    def test_no_train_cannot_claim_sample_counts_or_metrics_after_rehash(self):
+        for tamper in ({"train_n":50}, {"holdout_n":12},
+                       {"holdout_improvement_pct":100.0},
+                       {"holdout_mae":0.0},
+                       {"selected_by_cv":"ridge_scaled"}):
+            with self.subTest(tamper=tamper):
+                forged=ml()
+                forged["analysis"].update(tamper)
+                forged["receipt_sha256"]=sha256(_canonical({
+                    k:v for k,v in forged.items() if k!="receipt_sha256"})).hexdigest()
+                with self.assertRaisesRegex(
+                        ValueError,"BRIDGE_ML_STATUS_METRICS_INCONSISTENT"):
+                    build_local_sec_ml_review(sec(),forged)
+
+    def test_measured_cannot_claim_success_without_real_sample_evidence(self):
+        for tamper in ({"train_n":0}, {"holdout_n":0},
+                       {"selected_by_cv":"secretModel"},
+                       {"holdout_mae":None}, {"holdout_mae":-1.0},
+                       {"holdout_dummy_mae":float("inf")}):
+            with self.subTest(tamper=tamper):
+                forged=ml(status="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED")
+                forged["analysis"].update(tamper)
+                # Infinity cannot be serialized in a canonical receipt;
+                # use the finite out-of-policy bound to test its rejection.
+                if forged["analysis"].get("holdout_dummy_mae")==float("inf"):
+                    forged["analysis"]["holdout_dummy_mae"]=1e20
+                forged["receipt_sha256"]=sha256(_canonical({
+                    k:v for k,v in forged.items() if k!="receipt_sha256"})).hexdigest()
+                with self.assertRaisesRegex(ValueError,
+                        "BRIDGE_ML_MEASURED_EVIDENCE_MISSING"):
+                    build_local_sec_ml_review(sec(),forged)
+
+    def test_valid_measured_metrics_are_bounded_and_keep_hold_policy(self):
+        report=build_local_sec_ml_review(sec(),ml(
+            status="EXPLORATORY_GROUP_TIME_HOLDOUT_MEASURED"))
+        result=report["ml"]["summary"]
+        self.assertEqual(result["train_n"],60)
+        self.assertEqual(result["holdout_n"],16)
+        self.assertEqual(result["selected_by_cv"],"ridge_scaled")
+        self.assertEqual(result["holdout_mae"],1.5)
+        self.assertEqual(result["holdout_dummy_mae"],2.0)
+        self.assertEqual(report["decision"],"HOLD")
+        self.assertFalse(report["independent_finance_validation"])
 
     def test_mock_socket_no_network_calls(self):
         with patch.object(socket.socket,"connect",side_effect=AssertionError("NETWORK")) as connect:
