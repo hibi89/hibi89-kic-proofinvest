@@ -79,3 +79,37 @@ class CanonicalTest(unittest.TestCase):
         self.assertFalse(d["publisher_vintage_verified"])
 
 if __name__ == "__main__": unittest.main()
+
+
+class SQLiteTest(unittest.TestCase):
+    @staticmethod
+    def _database():
+        import sqlite3
+        c=sqlite3.connect(":memory:")
+        c.execute("CREATE TABLE records(entity_id TEXT,metric_id TEXT,observation_at TEXT,available_at TEXT,value TEXT,unit TEXT)")
+        c.execute("INSERT INTO records VALUES(?,?,?,?,?,?)",(
+            "issuerA","sales","2026-01-01T00:00:00Z","2026-01-03T00:00:00Z","24.5","usd"))
+        data=c.serialize(); c.close();return data
+
+    def test_sqlite_read_only_normalizes_same_contract(self):
+        from proofinvest.kuodra_unified_core import normalize_local_sqlite
+        from hashlib import sha256
+        raw=self._database()
+        d=normalize_local_sqlite(raw,table="records",dataset_id="approved",source_id="upload",
+            access_level="PRIVATE",consent=True)
+        self.assertEqual(d["source_sha256"],sha256(raw).hexdigest())
+        self.assertEqual(d["records"][0]["evidence_sha256"],d["source_sha256"])
+        self.assertEqual(d["source_type"],"SQLITE_IN_MEMORY_READ_ONLY")
+        self.assertFalse(d["host_egress_policy_verified"])
+
+    def test_sqlite_rejects_table_injection(self):
+        from proofinvest.kuodra_unified_core import normalize_local_sqlite
+        with self.assertRaisesRegex(ValueError,"SQLITE_INPUT_OR_SCOPE_DENIED"):
+            normalize_local_sqlite(self._database(),table='records"; DROP TABLE',
+                dataset_id="approved",source_id="upload",access_level="PUBLIC")
+
+    def test_sqlite_private_missing_consent(self):
+        from proofinvest.kuodra_unified_core import normalize_local_sqlite
+        with self.assertRaisesRegex(ValueError,"SQLITE_INPUT_OR_SCOPE_DENIED"):
+            normalize_local_sqlite(self._database(),table="records",dataset_id="approved",
+                source_id="upload",access_level="PRIVATE")
