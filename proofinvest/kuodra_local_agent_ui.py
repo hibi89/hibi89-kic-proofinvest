@@ -157,6 +157,15 @@ def run_fictional_agent_ui_case(
 
 def render_fictional_agent_ui(st) -> None:
     """Render a fictional-only control panel; execution requires a real click."""
+    def reset_audit_consent() -> None:
+        # Consent is tied to one exact source/question/claim selection.
+        st.session_state["kuodra_agent_audit_consent"] = False
+
+    def source_changed() -> None:
+        reset_audit_consent()
+        st.session_state["kuodra_agent_question"] = _EXAMPLES[
+            _CHOICES[st.session_state["kuodra_agent_sources"]]]
+
     st.title("KUODRA — 질문 기반 SEC / ML / Guard Agent")
     st.warning(
         "SYNTHETIC ONLY · 실제 투자자료, 인증된 SEC 원본, 기관 비공개 파일을 "
@@ -166,14 +175,16 @@ def render_fictional_agent_ui(st) -> None:
     st.caption("한 번의 클릭에 선택된 로컬 도구 최대 2개 실행 · "
                "HOLD/REJECT만 출력 · 감사 SQLite는 임시 생성 후 삭제")
     selection = st.selectbox("가상 자료 선택", list(_CHOICES),
-                             key="kuodra_agent_sources")
+                             key="kuodra_agent_sources",
+                             on_change=source_changed)
     mode = _CHOICES[selection]
     question = st.text_area("분석 요청 (SEC/공시, ML/다변수 중 명시)",
                             value=_EXAMPLES[mode], key="kuodra_agent_question",
-                            max_chars=200)
+                            max_chars=200, on_change=reset_audit_consent)
     claim_label = st.selectbox("가상 매출 주장", list(_CASES),
                                key="kuodra_agent_claim",
-                               disabled=mode == "ML_ONLY")
+                               disabled=mode == "ML_ONLY",
+                               on_change=reset_audit_consent)
     consent = st.checkbox(
         "임시 SQLite 감사 생성·검증·즉시 삭제에 동의 (SEC 선택 시 필수)",
         value=False, key="kuodra_agent_audit_consent",

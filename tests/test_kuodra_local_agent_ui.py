@@ -104,6 +104,30 @@ class FictionalAgentUIWorkflowTests(unittest.TestCase):
         self.assertTrue(any("사람 검토 필요" in x.value for x in at.subheader))
         self.assertFalse((self.home / "audit.sqlite").exists())
 
+    def test_question_claim_and_source_changes_require_fresh_audit_consent(self):
+        from streamlit.testing.v1 import AppTest
+        at = AppTest.from_file(str(APP)).run(timeout=20)
+        at.selectbox[0].set_value(MODE).run(timeout=20)
+        at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
+        self.assertFalse(at.button(key="kuodra_agent_execute").disabled)
+        at.selectbox(key="kuodra_agent_claim").set_value(
+            "충돌 주장 (REJECT)").run(timeout=20)
+        self.assertFalse(at.checkbox(key="kuodra_agent_audit_consent").value)
+        self.assertTrue(at.button(key="kuodra_agent_execute").disabled)
+        at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
+        at.selectbox(key="kuodra_agent_sources").set_value(
+            "가상 공시만").run(timeout=20)
+        self.assertFalse(at.checkbox(key="kuodra_agent_audit_consent").value)
+        self.assertEqual(at.text_area(key="kuodra_agent_question").value,
+                         "SEC 공시 원문 수치를 검토해줘")
+        self.assertTrue(at.button(key="kuodra_agent_execute").disabled)
+        at.checkbox(key="kuodra_agent_audit_consent").set_value(True).run(timeout=20)
+        at.text_area(key="kuodra_agent_question").set_value(
+            "SEC 공시 수치를 다시 검토해줘").run(timeout=20)
+        self.assertFalse(at.checkbox(key="kuodra_agent_audit_consent").value)
+        self.assertTrue(at.button(key="kuodra_agent_execute").disabled)
+        self.assertFalse(at.exception, [str(x.message) for x in at.exception])
+
     def test_browser_question_and_source_mismatch_prevents_execution(self):
         from streamlit.testing.v1 import AppTest
         at = AppTest.from_file(str(APP)).run(timeout=20)
