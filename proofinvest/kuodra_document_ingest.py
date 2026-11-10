@@ -12,6 +12,7 @@ from io import BytesIO, StringIO
 import csv
 import zipfile
 from xml.etree import ElementTree
+from xml.parsers import expat
 from typing import Any
 
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
@@ -48,15 +49,19 @@ def _safe_docx_table(raw: bytes) -> tuple[list[list[str]], list[str]]:
             for x in info:
                 if x.filename.endswith(".rels"):
                     rel = z.read(x)
-                    # XML attribute references (&#x45;xternal) decode to
-                    # "External"; raw regex matching misses those links.
-                    # Reject DTDs, invalid relationship XML and all
-                    # non-internal relationship modes before the parser.
-                    if b"<!DOCTYPE" in rel.upper() or b"<!ENTITY" in rel.upper():
+                    # A raw-byte DTD scan misses UTF-16/other XML encodings.
+                    # Deny DTD/entity declarations in the encoding-aware XML
+                    # parser before python-docx handles any package part.
+                    parser = expat.ParserCreate()
+                    def _deny_declaration(*_args: object) -> None:
                         raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED")
+                    parser.StartDoctypeDeclHandler = _deny_declaration
+                    parser.EntityDeclHandler = _deny_declaration
+                    parser.ExternalEntityRefHandler = _deny_declaration
                     try:
+                        parser.Parse(rel, True)
                         root = ElementTree.fromstring(rel)
-                    except ElementTree.ParseError as exc:
+                    except (expat.ExpatError, ElementTree.ParseError) as exc:
                         raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED") from exc
                     if any((part.get("TargetMode") or "Internal").strip().casefold()
                            != "internal" for part in root.iter()):

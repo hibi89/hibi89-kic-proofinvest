@@ -141,6 +141,38 @@ class DocumentLocalTest(unittest.TestCase):
                     normalize_local_document(output.getvalue(), format="DOCX",
                         dataset_id="doc1", source_id="fixture", access_level="PUBLIC")
 
+    def test_utf16_relationship_dtd_denied_but_normal_utf16_allowed(self):
+        # A UTF-16 OOXML relationship with a DOCTYPE evades an ASCII byte
+        # scan; lxml/python-docx otherwise parses the file successfully.
+        from zipfile import ZipFile, ZIP_DEFLATED
+        for include_doctype in (False, True):
+            output = BytesIO()
+            with ZipFile(BytesIO(make_docx())) as original:
+                with ZipFile(output, "w", compression=ZIP_DEFLATED) as altered:
+                    for item in original.infolist():
+                        payload = original.read(item)
+                        if item.filename == "word/_rels/document.xml.rels":
+                            xml = payload.decode("utf-8")
+                            xml = xml[xml.index("<Relationships"):]
+                            doctype = ('<!DOCTYPE Relationships '
+                                       '[<!ENTITY unused "Internal">]>\\n'
+                                       if include_doctype else "")
+                            payload = ('<?xml version="1.0" encoding="UTF-16"?>\\n'
+                                       + doctype + xml).encode("utf-16")
+                        altered.writestr(item, payload)
+            with self.subTest(doctype=include_doctype):
+                if include_doctype:
+                    with self.assertRaisesRegex(ValueError,
+                                "DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED"):
+                        normalize_local_document(output.getvalue(), format="DOCX",
+                            dataset_id="doc1", source_id="fixture",
+                            access_level="PUBLIC")
+                else:
+                    result = normalize_local_document(output.getvalue(),
+                        format="DOCX", dataset_id="doc1", source_id="fixture",
+                        access_level="PUBLIC")
+                    self.assertEqual(result["rows"], 1)
+
     def test_role_scoped_document_ingest(self):
         raw=make_docx()
         vault=OwnerLocalGateway("fund1")
