@@ -88,6 +88,34 @@ class DocumentLocalTest(unittest.TestCase):
                 normalize_local_document(b"invalid-file",format=format,
                     dataset_id="p",source_id="s",access_level="PUBLIC")
 
+    def test_duplicate_docx_package_part_rejected_before_parser(self):
+        # Duplicate word/document.xml entries are ambiguous: python-docx
+        # picks the last entry, though the ZIP contains both original claims.
+        from zipfile import ZipFile, ZIP_DEFLATED
+        import warnings
+        with ZipFile(BytesIO(make_docx())) as package:
+            parts = [(entry.filename, package.read(entry))
+                     for entry in package.infolist()]
+        original_xml = dict(parts)["word/document.xml"]
+        alternative_xml = original_xml.replace(b"issuerA", b"issuerB")
+        self.assertNotEqual(original_xml, alternative_xml)
+        for extra_first in (True, False):
+            output = BytesIO()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with ZipFile(output, "w", compression=ZIP_DEFLATED) as out:
+                    if extra_first:
+                        out.writestr("word/document.xml", alternative_xml)
+                    for name, contents in parts:
+                        out.writestr(name, contents)
+                    if not extra_first:
+                        out.writestr("word/document.xml", alternative_xml)
+            with self.subTest(extra_first=extra_first):
+                with self.assertRaisesRegex(ValueError,
+                                            "DOCUMENT_DOCX_PACKAGE_DENIED"):
+                    normalize_local_document(output.getvalue(), format="DOCX",
+                        dataset_id="doc1", source_id="fixture", access_level="PUBLIC")
+
     def test_encoded_external_docx_relationship_is_denied_before_parser(self):
         # XML entity decoding turns &#x45;xternal into External.
         from zipfile import ZipFile, ZIP_DEFLATED

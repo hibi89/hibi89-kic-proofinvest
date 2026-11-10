@@ -31,6 +31,10 @@ def _safe_docx_table(raw: bytes) -> tuple[list[list[str]], list[str]]:
         with zipfile.ZipFile(BytesIO(raw)) as z:
             info = z.infolist()
             if (not 1 <= len(info) <= _MAX_ZIP_ITEMS
+                    # Duplicate OPC package parts are ambiguous: zipfile and
+                    # python-docx may resolve different-looking originals to
+                    # the last copy. Never interpret such financial evidence.
+                    or len({x.filename for x in info}) != len(info)
                     or sum(x.file_size for x in info) > _MAX_ZIP_EXPANDED
                     or any(x.flag_bits & 1 for x in info)
                     or any(x.filename.startswith("/") or ".." in x.filename.split("/")
