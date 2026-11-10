@@ -41,6 +41,21 @@ class CanonicalTest(unittest.TestCase):
         self.assertEqual(r["status"],"INSUFFICIENT_EVIDENCE")
         self.assertEqual(r["insights"],[])
 
+    def test_historical_association_rejects_future_observation_backdated_release(self):
+        # A locally normalized source may be represented by mutable records.
+        # Altering its later observation to claim a release before observation
+        # previously smuggled a future pair into the 2026-01-17 review.
+        d=fixture()
+        valid=observed_relationships(d,metrics=("x","y"),
+            as_of="2026-01-17T00:00:00Z")
+        self.assertEqual(valid["insights"][0]["paired_n"],17)
+        for row in d["records"]:
+            if row["observation_at"]>"2026-01-17T00:00:00Z":
+                row["available_at"]="2026-01-01T00:00:00Z"
+        with self.assertRaisesRegex(ValueError,"INSIGHT_RELEASE_ORDER_INVALID"):
+            observed_relationships(d,metrics=("x","y"),
+                as_of="2026-01-17T00:00:00Z")
+
     def test_private_requires_consent(self):
         with self.assertRaisesRegex(ValueError,"CANONICAL_SOURCE_POLICY_DENIED"):
             normalize_local_csv(b"a",dataset_id="d",source_id="s",access_level="PRIVATE")

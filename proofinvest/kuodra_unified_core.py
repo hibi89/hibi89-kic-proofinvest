@@ -131,7 +131,15 @@ def observed_relationships(dataset: dict, *, metrics: tuple[str, ...],
                 or row.get("source_id") != dataset["source_id"]
                 or row.get("evidence_sha256") != dataset["source_sha256"]):
             raise ValueError("INSIGHT_SOURCE_LINEAGE_INVALID")
-        if row["metric_id"] not in metrics or _instant(row["available_at"]) > cutoff:
+        # The canonical dataset is a mutable Python mapping after import.
+        # A caller may modify its observation/release timestamps without
+        # changing the stored source label. Revalidate chronology BEFORE
+        # filtering; otherwise an impossible, backdated release can insert
+        # future observations into a historical association.
+        observed, released = _instant(row["observation_at"]), _instant(row["available_at"])
+        if released < observed:
+            raise ValueError("INSIGHT_RELEASE_ORDER_INVALID")
+        if row["metric_id"] not in metrics or observed > cutoff or released > cutoff:
             continue
         key = (row["entity_id"], row["observation_at"])
         bucket = grouped.setdefault(key, {})
