@@ -10,8 +10,8 @@ from __future__ import annotations
 from hashlib import sha256
 from io import BytesIO, StringIO
 import csv
-import re
 import zipfile
+from xml.etree import ElementTree
 from typing import Any
 
 from .kuodra_private_gateway import OwnerLocalGateway, VerifiedPrincipal
@@ -44,7 +44,18 @@ def _safe_docx_table(raw: bytes) -> tuple[list[list[str]], list[str]]:
             for x in info:
                 if x.filename.endswith(".rels"):
                     rel = z.read(x)
-                    if re.search(rb'TargetMode\s*=\s*["\']External["\']', rel, re.I):
+                    # XML attribute references (&#x45;xternal) decode to
+                    # "External"; raw regex matching misses those links.
+                    # Reject DTDs, invalid relationship XML and all
+                    # non-internal relationship modes before the parser.
+                    if b"<!DOCTYPE" in rel.upper() or b"<!ENTITY" in rel.upper():
+                        raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED")
+                    try:
+                        root = ElementTree.fromstring(rel)
+                    except ElementTree.ParseError as exc:
+                        raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED") from exc
+                    if any((part.get("TargetMode") or "Internal").strip().casefold()
+                           != "internal" for part in root.iter()):
                         raise ValueError("DOCUMENT_EXTERNAL_RELATIONSHIP_DENIED")
     except (zipfile.BadZipFile, OSError, RuntimeError) as exc:
         raise ValueError("DOCUMENT_DOCX_PACKAGE_DENIED") from exc

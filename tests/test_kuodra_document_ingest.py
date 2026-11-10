@@ -88,6 +88,31 @@ class DocumentLocalTest(unittest.TestCase):
                 normalize_local_document(b"invalid-file",format=format,
                     dataset_id="p",source_id="s",access_level="PUBLIC")
 
+    def test_encoded_external_docx_relationship_is_denied_before_parser(self):
+        # XML entity decoding turns &#x45;xternal into External.
+        from zipfile import ZipFile, ZIP_DEFLATED
+        for mode in (b"External", b"&#x45;xternal"):
+            output = BytesIO()
+            with ZipFile(BytesIO(make_docx())) as original:
+                with ZipFile(output, "w", compression=ZIP_DEFLATED) as altered:
+                    for item in original.infolist():
+                        payload = original.read(item)
+                        if item.filename == "word/_rels/document.xml.rels":
+                            payload = payload.replace(
+                                b"</Relationships>",
+                                b'<Relationship Id="rId999" '
+                                b'Type="http://schemas.openxmlformats.org/'
+                                b'officeDocument/2006/relationships/hyperlink" '
+                                b'Target="https://attacker.invalid/doc" '
+                                b'TargetMode="' + mode + b'"/>'
+                                b'</Relationships>')
+                        altered.writestr(item, payload)
+            with self.subTest(mode=mode):
+                with self.assertRaisesRegex(ValueError,
+                                            "DOCUMENT_EXTERNAL_RELATIONSHIP_DENIED"):
+                    normalize_local_document(output.getvalue(), format="DOCX",
+                        dataset_id="doc1", source_id="fixture", access_level="PUBLIC")
+
     def test_role_scoped_document_ingest(self):
         raw=make_docx()
         vault=OwnerLocalGateway("fund1")
