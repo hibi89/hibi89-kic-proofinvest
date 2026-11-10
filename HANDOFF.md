@@ -1,3 +1,15 @@
+# P333 — 2026-11-11 KST — exported-PDF byte-integrity reconciliation; original candidate preserved; official submission pending
+1. Goal: ensure final downloadable/Library KIC PDF integrity before owner DAKER review, preserving P332 10-page official-form design.
+2. Completed: detected post-export PDF byte-level normalization after initial LibreOffice generation. No content-level edit, rerendered from the same editable PPTX and compared all 10 pages: exact text and rendered pixels equal to the normalized Library-bound PDF. Corrected private QA markdown and review ZIP.
+3. Verified exact final PDF (Library and download) SHA256 a1ce4a9aae6df98107b1dddfdf7c73f777e1c39823e4dd07363fe84f36fd739d, 427830 bytes; PPTX SHA256 7b436b2c9ea8c9de83dfb2f3873a6b08e82830deff5bfe7aceb532b4b177e7eb, 118892 bytes. 10 searchable unencrypted pages; 3 links; all text inside bounds; page 8 and 10 exact source citations. Prior intermediate PDF hash effdad93863bb6b9fba6451c289f3ab21707893e935f6779ca788f9ce1b03a52 and 402664 bytes are NON-delivery intermediate; use only final SHA above.
+4. Progress: final product 82/100 unchanged; PDF candidate validated, NOT user-approved and NOT submitted to DAKER; RELEASE HOLD remains. Rights 6p, institutional IAM/OS egress 7p, licensed live E2E 5p still pending.
+5. Issue/root/retry: detected QA hash mismatch via Library metadata verification; one reconciliation via native LibreOffice regeneration proved 10/10 pages pixel/text-identical; final QA files replaced with corrected evidence. Do not use stale intermediate SHA for submission.
+6. Repo/branch/evidence: hibi89/hibi89-kic-proofinvest lead/kic. Source/test SHA 808e62ef78904ec95448338b8573c7d8683b516c. GitHub Actions #42737631543 SUCCESS: Linux 2397 PASS 0 fail, Windows 2397 PASS 0 fail 1 skip; optional real-model jobs skipped.
+7. Production/runtime: N/A. No new backend build, testing, release or Production deployment. Offline PDF QA only.
+8. Originals/private artifacts: Library /KIC/KUODRA_KIC_OFFICIAL_SUBMISSION_20261111.pdf and .pptx, corrected KUODRA_KIC_FINAL_PDF_QA_20261111.md and corrected private ZIP. Earlier Library candidates retained; public GitHub has status-only docs, not PDF/PPTX.
+9. Next owner-only gate: approve candidate PDF, team data; DAKER submission tab upload PDF, team leader click 제출 완료, verify 최종 and capture receipt before Nov 12 10:00 KST. ZIP/PPTX not for DAKER.
+10. Date/verification boundary: 2026-11-11 KST; artifact content/renders/links and exact delivered SHA verified. Live institution data/AI inference, source rights, production, DAKER submission unverified.
+
 # P332 — 2026-11-11 KST — preliminary official-template PDF updated; PRIVATE Library backed up; DAKER NOT SUBMITTED
 1. Goal/scope: KUODRA unified public/private evidence-based Agent, KIC <=10-page PDF deadline Nov 12 10:00 KST. Official PDF only, backend source unchanged.
 2. Completed/design: preserved prior organizer-formatted PPTX and made a derivative copy. Refreshed only slide 8 and slide 10 CI/feature SHA and links to exact P331 test run; original source/template and previous candidate unmodified.
