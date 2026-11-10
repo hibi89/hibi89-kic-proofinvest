@@ -44,27 +44,31 @@ def _safe_docx_table(raw: bytes) -> tuple[list[list[str]], list[str]]:
                            or "activeX/" in x.filename for x in info)
                     or "word/document.xml" not in z.namelist()):
                 raise ValueError("DOCUMENT_DOCX_PACKAGE_DENIED")
-            # Reject external resource relationships. No network resolver should
-            # be used even if a future document library changes behavior.
+            # Validate EVERY XML package part, including the financial table
+            # itself. DTDs in word/document.xml also reach python-docx/lxml;
+            # scanning only relationships would miss that parser boundary.
             for x in info:
-                if x.filename.endswith(".rels"):
-                    rel = z.read(x)
-                    # A raw-byte DTD scan misses UTF-16/other XML encodings.
-                    # Deny DTD/entity declarations in the encoding-aware XML
-                    # parser before python-docx handles any package part.
+                lower_name = x.filename.lower()
+                is_rels = lower_name.endswith(".rels")
+                if is_rels or lower_name.endswith(".xml"):
+                    xml = z.read(x)
+                    error = ("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED" if is_rels
+                             else "DOCUMENT_DOCX_XML_DENIED")
                     parser = expat.ParserCreate()
                     def _deny_declaration(*_args: object) -> None:
-                        raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED")
+                        raise ValueError(error)
                     parser.StartDoctypeDeclHandler = _deny_declaration
                     parser.EntityDeclHandler = _deny_declaration
                     parser.ExternalEntityRefHandler = _deny_declaration
                     try:
-                        parser.Parse(rel, True)
-                        root = ElementTree.fromstring(rel)
+                        parser.Parse(xml, True)
+                        if is_rels:
+                            root = ElementTree.fromstring(xml)
                     except (expat.ExpatError, ElementTree.ParseError) as exc:
-                        raise ValueError("DOCUMENT_DOCX_RELATIONSHIP_XML_DENIED") from exc
-                    if any((part.get("TargetMode") or "Internal").strip().casefold()
-                           != "internal" for part in root.iter()):
+                        raise ValueError(error) from exc
+                    if is_rels and any(
+                            (part.get("TargetMode") or "Internal").strip().casefold()
+                            != "internal" for part in root.iter()):
                         raise ValueError("DOCUMENT_EXTERNAL_RELATIONSHIP_DENIED")
     except (zipfile.BadZipFile, OSError, RuntimeError) as exc:
         raise ValueError("DOCUMENT_DOCX_PACKAGE_DENIED") from exc

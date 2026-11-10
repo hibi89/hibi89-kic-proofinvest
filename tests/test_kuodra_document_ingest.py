@@ -173,6 +173,30 @@ class DocumentLocalTest(unittest.TestCase):
                         access_level="PUBLIC")
                     self.assertEqual(result["rows"], 1)
 
+    def test_docx_document_xml_doctype_denied_in_both_encodings(self):
+        # The main financial table XML is also parsed by python-docx.
+        # Its DTD must be rejected just like relationship-part DTDs.
+        from zipfile import ZipFile, ZIP_DEFLATED
+        for encoding in ("UTF-8", "UTF-16"):
+            output = BytesIO()
+            with ZipFile(BytesIO(make_docx())) as original:
+                with ZipFile(output, "w", compression=ZIP_DEFLATED) as altered:
+                    for item in original.infolist():
+                        payload = original.read(item)
+                        if item.filename == "word/document.xml":
+                            text = payload.decode("utf-8")
+                            text = text[text.index("<w:document"):]
+                            text = ('<?xml version="1.0" encoding="' + encoding
+                                    + '"?>\n<!DOCTYPE w:document '
+                                    + '[<!ENTITY fake "issuerB">]>\n' + text)
+                            payload = text.encode(
+                                "utf-16" if encoding == "UTF-16" else "utf-8")
+                        altered.writestr(item, payload)
+            with self.subTest(encoding=encoding):
+                with self.assertRaisesRegex(ValueError, "DOCUMENT_DOCX_XML_DENIED"):
+                    normalize_local_document(output.getvalue(), format="DOCX",
+                        dataset_id="doc1", source_id="fixture", access_level="PUBLIC")
+
     def test_role_scoped_document_ingest(self):
         raw=make_docx()
         vault=OwnerLocalGateway("fund1")
