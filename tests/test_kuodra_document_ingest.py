@@ -155,9 +155,9 @@ class DocumentLocalTest(unittest.TestCase):
                             xml = payload.decode("utf-8")
                             xml = xml[xml.index("<Relationships"):]
                             doctype = ('<!DOCTYPE Relationships '
-                                       '[<!ENTITY unused "Internal">]>\\n'
+                                       '[<!ENTITY unused "Internal">]>\n'
                                        if include_doctype else "")
-                            payload = ('<?xml version="1.0" encoding="UTF-16"?>\\n'
+                            payload = ('<?xml version="1.0" encoding="UTF-16"?>\n'
                                        + doctype + xml).encode("utf-16")
                         altered.writestr(item, payload)
             with self.subTest(doctype=include_doctype):
