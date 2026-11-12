@@ -1,3 +1,14 @@
+## 2026-11-12 KST — OWNER-APPROVED PRODUCT DIRECTION (supersedes draft labels for architecture only)
+- **승인 근거:** 사용자 "미국기업분석할라면 저작권때문에되긋나 되면 확정하지뭐". SEC 공식 API와 저작권청 설명을 확인하고 **미국 기업 재무 수치 분석은 이용 정책·원문 저작권·제3자 라이선스를 준수하는 범위에서 상업용 툴 구현 가능**하다는 조건으로 한국+미국 공통 코어, Windows 로컬, BASIC→PRO를 설계 확정.
+- **무엇이 확정인가:** 기존 미국 SEC A/B/C/Guard/ML 기능을 보존하고 한국 OpenDART/DART 법인 공시 어댑터를 추가. 첫 SKU는 **로컬 Windows 단일 기업 공시 재무검증**(SEC 미국 + DART 한국, 허가받은 사용자 파일 지원), 조건부 지표 분석, 출처·산식·표·그래프·Guard·재현 보고서. 가격대는 **시험 가설**, 정식 판매가 아님. 사용자 승인 없이 '투자 추천/확정 주가 버블/자동매매/상용 금융 성능' 홍보 금지.
+- **법적 판단 범위:** 미국 저작권청에 따르면 수치·사실 그 자체에는 저작권이 성립하지 않지만, 제출 기업의 서술 문장/그래픽/저작물까지 통째로 복제·재배포할 권리는 별개. SEC의 API 공개는 **데이터셋 전체 재판매 권리·SEC 보증**을 의미하지 않는다. 회사 공시의 숫자와 출처 링크를 근거로 **자체 계산한 결과만** 표시하고 원문 전체·도표를 상품에 번들하지 않는다. 추가 시장 데이터 계약/약관과 금융상품 규제를 개별 확인한다.
+- **SEC 근거 및 접근 정책:** SEC 공식 XBRL CompanyFacts 및 제출 이력 API는 인증키 없이 이용 가능: https://www.sec.gov/search-filings/edgar-application-programming-interfaces ; 요청자 식별 User-Agent, 공식 공정접근의 현재 **초당 최대 10요청**, 필요분만 조회·캐시·403/429 시 중단: https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data . 사용자 제공 SEC 로컬 파일도 지원하며, 실제 상용 접속 성공/차단·라이선스는 별도 검증 필요.
+- **미국 저작권 근거:** https://www.copyright.gov/help/faq/faq-general.html (Facts are not copyrightable; expression may be).
+- **Nasdaq 제한:** 미국 주가/지수는 SEC CompanyFacts와 별개. Nasdaq Global Index Data의 재배포는 사전 승인/라이선스가 필요하고 2026년에도 관련 데이터 정책이 업데이트됨: https://www.nasdaqtrader.com/TraderNews.aspx?id=DN2026-5 ; https://www.nasdaqtrader.com/TraderNews.aspx?id=DN2024-5 . 불명확하면 **A=UNAVAILABLE** 또는 고객이 정당한 라이선스를 보유한 파일만 분석. 사용자 SEC·DART 재무정보와 외부 시세 데이터를 무단 교차 결합/배포하지 않는다.
+- **한국 관할:** OpenDART는 개인·법인 접근을 설명하나 공시 콘텐츠의 상업적 재배포/제3자 권리는 독립적으로 검토: https://opendart.fss.or.kr/intro/main.do ; https://opendart.fss.or.kr/intro/terms.do .
+- **제품화 구현 허가 범위:** 위 확정 설계를 기준으로 기존 코드와 회귀 테스트를 검토하고, 외부 데이터 호출 없는 한국/미국 synthetic/offline adapter 개발과 문서·테스트 설계를 진행할 수 있다. **이번 업데이트 자체는 코드 수정/배포/판매/실제 SEC·DART 조회/유료 라이선스/가시성 변경을 실행하지 않는다.** 사용자 원본 보존 및 상품화 기능 변경 전에 복구 경로 확보.
+- **확정과 미확정 구분:** 설계 확정 / 상용 저작권 전체 면책은 아님 / 실제 데이터 연결과 금융업·시장 데이터 약관·Windows 설치·상품 시장성·판매 시작은 아직 미검증/보류. 기존 82/100 engineering/RELEASE HOLD, KIC 제출 원본·기능 SHA 불변.
+
 # KUODRA — 국내 주식·기업 검증 확장 및 크몽 상품화 사전기획
 **작성 기준:** 2026-11-12 KST · **상태:** 조사 및 설계 초안 / 소유자 최종 승인 전 · **판매 및 코드 개발 미착수**
 
