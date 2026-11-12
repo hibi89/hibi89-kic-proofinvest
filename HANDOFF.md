@@ -1,3 +1,15 @@
+# P339 — 2026-11-12 KST — KUODRA 미국 SEC·한국 DART 크몽 상품화 설계 조건부 승인
+1. **목표·확정 기술:** 사용자 '미국기업분석 저작권 문제 해결되면 확정' 지시. SEC 공식 XBRL 수치의 자체 분석 가능성과 원문/시장데이터 재배포의 분리 확인 후 한국+미국 공통 KUODRA A/B/C/Guard/ML 코어, 한국 DART 어댑터, 로컬 Windows BASIC→PRO **아키텍처 확정**. 투자 매매/수익 예측 판매 약속 없음.
+2. **완료·결정:** 선택 A=한국 전용 재개발 vs B=기존 미국/한국 코어 재사용 중 B 채택. 설치 A=Windows 로컬 vs B=SaaS 중 로컬 채택. [승인과 법적 경계](docs/strategy/KUODRA_KR_KMONG_PRODUCTIZATION_DISCOVERY_20261112.md) 반영. 시험가격과 BUSINESS 범위·실제 판매 GO는 미승인.
+3. **검증:** SEC API 공식 문서 https://www.sec.gov/search-filings/edgar-application-programming-interfaces ; SEC fair access https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data ; 미국 저작권청 https://www.copyright.gov/help/faq/faq-general.html ; Nasdaq 2026 정책 https://www.nasdaqtrader.com/TraderNews.aspx?id=DN2026-5 확인. 이번 기능 테스트/CI 0건. 기존 검증 코드 SHA `808e62ef78904ec95448338b8573c7d8683b516c`, CI `42737631543` Linux/Windows 각 2397 실행·0실패(Windows 1 skip).
+4. **상태:** 상품화 **설계 확정 / 구현 미착수 / 판매 미승인**. 엔지니어링 82/100 RELEASE HOLD. KIC 예선 공식 결과·확정된 재배포 사용권·금융 규제·시장성/실사용 미확인.
+5. **위험과 대응:** SEC 접근 무료=원문저작물/재배포 무조건 허가 아님. 재무 '사실·수치' 중심 자체 분석, 저작물 본문 번들 금지. Nasdaq 역사·지수·거래 데이터 무단 재배포 금지. SEC 식별자 User-Agent·초당 최대 10회·403/429 안전 중단; 직접 SEC 차단 시 고객 제공 적법 파일·UNAVAILABLE. 한국 OpenDART 권한/출처/서식/마켓 사용 약관 별도 확인.
+6. **저장소·브랜치·SHA:** `hibi89/hibi89-kic-proofinvest` `lead/kic`. 설계 승인 문서 변경 커밋 `ed6e1deffa76178a9b01550e169b6591e890e018`. STATUS·HANDOFF 후속 커밋 SHA는 원격 검증 후 사용. 기능 기준 SHA 위 참조.
+7. **Production:** 미적용. 로컬 `python -m streamlit run streamlit_app.py`, 확인 명령 `python -B -m scripts.verify_local --full` 그대로. 앱 실행·Windows 실설치·공개 배포 테스트 없음.
+8. **원본·보안:** Git 히스토리 복구 가능, KIC 제출 파일·기존 소스·개인 데이터·외부 계정/키/개인 정보 불변. 신규 코드·새 저장소·브랜치·가시성 변경 없음. 원본/고객 보안 자료 외부 전송 금지.
+9. **다음 순서·완료:** KIC 원본 읽기/검증→한국 DART synthetic bridge + 공통 스키마 테스트→미국 SEC 및 한국 재무 B/C 출처/산식·Guard 보고서→적법 시세 입력 A 옵션→차트/보고서→Windows 로컬 패키지 검증→금융법/데이터 공급자 사용권 및 사용자 판매 GO. 유료 API/실기관 정보/외부 서비스 권한 변경·등록·원본 변경은 승인 별도.
+10. **KST 검증 범위:** 2026-11-12. 공식 공개 정책 문서 및 GitHub 설계 저장 확인 범위 한정, 법률 자문·제3자 공급자 개별 상업권 계약/실API 상용 검증이 아니라는 점 명시. 설계 기준 최종 SHA 후속 확인.
+
 # P338 — 2026-11-12 KST — KUODRA KR/글로벌 크몽 상품화 사전조사 문서화 (구현·판매 미시작)
 1. **목표/범위/기술:** KIC 예선 제출 후 코드 자산 보존하며 국내 KOSPI/KOSDAQ 기업공시, 기업 재무/거래처 실사, 기존 미국 SEC, 추후 비공개 기관자료 시장의 순차 확장 가능성과 크몽 고객용 소프트웨어 상품화를 조사. Python/Streamlit/SQLite/scikit-learn A/B/C/Guard 기존 코어 유지.
 2. **완료/결정 근거:** 사용자 요청에 따라 시장조사와 실행 전 설계만 GitHub에 신규 기록: `docs/strategy/KUODRA_KR_KMONG_PRODUCTIZATION_DISCOVERY_20261112.md`. 국내 전용 재개발 vs 기존 공통 코어 한국 어댑터 비교 후 **공통 코어+한국 어댑터 추천(미승인)**; 오프라인 고객 Windows vs SaaS 비교 후 **Windows 추천(미승인)**. BASIC/PRO/BUSINESS와 가격은 시험 가설.
