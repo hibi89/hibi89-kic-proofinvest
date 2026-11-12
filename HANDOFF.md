@@ -1,3 +1,15 @@
+# P338 — 2026-11-12 KST — KUODRA KR/글로벌 크몽 상품화 사전조사 문서화 (구현·판매 미시작)
+1. **목표/범위/기술:** KIC 예선 제출 후 코드 자산 보존하며 국내 KOSPI/KOSDAQ 기업공시, 기업 재무/거래처 실사, 기존 미국 SEC, 추후 비공개 기관자료 시장의 순차 확장 가능성과 크몽 고객용 소프트웨어 상품화를 조사. Python/Streamlit/SQLite/scikit-learn A/B/C/Guard 기존 코어 유지.
+2. **완료/결정 근거:** 사용자 요청에 따라 시장조사와 실행 전 설계만 GitHub에 신규 기록: `docs/strategy/KUODRA_KR_KMONG_PRODUCTIZATION_DISCOVERY_20261112.md`. 국내 전용 재개발 vs 기존 공통 코어 한국 어댑터 비교 후 **공통 코어+한국 어댑터 추천(미승인)**; 오프라인 고객 Windows vs SaaS 비교 후 **Windows 추천(미승인)**. BASIC/PRO/BUSINESS와 가격은 시험 가설.
+3. **검증:** 이번 신규 기능 테스트/CI 0회, 고객 검증 0건. 과거 실측 기능 SHA `808e62ef78904ec95448338b8573c7d8683b516c`, Actions `42737631543` Linux/Windows 각 2,397 실행/0 실패(Windows SKIP 1) 그대로. 신설 문서 GitHub 저장 사실만 별도 확인.
+4. **상태/중단:** 엔지니어링 기존 82/100, RELEASE HOLD. 한국 실제 DART/KRX 상용 권리, 설치, 시장성, 사용자 승인 및 고객 베타는 미검증. KIC 예선 제출 파일/대회 결과는 이 기획과 분리.
+5. **오류/위험/대안:** KRX 안내는 재배포 프로그램 개발/수익사업 시세 사용에 별도 계약 요구. DART 활용과 재배포 권리 구별; 투자자문업 규제 검토. 비인가 크롤링/SEC403·429 우회 금지. 대안: 고객 권한 파일/고객 자체 API키, 시장 데이터 부족 시 A=UNAVAILABLE·Guard HOLD, 합성 자료는 명시.
+6. **저장소/브랜치/SHA:** `hibi89/hibi89-kic-proofinvest` / `lead/kic`. 계획 신규 문서 경로 위 참조. 계획 첫 커밋 `6db4b261d27dce836406de27500d9eb831fdabcb`; STATUS/HANDOFF 후속 커밋 SHA는 검증 시점에 확인. 제품 기능 검증 SHA는 위와 별개.
+7. **배포/실행:** Production/Vercel 미적용. `python -B -m scripts.verify_local --full`, `python -m streamlit run streamlit_app.py` 기존 경로 보존. 상용 빌드·고객 설치·크몽 등록 없음.
+8. **원본/백업/인증:** KIC 제출 PDF/ZIP, 기존 소스, 대회용 계획, 기능 테스트, 데이터/키/토큰 및 Git 부모 커밋 불변. 이 계획 문서에는 민감 개인 데이터/비공개 금융 원본 없음. 공개 repo 가시성 변경 없음.
+9. **다음 작업/승인:** 사용자에게 공통 코어 한국 어댑터/Windows 로컬/BASIC→PRO/가격 가설 채택 승인받은 뒤 실제 구현. 승인 전 한국 식별자·DART 계정 매핑, 라이선스 체크, 오프라인 B/C→A 선택형 테스트 계획; 실제 코드·브랜치 변경/외부 API·유료 계약/실판매는 별도 승인.
+10. **갱신/확인범위:** 2026-11-12 KST. 문서·시장 경쟁상품 공개 목록 및 공개 이용약관을 통한 사전 검토; 실판매 수량·성능·사용권 실증 미검증. 최종 문서 기준 SHA 후속 GitHub 반영 확인 필요.
+
 # P337 — 2026-11-12 KST — Conditional KUODRA commercialization fallback recorded after owner request
 1. **Goal and confirmed decision:** If KIC official preliminary outcome on Dec 3 shows KUODRA did not advance, evaluate and develop a standalone, sellable (e.g. Kmong) version. Finalist path stays governed by P336. Full proposal: `docs/strategy/KUODRA_CONDITIONAL_COMMERCIALIZATION_FALLBACK_20261112.md`; unchanged Python/Streamlit/SQLite/scikit-learn A/B/C/Guard/public-private analytics design.
 2. **Completion and rationale:** Documented future-only offline customer-owned Windows delivery vs customer on-prem vs provider SaaS trade-offs; prefer lowest ongoing cost and no mandatory private-data transfer, meaningful sourced PDF/HTML evidence and help/self-service. No code or SKU created.
